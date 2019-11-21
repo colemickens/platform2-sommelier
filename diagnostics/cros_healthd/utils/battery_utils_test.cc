@@ -15,6 +15,8 @@
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <dbus/object_path.h>
+#include <dbus/power_manager/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -54,13 +56,17 @@ constexpr base::TimeDelta kDebugdTimeOut =
 class BatteryUtilsTest : public ::testing::Test {
  protected:
   BatteryUtilsTest() {
-    mock_proxy_ = std::make_unique<org::chromium::debugdProxyMock>();
-    battery_fetcher_ = std::make_unique<BatteryFetcher>(mock_proxy_.get());
     options_.bus_type = dbus::Bus::SYSTEM;
     mock_bus_ = new dbus::MockBus(options_);
     mock_object_proxy_ =
         new dbus::MockObjectProxy(mock_bus_.get(), debugd::kDebugdServiceName,
                                   dbus::ObjectPath(debugd::kDebugdServicePath));
+    mock_debugd_proxy_ = std::make_unique<org::chromium::debugdProxyMock>();
+    mock_power_manager_proxy_ = new dbus::MockObjectProxy(
+        mock_bus_.get(), power_manager::kPowerManagerServiceName,
+        dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+    battery_fetcher_ = std::make_unique<BatteryFetcher>(
+        mock_debugd_proxy_.get(), mock_power_manager_proxy_.get());
   }
 
   bool ExtractBatteryMetrics(dbus::Response* response,
@@ -68,18 +74,21 @@ class BatteryUtilsTest : public ::testing::Test {
     return battery_fetcher_.get()->ExtractBatteryMetrics(response, output_info);
   }
 
-  org::chromium::debugdProxyMock* GetMockProxy() { return mock_proxy_.get(); }
+  org::chromium::debugdProxyMock* GetMockDebugdProxy() {
+    return mock_debugd_proxy_.get();
+  }
 
   dbus::MockObjectProxy* GetMockObjectProxy() {
     return mock_object_proxy_.get();
   }
 
  private:
-  std::unique_ptr<org::chromium::debugdProxyMock> mock_proxy_;
-  std::unique_ptr<BatteryFetcher> battery_fetcher_;
   dbus::Bus::Options options_;
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
+  std::unique_ptr<org::chromium::debugdProxyMock> mock_debugd_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> mock_power_manager_proxy_;
+  std::unique_ptr<BatteryFetcher> battery_fetcher_;
 };
 
 // Test the expected path of extracting battery metrics from a D-Bus response.
@@ -102,7 +111,7 @@ TEST_F(BatteryUtilsTest, TestExtractingBatteryMetrics) {
 
   BatteryInfoPtr info;
 
-  EXPECT_CALL(*GetMockProxy(), GetObjectProxy())
+  EXPECT_CALL(*GetMockDebugdProxy(), GetObjectProxy())
       .Times(2)
       .WillRepeatedly(testing::Return(GetMockObjectProxy()));
 

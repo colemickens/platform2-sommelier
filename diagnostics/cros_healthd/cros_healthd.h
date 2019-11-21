@@ -10,8 +10,12 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <base/memory/scoped_refptr.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_object.h>
+#include <dbus/bus.h>
+#include <dbus/object_proxy.h>
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
@@ -23,7 +27,7 @@ namespace diagnostics {
 // Daemon class for cros_healthd.
 class CrosHealthd final : public brillo::DBusServiceDaemon {
  public:
-  explicit CrosHealthd(std::unique_ptr<org::chromium::debugdProxy> proxy);
+  CrosHealthd();
   ~CrosHealthd() override;
 
  private:
@@ -44,8 +48,24 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
 
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
-  std::unique_ptr<org::chromium::debugdProxy> proxy_;
+  // This should be the only connection to D-Bus. Use |connection_| to get the
+  // |dbus_bus_|.
+  brillo::DBusConnection connection_;
+  // Single |dbus_bus_| object used by cros_healthd to initiate the
+  // |debugd_proxy_| and |power_manager_proxy_|.
+  scoped_refptr<dbus::Bus> dbus_bus_;
+  // Use the |debugd_proxy_| to make calls to debugd. Example: cros_healthd
+  // calls out to debugd when it needs to collect smart battery metrics like
+  // manufacture_date_smart and temperature_smart.
+  std::unique_ptr<org::chromium::debugdProxy> debugd_proxy_;
+  // Use the |power_manager_proxy_| (owned by |dbus_bus_|) to make calls to
+  // power_manager. Example: cros_healthd calls out to power_manager when it
+  // needs to collect battery metrics like cycle count.
+  dbus::ObjectProxy* power_manager_proxy_;
+  // |battery_fetcher_| is responsible for collecting all battery metrics (smart
+  // and regular) by using the available D-Bus proxies.
   std::unique_ptr<BatteryFetcher> battery_fetcher_;
+  // Maintains the Mojo connection with cros_healthd clients.
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
 
   // Connects BootstrapMojoConnection with the methods of the D-Bus object

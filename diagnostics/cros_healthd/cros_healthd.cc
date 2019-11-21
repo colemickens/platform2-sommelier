@@ -13,17 +13,34 @@
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <dbus/cros_healthd/dbus-constants.h>
+#include <dbus/object_path.h>
+#include <dbus/power_manager/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/pending_process_connection.h>
 
+#include "debugd/dbus-proxies.h"
+
 namespace diagnostics {
 
-CrosHealthd::CrosHealthd(std::unique_ptr<org::chromium::debugdProxy> proxy)
-    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */),
-      proxy_(std::move(proxy)),
-      battery_fetcher_(std::make_unique<BatteryFetcher>(proxy_.get())),
-      mojo_service_(
-          std::make_unique<CrosHealthdMojoService>(battery_fetcher_.get())) {}
+CrosHealthd::CrosHealthd()
+    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */) {
+  // Set up only one |connection_| to D-Bus which cros_healthd can use to
+  // initiate the |debugd_proxy_| and a |power_manager_proxy_|.
+  dbus_bus_ = connection_.Connect();
+  CHECK(dbus_bus_) << "Failed to connect to the D-Bus system bus.";
+
+  debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(dbus_bus_);
+
+  power_manager_proxy_ = dbus_bus_->GetObjectProxy(
+      power_manager::kPowerManagerServiceName,
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+
+  battery_fetcher_ = std::make_unique<BatteryFetcher>(debugd_proxy_.get(),
+                                                      power_manager_proxy_);
+
+  mojo_service_ =
+      std::make_unique<CrosHealthdMojoService>(battery_fetcher_.get());
+}
 
 CrosHealthd::~CrosHealthd() = default;
 

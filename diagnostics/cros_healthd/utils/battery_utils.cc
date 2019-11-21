@@ -28,8 +28,10 @@
 
 namespace diagnostics {
 
-BatteryFetcher::BatteryFetcher(org::chromium::debugdProxyInterface* proxy)
-    : proxy_(proxy) {}
+BatteryFetcher::BatteryFetcher(
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    dbus::ObjectProxy* power_manager_proxy)
+    : debugd_proxy_(debugd_proxy), power_manager_proxy_(power_manager_proxy) {}
 BatteryFetcher::~BatteryFetcher() = default;
 
 namespace {
@@ -115,7 +117,7 @@ bool BatteryFetcher::FetchSmartBatteryMetric(
   constexpr base::TimeDelta kDebugdTimeOut =
       base::TimeDelta::FromMilliseconds(10 * 1000);
   std::unique_ptr<dbus::Response> response =
-      proxy_->GetObjectProxy()->CallMethodAndBlock(
+      debugd_proxy_->GetObjectProxy()->CallMethodAndBlock(
           &method_call, kDebugdTimeOut.InMilliseconds());
 
   if (!response) {
@@ -218,21 +220,11 @@ bool BatteryFetcher::ExtractBatteryMetrics(dbus::Response* response,
 // Make a D-Bus call to get the PowerSupplyProperties proto, which contains the
 // battery metrics.
 bool BatteryFetcher::FetchBatteryMetrics(BatteryInfoPtr* output_info) {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-  if (!bus->Connect()) {
-    LOG(ERROR) << "Failed to connect to the system bus";
-    return false;
-  }
-  dbus::ObjectProxy* bus_proxy = bus->GetObjectProxy(
-      power_manager::kPowerManagerServiceName,
-      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
   constexpr base::TimeDelta kPowerManagerDBusTimeout =
       base::TimeDelta::FromSeconds(3);
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                power_manager::kGetPowerSupplyPropertiesMethod);
-  auto response = bus_proxy->CallMethodAndBlock(
+  auto response = power_manager_proxy_->CallMethodAndBlock(
       &method_call, kPowerManagerDBusTimeout.InMilliseconds());
   return ExtractBatteryMetrics(response.get(), output_info);
 }
