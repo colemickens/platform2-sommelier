@@ -51,18 +51,6 @@ generate_mojom_bindings("diagnostics_mojo_bindings") {
   ]
 }
 
-# Library with utilities common to both cros_healthd and wilco_dtc_supportd.
-pkg_config("libcommon_pkg_deps") {
-  pkg_deps = [ "libchrome-${libbase_ver}" ]
-}
-
-source_set("libcommon") {
-  public_configs = [ ":libcommon_pkg_deps" ]
-  sources = [
-    "common/file_test_utils.cc",
-  ]
-}
-
 # Library that provides the diagnostic routine interface.
 pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [ "libchrome-${libbase_ver}" ]
@@ -399,9 +387,9 @@ if (use.test) {
       "//common-mk:test",
     ]
     deps = [
-      ":libcommon",
       ":libcros_healthd_utils",
       "../common-mk/testrunner:testrunner",
+      "common:libcommon",
     ]
     sources = [
       "cros_healthd/utils/battery_utils_test.cc",
@@ -423,9 +411,9 @@ if (use.test) {
       "//common-mk:test",
     ]
     deps = [
-      ":libcommon",
       ":libwilco_dtc_supportd",
       "../common-mk/testrunner:testrunner",
+      "common:libcommon",
     ]
     sources = [
       "wilco_dtc_supportd/ec_constants_test.cc",
@@ -491,9 +479,9 @@ if (use.test) {
       ":libtelem_test_pkg_deps",
     ]
     deps = [
-      ":libcommon",
       ":libtelem",
       "../common-mk/testrunner:testrunner",
+      "common:libcommon",
     ]
     sources = [
       "telem/battery_utils_test.cc",
@@ -517,9 +505,9 @@ if (use.test) {
       ":routine_test_pkg_deps",
     ]
     deps = [
-      ":libcommon",
       ":libdiag_routine",
       "../common-mk/testrunner:testrunner",
+      "common:libcommon",
     ]
     sources = [
       "routines/battery/battery_test.cc",
