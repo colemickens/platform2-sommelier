@@ -1,0 +1,87 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+# The urandom tool executable.
+pkg_config("urandom_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("urandom") {
+  configs += [ ":urandom_pkg_deps" ]
+  sources = [
+    "urandom/main.cc",
+  ]
+}
+
+# The smartctl-check tool executable.
+pkg_config("smartctl-check_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libdebugd-client",
+  ]
+}
+
+executable("smartctl-check") {
+  configs += [ ":smartctl-check_pkg_deps" ]
+  sources = [
+    "smartctl_check/main.cc",
+    "smartctl_check/smartctl_check_utils.cc",
+  ]
+}
+
+# Library that provides the diagnostic routine interface.
+pkg_config("libdiag_routine_pkg_deps") {
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+source_set("libdiag_routine") {
+  deps = [
+    "//diagnostics/grpc:wilco_dtc_grpc_protos",
+  ]
+  all_dependent_configs = [ ":libdiag_routine_pkg_deps" ]
+  sources = [
+    "battery/battery.cc",
+    "battery_sysfs/battery_sysfs.cc",
+    "diag_process_adapter_impl.cc",
+    "smartctl_check/smartctl_check.cc",
+    "subproc_routine.cc",
+    "urandom/urandom.cc",
+  ]
+}
+
+if (use.test) {
+  # Libraries for unit tests.
+
+  pkg_config("routine_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("routine_test") {
+    configs += [
+      "//common-mk:test",
+      ":routine_test_pkg_deps",
+    ]
+    deps = [
+      ":libdiag_routine",
+      "../../common-mk/testrunner:testrunner",
+      "//diagnostics/common:libcommon",
+    ]
+    sources = [
+      "battery/battery_test.cc",
+      "battery_sysfs/battery_sysfs_test.cc",
+      "smartctl_check/smartctl_check_utils.cc",
+      "smartctl_check/smartctl_check_utils_test.cc",
+      "subproc_routine_test.cc",
+    ]
+  }
+}

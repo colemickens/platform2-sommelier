@@ -10,10 +10,10 @@ group("all") {
     ":cros_healthd",
     ":cros_healthd_helper",
     ":diag",
-    ":smartctl-check",
     ":telem",
-    ":urandom",
     ":wilco_dtc_supportd",
+    "//diagnostics/routines:smartctl-check",
+    "//diagnostics/routines:urandom",
   ]
   if (use.test) {
     deps += [
@@ -21,10 +21,10 @@ group("all") {
       ":libcros_healthd_utils_test",
       ":libdiag_test",
       ":libtelem_test",
-      ":routine_test",
       ":wilco_dtc_supportd_test",
       "//diagnostics/common:libcommon_test",
       "//diagnostics/grpc_async_adapter:libgrpc_async_adapter_test",
+      "//diagnostics/routines:routine_test",
     ]
   }
   if (use.fuzzer) {
@@ -49,26 +49,6 @@ generate_mojom_bindings("diagnostics_mojo_bindings") {
     "mojo/cros_healthd.mojom",
     "mojo/cros_healthd_probe.mojom",
     "mojo/wilco_dtc_supportd.mojom",
-  ]
-}
-
-# Library that provides the diagnostic routine interface.
-pkg_config("libdiag_routine_pkg_deps") {
-  pkg_deps = [ "libchrome-${libbase_ver}" ]
-}
-
-source_set("libdiag_routine") {
-  deps = [
-    "//diagnostics/grpc:wilco_dtc_grpc_protos",
-  ]
-  all_dependent_configs = [ ":libdiag_routine_pkg_deps" ]
-  sources = [
-    "routines/battery/battery.cc",
-    "routines/battery_sysfs/battery_sysfs.cc",
-    "routines/diag_process_adapter_impl.cc",
-    "routines/smartctl_check/smartctl_check.cc",
-    "routines/subproc_routine.cc",
-    "routines/urandom/urandom.cc",
   ]
 }
 
@@ -179,11 +159,11 @@ pkg_config("libwilco_dtc_supportd_pkg_deps") {
 source_set("libwilco_dtc_supportd") {
   deps = [
     ":diagnostics_mojo_bindings",
-    ":libdiag_routine",
     "//diagnostics/common:libcommon",
     "//diagnostics/constants:libconstants",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
     "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
+    "//diagnostics/routines:libdiag_routine",
   ]
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
   sources = [
@@ -282,38 +262,6 @@ executable("diag") {
   configs += [ ":diag_pkg_deps" ]
   sources = [
     "diag/main.cc",
-  ]
-}
-
-# The urandom tool executable.
-pkg_config("urandom_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-  ]
-}
-
-executable("urandom") {
-  configs += [ ":urandom_pkg_deps" ]
-  sources = [
-    "routines/urandom/main.cc",
-  ]
-}
-
-# The smartctl-check tool executable.
-pkg_config("smartctl-check_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-    "libdebugd-client",
-  ]
-}
-
-executable("smartctl-check") {
-  configs += [ ":smartctl-check_pkg_deps" ]
-  sources = [
-    "routines/smartctl_check/main.cc",
-    "routines/smartctl_check/smartctl_check_utils.cc",
   ]
 }
 
@@ -491,32 +439,6 @@ if (use.test) {
       "telem/telem_cache_test.cc",
       "telem/telem_parsers_test.cc",
       "telem/telemetry_test.cc",
-    ]
-  }
-
-  pkg_config("routine_test_pkg_deps") {
-    pkg_deps = [
-      "libchrome-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-    ]
-  }
-
-  executable("routine_test") {
-    configs += [
-      "//common-mk:test",
-      ":routine_test_pkg_deps",
-    ]
-    deps = [
-      ":libdiag_routine",
-      "../common-mk/testrunner:testrunner",
-      "//diagnostics/common:libcommon",
-    ]
-    sources = [
-      "routines/battery/battery_test.cc",
-      "routines/battery_sysfs/battery_sysfs_test.cc",
-      "routines/smartctl_check/smartctl_check_utils.cc",
-      "routines/smartctl_check/smartctl_check_utils_test.cc",
-      "routines/subproc_routine_test.cc",
     ]
   }
 }
