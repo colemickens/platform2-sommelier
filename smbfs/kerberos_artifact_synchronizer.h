@@ -33,12 +33,12 @@ class KerberosArtifactSynchronizer {
   KerberosArtifactSynchronizer(
       const std::string& krb5_conf_path,
       const std::string& krb5_ccache_path,
+      const std::string& object_guid,
       std::unique_ptr<KerberosArtifactClientInterface> client);
 
-  // Sets up Keberos for user with |object_guid|. User must be ChromAD.
+  // Sets up Kerberos for user with |object_guid_|. User must be ChromAD.
   // |callback| is run with the result. May only be called once per instance.
-  void SetupKerberos(const std::string& object_guid,
-                     SetupKerberosCallback callback);
+  void SetupKerberos(SetupKerberosCallback callback);
 
  private:
   // Calls GetUserKerberosFiles on |client_|.
@@ -74,12 +74,12 @@ class KerberosArtifactSynchronizer {
                                              const std::string& signal_name,
                                              bool success);
 
-  bool is_kerberos_setup_ = false;
   const std::string krb5_conf_path_;
   const std::string krb5_ccache_path_;
-  std::string object_guid_;
+  const std::string object_guid_;
 
   const std::unique_ptr<KerberosArtifactClientInterface> client_;
+  bool setup_called_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(KerberosArtifactSynchronizer);
 };
