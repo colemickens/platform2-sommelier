@@ -25,7 +25,7 @@ pkg_config("libdpsl_pkg_deps") {
   ]
 }
 
-static_library("libdpsl") {
+source_set("libdpsl") {
   deps = [
     "//diagnostics/constants:libconstants",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
@@ -40,7 +40,7 @@ static_library("libdpsl") {
   ]
 }
 
-static_library("libdpslutil") {
+source_set("libdpslutil") {
   deps = [
     ":libdpsl",
   ]

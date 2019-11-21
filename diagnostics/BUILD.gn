@@ -56,7 +56,7 @@ pkg_config("libcommon_pkg_deps") {
   pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
-static_library("libcommon") {
+source_set("libcommon") {
   public_configs = [ ":libcommon_pkg_deps" ]
   sources = [
     "common/file_test_utils.cc",
@@ -68,7 +68,7 @@ pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
-static_library("libdiag_routine") {
+source_set("libdiag_routine") {
   deps = [
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
   ]
@@ -94,7 +94,7 @@ pkg_config("libcros_healthd_mojo_adapter_pkg_deps") {
   ]
 }
 
-static_library("libcros_healthd_mojo_adapter") {
+source_set("libcros_healthd_mojo_adapter") {
   deps = [
     ":diagnostics_mojo_bindings",
   ]
@@ -119,7 +119,7 @@ pkg_config("libcros_healthd_utils_pkg_deps") {
   ]
 }
 
-static_library("libcros_healthd_utils") {
+source_set("libcros_healthd_utils") {
   deps = [
     ":diagnostics_mojo_bindings",
   ]
@@ -141,7 +141,7 @@ pkg_config("libcros_healthd_pkg_deps") {
   ]
 }
 
-static_library("libcros_healthd") {
+source_set("libcros_healthd") {
   deps = [
     ":diagnostics_mojo_bindings",
     ":libcros_healthd_utils",
@@ -161,7 +161,7 @@ pkg_config("libdiag_pkg_deps") {
   ]
 }
 
-static_library("libdiag") {
+source_set("libdiag") {
   deps = [
     "//diagnostics/constants:libconstants",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
@@ -186,7 +186,7 @@ pkg_config("libwilco_dtc_supportd_pkg_deps") {
   ]
 }
 
-static_library("libwilco_dtc_supportd") {
+source_set("libwilco_dtc_supportd") {
   deps = [
     ":diagnostics_mojo_bindings",
     ":libdiag_routine",
@@ -230,7 +230,7 @@ pkg_config("libtelem_pkg_deps") {
   ]
 }
 
-static_library("libtelem") {
+source_set("libtelem") {
   deps = [
     ":libcros_healthd_mojo_adapter",
     "//diagnostics/constants:libconstants",

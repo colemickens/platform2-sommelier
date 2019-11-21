@@ -13,7 +13,7 @@ pkg_config("libgrpc_async_adapter_exported_pkg_deps") {
   ]
 }
 
-static_library("libgrpc_async_adapter") {
+source_set("libgrpc_async_adapter") {
   all_dependent_configs = [ ":libgrpc_async_adapter_exported_pkg_deps" ]
   libs = [ "gpr" ]
   sources = [
@@ -41,7 +41,7 @@ if (use.test) {
       "protobuf",
     ]
   }
-  static_library("libgrpc_async_adapter_test_rpcs") {
+  source_set("libgrpc_async_adapter_test_rpcs") {
     all_dependent_configs = [ ":libgrpc_async_adapter_test_rpcs_pkg_deps" ]
     deps = [
       ":libgrpc_async_adapter_test_rpcs_protolib",
