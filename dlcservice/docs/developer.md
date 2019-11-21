@@ -26,11 +26,11 @@ are the differences:
     and can only be updated via Autoupdate (as part of the root filesystem
     partition). DLC modules can be installed independently. Installation of a
     DLC module on device is handled by a daemon service ([dlcservice]) which
-    takes D-Bus method call (Install, Uninstall, etc.).
+    takes D-Bus method calls (Install, Uninstall, etc.).
 *   **Update payload/artifacts** All the package updates are embedded in a
-    monolithic payload (a.k.a root filesystem partition) and downloadable from
-    Omaha. Each DLC module has its own update (or install) payload and
-    downloadable from Omaha. Chrome OS infrastructure automatically handles
+    monolithic payload (a.k.a root filesystem partition) and are downloadable
+    from Omaha. Each DLC module has its own update (or install) payload and
+    is downloadable from Omaha. Chrome OS infrastructure automatically handles
     packaging and serving of DLC payloads.
 
 ### Organization and Content
@@ -45,13 +45,13 @@ The workflow of a DLC developer involves following few tasks:
 ## Create a DLC module
 
 Introducing a DLC module into Chrome OS involves adding an ebuild. The ebuild
-file should inherits [dlc.eclass]. Within the ebuild file the following
+file should inherit [dlc.eclass]. Within the ebuild file the following
 variables should be set:
 
 *   `DLC_NAME` - Name of the DLC. It is for description/info purpose only and
     can be empty (but not encouraged).
-*   `DLC_VERSION` - Version of the DLC module. It is for decription/info purpose
-    only and can be empty. By default you can set it to `${PV}`.
+*   `DLC_VERSION` - Version of the DLC module. It is for description/info
+    purpose only and can be empty. By default you can set it to `${PV}`.
 *   `DLC_PREALLOC_BLOCKS` - The storage space (in the unit of number of blocks,
     block size is 4 KB) the system reserves for a copy of the DLC module
     image. Note that on device we reserve 2 copies of the image so the actual
@@ -72,16 +72,16 @@ variables should be set:
      the future (allow downloading selectively a set of packages within one
      DLC). When multiple packages are supported, each package should have a
      unique name among all packages in a DLC module.
-*    `DLC_ARTIFACT_DIR` - The path to directory which contains all the content
-     to be packed into the DLC image. See the ebuild example below for more
-     about it.
+*    `DLC_ARTIFACT_DIR` - The path to the directory which contains all the
+     content to be packed into the DLC image. See the ebuild example below for
+     more details about it.
 
-Within the build file, the implementation should include at least `src_install`
-function. Within `src_install`, all the DLC content should be copied to
-`${DLC_ARTIFACT_DIR}`. Do **NOT** use ebuild functions (`doins`,
+Within the build file, the implementation should include at least the
+`src_install` function. Within `src_install`, all the DLC content should be
+copied to `${DLC_ARTIFACT_DIR}`. Do **NOT** use ebuild functions (`doins`,
 `dobin`, etc.) to install anything unless you know what you are doing.
 
-Here is an DLC example ebuild (ebuild name:
+Here is an example of a DLC ebuild (ebuild name:
 `chromeos-base/demo-dlc-1.0.0.ebuild`):
 
 ```
@@ -121,17 +121,17 @@ src_install() {
 
 ## Write platform code to request DLC module
 
-A DLC module is downloaded (from Internet) and installed at runtime by
+A DLC module is downloaded (from the Internet) and installed at runtime by
 dlcservice. Any feature should not rely on the existence of a DLC module and
 thus has to request (install) the DLC module from dlcservice before using the
 DLC. Once a DLC module is installed, dlcservice keeps it available and mounted
 across device reboot and update.
 
-Chrome (and other system daemons that can access D-Bus) calls dlcservice API
-to install/uninstall a DLC module. For calling dlcservice API in Chrome, uses
-[system_api] to send API calls. For calling dlcservice API outside of Chrome,
-use generated D-Bus bindings. Follow [dlcservice usage example] on how to use
-the API.
+Chrome (and other system daemons that can access D-Bus) calls the dlcservice API
+to install/uninstall a DLC module. For calling the dlcservice API inside Chrome,
+use [system_api] to send API calls. For calling dlcservice API outside of
+Chrome, use generated D-Bus bindings. Follow [dlcservice usage example] on how
+to use the API.
 
 On a locally built test build|image, calling dlcservice API does not download
 the DLC (no DLC is being served). You need to
@@ -139,11 +139,11 @@ the DLC (no DLC is being served). You need to
 
 ## Install a DLC module for dev/test
 
-Installing a Chrome OS DLC module to device is similar to installing a Chrome
+Installing a Chrome OS DLC module on a device is similar to installing a Chrome
 OS package:
 
 *   Build the DLC module: `emerge-${BOARD} chromeos-base/demo-dlc`
-*   Copy DLC module to device: `cros deploy ${IP} chromeos-base/demo-dlc`
+*   Copy the DLC module to device: `cros deploy ${IP} chromeos-base/demo-dlc`
 
 ## Write tests for a DLC module
 
