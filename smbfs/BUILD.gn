@@ -21,6 +21,12 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "fuse",
     "smbclient",
+
+    # system_api depends on protobuf (or protobuf-lite). It must
+    # appear before protobuf or the linker flags won"t be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
   ]
   defines = [ "FUSE_USE_VERSION=26" ]
 }
@@ -33,6 +39,11 @@ static_library("libsmbfs") {
     "fuse_session.h",
     "inode_map.cc",
     "inode_map.h",
+    "kerberos_artifact_client.cc",
+    "kerberos_artifact_client.h",
+    "kerberos_artifact_client_interface.h",
+    "kerberos_artifact_synchronizer.cc",
+    "kerberos_artifact_synchronizer.h",
     "request.cc",
     "request.h",
     "smb_filesystem.cc",
@@ -80,7 +91,10 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
     ]
     sources = [
+      "fake_kerberos_artifact_client.cc",
+      "fake_kerberos_artifact_client.h",
       "inode_map_test.cc",
+      "kerberos_artifact_synchronizer_test.cc",
       "util_test.cc",
     ]
   }
