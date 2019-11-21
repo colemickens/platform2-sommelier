@@ -17,19 +17,22 @@ bool FakeIioChannel::SetEnabled(bool en) {
   return true;
 }
 
-base::Optional<std::string> FakeIioChannel::ReadStringAttribute(
-    const std::string& name) const {
-  auto k = text_attributes_.find(name);
-  if (k == text_attributes_.end())
+template <typename T> base::Optional<T> FakeReadAttributes(
+    const std::string& name,
+    std::map<std::string, T> attributes) {
+  auto k = attributes.find(name);
+  if (k == attributes.end())
     return base::nullopt;
   return k->second;
 }
+
+base::Optional<std::string> FakeIioChannel::ReadStringAttribute(
+    const std::string& name) const {
+  return FakeReadAttributes<>(name, text_attributes_);
+}
 base::Optional<int64_t> FakeIioChannel::ReadNumberAttribute(
     const std::string& name) const {
-  auto k = numeric_attributes_.find(name);
-  if (k == numeric_attributes_.end())
-    return base::nullopt;
-  return k->second;
+  return FakeReadAttributes<>(name, numeric_attributes_);
 }
 
 void FakeIioChannel::WriteStringAttribute(const std::string& name,
@@ -48,24 +51,15 @@ FakeIioDevice::FakeIioDevice(FakeIioContext* ctx,
 
 base::Optional<std::string> FakeIioDevice::ReadStringAttribute(
     const std::string& name) const {
-  auto k = text_attributes_.find(name);
-  if (k == text_attributes_.end())
-    return base::nullopt;
-  return k->second;
+  return FakeReadAttributes<>(name, text_attributes_);
 }
 base::Optional<int64_t> FakeIioDevice::ReadNumberAttribute(
     const std::string& name) const {
-  auto k = numeric_attributes_.find(name);
-  if (k == numeric_attributes_.end())
-    return base::nullopt;
-  return k->second;
+  return FakeReadAttributes<>(name, numeric_attributes_);
 }
 base::Optional<double> FakeIioDevice::ReadDoubleAttribute(
     const std::string& name) const {
-  auto k = double_attributes_.find(name);
-  if (k == double_attributes_.end())
-    return base::nullopt;
-  return k->second;
+  return FakeReadAttributes<>(name, double_attributes_);
 }
 
 bool FakeIioDevice::WriteStringAttribute(const std::string& name,

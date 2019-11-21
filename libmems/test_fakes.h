@@ -43,7 +43,7 @@ class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
  private:
   std::string id_;
   bool enabled_;
-  std::map<std::string, int> numeric_attributes_;
+  std::map<std::string, int64_t> numeric_attributes_;
   std::map<std::string, std::string> text_attributes_;
 };
 
@@ -101,7 +101,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   FakeIioContext* context_;
   std::string name_;
   std::string id_;
-  std::map<std::string, int> numeric_attributes_;
+  std::map<std::string, int64_t> numeric_attributes_;
   std::map<std::string, std::string> text_attributes_;
   std::map<std::string, double> double_attributes_;
   IioDevice* trigger_;
