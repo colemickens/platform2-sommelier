@@ -125,17 +125,28 @@ iio_device* IioDeviceImpl::GetUnderlyingIioDevice() const {
 }
 
 bool IioDeviceImpl::SetTrigger(IioDevice* trigger_device) {
+  // Reset the old - if any - and then add the new trigger.
+  int error = iio_device_set_trigger(device_, NULL);
+  if (error) {
+    LOG(WARNING) << "Unable to clean triiger of device " << GetId()
+                 << ", error: " << error;
+    return false;
+  }
+  if (trigger_device == nullptr)
+    return true;
+
   auto impl_device = trigger_device->GetUnderlyingIioDevice();
   if (!impl_device) {
     LOG(WARNING) << "cannot find device " << trigger_device->GetId()
                  << " in the current context";
     return false;
   }
-  int ok = iio_device_set_trigger(device_, impl_device);
-  if (ok) {
+
+  error = iio_device_set_trigger(device_, impl_device);
+  if (error) {
     LOG(WARNING) << "Unable to set trigger for device " << GetId()
                  << " to be device " << trigger_device->GetId()
-                 << ", error: " << ok;
+                 << ", error: " << error;
     return false;
   }
   return true;
@@ -148,12 +159,15 @@ IioDevice* IioDeviceImpl::GetTrigger() {
     LOG(WARNING) << "Unable to get trigger for device " << GetId();
     return nullptr;
   }
+
+  if (trigger == nullptr)
+    return nullptr;
+
   const char* trigger_id = iio_device_get_id(trigger);
   auto trigger_device = GetContext()->GetDevice(trigger_id);
   if (trigger_device == nullptr) {
     LOG(WARNING) << GetId() << " has trigger device " << trigger_id
                  << "which cannot be found in this context";
-    return nullptr;
   }
   return trigger_device;
 }
