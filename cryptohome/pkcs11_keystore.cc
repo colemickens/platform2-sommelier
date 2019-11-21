@@ -389,7 +389,7 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
       {CKA_CLASS, &object_class, sizeof(object_class)},
-      {CKA_LABEL, base::string_as_array(const_cast<std::string*>(&key_name)),
+      {CKA_LABEL, base::data(const_cast<std::string&>(key_name)),
        key_name.size()},
       {CKA_APPLICATION, const_cast<char*>(kApplicationID),
        arraysize(kApplicationID)},
@@ -481,7 +481,7 @@ bool Pkcs11KeyStore::GetKeyName(CK_SESSION_HANDLE session_handle,
     return false;
   }
   key_name->resize(attribute.ulValueLen);
-  attribute.pValue = base::string_as_array(key_name);
+  attribute.pValue = base::data(*key_name);
   if (C_GetAttributeValue(session_handle, object_handle, &attribute, 1) !=
       CKR_OK) {
     LOG(ERROR) << "C_GetAttributeValue(CKA_LABEL) failed.";

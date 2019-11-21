@@ -459,7 +459,7 @@ void ReportAsyncDbusRequestTotalTime(std::string task_name,
 }
 
 void ReportAsyncDbusRequestInqueueTime(std::string task_name,
-                                       tracked_objects::Duration running_time) {
+                                       base::TimeDelta running_time) {
   if (!g_metrics) {
     return;
   }

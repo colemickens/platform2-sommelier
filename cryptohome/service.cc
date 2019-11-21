@@ -218,7 +218,7 @@ void MountThreadObserver::WillProcessTask(
 
   ReportAsyncDbusRequestInqueueTime(
       task_name,
-      tracked_objects::TrackedTime::Now() - pending_task.time_posted);
+      base::TimeTicks::Now() - pending_task.delayed_run_time);
 }
 
 void MountThreadObserver::DidProcessTask(

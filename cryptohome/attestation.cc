@@ -1998,7 +1998,7 @@ void Attestation::ClearIdentity(AttestationDatabase::Identity* identity) {
 }
 
 void Attestation::ClearString(std::string* s) {
-  brillo::SecureMemset(base::string_as_array(s), 0, s->length());
+  brillo::SecureMemset(base::data(*s), 0, s->length());
   s->clear();
 }
 

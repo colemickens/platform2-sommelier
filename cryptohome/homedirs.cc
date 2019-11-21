@@ -1490,8 +1490,9 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
   if (!user_mount) {
     user_mount = mount_factory_->New();
+    // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev.
     if (!user_mount->Init(platform_, crypto_, timestamp_cache_,
-                          base::BindRepeating(&base::DoNothing))) {
+                          base::BindRepeating([]() {}))) {
       LOG(ERROR) << "Migrate: Init mount failed";
       return false;
     }

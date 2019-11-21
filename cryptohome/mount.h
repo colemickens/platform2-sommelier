@@ -678,7 +678,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
 
   // This closure will be run in UnmountCryptohome().
-  base::Closure mount_cleanup_;
+  base::OnceClosure mount_cleanup_;
 
   FRIEND_TEST(MountTest, RememberMountOrderingTest);
   FRIEND_TEST(MountTest, MountCryptohomeChapsKey);
