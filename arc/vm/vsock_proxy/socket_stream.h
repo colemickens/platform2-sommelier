@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
@@ -26,10 +27,10 @@ namespace arc {
 class SocketStream : public StreamBase {
  public:
   // Instantiates SocketStream based on the given |socket_fd|.
-  // |proxy| must not be null. If a new file descriptor is passed from
-  // local socket, or contained in |message| or write(), it will be
-  // registered to |proxy|.
-  explicit SocketStream(base::ScopedFD socket_fd);
+  // |error_handler| will be run on async IO error.
+  // TODO(hashimoto): Change StreamBase interface to report all IO errors via
+  // |error_handler|, instead of synchronously returning bool.
+  SocketStream(base::ScopedFD socket_fd, base::OnceClosure error_handler);
   ~SocketStream() override;
 
   // StreamBase overrides:
@@ -44,6 +45,7 @@ class SocketStream : public StreamBase {
   void TrySendMsg();
 
   base::ScopedFD socket_fd_;
+  base::OnceClosure error_handler_;
 
   struct Data {
     std::string blob;

@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -40,7 +41,9 @@ class SocketStreamTest : public testing::Test {
   void SetUp() override {
     auto sockets = CreateSocketPair();
     ASSERT_TRUE(sockets.has_value());
-    stream_ = std::make_unique<SocketStream>(std::move(sockets.value().first));
+    stream_ =
+        std::make_unique<SocketStream>(std::move(sockets.value().first),
+                                       base::BindOnce([]() { ADD_FAILURE(); }));
     socket_ = std::move(sockets.value().second);
   }
 
@@ -81,7 +84,8 @@ TEST_F(SocketStreamTest, ReadEOF) {
 
 TEST_F(SocketStreamTest, ReadError) {
   // Pass invalid FD.
-  auto read_result = SocketStream(base::ScopedFD()).Read();
+  auto read_result =
+      SocketStream(base::ScopedFD(), base::BindOnce([]() {})).Read();
   EXPECT_EQ(EBADF, read_result.error_code);
 }
 
@@ -161,6 +165,16 @@ TEST_F(SocketStreamTest, PendingWrite) {
                                             read_data.size(), &fds));
   read_data.resize(data3.size());
   EXPECT_EQ(data3, read_data);
+}
+
+TEST_F(SocketStreamTest, WriteError) {
+  constexpr char kData[] = "abcdefghijklmnopqrstuvwxyz";
+  bool error_handler_was_run = false;
+  base::OnceClosure error_handler =
+      base::BindOnce([](bool* run) { *run = true; }, &error_handler_was_run);
+  // Write to an invalid FD.
+  SocketStream(base::ScopedFD(), std::move(error_handler)).Write(kData, {});
+  EXPECT_TRUE(error_handler_was_run);
 }
 
 }  // namespace

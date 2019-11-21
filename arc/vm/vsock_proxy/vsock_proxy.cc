@@ -27,10 +27,13 @@ namespace arc {
 namespace {
 
 std::unique_ptr<StreamBase> CreateStream(
-    base::ScopedFD fd, arc_proxy::FileDescriptor::Type fd_type) {
+    base::ScopedFD fd,
+    arc_proxy::FileDescriptor::Type fd_type,
+    base::OnceClosure error_handler) {
   switch (fd_type) {
     case arc_proxy::FileDescriptor::SOCKET:
-      return std::make_unique<SocketStream>(std::move(fd));
+      return std::make_unique<SocketStream>(std::move(fd),
+                                            std::move(error_handler));
     case arc_proxy::FileDescriptor::FIFO_READ:
     case arc_proxy::FileDescriptor::FIFO_WRITE:
       return std::make_unique<PipeStream>(std::move(fd));
@@ -80,7 +83,10 @@ int64_t VSockProxy::RegisterFileDescriptor(
       handle = next_handle_--;
   }
 
-  auto stream = CreateStream(std::move(fd), fd_type);
+  auto stream =
+      CreateStream(std::move(fd), fd_type,
+                   base::BindOnce(&VSockProxy::HandleLocalFileError,
+                                  weak_factory_.GetWeakPtr(), handle));
   std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
   if (fd_type != arc_proxy::FileDescriptor::REGULAR_FILE &&
       fd_type != arc_proxy::FileDescriptor::DMABUF) {
@@ -264,10 +270,8 @@ bool VSockProxy::OnData(arc_proxy::Data* data) {
   // TODO(hashimoto): Redesign stream interface for better write error handling.
   // SocketStream::Write() doesn't return error as it's async.
   if (!it->second.stream->Write(std::move(*data->mutable_blob()),
-                                std::move(transferred_fds))) {
-    fd_map_.erase(it);
-    Close(data->handle());
-  }
+                                std::move(transferred_fds)))
+    HandleLocalFileError(data->handle());
   return true;
 }
 
@@ -470,6 +474,11 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
         std::move(fd), transferred_fd->type(), 0 /* generate handle */));
   }
   return true;
+}
+
+void VSockProxy::HandleLocalFileError(int64_t handle) {
+  fd_map_.erase(handle);
+  Close(handle);
 }
 
 int64_t VSockProxy::GenerateCookie() {

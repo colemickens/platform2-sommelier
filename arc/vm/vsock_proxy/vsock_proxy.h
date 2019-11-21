@@ -133,6 +133,9 @@ class VSockProxy {
                                  std::vector<base::ScopedFD> fds,
                                  arc_proxy::VSockMessage* message);
 
+  // Handles an error on a local file.
+  void HandleLocalFileError(int64_t handle);
+
   // Returns a bland new cookie to start a sequence of operations.
   int64_t GenerateCookie();
 

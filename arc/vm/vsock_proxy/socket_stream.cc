@@ -16,8 +16,10 @@
 
 namespace arc {
 
-SocketStream::SocketStream(base::ScopedFD socket_fd)
-    : socket_fd_(std::move(socket_fd)) {}
+SocketStream::SocketStream(base::ScopedFD socket_fd,
+                           base::OnceClosure error_handler)
+    : socket_fd_(std::move(socket_fd)),
+      error_handler_(std::move(error_handler)) {}
 
 SocketStream::~SocketStream() = default;
 
@@ -79,6 +81,9 @@ void SocketStream::TrySendMsg() {
         return;
       }
       PLOG(ERROR) << "Failed to send message";
+      writable_watcher_.reset();
+      std::move(error_handler_).Run();  // May result in deleting this object.
+      return;
     }
   }
   // No pending data left. Stop watching.
