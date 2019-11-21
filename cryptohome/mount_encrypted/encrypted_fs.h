@@ -102,7 +102,7 @@ class EncryptedFs {
 
   // CreateSparseBackingFile creates the sparse backing file for the
   // encrypted mount and returns an open fd, if successful.
-  bool CreateSparseBackingFile();
+  bool CreateSparseBackingFile(int64_t file_size);
   // TeardownByStage allows higher granularity over teardown
   // processes.
   result_code TeardownByStage(TeardownStage stage, bool ignore_errors);

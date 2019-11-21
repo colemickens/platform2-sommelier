@@ -42,6 +42,8 @@ constexpr uint64_t kExt4ResizeBlocks = 32768 * 10;
 constexpr uint64_t kExt4BlocksPerGroup = 32768;
 constexpr uint64_t kExt4InodeRatioDefault = 16384;
 constexpr uint64_t kExt4InodeRatioMinimum = 2048;
+// Block size is 4k => Minimum free space available to try resizing is 400MB.
+constexpr int64_t kMinBlocksAvailForResize = 102400;
 constexpr char kExt4ExtendedOptions[] = "discard,lazy_itable_init";
 constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
 
@@ -229,6 +231,15 @@ bool UdevAdmSettle(const base::FilePath& device_path, bool wait_for_device) {
   return true;
 }
 
+void CheckSparseFileSize(const base::FilePath& sparse_file, int64_t file_size) {
+  base::File file(sparse_file, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+
+  if (file.IsValid() && file.GetLength() < file_size) {
+    LOG(INFO) << "Expanding underlying sparse file to " << file_size;
+    file.SetLength(file_size);
+  }
+}
+
 }  // namespace
 
 EncryptedFs::EncryptedFs(const base::FilePath& rootdir,
@@ -268,23 +279,8 @@ bool EncryptedFs::Purge() {
   return platform_->DeleteFile(block_path_, false);
 }
 
-bool EncryptedFs::CreateSparseBackingFile() {
-  int64_t fs_bytes_max;
-  struct statvfs stateful_statbuf;
-
-  // Calculate the desired size of the new partition.
-  if (!platform_->StatVFS(stateful_mount_, &stateful_statbuf)) {
-    PLOG(ERROR) << stateful_mount_;
-    return false;
-  }
-  fs_bytes_max = static_cast<int64_t>(stateful_statbuf.f_blocks);
-  fs_bytes_max *= kSizePercent;
-  fs_bytes_max *= stateful_statbuf.f_frsize;
-
-  LOG(INFO) << "Creating sparse backing file with size " << fs_bytes_max;
-
-  // Create the sparse file and return the descriptor.
-  return platform_->CreateSparseFile(block_path_, fs_bytes_max) &&
+bool EncryptedFs::CreateSparseBackingFile(int64_t file_size) {
+  return platform_->CreateSparseFile(block_path_, file_size) &&
          platform_->SetPermissions(block_path_, S_IRUSR | S_IWUSR);
 }
 
@@ -292,17 +288,46 @@ bool EncryptedFs::CreateSparseBackingFile() {
 result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
                                bool rebuild) {
   result_code rc = RESULT_FAIL_FATAL;
+  struct statvfs stateful_statbuf;
+
+  // Get stateful partition statistics. This acts as an indicator of how large
+  // we want the encrypted stateful partition to be.
+  if (!platform_->StatVFS(stateful_mount_, &stateful_statbuf)) {
+    PLOG(ERROR) << "stat() failed on: " << stateful_mount_;
+    return rc;
+  }
+
+  // Calculate the maximum size of the encrypted stateful partition.
+  // truncate()/ftruncate() use int64_t for file size.
+  int64_t fs_bytes_max = static_cast<int64_t>(stateful_statbuf.f_blocks);
+  fs_bytes_max *= kSizePercent;
+  fs_bytes_max *= stateful_statbuf.f_frsize;
 
   if (rebuild) {
     // Wipe out the old files, and ignore errors.
     Purge();
 
     // Create new sparse file.
-    if (!CreateSparseBackingFile()) {
-      PLOG(ERROR) << block_path_;
+    LOG(INFO) << "Creating sparse backing file with size " << fs_bytes_max;
+
+    if (!CreateSparseBackingFile(fs_bytes_max)) {
+      PLOG(ERROR) << "Failed to create sparse backing file " << block_path_;
       return rc;
     }
   }
+
+  // b/131123943: Check the size of the sparse file and resize if necessary.
+  // Resizing the sparse file via truncate() should be a no-op but resizing
+  // the filesystem residing on the file is a bit more involved and may need
+  // to write metadata to several blocks. If there aren't enough blocks
+  // available, we might succeed here but eventually fail to resize and corrupt
+  // the encrypted stateful file system. Check if there are at least a few
+  // blocks available on the stateful partition.
+  if (stateful_statbuf.f_bfree > kMinBlocksAvailForResize)
+    CheckSparseFileSize(block_path_, fs_bytes_max);
+  else
+    LOG(WARNING) << "Low space on stateful partition; not attempting to resize "
+                 << "the underlying block file.";
 
   // Set up loopback device.
   LOG(INFO) << "Loopback attaching " << block_path_ << " named "
