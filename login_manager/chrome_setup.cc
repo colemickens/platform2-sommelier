@@ -98,6 +98,22 @@ base::FilePath GetUserDir(ChromiumCommandBuilder* builder) {
   return base::FilePath(GetDataDir(builder).Append("user"));
 }
 
+// Enables the "AutoNightLight" feature if "auto-night-light" is set to "True"
+// in cros_config.
+void SetUpAutoNightLightFlag(ChromiumCommandBuilder* builder,
+                             brillo::CrosConfigInterface* cros_config) {
+  std::string auto_night_light_str;
+  if (!cros_config ||
+      !cros_config->GetString("/", "auto-night-light", &auto_night_light_str)) {
+    return;
+  }
+
+  if (auto_night_light_str != "True")
+    return;
+
+  builder->AddFeatureEnableOverride("AutoNightLight");
+}
+
 // Called by AddUiFlags() to take a wallpaper flag type ("default" or "guest"
 // or "child") and file type (e.g. "child", "default", "oem", "guest") and
 // add the corresponding flags to |builder| if the files exist. Returns false
@@ -439,6 +455,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpInternalStylusFlag(builder, cros_config);
   SetUpFingerprintSensorLocationFlag(builder, cros_config);
   SetUpArcBuildPropertiesFlag(builder, cros_config);
+  SetUpAutoNightLightFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.

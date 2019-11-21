@@ -567,6 +567,10 @@ properties:
                       - bottom
                   additionalProperties: false
               additionalProperties: false
+            auto-night-light:
+              description: Whether the auto-night-light feature is enabled on the device, which
+                sets the schedule for Night light automatically to sunset-to-sunrise.
+              type: boolean
             oem-id:
               description: |
                 Some projects store SKU ID, OEM ID and Board Revision in an

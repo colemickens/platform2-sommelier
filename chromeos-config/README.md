@@ -298,6 +298,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | arc | [arc](#arc) |  | False |  | False |  |
 | audio | [audio](#audio) |  | False |  | False |  |
+| auto-night-light | boolean |  | False |  | False | Whether the auto-night-light feature is enabled on the device, which sets the schedule for Night light automatically to sunset-to-sunrise. |
 | bluetooth | [bluetooth](#bluetooth) |  | False |  | False |  |
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
 | camera | [camera](#camera) |  | False |  | False |  |
