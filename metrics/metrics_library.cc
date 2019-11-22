@@ -70,6 +70,8 @@ const char* kCrosEventNames[] = {
     "Vm.VmcStartSuccess",                       // 22
     "Vm.DiskEraseFailed",                       // 23
     "Fingerprint.MCU.Reboot",                   // 24
+    "Crash.Chrome.CrashesFromKernel",           // 25
+    "Crash.Chrome.MissedCrashes",               // 26
 };
 
 }  // namespace
@@ -292,5 +294,6 @@ bool MetricsLibrary::SendCrosEventToUMA(const std::string& event) {
       return SendEnumToUMA(kCrosEventHistogramName, i, kCrosEventHistogramMax);
     }
   }
+  LOG(WARNING) << "Unknown CrosEvent '" << event << "'";
   return false;
 }

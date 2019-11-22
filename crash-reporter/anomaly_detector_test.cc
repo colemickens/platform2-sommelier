@@ -4,6 +4,8 @@
 
 #include "crash-reporter/anomaly_detector.h"
 
+#include <algorithm>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -17,6 +19,7 @@
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/test_util.h"
 
@@ -31,10 +34,12 @@ using ::testing::IsEmpty;
 using ::testing::Return;
 using ::testing::SizeIs;
 
+using anomaly::CrashReporterParser;
 using anomaly::KernelParser;
 using anomaly::SELinuxParser;
 using anomaly::ServiceParser;
 using anomaly::TerminaParser;
+using test_util::AdvancingClock;
 
 std::vector<std::string> GetTestLogMessages(base::FilePath input_file) {
   std::string contents;
@@ -79,18 +84,17 @@ struct ParserRun {
 };
 
 const ParserRun simple_run;
+const ParserRun empty{.expected_size = 0};
 
-template <class T>
 void ParserTest(const std::string& input_file_name,
-                std::initializer_list<ParserRun> parser_runs) {
-  T parser;
-
+                std::initializer_list<ParserRun> parser_runs,
+                anomaly::Parser* parser) {
   auto log_msgs =
       GetTestLogMessages(test_util::GetTestDataPath(input_file_name));
   for (auto& run : parser_runs) {
     if (run.find_this && run.replace_with)
       ReplaceMsgContent(&log_msgs, *run.find_this, *run.replace_with);
-    auto crash_reports = ParseLogMessages(&parser, log_msgs);
+    auto crash_reports = ParseLogMessages(parser, log_msgs);
 
     ASSERT_THAT(crash_reports, SizeIs(run.expected_size));
     if (run.expected_text)
@@ -100,6 +104,23 @@ void ParserTest(const std::string& input_file_name,
   }
 }
 
+template <class T>
+void ParserTest(const std::string& input_file_name,
+                std::initializer_list<ParserRun> parser_runs) {
+  T parser;
+  ParserTest(input_file_name, parser_runs, &parser);
+}
+
+// Call enough CrashReporterParser::PeriodicUpdate enough times that
+// AdvancingClock advances at least CrashReporterParser::kTimeout.
+void RunCrashReporterPeriodicUpdate(CrashReporterParser* parser) {
+  // AdvancingClock advances 10 seconds per call. The "times 2" is to make sure
+  // we get well past the timeout.
+  const int kTimesToRun = 2 * CrashReporterParser::kTimeout.InSeconds() / 10;
+  for (int count = 0; count < kTimesToRun; ++count) {
+    parser->PeriodicUpdate();
+  }
+}
 }  // namespace
 
 TEST(AnomalyDetectorTest, KernelWarning) {
@@ -151,7 +172,6 @@ TEST(AnomalyDetectorTest, CrashReporterCrash) {
 TEST(AnomalyDetectorTest, CrashReporterCrashRateLimit) {
   ParserRun crash_reporter_crash = {.expected_flag =
                                         "--crash_reporter_crashed"s};
-  ParserRun empty = {.expected_size = 0};
   ParserTest<KernelParser>("TEST_CR_CRASH",
                            {crash_reporter_crash, empty, empty});
 }
@@ -177,6 +197,113 @@ TEST(AnomalyDetectorTest, SELinuxViolation) {
           "-selinux-u:r:init:s0-u:r:kernel:s0-module_request-init-"s,
       .expected_flag = "--selinux_violation"s};
   ParserTest<SELinuxParser>("TEST_SELINUX", {selinux_violation});
+}
+
+TEST(CrashReporterParserTest, MatchedCrashTest) {
+  auto metrics = std::make_unique<MetricsLibraryMock>();
+  EXPECT_CALL(*metrics, SendCrosEventToUMA("Crash.Chrome.CrashesFromKernel"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics, Init()).Times(1);
+  CrashReporterParser parser(std::make_unique<AdvancingClock>(),
+                             std::move(metrics));
+  ParserTest("TEST_CHROME_CRASH_MATCH.txt", {empty}, &parser);
+
+  // Calling PeriodicUpdate should not send new Cros events to UMA.
+  RunCrashReporterPeriodicUpdate(&parser);
+}
+
+TEST(CrashReporterParserTest, ReverseMatchedCrashTest) {
+  auto metrics = std::make_unique<MetricsLibraryMock>();
+  EXPECT_CALL(*metrics, SendCrosEventToUMA("Crash.Chrome.CrashesFromKernel"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics, Init()).Times(1);
+  CrashReporterParser parser(std::make_unique<AdvancingClock>(),
+                             std::move(metrics));
+  ParserTest("TEST_CHROME_CRASH_MATCH_REVERSED.txt", {empty}, &parser);
+  RunCrashReporterPeriodicUpdate(&parser);
+}
+
+TEST(CrashReporterParserTest, UnmatchedCallFromChromeTest) {
+  auto metrics = std::make_unique<MetricsLibraryMock>();
+  EXPECT_CALL(*metrics, SendCrosEventToUMA(_)).Times(0);
+  EXPECT_CALL(*metrics, Init()).Times(1);
+  CrashReporterParser parser(std::make_unique<AdvancingClock>(),
+                             std::move(metrics));
+  ParserRun no_kernel_call = empty;
+  no_kernel_call.find_this = std::string(
+      "Received crash notification for chrome[1570] sig 11, user 1000 group "
+      "1000 (ignoring call by kernel - chrome crash");
+  no_kernel_call.replace_with = std::string(
+      "[user] Received crash notification for btdispatch[2734] sig 6, user 218 "
+      "group 218");
+  ParserTest("TEST_CHROME_CRASH_MATCH.txt", {no_kernel_call}, &parser);
+  RunCrashReporterPeriodicUpdate(&parser);
+}
+
+TEST(CrashReporterParserTest, UnmatchedCallFromKernelTest) {
+  auto metrics = std::make_unique<MetricsLibraryMock>();
+  EXPECT_CALL(*metrics, SendCrosEventToUMA("Crash.Chrome.CrashesFromKernel"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics, SendCrosEventToUMA("Crash.Chrome.MissedCrashes"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics, Init()).Times(1);
+  CrashReporterParser parser(std::make_unique<AdvancingClock>(),
+                             std::move(metrics));
+  ParserRun no_direct_call = empty;
+  no_direct_call.find_this = std::string(
+      "Received crash notification for chrome[1570] user 1000 (called "
+      "directly)");
+  no_direct_call.replace_with = std::string(
+      "[user] Received crash notification for btdispatch[2734] sig 6, user 218 "
+      "group 218");
+  ParserTest("TEST_CHROME_CRASH_MATCH.txt", {no_direct_call}, &parser);
+  RunCrashReporterPeriodicUpdate(&parser);
+}
+
+TEST(CrashReporterParserTest, InterleavedMessagesTest) {
+  auto log_msgs = GetTestLogMessages(
+      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt"));
+  std::sort(log_msgs.begin(), log_msgs.end());
+  do {
+    auto metrics = std::make_unique<MetricsLibraryMock>();
+    EXPECT_CALL(*metrics, SendCrosEventToUMA("Crash.Chrome.CrashesFromKernel"))
+        .Times(3)
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*metrics, Init()).Times(1);
+    CrashReporterParser parser(std::make_unique<AdvancingClock>(),
+                               std::move(metrics));
+    auto crash_reports = ParseLogMessages(&parser, log_msgs);
+    EXPECT_THAT(crash_reports, IsEmpty()) << " for message set:\n"
+                                          << base::JoinString(log_msgs, "\n");
+    RunCrashReporterPeriodicUpdate(&parser);
+  } while (std::next_permutation(log_msgs.begin(), log_msgs.end()));
+}
+
+TEST(CrashReporterParserTest, InterleavedMismatchedMessagesTest) {
+  auto log_msgs = GetTestLogMessages(
+      test_util::GetTestDataPath("TEST_CHROME_CRASH_MATCH_INTERLEAVED.txt"));
+
+  ReplaceMsgContent(&log_msgs,
+                    "Received crash notification for chrome[1570] user 1000 "
+                    "(called directly)",
+                    "Received crash notification for chrome[1571] user 1000 "
+                    "(called directly)");
+  std::sort(log_msgs.begin(), log_msgs.end());
+  do {
+    auto metrics = std::make_unique<MetricsLibraryMock>();
+    EXPECT_CALL(*metrics, SendCrosEventToUMA("Crash.Chrome.CrashesFromKernel"))
+        .Times(3)
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*metrics, SendCrosEventToUMA("Crash.Chrome.MissedCrashes"))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*metrics, Init()).Times(1);
+    CrashReporterParser parser(std::make_unique<AdvancingClock>(),
+                               std::move(metrics));
+    auto crash_reports = ParseLogMessages(&parser, log_msgs);
+    EXPECT_THAT(crash_reports, IsEmpty()) << " for message set:\n"
+                                          << base::JoinString(log_msgs, "\n");
+    RunCrashReporterPeriodicUpdate(&parser);
+  } while (std::next_permutation(log_msgs.begin(), log_msgs.end()));
 }
 
 MATCHER_P2(SignalEq, interface, member, "") {

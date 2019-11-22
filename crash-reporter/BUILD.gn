@@ -227,7 +227,10 @@ if (use.test || use.fuzzer) {
   }
 
   static_library("libcrash_test_util") {
-    all_dependent_configs = [ ":crash_reporter_test_config" ]
+    all_dependent_configs = [
+      ":crash_reporter_test_config",
+      ":libcrash_config",
+    ]
     configs += [
       "//common-mk:test",
       ":libcrash_reporter_config",
@@ -350,6 +353,9 @@ if (use.fuzzer) {
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":anomaly_detector_config",
+    ]
+    deps = [
+      ":libcrash_test_util",
     ]
     sources = [
       "anomaly_detector.cc",

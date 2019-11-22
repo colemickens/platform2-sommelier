@@ -6,10 +6,15 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 #include <base/logging.h>
-#include <fuzzer/FuzzedDataProvider.h>
 #include <brillo/process.h>
+#include <fuzzer/FuzzedDataProvider.h>
+#include <gmock/gmock.h>
+#include <metrics/metrics_library_mock.h>
+
+#include "crash-reporter/test_util.h"
 
 namespace {
 class Environment {
@@ -32,15 +37,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   parsers["init"] = std::make_unique<anomaly::ServiceParser>();
   parsers["kernel"] = std::make_unique<anomaly::KernelParser>();
   parsers["powerd_suspend"] = std::make_unique<anomaly::SuspendParser>();
+  parsers["crash_reporter"] = std::make_unique<anomaly::CrashReporterParser>(
+      std::make_unique<test_util::AdvancingClock>(),
+      std::make_unique<testing::NiceMock<MetricsLibraryMock>>());
 
-  const std::string journalTags[4] = {"audit", "init", "kernel",
-                                      "powerd_suspend"};
+  const std::string journalTags[] = {"audit", "init", "kernel",
+                                     "powerd_suspend", "crash_reporter"};
 
   while (stream.remaining_bytes() > 1) {
     const std::string tag = stream.PickValueInArray<std::string>(journalTags);
     const std::string message =
         stream.ConsumeRandomLengthString(stream.remaining_bytes());
     parsers[tag]->ParseLogEntry(message);
+    parsers[tag]->PeriodicUpdate();
   }
   return 0;
 }

@@ -21,3 +21,5 @@
 "PID:"
 "at"
 "Error writing to /sys/power/state:"
+"Received crash notification for chrome[1570] sig 11, user 1000 group 1000 (ignoring call by kernel - chrome crash"
+"Received crash notification for chrome[1570] user 1000 (called directly)"

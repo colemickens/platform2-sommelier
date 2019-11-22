@@ -4,6 +4,7 @@
 
 #include "crash-reporter/anomaly_detector.h"
 
+#include <memory>
 #include <random>
 #include <string>
 
@@ -12,6 +13,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/time/default_clock.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
@@ -19,6 +21,7 @@
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <metrics/metrics_library.h>
 
 #include <systemd/sd-journal.h>
 
@@ -33,7 +36,15 @@
 #undef LOG_INFO
 #undef LOG_WARNING
 
+// Time between calls to Parser::PeriodicUpdate. Note that this is a minimum;
+// the actual maximum is twice this (if the sd_journal_wait timeout starts just
+// before the timeout in main()). We could make this more exact with some extra
+// work, but it's not worth the trouble.
+constexpr base::TimeDelta kTimeBetweenPeriodicUpdates =
+    base::TimeDelta::FromSeconds(10);
+
 struct JournalEntry {
+  // Value of SYSLOG_IDENTIFIER. Generally, the program's short name.
   std::string tag;
   std::string message;
   uint64_t monotonic_usec;
@@ -51,8 +62,10 @@ class Journal {
     SeekToEnd();
   }
 
-  JournalEntry GetNextEntry() {
-    MoveToNext();
+  base::Optional<JournalEntry> GetNextEntry() {
+    if (!MoveToNext()) {
+      return base::nullopt;
+    }
     auto tag = GetFieldValue("SYSLOG_IDENTIFIER");
     auto message = GetFieldValue("MESSAGE");
     if (tag && message) {
@@ -61,7 +74,8 @@ class Journal {
       int ret = sd_journal_get_monotonic_usec(j_, &monotonic_usec, &ignore);
       CHECK_GE(ret, 0) << "Failed to get monotonic timestamp from journal: "
                        << strerror(-ret);
-      return {std::move(*tag), std::move(*message), monotonic_usec};
+      JournalEntry je{std::move(*tag), std::move(*message), monotonic_usec};
+      return je;
     } else {
       return GetNextEntry();
     }
@@ -73,17 +87,24 @@ class Journal {
     CHECK_GE(ret, 0) << "Could not seek to end of journal: " << strerror(-ret);
   }
 
-  void MoveToNext() {
+  // Returns true if a next entry was found, false otherwise.
+  bool MoveToNext() {
     int ret = sd_journal_next(j_);
     CHECK_GE(ret, 0) << "Failed to iterate to next journal entry: "
                      << strerror(-ret);
     if (ret == 0) {
       /* Reached the end, let's wait for changes, and try again. */
-      ret = sd_journal_wait(j_, -1 /* timeout */);
+      ret = sd_journal_wait(j_, kTimeBetweenPeriodicUpdates.InMicroseconds());
+      if (ret == SD_JOURNAL_NOP) {
+        // Timeout.
+        return false;
+      }
       CHECK_GE(ret, 0) << "Failed to wait for journal changes: "
                        << strerror(-ret);
-      MoveToNext();
+      return MoveToNext();
     }
+
+    return true;
   }
 
   base::Optional<std::string> GetFieldValue(const std::string& field) {
@@ -193,34 +214,51 @@ int main(int argc, char* argv[]) {
   parsers["init"] = std::make_unique<anomaly::ServiceParser>();
   parsers["kernel"] = std::make_unique<anomaly::KernelParser>();
   parsers["powerd_suspend"] = std::make_unique<anomaly::SuspendParser>();
+  parsers["crash_reporter"] = std::make_unique<anomaly::CrashReporterParser>(
+      std::make_unique<base::DefaultClock>(),
+      std::make_unique<MetricsLibrary>());
   auto termina_parser = std::make_unique<anomaly::TerminaParser>(dbus);
 
+  base::Time last_periodic_update = base::Time::Now();
+
   while (true) {
-    JournalEntry entry = j.GetNextEntry();
-    anomaly::MaybeCrashReport crash_report;
-    if (parsers.count(entry.tag) > 0) {
-      crash_report = parsers[entry.tag]->ParseLogEntry(entry.message);
-    } else if (entry.tag.compare(0, 3, "VM(") == 0) {
-      crash_report = termina_parser->ParseLogEntry(entry.tag, entry.message);
-    }
-
-    if (crash_report) {
-      if (!FLAGS_testonly_send_all) {
-        if (entry.tag == "audit" && drop_audit_report(gen)) {
-          continue;
-        } else if (entry.tag == "init" && drop_service_failure_report(gen)) {
-          LOG(INFO) << "Dropping service failure report: "
-                    << crash_report->text;
-          continue;
-        }
+    base::Optional<JournalEntry> entry = j.GetNextEntry();
+    if (entry) {
+      anomaly::MaybeCrashReport crash_report;
+      if (parsers.count(entry->tag) > 0) {
+        crash_report = parsers[entry->tag]->ParseLogEntry(entry->message);
+      } else if (entry->tag.compare(0, 3, "VM(") == 0) {
+        crash_report =
+            termina_parser->ParseLogEntry(entry->tag, entry->message);
       }
-      RunCrashReporter(crash_report->flag, crash_report->text);
+
+      if (crash_report) {
+        if (!FLAGS_testonly_send_all) {
+          if (entry->tag == "audit" && drop_audit_report(gen)) {
+            continue;
+          } else if (entry->tag == "init" && drop_service_failure_report(gen)) {
+            LOG(INFO) << "Dropping service failure report: "
+                      << crash_report->text;
+            continue;
+          }
+        }
+        RunCrashReporter(crash_report->flag, crash_report->text);
+      }
+
+      // Handle OOM messages.
+      if (entry->tag == "kernel" &&
+          entry->message.find("Out of memory: Kill process") !=
+              std::string::npos)
+        exported_object->SendSignal(
+            MakeOomSignal(entry->monotonic_usec / 1000).get());
     }
 
-    // Handle OOM messages.
-    if (entry.tag == "kernel" &&
-        entry.message.find("Out of memory: Kill process") != std::string::npos)
-      exported_object->SendSignal(
-          MakeOomSignal(entry.monotonic_usec / 1000).get());
+    if (last_periodic_update <=
+        base::Time::Now() - kTimeBetweenPeriodicUpdates) {
+      for (const auto& parser : parsers) {
+        parser.second->PeriodicUpdate();
+      }
+      last_periodic_update = base::Time::Now();
+    }
   }
 }
