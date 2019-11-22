@@ -137,12 +137,10 @@ void VPNService::InitDriverPropertyStore() {
   driver_->InitPropertyStore(mutable_store());
 }
 
-bool VPNService::EnableAndRetainAutoConnect() {
+void VPNService::EnableAndRetainAutoConnect() {
   // The base EnableAndRetainAutoConnect method also sets auto_connect_ to true
   // which is not desirable for VPN services.
   RetainAutoConnect();
-  // 'autoconnect' is unchanged.
-  return false;
 }
 
 bool VPNService::IsAutoConnectable(const char** reason) const {

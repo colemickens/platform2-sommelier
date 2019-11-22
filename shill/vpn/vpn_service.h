@@ -29,7 +29,7 @@ class VPNService : public Service {
   bool Load(StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
   bool Unload() override;
-  bool EnableAndRetainAutoConnect() override;
+  void EnableAndRetainAutoConnect() override;
   bool SetNameProperty(const std::string& name, Error* error) override;
 
   // Power management events.

@@ -1416,11 +1416,9 @@ void Manager::UpdateService(const ServiceRefPtr& to_update) {
   SLOG(this, 2) << "IsConnected(): " << to_update->IsConnected();
   SLOG(this, 2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
-    bool changed = to_update->EnableAndRetainAutoConnect();
-    if (changed) {
-      // Persists the updated auto_connect setting in the profile.
-      SaveServiceToProfile(to_update);
-    }
+    to_update->EnableAndRetainAutoConnect();
+    // Persists the updated auto_connect setting in the profile.
+    SaveServiceToProfile(to_update);
   }
   SortServices();
 }

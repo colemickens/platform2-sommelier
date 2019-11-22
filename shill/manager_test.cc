@@ -2591,8 +2591,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*profile,
               UpdateService(static_cast<ServiceRefPtr>(mock_service)));
-  EXPECT_CALL(*mock_service, EnableAndRetainAutoConnect())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_service, EnableAndRetainAutoConnect());
   manager()->UpdateService(mock_service);
   // This releases the ref on the mock profile.
   mock_service->set_profile(nullptr);
@@ -2671,7 +2670,6 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*profile, AdoptService(expect_service)).WillOnce(Return(true));
-  EXPECT_CALL(*service, EnableAndRetainAutoConnect()).WillOnce(Return(true));
   manager()->UpdateService(service);
 }
 
