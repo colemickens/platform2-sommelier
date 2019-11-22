@@ -3,5 +3,5 @@
 # found in the LICENSE file.i
 [D-BUS Service]
 Name=org.chromium.ImageLoader
-Exec=/usr/sbin/imageloader
+Exec=/sbin/start imageloader
 User=root
