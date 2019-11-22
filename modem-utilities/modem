@@ -137,6 +137,7 @@ usage() {
   echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
   echo "  connect [-modem <modem>] [phone number]      Connect modem"
   echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
+  echo "  force-flash <device_id>                      Force-flash the modem"
   echo "  reset [-modem <modem>]                       Reset the modem"
   echo "  set-logging (debug|info|warn|error)          Set logging level"
   echo "  status                                       Display modem status"
@@ -160,6 +161,9 @@ case "${cmd}" in
     ;;
   factory-reset)
     factory_reset "$@"
+    ;;
+  force-flash)
+    force_flash "$@"
     ;;
   reset)
     reset "$@"

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Common utilities for gathering information about modems.
+# Common utilities for interacting with modems.
 
 #
 # For modems managed by org.freedesktop.ModemManager1
@@ -79,4 +79,19 @@ set_modem_manager_logging() {
   fi
   dbus_call "${MM1}" "${MM1_OBJECT}" "${MM1_IMANAGER}.SetLogging" \
     "string:${level}"
+}
+
+#
+# For interactions with modemfwd.
+#
+MODEMFWD=org.chromium.Modemfwd
+MODEMFWD_OBJECT=/org/chromium/Modemfwd
+MODEMFWD_IFACE=org.chromium.Modemfwd
+
+force_flash() {
+  local device="$1"
+  [ -z "${device}" ] && error_exit "No device_id provided."
+
+  dbus_call "${MODEMFWD}" "${MODEMFWD_OBJECT}" "${MODEMFWD_IFACE}.ForceFlash" \
+    "string:${device}"
 }
