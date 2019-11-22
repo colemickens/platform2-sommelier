@@ -51,7 +51,7 @@ authpolicy::ErrorType GetErrorAndProto(
 KerberosArtifactClient::KerberosArtifactClient(
     brillo::dbus_utils::DBusObject* dbus_object)
     : weak_ptr_factory_(this) {
-  auth_policy_object_proxy_ = dbus_object->GetBus()->GetObjectProxy(
+  authpolicy_object_proxy_ = dbus_object->GetBus()->GetObjectProxy(
       authpolicy::kAuthPolicyServiceName,
       dbus::ObjectPath(authpolicy::kAuthPolicyServicePath));
 }
@@ -62,7 +62,7 @@ void KerberosArtifactClient::GetUserKerberosFiles(
                                authpolicy::kGetUserKerberosFilesMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(object_guid);
-  auth_policy_object_proxy_->CallMethod(
+  authpolicy_object_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&KerberosArtifactClient::HandleGetUserKeberosFiles,
                  weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
@@ -71,7 +71,7 @@ void KerberosArtifactClient::GetUserKerberosFiles(
 void KerberosArtifactClient::ConnectToKerberosFilesChangedSignal(
     dbus::ObjectProxy::SignalCallback signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
-  auth_policy_object_proxy_->ConnectToSignal(
+  authpolicy_object_proxy_->ConnectToSignal(
       authpolicy::kAuthPolicyInterface,
       authpolicy::kUserKerberosFilesChangedSignal, std::move(signal_callback),
       std::move(on_connected_callback));

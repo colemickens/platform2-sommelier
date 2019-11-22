@@ -35,7 +35,7 @@ class KerberosArtifactClient : public KerberosArtifactClientInterface {
   void HandleGetUserKeberosFiles(GetUserKerberosFilesCallback callback,
                                  dbus::Response* response);
 
-  dbus::ObjectProxy* auth_policy_object_proxy_ = nullptr;
+  dbus::ObjectProxy* authpolicy_object_proxy_ = nullptr;
   base::WeakPtrFactory<KerberosArtifactClient> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(KerberosArtifactClient);

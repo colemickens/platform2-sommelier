@@ -1007,7 +1007,7 @@ class AuthPolicyTest : public testing::Test {
   // Notifies authpolicy that the session state changed (e.g. "started").
   base::Callback<void(dbus::Signal* signal)> session_state_changed_callback_;
 
-  // Keep this order! auth_policy_ must be last as it depends on the other two.
+  // Keep this order! |authpolicy_| must be last as it depends on the other two.
   std::unique_ptr<TestMetrics> metrics_;
   std::unique_ptr<TestPathService> paths_;
   std::unique_ptr<AuthPolicy> authpolicy_;

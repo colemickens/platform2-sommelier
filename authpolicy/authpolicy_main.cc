@@ -47,7 +47,7 @@ class Daemon : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
     brillo::dbus_utils::AsyncEventSequencer::Handler handler =
         sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true);
-    auth_policy_.RegisterAsync(
+    authpolicy_.RegisterAsync(
         AuthPolicy::GetDBusObject(object_manager_.get()),
         base::Bind(&Daemon::OnAuthPolicyRegistered,
                    weak_ptr_factory_.GetWeakPtr(), handler));
@@ -65,7 +65,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
     // Initialize authpolicy here, so that stuff like the machine password check
     // happens after the daemon is registered.
-    ErrorType error = auth_policy_.Initialize(device_is_locked_);
+    ErrorType error = authpolicy_.Initialize(device_is_locked_);
     if (error != ERROR_NONE) {
       LOG(ERROR) << "SambaInterface failed to initialize with error code "
                  << error;
@@ -75,10 +75,10 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   bool device_is_locked_;
 
-  // Keep this order! auth_policy_ must be last as it depends on the other two.
+  // Keep this order! |authpolicy_| must be last as it depends on the other two.
   AuthPolicyMetrics metrics_;
   PathService path_service_;
-  AuthPolicy auth_policy_{&metrics_, &path_service_};
+  AuthPolicy authpolicy_{&metrics_, &path_service_};
 
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
   DISALLOW_COPY_AND_ASSIGN(Daemon);
