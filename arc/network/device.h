@@ -101,6 +101,10 @@ class Device {
     // multi-networked guests it is used (only) to support VPNs and ADB over
     // TCP.
     bool is_android;
+
+    // Indicates this device is managed explicitly by a service and should not
+    // be mutated in response to shill events.
+    bool is_sticky;
   };
 
   struct IPv6Config {

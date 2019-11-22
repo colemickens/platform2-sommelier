@@ -116,6 +116,7 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_TRUE(eth0->options().ipv6_enabled);
   EXPECT_FALSE(eth0->options().is_android);
   EXPECT_FALSE(eth0->options().use_default_interface);
+  EXPECT_FALSE(eth0->options().is_sticky);
 
   auto usb0 = mgr->MakeDevice("usb0");
   const auto& cfgu = usb0->config();
@@ -126,6 +127,7 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_TRUE(usb0->options().ipv6_enabled);
   EXPECT_FALSE(usb0->options().is_android);
   EXPECT_FALSE(usb0->options().use_default_interface);
+  EXPECT_FALSE(usb0->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeWifiDevices) {
@@ -139,6 +141,7 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_TRUE(wlan0->options().ipv6_enabled);
   EXPECT_FALSE(wlan0->options().is_android);
   EXPECT_FALSE(wlan0->options().use_default_interface);
+  EXPECT_FALSE(wlan0->options().is_sticky);
 
   auto mlan0 = mgr->MakeDevice("mlan0");
   const auto& cfgm = mlan0->config();
@@ -149,6 +152,7 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_TRUE(mlan0->options().ipv6_enabled);
   EXPECT_FALSE(mlan0->options().is_android);
   EXPECT_FALSE(mlan0->options().use_default_interface);
+  EXPECT_FALSE(mlan0->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeCellularDevice) {
@@ -162,6 +166,7 @@ TEST_F(DeviceManagerTest, MakeCellularDevice) {
   EXPECT_FALSE(wwan0->options().ipv6_enabled);
   EXPECT_FALSE(wwan0->options().is_android);
   EXPECT_FALSE(wwan0->options().use_default_interface);
+  EXPECT_FALSE(wwan0->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_Android) {
@@ -175,6 +180,7 @@ TEST_F(DeviceManagerTest, MakeDevice_Android) {
   EXPECT_FALSE(arc0->options().ipv6_enabled);
   EXPECT_TRUE(arc0->options().is_android);
   EXPECT_FALSE(arc0->options().use_default_interface);
+  EXPECT_TRUE(arc0->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
@@ -188,6 +194,7 @@ TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
   EXPECT_TRUE(arc0->options().ipv6_enabled);
   EXPECT_TRUE(arc0->options().is_android);
   EXPECT_TRUE(arc0->options().use_default_interface);
+  EXPECT_TRUE(arc0->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_AndroidVm) {
@@ -201,6 +208,7 @@ TEST_F(DeviceManagerTest, MakeDevice_AndroidVm) {
   EXPECT_TRUE(arc0->options().ipv6_enabled);
   EXPECT_TRUE(arc0->options().is_android);
   EXPECT_TRUE(arc0->options().use_default_interface);
+  EXPECT_TRUE(arc0->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
@@ -214,6 +222,7 @@ TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
   EXPECT_FALSE(tun0->options().ipv6_enabled);
   EXPECT_FALSE(tun0->options().is_android);
   EXPECT_FALSE(tun0->options().use_default_interface);
+  EXPECT_FALSE(tun0->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
@@ -288,6 +297,27 @@ TEST_F(DeviceManagerTest, MakeDeviceAndroid_CheckMulticast) {
   auto arcvm = mgr->MakeDevice(kAndroidVmDevice);
   EXPECT_TRUE(arcvm->options().fwd_multicast);
   arcvm.reset();
+}
+
+TEST_F(DeviceManagerTest, StickyDevicesNotRemovedByShill) {
+  auto mgr = NewManager();
+  mgr->Add("arc0");
+  EXPECT_TRUE(mgr->Exists("arc0"));
+
+  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0")};
+  auto value = brillo::Any(devices);
+  shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
+  EXPECT_TRUE(mgr->Exists("eth0"));
+  EXPECT_TRUE(mgr->Exists("arc0"));
+}
+
+TEST_F(DeviceManagerTest, StickyDevicesCanBeRemovedManually) {
+  auto mgr = NewManager();
+  mgr->Add("arc0");
+  EXPECT_TRUE(mgr->Exists("arc0"));
+
+  mgr->Remove("arc0");
+  EXPECT_FALSE(mgr->Exists("arc0"));
 }
 
 }  // namespace arc_networkd

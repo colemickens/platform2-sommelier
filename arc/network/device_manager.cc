@@ -350,6 +350,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       .find_ipv6_routes_legacy = kFindIpv6RoutesLegacy,
       .use_default_interface = false,
       .is_android = false,
+      .is_sticky = false,
   };
   std::string host_ifname, guest_ifname;
   AddressManager::Guest guest = AddressManager::Guest::ARC;
@@ -364,10 +365,12 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     opts.fwd_multicast = true;
     opts.use_default_interface = true;
     opts.is_android = true;
+    opts.is_sticky = true;
   } else {
     if (name == kAndroidDevice) {
       host_ifname = "arcbr0";
       opts.is_android = true;
+      opts.is_sticky = true;
     } else {
       guest = AddressManager::Guest::ARC_NET;
       host_ifname = base::StringPrintf("arc_%s", name.c_str());
@@ -465,8 +468,7 @@ void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
   std::vector<std::string> removed;
   for (const auto& d : devices_) {
     const std::string& name = d.first;
-    if (name != kAndroidDevice && name != kAndroidLegacyDevice &&
-        devices.find(name) == devices.end())
+    if (!d.second->options().is_sticky && devices.find(name) == devices.end())
       removed.emplace_back(name);
   }
 
