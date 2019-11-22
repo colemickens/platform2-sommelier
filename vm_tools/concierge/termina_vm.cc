@@ -221,7 +221,8 @@ bool TerminaVm::Start(base::FilePath kernel,
       args.emplace_back("--disk");
     }
 
-    args.emplace_back(disk.path.value());
+    args.emplace_back(disk.path.value() +
+                      ",sparse=" + (disk.sparse ? "true" : "false"));
   }
 
   // Finally list the path to the kernel.

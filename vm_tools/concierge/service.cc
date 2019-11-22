@@ -424,6 +424,13 @@ uint64_t CalculateDesiredDiskSize(uint64_t current_usage) {
   return std::max(disk_size, kMinimumDiskSize);
 }
 
+// Returns true if the disk size was specified by the user and should not be
+// automatically resized.
+bool IsDiskUserChosenSize(std::string disk_path) {
+  return getxattr(disk_path.c_str(), kDiskImageUserChosenSizeXattr, NULL, 0) >=
+         0;
+}
+
 bool GetPluginDirectory(const base::FilePath& prefix,
                         const string& extension,
                         const string& vm_id,
@@ -1133,6 +1140,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     disks.push_back(TerminaVm::Disk{
         .path = base::FilePath(disk.path()),
         .writable = disk.writable(),
+        .sparse = !IsDiskUserChosenSize(disk.path()),
     });
   }
 
@@ -2127,8 +2135,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       // If the user.crostini.user_chosen_size xattr exists, don't resize the
       // disk. (The value stored in the xattr is ignored; only its existence
       // matters.)
-      if (getxattr(disk_path.value().c_str(), kDiskImageUserChosenSizeXattr,
-                   NULL, 0) > 0) {
+      if (IsDiskUserChosenSize(disk_path.value())) {
         LOG(INFO) << "Disk image has " << kDiskImageUserChosenSizeXattr
                   << " xattr - keeping existing size " << current_size;
       } else {

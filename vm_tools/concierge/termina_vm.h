@@ -62,6 +62,9 @@ class TerminaVm final : public VmInterface {
 
     // Whether the disk should be writable by the VM.
     bool writable;
+
+    // Whether the disk should allow sparse file operations (discard) by the VM.
+    bool sparse;
   };
 
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
