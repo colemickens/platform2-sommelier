@@ -16,6 +16,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/task_runner_util.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
@@ -32,20 +33,22 @@ ArcCameraServiceImpl::ArcCameraServiceImpl(base::Closure quit_cb)
       binding_(this),
       camera_device_(new V4L2CameraDevice()),
       ipc_thread_("Mojo IPC thread") {
-  mojo::edk::Init();
+  mojo::core::Init();
   if (!ipc_thread_.StartWithOptions(
           base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
     LOG(ERROR) << "Mojo IPC thread failed to start";
     return;
   }
-  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      ipc_thread_.task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 }
 
 ArcCameraServiceImpl::~ArcCameraServiceImpl() {
   if (binding_.is_bound())
     binding_.Close();
   camera_device_->Disconnect();
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
+  ipc_support_ = nullptr;
   ipc_thread_.Stop();
 }
 

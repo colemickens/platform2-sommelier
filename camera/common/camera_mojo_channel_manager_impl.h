@@ -12,6 +12,7 @@
 #include <base/no_destructor.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "mojo/cros_camera_service.mojom.h"
@@ -85,6 +86,7 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
 
   // A mutex to guard static variable.
   static base::NoDestructor<base::Lock> static_lock_;
+  static mojo::core::ScopedIPCSupport* ipc_support_;
   static bool mojo_initialized_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraMojoChannelManagerImpl);

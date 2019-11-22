@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
+#include <mojo/core/embedder/embedder.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
@@ -24,6 +25,7 @@ namespace cros {
 mojom::CameraHalDispatcherPtr CameraMojoChannelManagerImpl::dispatcher_;
 base::Thread* CameraMojoChannelManagerImpl::ipc_thread_ = nullptr;
 base::NoDestructor<base::Lock> CameraMojoChannelManagerImpl::static_lock_;
+mojo::core::ScopedIPCSupport* CameraMojoChannelManagerImpl::ipc_support_;
 bool CameraMojoChannelManagerImpl::mojo_initialized_ = false;
 
 // static
@@ -129,8 +131,10 @@ bool CameraMojoChannelManagerImpl::InitializeMojoEnv() {
     ipc_thread_ = nullptr;
     return false;
   }
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(ipc_thread_->task_runner());
+  mojo::core::Init();
+  ipc_support_ = new mojo::core::ScopedIPCSupport(
+      ipc_thread_->task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   mojo_initialized_ = true;
   return true;
 }
@@ -247,7 +251,8 @@ void CameraMojoChannelManagerImpl::TearDownMojoEnvLockedOnThread() {
   if (dispatcher_.is_bound()) {
     dispatcher_.reset();
   }
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
+  delete ipc_support_;
+  ipc_support_ = nullptr;
 }
 
 // static

@@ -8,10 +8,12 @@
 
 #include <dlfcn.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 
@@ -48,8 +50,10 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(
     const std::string& algo_lib_name) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF(1) << "Setting up message pipe";
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      ipc_thread_.task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   mojo::edk::SetParentPipeHandle(std::move(mojo::edk::ScopedPlatformHandle(
       mojo::edk::PlatformHandle(channel.release()))));
   mojo::ScopedMessagePipeHandle child_pipe =
@@ -84,7 +88,7 @@ void CameraAlgorithmAdapter::DestroyOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
   algo_impl_->Unbind();
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
+  ipc_support_ = nullptr;
   if (algo_dll_handle_) {
     dlclose(algo_dll_handle_);
   }

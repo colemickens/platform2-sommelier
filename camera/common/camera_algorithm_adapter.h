@@ -7,10 +7,12 @@
 #ifndef CAMERA_COMMON_CAMERA_ALGORITHM_ADAPTER_H_
 #define CAMERA_COMMON_CAMERA_ALGORITHM_ADAPTER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/scoped_file.h>
 #include <base/threading/thread.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "common/camera_algorithm_ops_impl.h"
 #include "cros-camera/future.h"
@@ -45,6 +47,7 @@ class CameraAlgorithmAdapter {
 
   // Thread for IPC chores
   base::Thread ipc_thread_;
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // Callback to handle IPC channel lost event
   base::Callback<void(void)> ipc_lost_cb_;

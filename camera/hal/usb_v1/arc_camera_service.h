@@ -12,6 +12,8 @@
 
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "hal/usb_v1/arc_camera.mojom.h"
@@ -63,6 +65,7 @@ class ArcCameraServiceImpl : public ArcCameraService {
 
   // Thread used in mojo to send and receive IPC messages.
   base::Thread ipc_thread_;
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcCameraServiceImpl);
 };
