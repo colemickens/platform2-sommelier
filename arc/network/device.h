@@ -102,9 +102,12 @@ class Device {
     // TCP.
     bool is_android;
 
-    // Indicates this device is managed explicitly by a service and should not
-    // be mutated in response to shill events.
+    // Indicates this device is managed directly by a guest service and should
+    // not be mutated in response to shill updates.
     bool is_sticky;
+
+    // Indicates this device is managed by the ARC service.
+    bool is_arc;
   };
 
   struct IPv6Config {

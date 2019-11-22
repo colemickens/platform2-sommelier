@@ -243,6 +243,9 @@ void ArcService::Stop(int32_t id) {
 }
 
 bool ArcService::AllowDevice(Device* device) const {
+  if (!device->options().is_arc)
+    return false;
+
   // ARC P+ is multi-network enabled and should process all devices.
   if (guest_ == GuestMessage::ARC)
     return true;

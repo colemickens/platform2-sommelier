@@ -351,6 +351,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       .use_default_interface = false,
       .is_android = false,
       .is_sticky = false,
+      .is_arc = true,  // Always true for now.
   };
   std::string host_ifname, guest_ifname;
   AddressManager::Guest guest = AddressManager::Guest::ARC;

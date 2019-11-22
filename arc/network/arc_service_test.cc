@@ -58,10 +58,12 @@ class MockDeviceManager : public DeviceManagerBase {
 
 std::unique_ptr<Device> MakeDevice(const std::string& name,
                                    const std::string& host,
-                                   const std::string& guest) {
+                                   const std::string& guest,
+                                   bool is_arc = true) {
   Device::Options opt{
       .use_default_interface = (name == kAndroidLegacyDevice),
       .is_android = (name == kAndroidDevice) || (name == kAndroidLegacyDevice),
+      .is_arc = is_arc,
   };
   auto subnet = addr_mgr.AllocateIPv4Subnet(
       opt.is_android ? AddressManager::Guest::ARC
@@ -116,19 +118,26 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid) {
   NewService(true)->OnDeviceAdded(dev.get());
 }
 
-TEST_F(ArcServiceTest, VerifyOnDeviceAddedDoesNothingLegacyAndroidNoARC) {
-  // If ARC N hasn't started yet, nothing should happen.
-  auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
-  ASSERT_TRUE(dev);
-  NewService(true)->OnDeviceAdded(dev.get());
-}
-
 TEST_F(ArcServiceTest,
        VerifyOnDeviceAddedDoesNothingLegacyAndroidOtherInterface) {
+  EXPECT_CALL(*datapath_, AddBridge(_, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddLegacyIPv4DNAT(_)).Times(0);
+  EXPECT_CALL(*datapath_, AddOutboundIPv4(_)).Times(0);
+
   // In ARC N, only the legacy interface is added.
   auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
   ASSERT_TRUE(dev);
   NewService(true)->OnDeviceAdded(dev.get());
+}
+
+TEST_F(ArcServiceTest, VerifyOnDeviceAddedDoesNothingNonArcDevice) {
+  EXPECT_CALL(*datapath_, AddBridge(_, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddLegacyIPv4DNAT(_)).Times(0);
+  EXPECT_CALL(*datapath_, AddOutboundIPv4(_)).Times(0);
+
+  auto dev = MakeDevice("foo0", "bar0", "baz0", false);
+  ASSERT_TRUE(dev);
+  NewService()->OnDeviceAdded(dev.get());
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForLegacyAndroid) {
@@ -253,6 +262,7 @@ TEST_F(ContainerImplTest, OnStartDevice_Other) {
 
 // Verifies the veth interface is not removed.
 TEST_F(ContainerImplTest, OnStopDevice_LegacyAndroid) {
+  EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   Impl(true)->OnStopDevice(dev.get());
@@ -260,6 +270,7 @@ TEST_F(ContainerImplTest, OnStopDevice_LegacyAndroid) {
 
 // Verifies the veth interface is not removed.
 TEST_F(ContainerImplTest, OnStopDevice_Android) {
+  EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   Impl()->OnStopDevice(dev.get());
@@ -387,6 +398,7 @@ TEST_F(VmImplTest, OnStopDevice) {
   Impl()->OnStopDevice(dev.get());
 }
 TEST_F(VmImplTest, OnStopDevice_OtherDevice) {
+  EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
   // For now, ARCVM uses the legacy device since it behaves similarly.
   auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
   ASSERT_TRUE(dev);
