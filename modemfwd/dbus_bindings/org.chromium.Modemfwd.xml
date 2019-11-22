@@ -5,7 +5,7 @@
   <interface name="org.chromium.Modemfwd">
     <method name="SetDebugMode">
       <tp:docstring>
-        Set the scheduler configuration policy.
+        Set the verbose logging mode.
       </tp:docstring>
       <arg name="debug_mode" type="b" direction="in">
         True to set verbose logging, false to turn it off.
