@@ -74,12 +74,21 @@ constexpr char kIwlwifiEnable[] = "0xFFFFFFFF";
 constexpr char kIwlwifiDisable[] = "0x0";
 
 // Qualcomm/Atheros wifi.
-constexpr char kAth10kDebugFlag[] = "/sys/module/ath10k_core/parameters/debug_mask";
+constexpr char kAth10kDebugFlag[] =
+    "/sys/module/ath10k_core/parameters/debug_mask";
 // Full debugging: see below file for details on each bit:
 // drivers/net/wireless/ath/ath10k/debug.h
 constexpr char kAth10kEnable[] = "0xFFFFFFFF";
 // Default debugging: none
 constexpr char kAth10kDisable[] = "0x0";
+
+// Realtek wifi.
+constexpr char kRtw88DebugFlag[] = "/sys/module/rtw88/parameters/debug_mask";
+// Full debugging: see below file for details on each bit:
+// drivers/net/wireless/realtek/rtw88/debug.h
+constexpr char kRtw88Enable[] = "0xFFFFFFFF";
+// Default debugging: none
+constexpr char kRtw88Disable[] = "0x0";
 
 void MaybeWriteSysfs(const char* sysfs_path, const char* data) {
   base::FilePath path(sysfs_path);
@@ -99,6 +108,8 @@ void WifiSetDebugLevels(bool enable) {
 
   MaybeWriteSysfs(kAth10kDebugFlag,
                   enable ? kAth10kEnable : kAth10kDisable);
+
+  MaybeWriteSysfs(kRtw88DebugFlag, enable ? kRtw88Enable : kRtw88Disable);
 }
 
 }  // namespace
