@@ -1093,14 +1093,6 @@ cmd_modem() (
   debugd_shill modem "$@"
 )
 
-USAGE_modem_set_carrier='<carrier-name>'
-HELP_modem_set_carrier='
-  Configures the modem for the specified carrier.
-'
-cmd_modem_set_carrier() (
-  debugd_shill modem set-carrier "$@"
-)
-
 USAGE_set_apn='[-c] [-n <network-id>] [-u <username>] [-p <password>] <apn>'
 HELP_set_apn='
   Set the APN to use when connecting to the network specified by <network-id>.
