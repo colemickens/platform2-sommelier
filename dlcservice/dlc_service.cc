@@ -16,7 +16,6 @@
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
-#include <update_engine/dbus-constants.h>
 
 #include "dlcservice/boot_slot.h"
 #include "dlcservice/utils.h"
@@ -281,7 +280,7 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
 
   dlc_modules_being_installed_ = unique_dlc_module_list;
   // Note: Do NOT add to installed indication. Let
-  // |OnStatusUpdateAdvancedSignal()| handle since hat's truly when the DLC(s)
+  // |OnStatusUpdateAdvancedSignal()| handle since that's truly when the DLC(s)
   // are installed.
 
   // Safely take ownership of scoped paths for them not to be freed.
@@ -322,7 +321,7 @@ bool DlcService::Uninstall(const string& id_in, brillo::ErrorPtr* err) {
       return false;
   }
 
-  // This means update_engine was restarted and requires cleanup of DlC(s) that
+  // This means update_engine was restarted and requires cleanup of DLC(s) that
   // were previously being thought to have been being installed.
   if (!dlc_modules_being_installed_.dlc_module_infos().empty())
     SendFailedSignalAndCleanup();
@@ -379,7 +378,7 @@ void DlcService::PeriodicUECheckDuringInstall() {
   Operation update_engine_operation;
   if (!GetUpdateEngineStatus(&update_engine_operation)) {
     LOG(ERROR)
-        << "Failed to get the status of update_engine, most likely down.";
+        << "Failed to get the status of update_engine, it is most likely down.";
     SendFailedSignalAndCleanup();
     return;
   }
@@ -420,7 +419,7 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
   // dlcservice still believes that it is waiting for an install to complete.
   // TODO(kimjae): Need to handle checking preiodically if an install is started
   // and dlcservice hasn't gotten an install progress in a certain period of
-  // time, try to explicity check update_engine's status and act accordingly.
+  // time, try to explicitly check update_engine's status and act accordingly.
   if (!status_result.is_install()) {
     int last_attempt_error;
     update_engine_proxy_->GetLastAttemptError(&last_attempt_error, nullptr);
@@ -483,7 +482,7 @@ bool DlcService::CreateDlc(const string& id,
   }
 
   // Creates DLC module storage.
-  // TODO(xiaochu): Manifest currently returns a signed integer, which means
+  // TODO(xiaochu): Manifest currently returns a signed integer, which means it
   // will likely fail for modules >= 2 GiB in size. https://crbug.com/904539
   imageloader::Manifest manifest;
   if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id, package,
