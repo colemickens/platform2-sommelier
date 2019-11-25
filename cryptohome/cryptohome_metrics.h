@@ -243,6 +243,27 @@ enum class InstallAttributesUsageEvent {
   kMaxValue = kTpmError
 };
 
+// List of the possible results of attempting a mount operation using the
+// out-of-process mount helper.
+enum class OOPMountOperationResult {
+  kSuccess = 0,
+  kFailedToStart = 1,
+  kFailedToWriteRequestProtobuf = 2,
+  kHelperProcessTimedOut = 3,
+  kFailedToReadResponseProtobuf = 4,
+  kMaxValue = kFailedToReadResponseProtobuf
+};
+
+// List of the possible results of attempting an unmount/mount clean-up
+// using the out-of-process mount helper.
+enum class OOPMountCleanupResult {
+  kSuccess = 0,
+  kFailedToPoke = 1,
+  kFailedToWait = 2,
+  kFailedToKill = 3,
+  kMaxValue = kFailedToKill
+};
+
 // Just to make sure I count correctly.
 static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 8,
               "DeprecatedApiEvent Enum miscounted");
@@ -413,6 +434,12 @@ void ReportInstallAttributesValidation(InstallAttributesValidationEvent event);
 
 // Reports the result of the usage of install_attributes.pb
 void ReportInstallAttributesUsage(InstallAttributesUsageEvent event);
+
+// Reports the result of an out-of-process mount operation.
+void ReportOOPMountOperationResult(OOPMountOperationResult result);
+
+// Reports the result of an out-of-process cleanup operation.
+void ReportOOPMountCleanupResult(OOPMountCleanupResult result);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

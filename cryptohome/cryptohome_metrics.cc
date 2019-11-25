@@ -78,6 +78,10 @@ constexpr char kInstallAttributesValidationHistogram[] =
     "Cryptohome.InstallAttributesValidation";
 constexpr char kInstallAttributesUsageHistogram[] =
     "Cryptohome.InstallAttributesUsage";
+constexpr char kOOPMountOperationResultHistogram[] =
+    "Cryptohome.OOPMountOperationResult";
+constexpr char kOOPMountCleanupResultHistogram[] =
+    "Cryptohome.OOPMountCleanupResult";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -499,6 +503,30 @@ void ReportInstallAttributesUsage(InstallAttributesUsageEvent event) {
       static_cast<int>(InstallAttributesUsageEvent::kMaxValue);
   g_metrics->SendEnumToUMA(kInstallAttributesUsageHistogram,
                            static_cast<int>(event),
+                           static_cast<int>(max_event));
+}
+
+void ReportOOPMountOperationResult(OOPMountOperationResult result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr auto max_event =
+      static_cast<int>(OOPMountOperationResult::kMaxValue);
+  g_metrics->SendEnumToUMA(kOOPMountOperationResultHistogram,
+                           static_cast<int>(result),
+                           static_cast<int>(max_event));
+}
+
+void ReportOOPMountCleanupResult(OOPMountCleanupResult result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr auto max_event =
+      static_cast<int>(OOPMountCleanupResult::kMaxValue);
+  g_metrics->SendEnumToUMA(kOOPMountCleanupResultHistogram,
+                           static_cast<int>(result),
                            static_cast<int>(max_event));
 }
 

@@ -93,6 +93,7 @@ void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
       !helper_process_->Kill(SIGTERM,
                              kOutOfProcessHelperReapTimeout.InSeconds())) {
     LOG(ERROR) << "Failed to terminate OOP mount helper";
+    ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToKill);
   }
   // Reset the brillo::Process object to close pipe file descriptors.
   helper_process_->Reset(0);
@@ -112,6 +113,7 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
 
   if (!mount_helper->Start()) {
     LOG(ERROR) << "Failed to start OOP mount helper";
+    ReportOOPMountOperationResult(OOPMountOperationResult::kFailedToStart);
     return false;
   }
 
@@ -130,6 +132,8 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
 
   if (!WriteProtobuf(write_to_helper_, request)) {
     LOG(ERROR) << "Failed to write request protobuf";
+    ReportOOPMountOperationResult(
+        OOPMountOperationResult::kFailedToWriteRequestProtobuf);
     return false;
   }
 
@@ -137,12 +141,16 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
   // descriptor with a |kOutOfProcessHelperMountTimeout| long timeout.
   if (!WaitForHelper(read_from_helper, kOutOfProcessHelperMountTimeout)) {
     LOG(ERROR) << "OOP mount helper did not respond in time";
+    ReportOOPMountOperationResult(
+        OOPMountOperationResult::kHelperProcessTimedOut);
     return false;
   }
 
   OutOfProcessMountResponse response;
   if (!ReadProtobuf(read_from_helper, &response)) {
     LOG(ERROR) << "Failed to read response protobuf";
+    ReportOOPMountOperationResult(
+        OOPMountOperationResult::kFailedToReadResponseProtobuf);
     return false;
   }
 
@@ -160,6 +168,7 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
   }
 
   LOG(INFO) << "OOP mount helper started successfully";
+  ReportOOPMountOperationResult(OOPMountOperationResult::kSuccess);
   return true;
 }
 
@@ -186,12 +195,14 @@ void OutOfProcessMountHelper::TearDownEphemeralMount() {
   constexpr char outdata = '0';
   if (!base::WriteFileDescriptor(write_to_helper_, &outdata, sizeof(outdata))) {
     LOG(ERROR) << "Failed to poke OOP mount helper";
+    ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToPoke);
     return;
   }
 
   int exit_status = helper_process_->Wait();
   if (exit_status != 0) {
     LOG(ERROR) << "OOP mount helper did not exit cleanly";
+    ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToWait);
 
     switch (exit_status) {
       case EX_NOINPUT:
