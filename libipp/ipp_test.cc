@@ -15,7 +15,7 @@
 namespace ipp {
 
 static bool operator==(const ipp::Resolution& a, const ipp::Resolution& b) {
-  return (a.size1 == b.size1 && a.size2 == b.size2 && a.units == b.units);
+  return (a.xres == b.xres && a.yres == b.yres && a.units == b.units);
 }
 
 static bool operator==(const ipp::RangeOfInteger& a,

@@ -111,8 +111,8 @@ bool LoadResolution(const std::vector<uint8_t>& buf, ipp::Resolution* out) {
   if ((buf.size() != 9) || (out == nullptr))
     return false;
   const uint8_t* ptr = buf.data();
-  ParseSignedInteger<4>(&ptr, &out->size1);
-  ParseSignedInteger<4>(&ptr, &out->size2);
+  ParseSignedInteger<4>(&ptr, &out->xres);
+  ParseSignedInteger<4>(&ptr, &out->yres);
   switch (*ptr) {
     case static_cast<uint8_t>(ipp::Resolution::kDotsPerCentimeter):
       out->units = ipp::Resolution::kDotsPerCentimeter;

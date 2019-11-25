@@ -84,7 +84,7 @@ bool SaveDateTime(const ipp::DateTime& v, std::vector<uint8_t>* buf) {
 bool SaveResolution(const ipp::Resolution& v, std::vector<uint8_t>* buf) {
   buf->resize(9);
   uint8_t* ptr = buf->data();
-  if (WriteInteger<4>(&ptr, v.size1) && WriteInteger<4>(&ptr, v.size2) &&
+  if (WriteInteger<4>(&ptr, v.xres) && WriteInteger<4>(&ptr, v.yres) &&
       (v.units == ipp::Resolution::kDotsPerCentimeter ||
        v.units == ipp::Resolution::kDotsPerInch)) {
     WriteInteger<int8_t>(&ptr, v.units);

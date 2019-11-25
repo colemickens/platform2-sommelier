@@ -69,12 +69,12 @@ struct StringWithLanguage {
 
 // Represents resolution type from [rfc8010].
 struct Resolution {
-  int32_t size1 = 0;
-  int32_t size2 = 0;
+  int32_t xres = 0;
+  int32_t yres = 0;
   enum Units { kDotsPerInch = 3, kDotsPerCentimeter = 4 } units = kDotsPerInch;
   Resolution() = default;
   Resolution(int32_t size1, int32_t size2, Units units = Units::kDotsPerInch)
-      : size1(size1), size2(size2), units(units) {}
+      : xres(size1), yres(size2), units(units) {}
 };
 
 // Represents rangeOfInteger type from [rfc8010].

@@ -499,7 +499,7 @@ std::string ToString(int v) {
 }
 
 std::string ToString(const Resolution& v) {
-  std::string s = ToString(v.size1) + "x" + ToString(v.size2);
+  std::string s = ToString(v.xres) + "x" + ToString(v.yres);
   if (v.units == Resolution::kDotsPerInch)
     s += "dpi";
   else
