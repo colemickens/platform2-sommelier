@@ -20,7 +20,7 @@ MountStack::MountStack() {}
 
 MountStack::~MountStack() {
   if (!mounts_.empty()) {
-    LOG(ERROR) << "MountStack destroyed with " << mounts_.size() << "mounts.";
+    LOG(ERROR) << "MountStack destroyed with " << mounts_.size() << " mounts.";
     for (const auto& it : mounts_)
       LOG(ERROR) << "  " << it.src.value() << " -> " << it.dest.value();
   }
