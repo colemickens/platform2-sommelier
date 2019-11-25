@@ -35,6 +35,17 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                  std::make_tuple(0x00, 0x00, 0x00),  // Black
              },
              {
+                 // Ov02a10 color bars
+                 std::make_tuple(0x00, 0x00, 0xFF),
+                 std::make_tuple(0x00, 0xFF, 0x00),
+                 std::make_tuple(0xFF, 0x00, 0x00),
+                 std::make_tuple(0xC1, 0x8D, 0x07),
+                 std::make_tuple(0x00, 0xFF, 0xFF),
+                 std::make_tuple(0xFF, 0x00, 0xFF),
+                 std::make_tuple(0xFF, 0xFF, 0x00),
+                 std::make_tuple(0xFF, 0xFF, 0xFF),
+             },
+             {
                  // OV5670 color bars
                  std::make_tuple(0xFF, 0xFF, 0xFF),
                  std::make_tuple(0xC8, 0xC8, 0xC8),
