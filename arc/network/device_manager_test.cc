@@ -114,6 +114,8 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
   EXPECT_TRUE(eth0->options().ipv6_enabled);
+  EXPECT_FALSE(eth0->options().is_android);
+  EXPECT_FALSE(eth0->options().use_default_interface);
 
   auto usb0 = mgr->MakeDevice("usb0");
   const auto& cfgu = usb0->config();
@@ -122,6 +124,8 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_EQ(cfgu.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 13));
   EXPECT_EQ(cfgu.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 14));
   EXPECT_TRUE(usb0->options().ipv6_enabled);
+  EXPECT_FALSE(usb0->options().is_android);
+  EXPECT_FALSE(usb0->options().use_default_interface);
 }
 
 TEST_F(DeviceManagerTest, MakeWifiDevices) {
@@ -133,6 +137,8 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
   EXPECT_TRUE(wlan0->options().ipv6_enabled);
+  EXPECT_FALSE(wlan0->options().is_android);
+  EXPECT_FALSE(wlan0->options().use_default_interface);
 
   auto mlan0 = mgr->MakeDevice("mlan0");
   const auto& cfgm = mlan0->config();
@@ -141,6 +147,8 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_EQ(cfgm.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 13));
   EXPECT_EQ(cfgm.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 14));
   EXPECT_TRUE(mlan0->options().ipv6_enabled);
+  EXPECT_FALSE(mlan0->options().is_android);
+  EXPECT_FALSE(mlan0->options().use_default_interface);
 }
 
 TEST_F(DeviceManagerTest, MakeCellularDevice) {
@@ -152,6 +160,8 @@ TEST_F(DeviceManagerTest, MakeCellularDevice) {
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
   EXPECT_FALSE(wwan0->options().ipv6_enabled);
+  EXPECT_FALSE(wwan0->options().is_android);
+  EXPECT_FALSE(wwan0->options().use_default_interface);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_Android) {
@@ -163,6 +173,8 @@ TEST_F(DeviceManagerTest, MakeDevice_Android) {
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 1));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 2));
   EXPECT_FALSE(arc0->options().ipv6_enabled);
+  EXPECT_TRUE(arc0->options().is_android);
+  EXPECT_FALSE(arc0->options().use_default_interface);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
@@ -174,6 +186,8 @@ TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 1));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 2));
   EXPECT_TRUE(arc0->options().ipv6_enabled);
+  EXPECT_TRUE(arc0->options().is_android);
+  EXPECT_TRUE(arc0->options().use_default_interface);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_AndroidVm) {
@@ -185,6 +199,8 @@ TEST_F(DeviceManagerTest, MakeDevice_AndroidVm) {
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 5));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 6));
   EXPECT_TRUE(arc0->options().ipv6_enabled);
+  EXPECT_TRUE(arc0->options().is_android);
+  EXPECT_TRUE(arc0->options().use_default_interface);
 }
 
 TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
@@ -196,6 +212,8 @@ TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
   EXPECT_FALSE(tun0->options().ipv6_enabled);
+  EXPECT_FALSE(tun0->options().is_android);
+  EXPECT_FALSE(tun0->options().use_default_interface);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {

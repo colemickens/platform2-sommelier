@@ -27,6 +27,11 @@ constexpr pid_t kTestPID = -2;
 constexpr char kTestPIDStr[] = "-2";
 constexpr uint32_t kTestCID = 2;
 
+static AddressManager addr_mgr({
+    AddressManager::Guest::ARC,
+    AddressManager::Guest::ARC_NET,
+});
+
 class MockDeviceManager : public DeviceManagerBase {
  public:
   MockDeviceManager() = default;
@@ -51,6 +56,24 @@ class MockDeviceManager : public DeviceManagerBase {
   MOCK_METHOD1(Remove, bool(const std::string&));
 };
 
+std::unique_ptr<Device> MakeDevice(const std::string& name,
+                                   const std::string& host,
+                                   const std::string& guest) {
+  Device::Options opt{
+      .use_default_interface = (name == kAndroidLegacyDevice),
+      .is_android = (name == kAndroidDevice) || (name == kAndroidLegacyDevice),
+  };
+  auto subnet = addr_mgr.AllocateIPv4Subnet(
+      opt.is_android ? AddressManager::Guest::ARC
+                     : AddressManager::Guest::ARC_NET);
+  auto addr0 = subnet->AllocateAtOffset(0);
+  auto addr1 = subnet->AllocateAtOffset(1);
+  auto cfg = std::make_unique<Device::Config>(
+      host, guest, addr_mgr.GenerateMacAddress(), std::move(subnet),
+      std::move(addr0), std::move(addr1));
+  return std::make_unique<Device>(name, std::move(cfg), opt);
+}
+
 }  // namespace
 
 class ArcServiceTest : public testing::Test {
@@ -72,22 +95,6 @@ class ArcServiceTest : public testing::Test {
   std::unique_ptr<ArcService> NewService(bool arc_legacy = false) {
     return std::make_unique<ArcService>(&dev_mgr_, datapath_.get(),
                                         &arc_legacy);
-  }
-
-  std::unique_ptr<Device> MakeDevice(const std::string& name,
-                                     const std::string& host,
-                                     const std::string& guest) {
-    auto subnet = addr_mgr_.AllocateIPv4Subnet(
-        ((name == kAndroidDevice) || (name == kAndroidLegacyDevice))
-            ? AddressManager::Guest::ARC
-            : AddressManager::Guest::ARC_NET);
-    auto addr0 = subnet->AllocateAtOffset(0);
-    auto addr1 = subnet->AllocateAtOffset(1);
-    auto cfg = std::make_unique<Device::Config>(
-        host, guest, addr_mgr_.GenerateMacAddress(), std::move(subnet),
-        std::move(addr0), std::move(addr1));
-    Device::Options opt{true, true};
-    return std::make_unique<Device>(name, std::move(cfg), opt);
   }
 
   AddressManager addr_mgr_;
@@ -197,22 +204,6 @@ class ContainerImplTest : public testing::Test {
     return impl;
   }
 
-  std::unique_ptr<Device> MakeDevice(const std::string& name,
-                                     const std::string& host,
-                                     const std::string& guest) {
-    auto subnet = addr_mgr_.AllocateIPv4Subnet(
-        ((name == kAndroidDevice) || (name == kAndroidLegacyDevice))
-            ? AddressManager::Guest::ARC
-            : AddressManager::Guest::ARC_NET);
-    auto addr0 = subnet->AllocateAtOffset(0);
-    auto addr1 = subnet->AllocateAtOffset(1);
-    auto cfg = std::make_unique<Device::Config>(
-        host, guest, addr_mgr_.GenerateMacAddress(), std::move(subnet),
-        std::move(addr0), std::move(addr1));
-    Device::Options opt{true, true};
-    return std::make_unique<Device>(name, std::move(cfg), opt);
-  }
-
   AddressManager addr_mgr_;
   MockDeviceManager dev_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
@@ -225,7 +216,7 @@ TEST_F(ContainerImplTest, OnStartDevice_LegacyAndroid) {
       .WillOnce(Return("peer_android"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_android"), StrEq("arc0"),
-                                      StrEq("100.115.92.2"), true))
+                                      StrEq("100.115.92.2"), _))
       .WillOnce(Return(true));
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
@@ -239,7 +230,7 @@ TEST_F(ContainerImplTest, OnStartDevice_Android) {
       .WillOnce(Return("peer_android"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_android"), StrEq("arc0"),
-                                      StrEq("100.115.92.2"), true))
+                                      StrEq("100.115.92.2"), _))
       .WillOnce(Return(true));
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
@@ -253,7 +244,7 @@ TEST_F(ContainerImplTest, OnStartDevice_Other) {
       .WillOnce(Return("peer_eth0"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_eth0"), StrEq("eth0"),
-                                      StrEq("100.115.92.10"), true))
+                                      StrEq("100.115.92.10"), _))
       .WillOnce(Return(true));
   auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
   ASSERT_TRUE(dev);
@@ -343,22 +334,6 @@ class VmImplTest : public testing::Test {
         std::make_unique<ArcService::VmImpl>(&dev_mgr_, datapath_.get());
     impl->Start(kTestCID);
     return impl;
-  }
-
-  std::unique_ptr<Device> MakeDevice(const std::string& name,
-                                     const std::string& host,
-                                     const std::string& guest) {
-    auto subnet = addr_mgr_.AllocateIPv4Subnet(
-        ((name == kAndroidDevice) || (name == kAndroidLegacyDevice))
-            ? AddressManager::Guest::ARC
-            : AddressManager::Guest::ARC_NET);
-    auto addr0 = subnet->AllocateAtOffset(0);
-    auto addr1 = subnet->AllocateAtOffset(1);
-    auto cfg = std::make_unique<Device::Config>(
-        host, guest, addr_mgr_.GenerateMacAddress(), std::move(subnet),
-        std::move(addr0), std::move(addr1));
-    Device::Options opt{true, true};
-    return std::make_unique<Device>(name, std::move(cfg), opt);
   }
 
   AddressManager addr_mgr_;

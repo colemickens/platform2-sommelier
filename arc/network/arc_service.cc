@@ -182,10 +182,6 @@ GuestMessage::GuestType ArcGuest(bool* is_legacy_override_for_testing) {
                                             : GuestMessage::ARC_LEGACY;
 }
 
-bool IsLegacy(GuestMessage::GuestType guest) {
-  return guest == GuestMessage::ARC_LEGACY || guest == GuestMessage::ARC_VM;
-}
-
 }  // namespace
 
 ArcService::ArcService(DeviceManagerBase* dev_mgr,
@@ -246,10 +242,18 @@ void ArcService::Stop(int32_t id) {
   impl_->Stop(id);
 }
 
+bool ArcService::AllowDevice(Device* device) const {
+  // ARC P+ is multi-network enabled and should process all devices.
+  if (guest_ == GuestMessage::ARC)
+    return true;
+
+  // ARC N and ARCVM (for now) are both single-network - meaning they only use
+  // the "default" device which uses the default interface from shill.
+  return device->UsesDefaultInterface();
+}
+
 void ArcService::OnDeviceAdded(Device* device) {
-  // ARC N uses legacy single networking and only requires the arcbr0/arc0
-  // configuration. Any other device can be safely ignored.
-  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
+  if (!AllowDevice(device))
     return;
 
   const auto& config = device->config();
@@ -266,7 +270,7 @@ void ArcService::OnDeviceAdded(Device* device) {
   }
 
   // Setup the iptables.
-  if (device->IsLegacyAndroid()) {
+  if (device->UsesDefaultInterface()) {
     if (!datapath_->AddLegacyIPv4DNAT(
             IPv4AddressToString(config.guest_ipv4_addr())))
       LOG(ERROR) << "Failed to configure ARC traffic rules";
@@ -289,9 +293,7 @@ void ArcService::OnDeviceAdded(Device* device) {
 }
 
 void ArcService::StartDevice(Device* device) {
-  // ARC N uses legacy single networking and only requires the arcbr0/arc0
-  // configuration. Any other device can be safely ignored.
-  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
+  if (!AllowDevice(device))
     return;
 
   // This can happen if OnDeviceAdded is invoked when the container is down.
@@ -318,9 +320,7 @@ void ArcService::StartDevice(Device* device) {
 }
 
 void ArcService::OnDeviceRemoved(Device* device) {
-  // ARC N uses legacy single networking and only requires the arcbr0/arc0
-  // configuration. Any other device can be safely ignored.
-  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
+  if (!AllowDevice(device))
     return;
 
   // If the container is down, this call does nothing.
@@ -333,7 +333,7 @@ void ArcService::OnDeviceRemoved(Device* device) {
             << " guest_iface: " << config.guest_ifname();
 
   device->Disable();
-  if (device->IsLegacyAndroid()) {
+  if (device->UsesDefaultInterface()) {
     datapath_->RemoveOutboundIPv4(config.host_ifname());
     datapath_->RemoveLegacyIPv4DNAT();
   } else if (!device->IsAndroid()) {
@@ -348,9 +348,7 @@ void ArcService::OnDeviceRemoved(Device* device) {
 }
 
 void ArcService::StopDevice(Device* device) {
-  // ARC N uses legacy single networking and only requires the arcbr0/arc0
-  // configuration. Any other device can be safely ignored.
-  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
+  if (!AllowDevice(device))
     return;
 
   // This can happen if the device if OnDeviceRemoved is invoked when the
@@ -459,8 +457,13 @@ GuestMessage::GuestType ArcService::ContainerImpl::guest() const {
 }
 
 bool ArcService::ContainerImpl::Start(int32_t pid) {
-  // TODO(garrick): Remove this workaround.
-  pid_ = (pid == kTestPID) ? pid : GetContainerPID();
+  // TODO(garrick): Remove this test hack.
+  if (pid == kTestPID) {
+    LOG(WARNING) << "Running with test PID";
+    pid_ = pid;
+    return true;
+  }
+  pid_ = GetContainerPID();
   if (pid_ == kInvalidPID) {
     LOG(ERROR) << "Cannot start service - invalid container PID";
     return false;
@@ -534,8 +537,7 @@ bool ArcService::ContainerImpl::OnStartDevice(Device* device) {
   }
 
   // Signal the container that the network device is ready.
-  // This is only applicable for arc0.
-  if (device->IsAndroid() || device->IsLegacyAndroid()) {
+  if (device->IsAndroid()) {
     datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
   }
 
@@ -624,13 +626,13 @@ void ArcService::ContainerImpl::LinkMsgHandler(const shill::RTNLMessage& msg) {
   }
   LOG(INFO) << ifname << " is now up";
 
-  if (device->IsAndroid())
-    return;
-
-  if (device->IsLegacyAndroid()) {
+  if (device->UsesDefaultInterface()) {
     OnDefaultInterfaceChanged(dev_mgr_->DefaultInterface());
     return;
   }
+
+  if (device->IsAndroid())
+    return;
 
   device->Enable(ifname);
 }
@@ -808,8 +810,8 @@ bool ArcService::VmImpl::IsStarted() const {
 
 bool ArcService::VmImpl::OnStartDevice(Device* device) {
   // TODO(garrick): Remove this once ARCVM supports ad hoc interface
-  // configurations; but for now ARCVM needs to be treated like ARC++ N.
-  if (!device->IsLegacyAndroid())
+  // configurations.
+  if (!device->UsesDefaultInterface())
     return false;
 
   const auto& config = device->config();
@@ -849,8 +851,8 @@ bool ArcService::VmImpl::OnStartDevice(Device* device) {
 
 void ArcService::VmImpl::OnStopDevice(Device* device) {
   // TODO(garrick): Remove this once ARCVM supports ad hoc interface
-  // configurations; but for now ARCVM needs to be treated like ARC++ N.
-  if (!device->IsLegacyAndroid())
+  // configurations.
+  if (!device->UsesDefaultInterface())
     return;
 
   const auto& config = device->config();

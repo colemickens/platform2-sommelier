@@ -90,13 +90,11 @@ Device::Context* Device::context(GuestMessage::GuestType guest) {
 }
 
 bool Device::IsAndroid() const {
-  return ifname_ == kAndroidDevice;
+  return options_.is_android;
 }
 
-bool Device::IsLegacyAndroid() const {
-  // TODO(garrick): Remove ARCVM check once it can support dynamic interface
-  // configuration.
-  return ifname_ == kAndroidLegacyDevice || ifname_ == kAndroidVmDevice;
+bool Device::UsesDefaultInterface() const {
+  return options_.use_default_interface;
 }
 
 bool Device::HostLinkUp(bool link_up) {
@@ -140,7 +138,7 @@ void Device::StartIPv6RoutingLegacy(const std::string& ifname) {
             << " on interface " << ifname;
   // In the case this is the Android device, |ifname| is the current default
   // interface and must be used.
-  ipv6_config_.ifname = (IsAndroid() || IsLegacyAndroid()) ? ifname : ifname_;
+  ipv6_config_.ifname = IsAndroid() ? ifname : ifname_;
   ipv6_config_.addr_attempts = 0;
   router_finder_.reset(new RouterFinder());
   router_finder_->Start(

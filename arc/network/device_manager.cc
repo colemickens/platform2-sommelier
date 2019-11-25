@@ -300,7 +300,7 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
          !device->options().find_ipv6_routes_legacy) ||
         device->options().fwd_multicast) {
       DeviceMessage msg;
-      if (device->IsLegacyAndroid())
+      if (device->UsesDefaultInterface())
         msg.set_dev_ifname(default_ifname_);
       else
         msg.set_dev_ifname(device->ifname());
@@ -320,7 +320,7 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   // The link is now up.
   LOG(INFO) << ifname << " is now up";
 
-  if (device->IsLegacyAndroid())
+  if (device->UsesDefaultInterface())
     device->Enable(default_ifname_);
   else if (!device->IsAndroid())
     device->Enable(device->config().guest_ifname());
@@ -329,7 +329,7 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
        !device->options().find_ipv6_routes_legacy) ||
       device->options().fwd_multicast) {
     DeviceMessage msg;
-    if (device->IsLegacyAndroid())
+    if (device->UsesDefaultInterface())
       msg.set_dev_ifname(default_ifname_);
     else
       msg.set_dev_ifname(device->ifname());
@@ -349,7 +349,13 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     const std::string& name) const {
   DCHECK(!name.empty());
 
-  Device::Options opts;
+  Device::Options opts{
+      .fwd_multicast = false,
+      .ipv6_enabled = false,
+      .find_ipv6_routes_legacy = kFindIpv6RoutesLegacy,
+      .use_default_interface = false,
+      .is_android = false,
+  };
   std::string host_ifname, guest_ifname;
   AddressManager::Guest guest = AddressManager::Guest::ARC;
 
@@ -360,12 +366,13 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     host_ifname = "arcbr0";
     guest_ifname = "arc0";
     opts.ipv6_enabled = true;
-    opts.find_ipv6_routes_legacy = kFindIpv6RoutesLegacy;
     opts.fwd_multicast = true;
+    opts.use_default_interface = true;
+    opts.is_android = true;
   } else {
     if (name == kAndroidDevice) {
       host_ifname = "arcbr0";
-      opts.fwd_multicast = false;
+      opts.is_android = true;
     } else {
       guest = AddressManager::Guest::ARC_NET;
       host_ifname = base::StringPrintf("arc_%s", name.c_str());
@@ -385,7 +392,6 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     // once IPv6 is enabled on cellular networks in shill.
     opts.ipv6_enabled =
         IsEthernetInterface(guest_ifname) || IsWifiInterface(guest_ifname);
-    opts.find_ipv6_routes_legacy = kFindIpv6RoutesLegacy;
   }
 
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest);
@@ -428,7 +434,7 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
   // the bridge interface "arcbr0".
   // ND proxy will not be started here as it will not be shipped to ARC N.
   Device* device = FindByHostInterface("arcbr0");
-  if (device && device->IsLegacyAndroid() && device->IsFullyUp()) {
+  if (device && device->UsesDefaultInterface() && device->IsFullyUp()) {
     IpHelperMessage ipm;
 
     // Stop multicast forwarder on the old default interface.

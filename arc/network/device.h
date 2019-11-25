@@ -88,6 +88,19 @@ class Device {
     bool fwd_multicast;
     bool ipv6_enabled;
     bool find_ipv6_routes_legacy;
+
+    // Indicates this device must track shill's default interface.
+    // TODO(garrick): Further qualify if this interface is a physical interface
+    // or an ARC VPN to match the distinction shill is making; specifically, ARC
+    // N should not loop back into itself but for Termina this should flow over
+    // the VPN.
+    bool use_default_interface;
+
+    // Indicates this is a special device used for Android. In single-networked
+    // guests (like ARC N) it is the only bridge into the container; in
+    // multi-networked guests it is used (only) to support VPNs and ADB over
+    // TCP.
+    bool is_android;
   };
 
   struct IPv6Config {
@@ -116,7 +129,8 @@ class Device {
   Context* context(GuestMessage::GuestType guest);
 
   bool IsAndroid() const;
-  bool IsLegacyAndroid() const;
+
+  bool UsesDefaultInterface() const;
 
   void RegisterIPv6SetupHandler(const DeviceHandler& handler);
   void RegisterIPv6TeardownHandler(const DeviceHandler& handler);

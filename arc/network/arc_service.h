@@ -156,6 +156,9 @@ class ArcService : public GuestService {
   void StartDevice(Device* device);
   void StopDevice(Device* device);
 
+  // Returns true if the device should be processed by the service.
+  bool AllowDevice(Device* device) const;
+
   Datapath* datapath_;
   std::unique_ptr<Impl> impl_;
 

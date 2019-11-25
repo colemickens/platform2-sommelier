@@ -26,10 +26,14 @@ class DeviceTest : public testing::Test {
  protected:
   void SetUp() override { ipv6_down_ = false; }
 
-  std::unique_ptr<Device> NewDevice(const std::string& name,
-                                    const Device::Options& options = {
-                                        .ipv6_enabled = true,
-                                        .find_ipv6_routes_legacy = true}) {
+  std::unique_ptr<Device> NewDevice(const std::string& name) {
+    Device::Options options{
+        .ipv6_enabled = true,
+        .find_ipv6_routes_legacy = true,
+        .use_default_interface = (name == kAndroidLegacyDevice),
+        .is_android = (name == kAndroidDevice || name == kAndroidLegacyDevice),
+    };
+
     auto ipv4_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 100, 100, 100),
                                                 30, base::Bind(&DoNothing));
     EXPECT_TRUE(ipv4_subnet);
@@ -53,19 +57,13 @@ class DeviceTest : public testing::Test {
 TEST_F(DeviceTest, IsAndroid) {
   auto dev = NewDevice(kAndroidDevice);
   EXPECT_TRUE(dev->IsAndroid());
+  EXPECT_FALSE(dev->UsesDefaultInterface());
   dev = NewDevice(kAndroidLegacyDevice);
-  EXPECT_FALSE(dev->IsAndroid());
+  EXPECT_TRUE(dev->IsAndroid());
+  EXPECT_TRUE(dev->UsesDefaultInterface());
   dev = NewDevice("eth0");
   EXPECT_FALSE(dev->IsAndroid());
-}
-
-TEST_F(DeviceTest, IsLegacyAndroid) {
-  auto dev = NewDevice(kAndroidDevice);
-  EXPECT_FALSE(dev->IsLegacyAndroid());
-  dev = NewDevice(kAndroidLegacyDevice);
-  EXPECT_TRUE(dev->IsLegacyAndroid());
-  dev = NewDevice("eth0");
-  EXPECT_FALSE(dev->IsLegacyAndroid());
+  EXPECT_FALSE(dev->UsesDefaultInterface());
 }
 
 TEST_F(DeviceTest, IPv6TeardownHandlerCalledOnDisable) {
