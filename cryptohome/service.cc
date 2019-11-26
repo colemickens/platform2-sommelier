@@ -17,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/sys_string_conversions.h>
+#include <base/sys_info.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/cryptohome.h>
@@ -124,6 +125,18 @@ void AddTaskObserverToThread(base::Thread* thread,
             base::MessageLoop::current()->AddTaskObserver(task_observer);
           },
           base::Unretained(task_observer)));
+}
+
+// Returns whether the Chrome OS image is a test one.
+bool IsOsTestImage() {
+  std::string chromeos_release_track;
+  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
+                                         &chromeos_release_track)) {
+    // Fall back to the safer assumption that we're not in a test image.
+    return false;
+  }
+  return base::StartsWith(chromeos_release_track, "test",
+                          base::CompareCase::SENSITIVE);
 }
 
 }  // anonymous namespace
@@ -2216,6 +2229,7 @@ bool Service::InitForChallengeResponseAuth(CryptohomeErrorCode* error_code) {
     return false;
   }
 
+  // Fail if the TPM is known to be vulnerable and we're not in a test image.
   const base::Optional<bool> is_srk_roca_vulnerable =
       tpm_->IsSrkRocaVulnerable();
   if (!is_srk_roca_vulnerable.has_value()) {
@@ -2225,9 +2239,14 @@ bool Service::InitForChallengeResponseAuth(CryptohomeErrorCode* error_code) {
     return false;
   }
   if (is_srk_roca_vulnerable.value()) {
-    LOG(ERROR) << "Cannot do challenge-response mount: TPM is ROCA vulnerable";
-    *error_code = CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED;
-    return false;
+    if (!IsOsTestImage()) {
+      LOG(ERROR)
+          << "Cannot do challenge-response mount: TPM is ROCA vulnerable";
+      *error_code = CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED;
+      return false;
+    }
+    LOG(WARNING) << "TPM is ROCA vulnerable; ignoring this for "
+                    "challenge-response mount due to running in test image";
   }
 
   if (!system_dbus_connection_.Connect()) {
