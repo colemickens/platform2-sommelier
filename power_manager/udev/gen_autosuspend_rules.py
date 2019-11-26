@@ -34,6 +34,8 @@ USB_IDS += [
     '8087:0024',
     # Genesys Logic (Internal Hub) (rambi)
     '8087:8000',
+    # Microchip (Composite HID + CDC) (kefka)
+    '04d8:0b28',
 ]
 
 # Webcams
@@ -238,6 +240,21 @@ PCI_IDS += [
     '8086:591c',
     # iwlwifi (atlas)
     '8086:2526',
+    # i915 (kefka)
+    '8086:22b1',
+    # proc_thermal (kefka)
+    '8086:22dc',
+    # xchi_hdc (kefka)
+    '8086:22b5',
+    # snd_hda (kefka)
+    '8086:2284',
+    # pcieport (kefka)
+    '8086:22c8',
+    '8086:22cc',
+    # lpc_ich (kefka)
+    '8086:229c',
+    # iosf_mbi_pci (kefka)
+    '8086:2280',
 ]
 
 # Samsung
@@ -266,7 +283,7 @@ PCI_IDS += [
     '2646:5008',
 ]
 
-################################################################################
+# Do not edit below this line. #################################################
 
 UDEV_RULE = """\
 ACTION!="add", GOTO="autosuspend_end"
