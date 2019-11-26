@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/strong_binding.h>
 
@@ -19,16 +20,6 @@
 
 namespace arc {
 namespace keymaster {
-
-namespace {
-
-void InitMojo() {
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
-  LOG(INFO) << "Mojo init succeeded.";
-}
-
-}  // anonymous namespace
 
 Daemon::Daemon() : weak_factory_(this) {}
 Daemon::~Daemon() = default;
@@ -38,7 +29,12 @@ int Daemon::OnInit() {
   if (exit_code != EX_OK)
     return exit_code;
 
-  InitMojo();
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+  LOG(INFO) << "Mojo init succeeded.";
+
   InitDBus();
   return EX_OK;
 }

@@ -5,11 +5,14 @@
 #ifndef ARC_KEYMASTER_DAEMON_H_
 #define ARC_KEYMASTER_DAEMON_H_
 
+#include <memory>
+
 #include "arc/keymaster/keymaster_server.h"
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 namespace dbus {
 
@@ -42,6 +45,8 @@ class Daemon : public brillo::DBusDaemon {
   void AcceptProxyConnection(base::ScopedFD fd);
 
   bool is_bound_ = false;
+
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   base::WeakPtrFactory<Daemon> weak_factory_;
 

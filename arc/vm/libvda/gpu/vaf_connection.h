@@ -11,6 +11,7 @@
 
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "arc/vm/libvda/gpu/mojom/video.mojom.h"
 
@@ -45,6 +46,7 @@ class VafConnection {
   // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
   // (crbug.com/909719).
   base::ThreadChecker ipc_thread_checker_;
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   arc::mojom::VideoAcceleratorFactoryPtr factory_ptr_;
 };
 

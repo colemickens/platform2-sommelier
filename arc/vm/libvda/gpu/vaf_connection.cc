@@ -26,6 +26,7 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/platform_handle.h>
@@ -71,17 +72,19 @@ VafConnection::VafConnection() : ipc_thread_("VafConnectionIpcThread") {
   // (crbug.com/909719).
   ipc_thread_checker_.DetachFromThread();
 
-  mojo::edk::Init();
+  mojo::core::Init();
   CHECK(ipc_thread_.StartWithOptions(
       base::Thread::Options(base::MessageLoop::TYPE_IO, 0)));
-  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      ipc_thread_.task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 }
 
 VafConnection::~VafConnection() {
   RunTaskOnThread(ipc_thread_.task_runner(),
                   base::BindOnce(&VafConnection::CleanupOnIpcThread,
                                  base::Unretained(this)));
-  mojo::edk::ShutdownIPCSupport(base::BindRepeating(&base::DoNothing));
+  ipc_support_ = nullptr;
 }
 
 void VafConnection::CleanupOnIpcThread() {
