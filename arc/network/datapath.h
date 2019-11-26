@@ -48,11 +48,11 @@ class Datapath {
   // the function returns the actual name of the interface.
   // |mac_addr| and |ipv4_addr| should be null if this interface will be later
   // bridged.
-  // If |user_id| is -1, no owner will be set
+  // If |user| is empty, no owner will be set
   virtual std::string AddTAP(const std::string& name,
                              const MacAddress* mac_addr,
                              const SubnetAddress* ipv4_addr,
-                             uid_t user_id);
+                             const std::string& user);
 
   // |ifname| must be the actual name of the interface.
   virtual void RemoveTAP(const std::string& ifname);

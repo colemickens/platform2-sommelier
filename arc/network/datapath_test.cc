@@ -37,7 +37,7 @@ TEST(DatapathTest, AddTAP) {
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind(&base::DoNothing));
   auto addr = subnet.AllocateAtOffset(0);
-  auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), -1);
+  auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "");
   EXPECT_EQ(ifname, "foo0");
   std::set<unsigned long> expected = {
       TUNSETIFF,     TUNSETPERSIST, SIOCSIFADDR, SIOCSIFNETMASK,
@@ -52,7 +52,7 @@ TEST(DatapathTest, AddTAPWithOwner) {
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind(&base::DoNothing));
   auto addr = subnet.AllocateAtOffset(0);
-  auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), 100);
+  auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "root");
   EXPECT_EQ(ifname, "foo0");
   std::set<unsigned long> expected = {
       TUNSETIFF,      TUNSETPERSIST, TUNSETOWNER,  SIOCSIFADDR,
@@ -64,10 +64,10 @@ TEST(DatapathTest, AddTAPWithOwner) {
 TEST(DatapathTest, AddTAPNoAddrs) {
   FakeProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
-  auto ifname = datapath.AddTAP("foo0", nullptr, nullptr, 100);
+  auto ifname = datapath.AddTAP("foo0", nullptr, nullptr, "");
   EXPECT_EQ(ifname, "foo0");
-  std::set<unsigned long> expected = {TUNSETIFF, TUNSETPERSIST, TUNSETOWNER,
-                                      SIOCGIFFLAGS, SIOCSIFFLAGS};
+  std::set<unsigned long> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
+                                      SIOCSIFFLAGS};
   EXPECT_EQ(ioctl_reqs, expected);
   ioctl_reqs.clear();
 }

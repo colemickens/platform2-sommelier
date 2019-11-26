@@ -17,6 +17,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/userdb_utils.h>
 
 #include "arc/network/net_util.h"
 
@@ -87,7 +88,7 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
 std::string Datapath::AddTAP(const std::string& name,
                              const MacAddress* mac_addr,
                              const SubnetAddress* ipv4_addr,
-                             uid_t user_id) {
+                             const std::string& user) {
   base::ScopedFD dev(open(kTunDev, O_RDWR | O_NONBLOCK));
   if (!dev.is_valid()) {
     PLOG(ERROR) << "Failed to open " << kTunDev;
@@ -113,11 +114,19 @@ std::string Datapath::AddTAP(const std::string& name,
     return "";
   }
 
-  if (user_id != -1 && (*ioctl_)(dev.get(), TUNSETOWNER, user_id) != 0) {
-    PLOG(ERROR) << "Failed to set owner " << user_id << " of tap interface "
-                << ifname;
-    RemoveTAP(ifname);
-    return "";
+  if (!user.empty()) {
+    uid_t uid = -1;
+    if (!brillo::userdb::GetUserInfo(user, &uid, nullptr)) {
+      PLOG(ERROR) << "Unable to look up UID for " << user;
+      RemoveTAP(ifname);
+      return "";
+    }
+    if ((*ioctl_)(dev.get(), TUNSETOWNER, uid) != 0) {
+      PLOG(ERROR) << "Failed to set owner " << uid << " of tap interface "
+                  << ifname;
+      RemoveTAP(ifname);
+      return "";
+    }
   }
 
   // Create control socket for configuring the interface.
