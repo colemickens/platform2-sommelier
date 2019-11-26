@@ -15,7 +15,11 @@
 
 namespace arc_networkd {
 
-typedef int (*ioctl_t)(int, unsigned long, ...);
+// cros lint will yell to force using int16/int64 instead of long here, however
+// note that unsigned long IS the correct signature for ioctl in Linux kernel -
+// it's 32 bits on 32-bit platform and 64 bits on 64-bit one.
+using ioctl_req_t = unsigned long;
+typedef int (*ioctl_t)(int, ioctl_req_t, ...);
 
 // Returns for given interface name the host name of a ARC veth pair.
 std::string ArcVethHostName(std::string ifname);
@@ -95,8 +99,15 @@ class Datapath {
   virtual bool AddOutboundIPv4(const std::string& ifname);
   virtual void RemoveOutboundIPv4(const std::string& ifname);
 
-  // Methods supporting the IPv6 hacks for ARC.
+  // Methods supporting IPv6 configuration for ARC.
+  virtual bool SetInterfaceFlag(const std::string& ifname, uint16_t flag);
 
+  virtual bool AddIPv6Forwarding(const std::string& ifname1,
+                                 const std::string& ifname2);
+  virtual void RemoveIPv6Forwarding(const std::string& ifname1,
+                                    const std::string& ifname2);
+
+  // Methods supporting the legacy IPv6 hacks for ARC.
   virtual bool AddIPv6GatewayRoutes(const std::string& ifname,
                                     const std::string& ipv6_addr,
                                     const std::string& ipv6_router,
@@ -119,11 +130,6 @@ class Datapath {
                                const std::string& ipv6_addr);
   virtual void RemoveIPv6Neighbor(const std::string& ifname,
                                   const std::string& ipv6_addr);
-
-  virtual bool AddIPv6Forwarding(const std::string& ifname1,
-                                 const std::string& ifname2);
-  virtual void RemoveIPv6Forwarding(const std::string& ifname1,
-                                    const std::string& ifname2);
 
   MinijailedProcessRunner& runner() const;
 

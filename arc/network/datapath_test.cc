@@ -5,6 +5,7 @@
 #include "arc/network/datapath.h"
 
 #include <linux/if_tun.h>
+#include <net/if.h>
 #include <sys/ioctl.h>
 
 #include <set>
@@ -21,10 +22,10 @@
 namespace arc_networkd {
 namespace {
 
-std::set<unsigned long> ioctl_reqs;
+std::set<ioctl_req_t> ioctl_reqs;
 
 // Capture all ioctls and succeed.
-int ioctl_req_cap(int fd, unsigned long req, ...) {
+int ioctl_req_cap(int fd, ioctl_req_t req, ...) {
   ioctl_reqs.insert(req);
   return 0;
 }
@@ -39,9 +40,9 @@ TEST(DatapathTest, AddTAP) {
   auto addr = subnet.AllocateAtOffset(0);
   auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "");
   EXPECT_EQ(ifname, "foo0");
-  std::set<unsigned long> expected = {
-      TUNSETIFF,     TUNSETPERSIST, SIOCSIFADDR, SIOCSIFNETMASK,
-      SIOCSIFHWADDR, SIOCGIFFLAGS,  SIOCSIFFLAGS};
+  std::set<ioctl_req_t> expected = {TUNSETIFF,      TUNSETPERSIST, SIOCSIFADDR,
+                                    SIOCSIFNETMASK, SIOCSIFHWADDR, SIOCGIFFLAGS,
+                                    SIOCSIFFLAGS};
   EXPECT_EQ(ioctl_reqs, expected);
   ioctl_reqs.clear();
 }
@@ -54,9 +55,9 @@ TEST(DatapathTest, AddTAPWithOwner) {
   auto addr = subnet.AllocateAtOffset(0);
   auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "root");
   EXPECT_EQ(ifname, "foo0");
-  std::set<unsigned long> expected = {
-      TUNSETIFF,      TUNSETPERSIST, TUNSETOWNER,  SIOCSIFADDR,
-      SIOCSIFNETMASK, SIOCSIFHWADDR, SIOCGIFFLAGS, SIOCSIFFLAGS};
+  std::set<ioctl_req_t> expected = {TUNSETIFF,    TUNSETPERSIST,  TUNSETOWNER,
+                                    SIOCSIFADDR,  SIOCSIFNETMASK, SIOCSIFHWADDR,
+                                    SIOCGIFFLAGS, SIOCSIFFLAGS};
   EXPECT_EQ(ioctl_reqs, expected);
   ioctl_reqs.clear();
 }
@@ -66,7 +67,7 @@ TEST(DatapathTest, AddTAPNoAddrs) {
   Datapath datapath(&runner, ioctl_req_cap);
   auto ifname = datapath.AddTAP("foo0", nullptr, nullptr, "");
   EXPECT_EQ(ifname, "foo0");
-  std::set<unsigned long> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
+  std::set<ioctl_req_t> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
                                       SIOCSIFFLAGS};
   EXPECT_EQ(ioctl_reqs, expected);
   ioctl_reqs.clear();
@@ -228,6 +229,36 @@ TEST(DatapathTest, RemoveInboundIPv4) {
   datapath.RemoveOutboundIPv4("eth0");
   runner.VerifyRuns(
       {"/sbin/iptables -t filter -D FORWARD -o eth0 -j ACCEPT -w"});
+}
+
+TEST(DatapathTest, SetInterfaceFlag) {
+  FakeProcessRunner runner;
+  Datapath datapath(&runner, ioctl_req_cap);
+  bool result = datapath.SetInterfaceFlag("foo0", IFF_DEBUG);
+  EXPECT_TRUE(result);
+  std::set<ioctl_req_t> expected = {SIOCGIFFLAGS, SIOCSIFFLAGS};
+  EXPECT_EQ(ioctl_reqs, expected);
+  ioctl_reqs.clear();
+}
+
+TEST(DatapathTest, AddIPv6Forwarding) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.AddIPv6Forwarding("eth0", "arc_eth0");
+  runner.VerifyRuns(
+      {"/sbin/ip6tables -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
+       "/sbin/ip6tables -A FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
+}
+
+TEST(DatapathTest, RemoveIPv6Forwarding) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.RemoveIPv6Forwarding("eth0", "arc_eth0");
+  runner.VerifyRuns(
+      {"/sbin/ip6tables -D FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
+       "/sbin/ip6tables -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
 }
 
 }  // namespace arc_networkd

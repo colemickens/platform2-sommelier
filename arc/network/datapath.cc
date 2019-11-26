@@ -359,6 +359,27 @@ void Datapath::RemoveOutboundIPv4(const std::string& ifname) {
                         ifname, "-j", "ACCEPT", "-w"});
 }
 
+bool Datapath::SetInterfaceFlag(const std::string& ifname, uint16_t flag) {
+  base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!sock.is_valid()) {
+    PLOG(ERROR) << "Failed to create control socket";
+    return false;
+  }
+  ifreq ifr;
+  snprintf(ifr.ifr_name, IFNAMSIZ, "%s", ifname.c_str());
+  if ((*ioctl_)(sock.get(), SIOCGIFFLAGS, &ifr) < 0) {
+    PLOG(WARNING) << "ioctl() failed to get interface flag on " << ifname;
+    return false;
+  }
+  ifr.ifr_flags |= flag;
+  if ((*ioctl_)(sock.get(), SIOCSIFFLAGS, &ifr) < 0) {
+    PLOG(WARNING) << "ioctl() failed to set flag 0x" << std::hex << flag
+                  << " on " << ifname;
+    return false;
+  }
+  return true;
+}
+
 bool Datapath::AddIPv6GatewayRoutes(const std::string& ifname,
                                     const std::string& ipv6_addr,
                                     const std::string& ipv6_router,

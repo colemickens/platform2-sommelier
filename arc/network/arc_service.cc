@@ -680,6 +680,11 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
                  << ") - cannot configure IPv6.";
       return;
     }
+    // Tag the interface so that ARC can detect this manual configuration and
+    // skip disabling and re-enabling IPv6 (b/144545910).
+    if (!datapath_->SetInterfaceFlag(config.guest_ifname(), IFF_DEBUG)) {
+      LOG(ERROR) << "Failed to mark IPv6 manual config flag on interface";
+    }
     if (!datapath_->AddIPv6GatewayRoutes(config.guest_ifname(), addr, router,
                                          ipv6_config.prefix_len, table_id)) {
       LOG(ERROR) << "Failed to setup IPv6 routes in the container";
