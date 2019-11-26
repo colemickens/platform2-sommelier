@@ -10,6 +10,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "ml/metrics.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
@@ -44,6 +45,9 @@ class Daemon : public brillo::DBusDaemon {
 
   // Responds to Mojo connection errors by quitting the daemon.
   void OnConnectionError();
+
+  // IPC Support
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // The top-level interface. Empty until it is created & bound to a pipe by
   // BootstrapMojoConnection.

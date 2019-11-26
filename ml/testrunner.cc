@@ -8,7 +8,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/test_helpers.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);
@@ -16,8 +17,10 @@ int main(int argc, char** argv) {
 
   (new brillo::BaseMessageLoop())->SetAsCurrent();
 
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
+  mojo::core::Init();
+  mojo::core::ScopedIPCSupport _(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
   return RUN_ALL_TESTS();
 }

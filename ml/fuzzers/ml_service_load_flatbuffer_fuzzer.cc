@@ -21,7 +21,8 @@
 #include "ml/mojom/machine_learning_service.mojom.h"
 #include "ml/mojom/model.mojom.h"
 #include "ml/tensor_view.h"
-#include "mojo/edk/embedder/embedder.h"
+#include "mojo/core/embedder/embedder.h"
+#include "mojo/core/embedder/scoped_ipc_support.h"
 
 namespace ml {
 namespace {
@@ -46,6 +47,10 @@ class MLServiceFuzzer {
   MLServiceFuzzer() = default;
   ~MLServiceFuzzer() = default;
   void SetUp() {
+    mojo::core::Init();
+    ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+        base::ThreadTaskRunnerHandle::Get(),
+        mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
     ml_service_impl_ = std::make_unique<MachineLearningServiceImpl>(
         mojo::MakeRequest(&ml_service_).PassMessagePipe(),
         base::Closure());
@@ -71,6 +76,7 @@ class MLServiceFuzzer {
   }
 
  private:
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   MachineLearningServicePtr ml_service_;
   std::unique_ptr<MachineLearningServiceImpl> ml_service_impl_;
   ModelPtr model_;
@@ -89,8 +95,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   brillo::BaseMessageLoop brillo_loop(&message_loop);
   brillo_loop.SetAsCurrent();
 
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
 
   ml::MLServiceFuzzer fuzzer;
   fuzzer.SetUp();

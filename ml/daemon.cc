@@ -16,20 +16,12 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 
 #include "ml/machine_learning_service_impl.h"
 
 namespace ml {
-
-namespace {
-
-void InitMojo() {
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
-}
-
-}  // namespace
 
 Daemon::Daemon() : weak_ptr_factory_(this) {}
 
@@ -41,7 +33,10 @@ int Daemon::OnInit() {
     return exit_code;
 
   metrics_.StartCollectingProcessMetrics();
-  InitMojo();
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   InitDBus();
 
   return 0;
