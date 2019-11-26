@@ -216,6 +216,13 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
     SendOnInstallStatusSignal(install_status);
     return true;
   }
+
+  // If an install is already in progress, dlcservice is busy.
+  if (IsInstalling()) {
+    LogAndSetError(err, kErrorBusy, "Another install is already in progress.");
+    return false;
+  }
+
   Operation update_engine_operation;
   if (!GetUpdateEngineStatus(&update_engine_operation)) {
     LogAndSetError(err, kErrorInternal,
@@ -272,12 +279,6 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
     return false;
   }
 
-  // This means update_engine was restarted/crashed during install and
-  // dlcservice requires cleanup of DLC(s) that were previously being thought to
-  // have been being installed.
-  if (!dlc_modules_being_installed_.dlc_module_infos().empty())
-    SendFailedSignalAndCleanup();
-
   dlc_modules_being_installed_ = unique_dlc_module_list;
   // Note: Do NOT add to installed indication. Let
   // |OnStatusUpdateAdvancedSignal()| handle since that's truly when the DLC(s)
@@ -318,7 +319,7 @@ bool DlcService::Uninstall(const string& id_in, brillo::ErrorPtr* err) {
 
   // This means update_engine was restarted and requires cleanup of DLC(s) that
   // were previously being thought to have been being installed.
-  if (!dlc_modules_being_installed_.dlc_module_infos().empty())
+  if (IsInstalling())
     SendFailedSignalAndCleanup();
 
   if (!UnmountDlc(id_in, err))
@@ -327,8 +328,8 @@ bool DlcService::Uninstall(const string& id_in, brillo::ErrorPtr* err) {
   if (!DeleteDlc(id_in, err))
     return false;
 
-  LOG(INFO) << "Uninstalling DLC id:" << id_in;
   installed_dlc_modules_.erase(id_in);
+  LOG(INFO) << "Uninstalled DLC:" << id_in;
   return true;
 }
 
@@ -408,7 +409,7 @@ void DlcService::SchedulePeriodicInstallCheck(bool retry) {
 
 bool DlcService::HandleStatusResult(const StatusResult& status_result) {
   // If we are not installing any DLC(s), no need to even handle status result.
-  if (dlc_modules_being_installed_.dlc_module_infos().empty())
+  if (!IsInstalling())
     return false;
 
   // When a signal is received from update_engine, it is more efficient to
