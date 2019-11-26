@@ -385,10 +385,13 @@ void DlcService::PeriodicUECheckDuringInstall() {
   }
   switch (update_engine_operation) {
     case update_engine::UPDATED_NEED_REBOOT:
+      SendFailedSignalAndCleanup();
+      FALLTHROUGH;
+    // TODO(crbug.com/1028379): Need to verify that signal from update_engine
+    // for install completion is stalled right after this if we want to cleanup.
     case update_engine::IDLE:
       LOG(ERROR) << "Thought to be installing DLC(s), but update_engine is not "
                     "installing.";
-      SendFailedSignalAndCleanup();
       break;
     default:
       scheduled_period_ue_check_id_ =
