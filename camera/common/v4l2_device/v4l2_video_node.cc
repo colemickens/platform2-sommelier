@@ -85,6 +85,23 @@ void V4L2Buffer::SetOffset(uint32_t offset, uint32_t plane) {
     v4l2_buf_.m.offset = offset;
 }
 
+uint32_t V4L2Buffer::DataOffset(uint32_t plane) const {
+  DCHECK(IsValidV4L2BufferType(v4l2_buf_.type));
+  bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
+  DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
+
+  return mp ? v4l2_buf_.m.planes[plane].data_offset : 0;
+}
+
+void V4L2Buffer::SetDataOffset(uint32_t offset, uint32_t plane) {
+  DCHECK(IsValidV4L2BufferType(v4l2_buf_.type));
+  bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
+  DCHECK((!mp && plane == 0) || (mp && plane < planes_.size()));
+
+  if (mp)
+    v4l2_buf_.m.planes[plane].data_offset = offset;
+}
+
 uintptr_t V4L2Buffer::Userptr(uint32_t plane) const {
   DCHECK(IsValidV4L2BufferType(v4l2_buf_.type));
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);

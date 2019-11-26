@@ -69,6 +69,8 @@ class CROS_CAMERA_EXPORT V4L2Buffer {
   void SetMemory(uint32_t memory) { v4l2_buf_.memory = memory; }
   uint32_t Offset(uint32_t plane) const;
   void SetOffset(uint32_t offset, uint32_t plane);
+  uint32_t DataOffset(uint32_t plane) const;
+  void SetDataOffset(uint32_t offset, uint32_t plane);
   uintptr_t Userptr(uint32_t plane) const;
   void SetUserptr(uintptr_t userptr, uint32_t plane);
   int RequestFd() const;
