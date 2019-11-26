@@ -29,10 +29,12 @@ class IPP_EXPORT Package {
   // Returns vector of all groups in the package, all pointers are != nullptr.
   // Returned vector = GetKnownGroups() + vector with unknown groups.
   std::vector<Group*> GetAllGroups();
+  std::vector<const Group*> GetAllGroups() const;
 
   // Returns pointer to the group with given tag.
   // Returns nullptr if there is no group with given tag in the package.
   Group* GetGroup(GroupTag);
+  const Group* GetGroup(GroupTag) const;
 
   // Adds a new group to the package and returns pointer to it or nullptr if
   // a group with given tag already exists in the package.
@@ -41,6 +43,7 @@ class IPP_EXPORT Package {
   // Returns reference to payload (e.g. document to print), empty vector means
   // no payload.
   std::vector<uint8_t>& Data() { return data_; }
+  const std::vector<uint8_t>& Data() const { return data_; }
 
  protected:
   Package() = default;
@@ -55,6 +58,7 @@ class IPP_EXPORT Package {
   // Returns vector with groups in the schema, all pointers are != nullptr.
   // This method must be overloaded in derived classes with schema.
   virtual std::vector<Group*> GetKnownGroups() { return {}; }
+  virtual std::vector<const Group*> GetKnownGroups() const { return {}; }
 
   std::vector<Group*> unknown_groups_;
   std::vector<uint8_t> data_;
@@ -131,6 +135,14 @@ class SingleGroup : public Group {
     Resize(1);
     return dynamic_cast<TCollection*>(GetCollection());
   }
+  // Returns reference to the underlying collection. If the group is empty
+  // (GetSize() == 0) returns a reference to an empty static collection.
+  const TCollection& Get() const {
+    const Collection* coll = GetCollection();
+    if (coll == nullptr)
+      return TCollection::empty;
+    return *(dynamic_cast<const TCollection*>(coll));
+  }
 
  private:
   Collection* CreateCollection() override { return new TCollection; }
@@ -148,6 +160,14 @@ class SetOfGroups : public Group {
     if (GetSize() <= index)
       Resize(index + 1);
     return *(dynamic_cast<TCollection*>(GetCollection(index)));
+  }
+  // Const version of the method above. If |index| is out of range,
+  // a reference to an empty static collection is returned.
+  const TCollection& At(size_t index) const {
+    const Collection* coll = GetCollection(index);
+    if (coll == nullptr)
+      return TCollection::empty;
+    return *(dynamic_cast<const TCollection*>(coll));
   }
 
  private:

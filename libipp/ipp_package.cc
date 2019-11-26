@@ -19,6 +19,17 @@ Group* Package::GetGroup(GroupTag gn) {
   return nullptr;
 }
 
+const Group* Package::GetGroup(GroupTag gn) const {
+  const std::vector<const Group*> groups = GetKnownGroups();
+  for (auto g : groups)
+    if (g->GetName() == gn)
+      return g;
+  for (auto g : unknown_groups_)
+    if (g->GetName() == gn)
+      return g;
+  return nullptr;
+}
+
 Group* Package::AddUnknownGroup(GroupTag gn, bool is_a_set) {
   if (GetGroup(gn) != nullptr)
     return nullptr;
@@ -28,6 +39,12 @@ Group* Package::AddUnknownGroup(GroupTag gn, bool is_a_set) {
 
 std::vector<Group*> Package::GetAllGroups() {
   std::vector<Group*> groups = GetKnownGroups();
+  groups.insert(groups.end(), unknown_groups_.begin(), unknown_groups_.end());
+  return groups;
+}
+
+std::vector<const Group*> Package::GetAllGroups() const {
+  std::vector<const Group*> groups = GetKnownGroups();
   groups.insert(groups.end(), unknown_groups_.begin(), unknown_groups_.end());
   return groups;
 }

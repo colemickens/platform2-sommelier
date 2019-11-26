@@ -16,6 +16,9 @@ namespace {
 struct TestSubcollection : public Collection {
   SingleValue<int> attr{this, AttrName::auth_info};
   std::vector<Attribute*> GetKnownAttributes() override { return {&attr}; }
+  std::vector<const Attribute*> GetKnownAttributes() const override {
+    return {&attr};
+  }
   static const std::map<AttrName, AttrDef> defs_;
   TestSubcollection() : Collection(&defs_) {}
 };
@@ -30,6 +33,10 @@ struct TestCollection : public Collection {
   SetOfCollections<TestSubcollection> attr_set_of_coll{
       this, AttrName::printer_supply};
   std::vector<Attribute*> GetKnownAttributes() override {
+    return {&attr_single_val, &attr_set_of_val, &attr_single_coll,
+            &attr_set_of_coll};
+  }
+  std::vector<const Attribute*> GetKnownAttributes() const override {
     return {&attr_single_val, &attr_set_of_val, &attr_single_coll,
             &attr_set_of_coll};
   }
@@ -50,6 +57,9 @@ struct TestPackage : public Package {
   SingleGroup<TestCollection> grp_single{GroupTag::operation_attributes};
   SetOfGroups<TestCollection> grp_set{GroupTag::printer_attributes};
   std::vector<Group*> GetKnownGroups() override {
+    return {&grp_single, &grp_set};
+  }
+  std::vector<const Group*> GetKnownGroups() const override {
     return {&grp_single, &grp_set};
   }
 };

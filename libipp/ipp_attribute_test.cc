@@ -40,6 +40,9 @@ class TestSubcollection : public Collection {
 
  private:
   std::vector<Attribute*> GetKnownAttributes() override { return {&hi}; }
+  std::vector<const Attribute*> GetKnownAttributes() const override {
+    return {&hi};
+  }
   static const std::map<AttrName, AttrDef> defs_;
 };
 const std::map<AttrName, AttrDef> TestSubcollection::defs_ = {
@@ -53,6 +56,9 @@ struct TestCollection : public Collection {
       this, AttrName::printer_supply_description};
   SetOfCollections<TestSubcollection> attr5{this, AttrName::punching_locations};
   std::vector<Attribute*> GetKnownAttributes() override {
+    return {&attr1, &attr2, &attr3, &attr4, &attr5};
+  }
+  std::vector<const Attribute*> GetKnownAttributes() const override {
     return {&attr1, &attr2, &attr3, &attr4, &attr5};
   }
   static const std::map<AttrName, AttrDef> defs_;
@@ -154,6 +160,10 @@ TEST(attribute, UnknownCollectionAttribute) {
   EXPECT_NE(attr->GetCollection(), nullptr);
   EXPECT_NE(attr->GetCollection(2), nullptr);
   EXPECT_EQ(attr->GetCollection(3), nullptr);
+  const Attribute* attr_const = attr;
+  EXPECT_NE(attr_const->GetCollection(), nullptr);
+  EXPECT_NE(attr_const->GetCollection(2), nullptr);
+  EXPECT_EQ(attr_const->GetCollection(3), nullptr);
 }
 
 TEST(attribute, FromStringToInt) {

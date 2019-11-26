@@ -153,11 +153,14 @@ class IPP_EXPORT Collection {
   // Unknown attributes are in the order they were added to the collection.
   // There are no nullptrs in the returned vector.
   std::vector<Attribute*> GetAllAttributes();
+  std::vector<const Attribute*> GetAllAttributes() const;
 
   // Methods return attribute by name. Methods return nullptr <=> the collection
   // has no attribute with this name.
   Attribute* GetAttribute(AttrName);
+  const Attribute* GetAttribute(AttrName) const;
   Attribute* GetAttribute(const std::string& name);
+  const Attribute* GetAttribute(const std::string& name) const;
 
   // Adds new attribute to the collection. Returns nullptr <=> an attribute
   // with this name already exists in the collection or given name/type are
@@ -181,6 +184,7 @@ class IPP_EXPORT Collection {
   // Methods to implement in derived class, return attributes from schema
   // and their definitions. There is no nullptrs in the returned vector.
   virtual std::vector<Attribute*> GetKnownAttributes() = 0;
+  virtual std::vector<const Attribute*> GetKnownAttributes() const = 0;
 
   // Helper function, an attribute |name| must belong to the collection.
   AttrDef GetAttributeDefinition(AttrName name) const;
@@ -216,6 +220,9 @@ class IPP_EXPORT EmptyCollection : public Collection {
 
  private:
   std::vector<Attribute*> GetKnownAttributes() override { return {}; };
+  std::vector<const Attribute*> GetKnownAttributes() const override {
+    return {};
+  };
   static const std::map<AttrName, AttrDef> defs_;  // empty
 };
 
@@ -295,6 +302,7 @@ class IPP_EXPORT Attribute {
   // Returns a pointer to Collection.
   // (GetType() != collection || index >= GetSize()) <=> returns nullptr.
   Collection* GetCollection(size_t index = 0);
+  const Collection* GetCollection(size_t index = 0) const;
 
  protected:
   // Constructor is available from derived classes only.
@@ -509,6 +517,14 @@ class SingleCollection : public Attribute {
     Resize(1);
     return dynamic_cast<TCollection*>(GetCollection());
   }
+  // Returns reference to the underlying collection. If the attribute is not
+  // set (GetState() != AttrState::set) returns a reference to empty collection.
+  const TCollection& Get() const {
+    const Collection* coll = GetCollection();
+    if (coll == nullptr)
+      return TCollection::empty;
+    return *(dynamic_cast<const TCollection*>(coll));
+  }
 };
 
 // Final class for Attribute, represents set of collections from IPP spec.
@@ -523,6 +539,14 @@ class SetOfCollections : public Attribute {
     if (GetSize() <= index)
       Resize(index + 1);
     return *(dynamic_cast<TCollection*>(GetCollection(index)));
+  }
+  // Const version of the method above. If |index| is out of range,
+  // a reference to an empty static collection is returned.
+  const TCollection& At(size_t index) const {
+    const Collection* coll = GetCollection(index);
+    if (coll == nullptr)
+      return TCollection::empty;
+    return *(dynamic_cast<const TCollection*>(coll));
   }
 };
 

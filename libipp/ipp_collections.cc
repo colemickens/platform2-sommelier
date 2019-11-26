@@ -8,6 +8,9 @@ namespace ipp {
 std::vector<Attribute*> C_cover_back::GetKnownAttributes() {
   return {&cover_type, &media, &media_col};
 }
+std::vector<const Attribute*> C_cover_back::GetKnownAttributes() const {
+  return {&cover_type, &media, &media_col};
+}
 const std::map<AttrName, AttrDef> C_cover_back::defs_{
     {AttrName::cover_type, {AttrType::keyword, InternalType::kInteger, false}},
     {AttrName::media, {AttrType::keyword, InternalType::kString, false}},
@@ -16,6 +19,17 @@ const std::map<AttrName, AttrDef> C_cover_back::defs_{
       []() -> Collection* { return new C_media_col(); }}}};
 std::vector<Attribute*>
 C_document_format_details_default::GetKnownAttributes() {
+  return {&document_format,
+          &document_format_device_id,
+          &document_format_version,
+          &document_natural_language,
+          &document_source_application_name,
+          &document_source_application_version,
+          &document_source_os_name,
+          &document_source_os_version};
+}
+std::vector<const Attribute*>
+C_document_format_details_default::GetKnownAttributes() const {
   return {&document_format,
           &document_format_device_id,
           &document_format_version,
@@ -43,6 +57,22 @@ const std::map<AttrName, AttrDef> C_document_format_details_default::defs_{
     {AttrName::document_source_os_version,
      {AttrType::text, InternalType::kStringWithLanguage, false}}};
 std::vector<Attribute*> C_finishings_col::GetKnownAttributes() {
+  return {&baling,
+          &binding,
+          &coating,
+          &covering,
+          &finishing_template,
+          &folding,
+          &imposition_template,
+          &laminating,
+          &media_sheets_supported,
+          &media_size,
+          &media_size_name,
+          &punching,
+          &stitching,
+          &trimming};
+}
+std::vector<const Attribute*> C_finishings_col::GetKnownAttributes() const {
   return {&baling,
           &binding,
           &coating,
@@ -100,11 +130,19 @@ const std::map<AttrName, AttrDef> C_finishings_col::defs_{
 std::vector<Attribute*> C_finishings_col::C_baling::GetKnownAttributes() {
   return {&baling_type, &baling_when};
 }
+std::vector<const Attribute*> C_finishings_col::C_baling::GetKnownAttributes()
+    const {
+  return {&baling_type, &baling_when};
+}
 const std::map<AttrName, AttrDef> C_finishings_col::C_baling::defs_{
     {AttrName::baling_type, {AttrType::keyword, InternalType::kString, false}},
     {AttrName::baling_when,
      {AttrType::keyword, InternalType::kInteger, false}}};
 std::vector<Attribute*> C_finishings_col::C_binding::GetKnownAttributes() {
+  return {&binding_reference_edge, &binding_type};
+}
+std::vector<const Attribute*> C_finishings_col::C_binding::GetKnownAttributes()
+    const {
   return {&binding_reference_edge, &binding_type};
 }
 const std::map<AttrName, AttrDef> C_finishings_col::C_binding::defs_{
@@ -115,6 +153,10 @@ const std::map<AttrName, AttrDef> C_finishings_col::C_binding::defs_{
 std::vector<Attribute*> C_finishings_col::C_coating::GetKnownAttributes() {
   return {&coating_sides, &coating_type};
 }
+std::vector<const Attribute*> C_finishings_col::C_coating::GetKnownAttributes()
+    const {
+  return {&coating_sides, &coating_type};
+}
 const std::map<AttrName, AttrDef> C_finishings_col::C_coating::defs_{
     {AttrName::coating_sides,
      {AttrType::keyword, InternalType::kInteger, false}},
@@ -123,10 +165,18 @@ const std::map<AttrName, AttrDef> C_finishings_col::C_coating::defs_{
 std::vector<Attribute*> C_finishings_col::C_covering::GetKnownAttributes() {
   return {&covering_name};
 }
+std::vector<const Attribute*> C_finishings_col::C_covering::GetKnownAttributes()
+    const {
+  return {&covering_name};
+}
 const std::map<AttrName, AttrDef> C_finishings_col::C_covering::defs_{
     {AttrName::covering_name,
      {AttrType::keyword, InternalType::kString, false}}};
 std::vector<Attribute*> C_finishings_col::C_folding::GetKnownAttributes() {
+  return {&folding_direction, &folding_offset, &folding_reference_edge};
+}
+std::vector<const Attribute*> C_finishings_col::C_folding::GetKnownAttributes()
+    const {
   return {&folding_direction, &folding_offset, &folding_reference_edge};
 }
 const std::map<AttrName, AttrDef> C_finishings_col::C_folding::defs_{
@@ -139,6 +189,10 @@ const std::map<AttrName, AttrDef> C_finishings_col::C_folding::defs_{
 std::vector<Attribute*> C_finishings_col::C_laminating::GetKnownAttributes() {
   return {&laminating_sides, &laminating_type};
 }
+std::vector<const Attribute*>
+C_finishings_col::C_laminating::GetKnownAttributes() const {
+  return {&laminating_sides, &laminating_type};
+}
 const std::map<AttrName, AttrDef> C_finishings_col::C_laminating::defs_{
     {AttrName::laminating_sides,
      {AttrType::keyword, InternalType::kInteger, false}},
@@ -147,8 +201,16 @@ const std::map<AttrName, AttrDef> C_finishings_col::C_laminating::defs_{
 std::vector<Attribute*> C_finishings_col::C_media_size::GetKnownAttributes() {
   return {};
 }
+std::vector<const Attribute*>
+C_finishings_col::C_media_size::GetKnownAttributes() const {
+  return {};
+}
 const std::map<AttrName, AttrDef> C_finishings_col::C_media_size::defs_{};
 std::vector<Attribute*> C_finishings_col::C_punching::GetKnownAttributes() {
+  return {&punching_locations, &punching_offset, &punching_reference_edge};
+}
+std::vector<const Attribute*> C_finishings_col::C_punching::GetKnownAttributes()
+    const {
   return {&punching_locations, &punching_offset, &punching_reference_edge};
 }
 const std::map<AttrName, AttrDef> C_finishings_col::C_punching::defs_{
@@ -159,6 +221,11 @@ const std::map<AttrName, AttrDef> C_finishings_col::C_punching::defs_{
     {AttrName::punching_reference_edge,
      {AttrType::keyword, InternalType::kInteger, false}}};
 std::vector<Attribute*> C_finishings_col::C_stitching::GetKnownAttributes() {
+  return {&stitching_angle, &stitching_locations, &stitching_method,
+          &stitching_offset, &stitching_reference_edge};
+}
+std::vector<const Attribute*>
+C_finishings_col::C_stitching::GetKnownAttributes() const {
   return {&stitching_angle, &stitching_locations, &stitching_method,
           &stitching_offset, &stitching_reference_edge};
 }
@@ -177,6 +244,11 @@ std::vector<Attribute*> C_finishings_col::C_trimming::GetKnownAttributes() {
   return {&trimming_offset, &trimming_reference_edge, &trimming_type,
           &trimming_when};
 }
+std::vector<const Attribute*> C_finishings_col::C_trimming::GetKnownAttributes()
+    const {
+  return {&trimming_offset, &trimming_reference_edge, &trimming_type,
+          &trimming_when};
+}
 const std::map<AttrName, AttrDef> C_finishings_col::C_trimming::defs_{
     {AttrName::trimming_offset,
      {AttrType::integer, InternalType::kInteger, false}},
@@ -187,6 +259,9 @@ const std::map<AttrName, AttrDef> C_finishings_col::C_trimming::defs_{
     {AttrName::trimming_when,
      {AttrType::keyword, InternalType::kInteger, false}}};
 std::vector<Attribute*> C_insert_sheet::GetKnownAttributes() {
+  return {&insert_after_page_number, &insert_count, &media, &media_col};
+}
+std::vector<const Attribute*> C_insert_sheet::GetKnownAttributes() const {
   return {&insert_after_page_number, &insert_count, &media, &media_col};
 }
 const std::map<AttrName, AttrDef> C_insert_sheet::defs_{
@@ -202,6 +277,11 @@ std::vector<Attribute*> C_job_accounting_sheets::GetKnownAttributes() {
   return {&job_accounting_output_bin, &job_accounting_sheets_type, &media,
           &media_col};
 }
+std::vector<const Attribute*> C_job_accounting_sheets::GetKnownAttributes()
+    const {
+  return {&job_accounting_output_bin, &job_accounting_sheets_type, &media,
+          &media_col};
+}
 const std::map<AttrName, AttrDef> C_job_accounting_sheets::defs_{
     {AttrName::job_accounting_output_bin,
      {AttrType::keyword, InternalType::kString, false}},
@@ -214,10 +294,17 @@ const std::map<AttrName, AttrDef> C_job_accounting_sheets::defs_{
 std::vector<Attribute*> C_job_constraints_supported::GetKnownAttributes() {
   return {&resolver_name};
 }
+std::vector<const Attribute*> C_job_constraints_supported::GetKnownAttributes()
+    const {
+  return {&resolver_name};
+}
 const std::map<AttrName, AttrDef> C_job_constraints_supported::defs_{
     {AttrName::resolver_name,
      {AttrType::name, InternalType::kStringWithLanguage, false}}};
 std::vector<Attribute*> C_job_error_sheet::GetKnownAttributes() {
+  return {&job_error_sheet_type, &job_error_sheet_when, &media, &media_col};
+}
+std::vector<const Attribute*> C_job_error_sheet::GetKnownAttributes() const {
   return {&job_error_sheet_type, &job_error_sheet_when, &media, &media_col};
 }
 const std::map<AttrName, AttrDef> C_job_error_sheet::defs_{
@@ -230,6 +317,16 @@ const std::map<AttrName, AttrDef> C_job_error_sheet::defs_{
      {AttrType::collection, InternalType::kCollection, false,
       []() -> Collection* { return new C_media_col(); }}}};
 std::vector<Attribute*> C_job_finishings_col_actual::GetKnownAttributes() {
+  return {&media_back_coating,  &media_bottom_margin, &media_color,
+          &media_front_coating, &media_grain,         &media_hole_count,
+          &media_info,          &media_key,           &media_left_margin,
+          &media_order_count,   &media_pre_printed,   &media_recycled,
+          &media_right_margin,  &media_size,          &media_size_name,
+          &media_source,        &media_thickness,     &media_tooth,
+          &media_top_margin,    &media_type,          &media_weight_metric};
+}
+std::vector<const Attribute*> C_job_finishings_col_actual::GetKnownAttributes()
+    const {
   return {&media_back_coating,  &media_bottom_margin, &media_color,
           &media_front_coating, &media_grain,         &media_hole_count,
           &media_info,          &media_key,           &media_left_margin,
@@ -280,6 +377,10 @@ std::vector<Attribute*>
 C_job_finishings_col_actual::C_media_size::GetKnownAttributes() {
   return {&x_dimension, &y_dimension};
 }
+std::vector<const Attribute*>
+C_job_finishings_col_actual::C_media_size::GetKnownAttributes() const {
+  return {&x_dimension, &y_dimension};
+}
 const std::map<AttrName, AttrDef>
     C_job_finishings_col_actual::C_media_size::defs_{
         {AttrName::x_dimension,
@@ -287,6 +388,10 @@ const std::map<AttrName, AttrDef>
         {AttrName::y_dimension,
          {AttrType::integer, InternalType::kInteger, false}}};
 std::vector<Attribute*> C_job_save_disposition::GetKnownAttributes() {
+  return {&save_disposition, &save_info};
+}
+std::vector<const Attribute*> C_job_save_disposition::GetKnownAttributes()
+    const {
   return {&save_disposition, &save_info};
 }
 const std::map<AttrName, AttrDef> C_job_save_disposition::defs_{
@@ -299,6 +404,10 @@ std::vector<Attribute*>
 C_job_save_disposition::C_save_info::GetKnownAttributes() {
   return {&save_document_format, &save_location, &save_name};
 }
+std::vector<const Attribute*>
+C_job_save_disposition::C_save_info::GetKnownAttributes() const {
+  return {&save_document_format, &save_location, &save_name};
+}
 const std::map<AttrName, AttrDef> C_job_save_disposition::C_save_info::defs_{
     {AttrName::save_document_format,
      {AttrType::mimeMediaType, InternalType::kString, false}},
@@ -308,6 +417,9 @@ const std::map<AttrName, AttrDef> C_job_save_disposition::C_save_info::defs_{
 std::vector<Attribute*> C_job_sheets_col::GetKnownAttributes() {
   return {&job_sheets, &media, &media_col};
 }
+std::vector<const Attribute*> C_job_sheets_col::GetKnownAttributes() const {
+  return {&job_sheets, &media, &media_col};
+}
 const std::map<AttrName, AttrDef> C_job_sheets_col::defs_{
     {AttrName::job_sheets, {AttrType::keyword, InternalType::kString, false}},
     {AttrName::media, {AttrType::keyword, InternalType::kString, false}},
@@ -315,6 +427,19 @@ const std::map<AttrName, AttrDef> C_job_sheets_col::defs_{
      {AttrType::collection, InternalType::kCollection, false,
       []() -> Collection* { return new C_media_col(); }}}};
 std::vector<Attribute*> C_media_col_database::GetKnownAttributes() {
+  return {&media_back_coating,  &media_bottom_margin,
+          &media_color,         &media_front_coating,
+          &media_grain,         &media_hole_count,
+          &media_info,          &media_key,
+          &media_left_margin,   &media_order_count,
+          &media_pre_printed,   &media_recycled,
+          &media_right_margin,  &media_size,
+          &media_size_name,     &media_source,
+          &media_thickness,     &media_tooth,
+          &media_top_margin,    &media_type,
+          &media_weight_metric, &media_source_properties};
+}
+std::vector<const Attribute*> C_media_col_database::GetKnownAttributes() const {
   return {&media_back_coating,  &media_bottom_margin,
           &media_color,         &media_front_coating,
           &media_grain,         &media_hole_count,
@@ -372,12 +497,20 @@ std::vector<Attribute*>
 C_media_col_database::C_media_size::GetKnownAttributes() {
   return {&x_dimension, &y_dimension};
 }
+std::vector<const Attribute*>
+C_media_col_database::C_media_size::GetKnownAttributes() const {
+  return {&x_dimension, &y_dimension};
+}
 const std::map<AttrName, AttrDef> C_media_col_database::C_media_size::defs_{
     {AttrName::x_dimension, {AttrType::integer, InternalType::kInteger, false}},
     {AttrName::y_dimension,
      {AttrType::integer, InternalType::kInteger, false}}};
 std::vector<Attribute*>
 C_media_col_database::C_media_source_properties::GetKnownAttributes() {
+  return {&media_source_feed_direction, &media_source_feed_orientation};
+}
+std::vector<const Attribute*>
+C_media_col_database::C_media_source_properties::GetKnownAttributes() const {
   return {&media_source_feed_direction, &media_source_feed_orientation};
 }
 const std::map<AttrName, AttrDef>
@@ -389,12 +522,88 @@ const std::map<AttrName, AttrDef>
 std::vector<Attribute*> C_media_size_supported::GetKnownAttributes() {
   return {&x_dimension, &y_dimension};
 }
+std::vector<const Attribute*> C_media_size_supported::GetKnownAttributes()
+    const {
+  return {&x_dimension, &y_dimension};
+}
 const std::map<AttrName, AttrDef> C_media_size_supported::defs_{
     {AttrName::x_dimension,
      {AttrType::rangeOfInteger, InternalType::kRangeOfInteger, false}},
     {AttrName::y_dimension,
      {AttrType::rangeOfInteger, InternalType::kRangeOfInteger, false}}};
 std::vector<Attribute*> C_overrides::GetKnownAttributes() {
+  return {&job_account_id,
+          &job_account_type,
+          &job_accounting_sheets,
+          &job_accounting_user_id,
+          &job_copies,
+          &job_cover_back,
+          &job_cover_front,
+          &job_delay_output_until,
+          &job_delay_output_until_time,
+          &job_error_action,
+          &job_error_sheet,
+          &job_finishings,
+          &job_finishings_col,
+          &job_hold_until,
+          &job_hold_until_time,
+          &job_message_to_operator,
+          &job_pages_per_set,
+          &job_phone_number,
+          &job_priority,
+          &job_recipient_name,
+          &job_save_disposition,
+          &job_sheet_message,
+          &job_sheets,
+          &job_sheets_col,
+          &pages_per_subset,
+          &output_bin,
+          &output_device,
+          &multiple_document_handling,
+          &y_side1_image_shift,
+          &y_side2_image_shift,
+          &number_up,
+          &orientation_requested,
+          &page_delivery,
+          &page_order_received,
+          &page_ranges,
+          &pdl_init_file,
+          &print_color_mode,
+          &print_content_optimize,
+          &print_quality,
+          &print_rendering_intent,
+          &printer_resolution,
+          &presentation_direction_number_up,
+          &media,
+          &sides,
+          &x_image_position,
+          &x_image_shift,
+          &x_side1_image_shift,
+          &x_side2_image_shift,
+          &y_image_position,
+          &y_image_shift,
+          &copies,
+          &cover_back,
+          &cover_front,
+          &imposition_template,
+          &insert_sheet,
+          &media_col,
+          &media_input_tray_check,
+          &print_scaling,
+          &proof_print,
+          &separator_sheets,
+          &sheet_collate,
+          &feed_orientation,
+          &finishings,
+          &finishings_col,
+          &font_name_requested,
+          &font_size_requested,
+          &force_front_side,
+          &document_copies,
+          &document_numbers,
+          &pages};
+}
+std::vector<const Attribute*> C_overrides::GetKnownAttributes() const {
   return {&job_account_id,
           &job_account_type,
           &job_accounting_sheets,
@@ -614,6 +823,9 @@ const std::map<AttrName, AttrDef> C_overrides::defs_{
 std::vector<Attribute*> C_pdl_init_file::GetKnownAttributes() {
   return {&pdl_init_file_entry, &pdl_init_file_location, &pdl_init_file_name};
 }
+std::vector<const Attribute*> C_pdl_init_file::GetKnownAttributes() const {
+  return {&pdl_init_file_entry, &pdl_init_file_location, &pdl_init_file_name};
+}
 const std::map<AttrName, AttrDef> C_pdl_init_file::defs_{
     {AttrName::pdl_init_file_entry,
      {AttrType::name, InternalType::kStringWithLanguage, false}},
@@ -622,6 +834,10 @@ const std::map<AttrName, AttrDef> C_pdl_init_file::defs_{
     {AttrName::pdl_init_file_name,
      {AttrType::name, InternalType::kStringWithLanguage, false}}};
 std::vector<Attribute*> C_printer_contact_col::GetKnownAttributes() {
+  return {&contact_name, &contact_uri, &contact_vcard};
+}
+std::vector<const Attribute*> C_printer_contact_col::GetKnownAttributes()
+    const {
   return {&contact_name, &contact_uri, &contact_vcard};
 }
 const std::map<AttrName, AttrDef> C_printer_contact_col::defs_{
@@ -633,11 +849,19 @@ const std::map<AttrName, AttrDef> C_printer_contact_col::defs_{
 std::vector<Attribute*> C_printer_icc_profiles::GetKnownAttributes() {
   return {&profile_name, &profile_url};
 }
+std::vector<const Attribute*> C_printer_icc_profiles::GetKnownAttributes()
+    const {
+  return {&profile_name, &profile_url};
+}
 const std::map<AttrName, AttrDef> C_printer_icc_profiles::defs_{
     {AttrName::profile_name,
      {AttrType::name, InternalType::kStringWithLanguage, false}},
     {AttrName::profile_url, {AttrType::uri, InternalType::kString, false}}};
 std::vector<Attribute*> C_printer_xri_supported::GetKnownAttributes() {
+  return {&xri_authentication, &xri_security, &xri_uri};
+}
+std::vector<const Attribute*> C_printer_xri_supported::GetKnownAttributes()
+    const {
   return {&xri_authentication, &xri_security, &xri_uri};
 }
 const std::map<AttrName, AttrDef> C_printer_xri_supported::defs_{
@@ -649,6 +873,9 @@ const std::map<AttrName, AttrDef> C_printer_xri_supported::defs_{
 std::vector<Attribute*> C_proof_print::GetKnownAttributes() {
   return {&media, &media_col, &proof_print_copies};
 }
+std::vector<const Attribute*> C_proof_print::GetKnownAttributes() const {
+  return {&media, &media_col, &proof_print_copies};
+}
 const std::map<AttrName, AttrDef> C_proof_print::defs_{
     {AttrName::media, {AttrType::keyword, InternalType::kString, false}},
     {AttrName::media_col,
@@ -657,6 +884,9 @@ const std::map<AttrName, AttrDef> C_proof_print::defs_{
     {AttrName::proof_print_copies,
      {AttrType::integer, InternalType::kInteger, false}}};
 std::vector<Attribute*> C_separator_sheets::GetKnownAttributes() {
+  return {&media, &media_col, &separator_sheets_type};
+}
+std::vector<const Attribute*> C_separator_sheets::GetKnownAttributes() const {
   return {&media, &media_col, &separator_sheets_type};
 }
 const std::map<AttrName, AttrDef> C_separator_sheets::defs_{

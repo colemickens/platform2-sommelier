@@ -759,6 +759,25 @@ Collection* Attribute::GetCollection(size_t index) {
   return p;
 }
 
+const Collection* Attribute::GetCollection(size_t index) const {
+  Collection* coll = GetOwner();
+  const AttrDef def = coll->GetAttributeDefinition(name_);
+  if (def.cc_type != InternalType::kCollection)
+    return nullptr;
+  auto it = coll->values_.find(name_);
+  if (it == coll->values_.end())
+    return nullptr;
+  const Collection* p = nullptr;
+  if (def.is_a_set) {
+    auto v = ReadValueConstPtr<std::vector<Collection*>>(&it->second);
+    if (v->size() > index)
+      p = *(v->data() + index);
+  } else {
+    p = *(ReadValueConstPtr<Collection*>(&it->second));
+  }
+  return p;
+}
+
 Collection::~Collection() {
   std::vector<AttrName> names;
   for (auto& name_value : values_)
@@ -793,7 +812,31 @@ Attribute* Collection::GetAttribute(AttrName an) {
   return nullptr;
 }
 
+const Attribute* Collection::GetAttribute(AttrName an) const {
+  const std::vector<const Attribute*> known_attr = GetKnownAttributes();
+  for (auto a : known_attr)
+    if (a->GetNameAsEnum() == an)
+      return a;
+  auto it2 = unknown_attributes.find(an);
+  if (it2 != unknown_attributes.end())
+    return it2->second.object;
+  return nullptr;
+}
+
 Attribute* Collection::GetAttribute(const std::string& name) {
+  AttrName an = AttrName::_unknown;
+  if (!FromString(name, &an)) {
+    for (const auto& e : unknown_names) {
+      if (e.second == name) {
+        an = e.first;
+        break;
+      }
+    }
+  }
+  return GetAttribute(an);
+}
+
+const Attribute* Collection::GetAttribute(const std::string& name) const {
   AttrName an = AttrName::_unknown;
   if (!FromString(name, &an)) {
     for (const auto& e : unknown_names) {

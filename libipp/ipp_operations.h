@@ -33,6 +33,7 @@ struct IPP_EXPORT Request_CUPS_Add_Modify_Class : public Request {
     SingleValue<std::string> printer_uri{this, AttrName::printer_uri};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
@@ -57,12 +58,14 @@ struct IPP_EXPORT Request_CUPS_Add_Modify_Class : public Request {
         this, AttrName::requesting_user_name_denied};
     G_printer_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_printer_attributes> printer_attributes{
       GroupTag::printer_attributes};
   Request_CUPS_Add_Modify_Class();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Add_Modify_Class : public Response {
   struct G_operation_attributes : public Collection {
@@ -76,12 +79,14 @@ struct IPP_EXPORT Response_CUPS_Add_Modify_Class : public Response {
         this, AttrName::detailed_status_message};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Response_CUPS_Add_Modify_Class();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Add_Modify_Printer : public Request {
   typedef Request_CUPS_Add_Modify_Class::G_operation_attributes
@@ -110,12 +115,14 @@ struct IPP_EXPORT Request_CUPS_Add_Modify_Printer : public Request {
         this, AttrName::requesting_user_name_denied};
     G_printer_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_printer_attributes> printer_attributes{
       GroupTag::printer_attributes};
   Request_CUPS_Add_Modify_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Add_Modify_Printer : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -124,6 +131,7 @@ struct IPP_EXPORT Response_CUPS_Add_Modify_Printer : public Response {
       GroupTag::operation_attributes};
   Response_CUPS_Add_Modify_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Authenticate_Job : public Request {
   struct G_operation_attributes : public Collection {
@@ -136,6 +144,7 @@ struct IPP_EXPORT Request_CUPS_Authenticate_Job : public Request {
     SingleValue<std::string> job_uri{this, AttrName::job_uri};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
@@ -146,11 +155,13 @@ struct IPP_EXPORT Request_CUPS_Authenticate_Job : public Request {
                                                  AttrName::job_hold_until};
     G_job_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Request_CUPS_Authenticate_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Authenticate_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -160,12 +171,14 @@ struct IPP_EXPORT Response_CUPS_Authenticate_Job : public Response {
   struct G_unsupported_attributes : public Collection {
     G_unsupported_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_unsupported_attributes> unsupported_attributes{
       GroupTag::unsupported_attributes};
   Response_CUPS_Authenticate_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Create_Local_Printer : public Request {
   struct G_operation_attributes : public Collection {
@@ -175,6 +188,7 @@ struct IPP_EXPORT Request_CUPS_Create_Local_Printer : public Request {
         this, AttrName::attributes_natural_language};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
@@ -191,12 +205,14 @@ struct IPP_EXPORT Request_CUPS_Create_Local_Printer : public Request {
         this, AttrName::printer_location};
     G_printer_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_printer_attributes> printer_attributes{
       GroupTag::printer_attributes};
   Request_CUPS_Create_Local_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Create_Local_Printer : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -214,12 +230,14 @@ struct IPP_EXPORT Response_CUPS_Create_Local_Printer : public Response {
         this, AttrName::printer_uri_supported};
     G_printer_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_printer_attributes> printer_attributes{
       GroupTag::printer_attributes};
   Response_CUPS_Create_Local_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Delete_Class : public Request {
   typedef Request_CUPS_Add_Modify_Class::G_operation_attributes
@@ -228,6 +246,7 @@ struct IPP_EXPORT Request_CUPS_Delete_Class : public Request {
       GroupTag::operation_attributes};
   Request_CUPS_Delete_Class();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Delete_Class : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -236,6 +255,7 @@ struct IPP_EXPORT Response_CUPS_Delete_Class : public Response {
       GroupTag::operation_attributes};
   Response_CUPS_Delete_Class();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Delete_Printer : public Request {
   typedef Request_CUPS_Add_Modify_Class::G_operation_attributes
@@ -244,6 +264,7 @@ struct IPP_EXPORT Request_CUPS_Delete_Printer : public Request {
       GroupTag::operation_attributes};
   Request_CUPS_Delete_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Delete_Printer : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -252,6 +273,7 @@ struct IPP_EXPORT Response_CUPS_Delete_Printer : public Response {
       GroupTag::operation_attributes};
   Response_CUPS_Delete_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Get_Classes : public Request {
   struct G_operation_attributes : public Collection {
@@ -272,12 +294,14 @@ struct IPP_EXPORT Request_CUPS_Get_Classes : public Request {
         this, AttrName::requested_user_name};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_CUPS_Get_Classes();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Get_Classes : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -289,12 +313,14 @@ struct IPP_EXPORT Response_CUPS_Get_Classes : public Response {
     SetOfValues<std::string> member_uris{this, AttrName::member_uris};
     G_printer_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_printer_attributes> printer_attributes{
       GroupTag::printer_attributes};
   Response_CUPS_Get_Classes();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Get_Default : public Request {
   struct G_operation_attributes : public Collection {
@@ -306,12 +332,14 @@ struct IPP_EXPORT Request_CUPS_Get_Default : public Request {
         this, AttrName::requested_attributes};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_CUPS_Get_Default();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -325,6 +353,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_back_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_cover_front_default : public Collection {
@@ -333,6 +362,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_front_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_document_format_details_default : public Collection {
@@ -353,6 +383,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
           this, AttrName::document_source_os_version};
       C_document_format_details_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col_database : public Collection {
@@ -361,6 +392,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -369,6 +401,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -377,6 +410,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -384,6 +418,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -394,6 +429,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -403,11 +439,13 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -417,6 +455,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -430,6 +469,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -442,6 +482,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -464,6 +505,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col_database() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col_default : public Collection {
@@ -472,6 +514,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -480,6 +523,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -488,6 +532,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -495,6 +540,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -505,6 +551,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -514,11 +561,13 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -528,6 +577,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -541,6 +591,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -553,6 +604,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -575,6 +627,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col_ready : public Collection {
@@ -583,6 +636,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -591,6 +645,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -599,6 +654,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -606,6 +662,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -616,6 +673,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -625,11 +683,13 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -639,6 +699,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -652,6 +713,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -664,6 +726,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -686,6 +749,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col_ready() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_insert_sheet_default : public Collection {
@@ -696,6 +760,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_insert_sheet_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_accounting_sheets_default : public Collection {
@@ -707,6 +772,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_accounting_sheets_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_constraints_supported : public Collection {
@@ -714,6 +780,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                     AttrName::resolver_name};
       C_job_constraints_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_back_default : public Collection {
@@ -722,6 +789,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_back_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_front_default : public Collection {
@@ -730,6 +798,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_front_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_error_sheet_default : public Collection {
@@ -741,6 +810,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_error_sheet_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_finishings_col_default : public Collection {
@@ -749,6 +819,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -757,6 +828,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -765,6 +837,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -772,6 +845,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -782,6 +856,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -791,11 +866,13 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -805,6 +882,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -818,6 +896,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -830,6 +909,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -852,6 +932,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_job_finishings_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_finishings_col_ready : public Collection {
@@ -860,6 +941,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -868,6 +950,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -876,6 +959,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -883,6 +967,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -893,6 +978,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -902,11 +988,13 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -916,6 +1004,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -929,6 +1018,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -941,6 +1031,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -963,6 +1054,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_job_finishings_col_ready() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_resolvers_supported : public Collection {
@@ -970,6 +1062,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                     AttrName::resolver_name};
       C_job_resolvers_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_sheets_col_default : public Collection {
@@ -978,6 +1071,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_sheets_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col_database : public Collection {
@@ -986,6 +1080,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_source_properties : public Collection {
@@ -996,6 +1091,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                 this, AttrName::media_source_feed_orientation};
         C_media_source_properties() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -1028,6 +1124,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
           this, AttrName::media_source_properties};
       C_media_col_database() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col_default : public Collection {
@@ -1036,6 +1133,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -1066,6 +1164,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleValue<int> media_weight_metric{this, AttrName::media_weight_metric};
       C_media_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col_ready : public Collection {
@@ -1074,6 +1173,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_source_properties : public Collection {
@@ -1084,6 +1184,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                 this, AttrName::media_source_feed_orientation};
         C_media_source_properties() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -1116,6 +1217,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
           this, AttrName::media_source_properties};
       C_media_col_ready() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_size_supported : public Collection {
@@ -1123,6 +1225,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleValue<RangeOfInteger> y_dimension{this, AttrName::y_dimension};
       C_media_size_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_pdl_init_file_default : public Collection {
@@ -1134,6 +1237,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
           this, AttrName::pdl_init_file_name};
       C_pdl_init_file_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_printer_contact_col : public Collection {
@@ -1144,6 +1248,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
                                                     AttrName::contact_vcard};
       C_printer_contact_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_printer_icc_profiles : public Collection {
@@ -1152,6 +1257,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleValue<std::string> profile_url{this, AttrName::profile_url};
       C_printer_icc_profiles() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_printer_xri_supported : public Collection {
@@ -1161,6 +1267,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleValue<std::string> xri_uri{this, AttrName::xri_uri};
       C_printer_xri_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_proof_print_default : public Collection {
@@ -1169,6 +1276,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
       SingleValue<int> proof_print_copies{this, AttrName::proof_print_copies};
       C_proof_print_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_separator_sheets_default : public Collection {
@@ -1178,6 +1286,7 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
           this, AttrName::separator_sheets_type};
       C_separator_sheets_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     OpenSetOfValues<E_baling_type_supported> baling_type_supported{
@@ -1720,12 +1829,14 @@ struct IPP_EXPORT Response_CUPS_Get_Default : public Response {
         this, AttrName::y_side2_image_shift_supported};
     G_printer_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_printer_attributes> printer_attributes{
       GroupTag::printer_attributes};
   Response_CUPS_Get_Default();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Get_Document : public Request {
   struct G_operation_attributes : public Collection {
@@ -1739,12 +1850,14 @@ struct IPP_EXPORT Request_CUPS_Get_Document : public Request {
     SingleValue<int> document_number{this, AttrName::document_number};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_CUPS_Get_Document();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Get_Document : public Response {
   struct G_operation_attributes : public Collection {
@@ -1762,12 +1875,14 @@ struct IPP_EXPORT Response_CUPS_Get_Document : public Response {
                                                   AttrName::document_name};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Response_CUPS_Get_Document();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Get_Printers : public Request {
   struct G_operation_attributes : public Collection {
@@ -1789,12 +1904,14 @@ struct IPP_EXPORT Request_CUPS_Get_Printers : public Request {
         this, AttrName::requested_user_name};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_CUPS_Get_Printers();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Get_Printers : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -1806,6 +1923,7 @@ struct IPP_EXPORT Response_CUPS_Get_Printers : public Response {
       GroupTag::printer_attributes};
   Response_CUPS_Get_Printers();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Move_Job : public Request {
   typedef Request_CUPS_Authenticate_Job::G_operation_attributes
@@ -1816,11 +1934,13 @@ struct IPP_EXPORT Request_CUPS_Move_Job : public Request {
     SingleValue<std::string> job_printer_uri{this, AttrName::job_printer_uri};
     G_job_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Request_CUPS_Move_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Move_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -1829,6 +1949,7 @@ struct IPP_EXPORT Response_CUPS_Move_Job : public Response {
       GroupTag::operation_attributes};
   Response_CUPS_Move_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_CUPS_Set_Default : public Request {
   typedef Request_CUPS_Add_Modify_Class::G_operation_attributes
@@ -1837,6 +1958,7 @@ struct IPP_EXPORT Request_CUPS_Set_Default : public Request {
       GroupTag::operation_attributes};
   Request_CUPS_Set_Default();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_CUPS_Set_Default : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -1845,6 +1967,7 @@ struct IPP_EXPORT Response_CUPS_Set_Default : public Response {
       GroupTag::operation_attributes};
   Response_CUPS_Set_Default();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Cancel_Job : public Request {
   struct G_operation_attributes : public Collection {
@@ -1860,12 +1983,14 @@ struct IPP_EXPORT Request_Cancel_Job : public Request {
     SingleValue<StringWithLanguage> message{this, AttrName::message};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Cancel_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Cancel_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -1878,6 +2003,7 @@ struct IPP_EXPORT Response_Cancel_Job : public Response {
       GroupTag::unsupported_attributes};
   Response_Cancel_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Create_Job : public Request {
   struct G_operation_attributes : public Collection {
@@ -1896,6 +2022,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
     SingleValue<int> job_media_sheets{this, AttrName::job_media_sheets};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
@@ -1907,6 +2034,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_back() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_cover_front : public Collection {
@@ -1915,6 +2043,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_front() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col : public Collection {
@@ -1923,6 +2052,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -1931,6 +2061,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -1939,6 +2070,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -1946,6 +2078,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -1956,6 +2089,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -1965,11 +2099,13 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -1979,6 +2115,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -1992,6 +2129,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -2004,6 +2142,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -2026,6 +2165,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_insert_sheet : public Collection {
@@ -2036,6 +2176,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_insert_sheet() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_accounting_sheets : public Collection {
@@ -2047,6 +2188,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_accounting_sheets() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_back : public Collection {
@@ -2055,6 +2197,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_back() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_front : public Collection {
@@ -2063,6 +2206,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_front() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_error_sheet : public Collection {
@@ -2074,6 +2218,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_error_sheet() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_finishings_col : public Collection {
@@ -2082,6 +2227,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -2090,6 +2236,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -2098,6 +2245,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -2105,6 +2253,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -2115,6 +2264,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -2124,11 +2274,13 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -2138,6 +2290,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -2151,6 +2304,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -2163,6 +2317,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -2185,6 +2340,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_job_finishings_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_save_disposition : public Collection {
@@ -2195,6 +2351,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<StringWithLanguage> save_name{this, AttrName::save_name};
         C_save_info() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_save_disposition> save_disposition{
@@ -2202,6 +2359,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SetOfCollections<C_save_info> save_info{this, AttrName::save_info};
       C_job_save_disposition() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_sheets_col : public Collection {
@@ -2210,6 +2368,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_sheets_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col : public Collection {
@@ -2218,6 +2377,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -2248,6 +2408,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleValue<int> media_weight_metric{this, AttrName::media_weight_metric};
       C_media_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_overrides : public Collection {
@@ -2365,6 +2526,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SetOfValues<RangeOfInteger> pages{this, AttrName::pages};
       C_overrides() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_pdl_init_file : public Collection {
@@ -2376,6 +2538,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
           this, AttrName::pdl_init_file_name};
       C_pdl_init_file() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_proof_print : public Collection {
@@ -2384,6 +2547,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
       SingleValue<int> proof_print_copies{this, AttrName::proof_print_copies};
       C_proof_print() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_separator_sheets : public Collection {
@@ -2393,6 +2557,7 @@ struct IPP_EXPORT Request_Create_Job : public Request {
           this, AttrName::separator_sheets_type};
       C_separator_sheets() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     SingleValue<int> copies{this, AttrName::copies};
@@ -2503,11 +2668,13 @@ struct IPP_EXPORT Request_Create_Job : public Request {
     SingleValue<int> y_side2_image_shift{this, AttrName::y_side2_image_shift};
     G_job_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Request_Create_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Create_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -2530,11 +2697,13 @@ struct IPP_EXPORT Response_Create_Job : public Response {
         this, AttrName::number_of_intervening_jobs};
     G_job_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Response_Create_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Get_Job_Attributes : public Request {
   struct G_operation_attributes : public Collection {
@@ -2551,12 +2720,14 @@ struct IPP_EXPORT Request_Get_Job_Attributes : public Request {
         this, AttrName::requested_attributes};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Get_Job_Attributes();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -2574,6 +2745,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_back() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_cover_back_actual : public Collection {
@@ -2582,6 +2754,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_back_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_cover_front : public Collection {
@@ -2590,6 +2763,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_front() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_cover_front_actual : public Collection {
@@ -2598,6 +2772,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_front_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_document_format_details_supplied : public Collection {
@@ -2618,6 +2793,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
           this, AttrName::document_source_os_version};
       C_document_format_details_supplied() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col : public Collection {
@@ -2626,6 +2802,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -2634,6 +2811,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -2642,6 +2820,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -2649,6 +2828,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -2659,6 +2839,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -2668,11 +2849,13 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -2682,6 +2865,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -2695,6 +2879,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -2707,6 +2892,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -2729,6 +2915,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col_actual : public Collection {
@@ -2737,6 +2924,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -2745,6 +2933,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -2753,6 +2942,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -2760,6 +2950,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -2770,6 +2961,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -2779,11 +2971,13 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -2793,6 +2987,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -2806,6 +3001,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -2818,6 +3014,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -2840,6 +3037,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_insert_sheet : public Collection {
@@ -2850,6 +3048,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_insert_sheet() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_insert_sheet_actual : public Collection {
@@ -2860,6 +3059,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_insert_sheet_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_accounting_sheets : public Collection {
@@ -2871,6 +3071,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_accounting_sheets() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_accounting_sheets_actual : public Collection {
@@ -2882,6 +3083,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_accounting_sheets_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_back : public Collection {
@@ -2890,6 +3092,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_back() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_back_actual : public Collection {
@@ -2898,6 +3101,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_back_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_front : public Collection {
@@ -2906,6 +3110,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_front() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_front_actual : public Collection {
@@ -2914,6 +3119,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_front_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_error_sheet : public Collection {
@@ -2925,6 +3131,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_error_sheet() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_error_sheet_actual : public Collection {
@@ -2936,6 +3143,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_error_sheet_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_finishings_col : public Collection {
@@ -2944,6 +3152,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -2952,6 +3161,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -2960,6 +3170,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -2967,6 +3178,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -2977,6 +3189,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -2986,11 +3199,13 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -3000,6 +3215,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -3013,6 +3229,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -3025,6 +3242,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -3047,6 +3265,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_job_finishings_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_finishings_col_actual : public Collection {
@@ -3055,6 +3274,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -3085,6 +3305,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleValue<int> media_weight_metric{this, AttrName::media_weight_metric};
       C_job_finishings_col_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_save_disposition : public Collection {
@@ -3095,6 +3316,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<StringWithLanguage> save_name{this, AttrName::save_name};
         C_save_info() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_save_disposition> save_disposition{
@@ -3102,6 +3324,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SetOfCollections<C_save_info> save_info{this, AttrName::save_info};
       C_job_save_disposition() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_sheets_col : public Collection {
@@ -3110,6 +3333,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_sheets_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_sheets_col_actual : public Collection {
@@ -3118,6 +3342,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_sheets_col_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col : public Collection {
@@ -3126,6 +3351,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -3156,6 +3382,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleValue<int> media_weight_metric{this, AttrName::media_weight_metric};
       C_media_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col_actual : public Collection {
@@ -3164,6 +3391,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -3194,6 +3422,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleValue<int> media_weight_metric{this, AttrName::media_weight_metric};
       C_media_col_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_overrides : public Collection {
@@ -3311,6 +3540,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SetOfValues<RangeOfInteger> pages{this, AttrName::pages};
       C_overrides() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_overrides_actual : public Collection {
@@ -3428,6 +3658,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SetOfValues<RangeOfInteger> pages{this, AttrName::pages};
       C_overrides_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_pdl_init_file : public Collection {
@@ -3439,6 +3670,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
           this, AttrName::pdl_init_file_name};
       C_pdl_init_file() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_proof_print : public Collection {
@@ -3447,6 +3679,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
       SingleValue<int> proof_print_copies{this, AttrName::proof_print_copies};
       C_proof_print() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_separator_sheets : public Collection {
@@ -3456,6 +3689,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
           this, AttrName::separator_sheets_type};
       C_separator_sheets() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_separator_sheets_actual : public Collection {
@@ -3465,6 +3699,7 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
           this, AttrName::separator_sheets_type};
       C_separator_sheets_actual() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     SingleValue<std::string> attributes_charset{this,
@@ -3731,11 +3966,13 @@ struct IPP_EXPORT Response_Get_Job_Attributes : public Response {
         this, AttrName::y_side2_image_shift_actual};
     G_job_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Response_Get_Job_Attributes();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Get_Jobs : public Request {
   struct G_operation_attributes : public Collection {
@@ -3753,12 +3990,14 @@ struct IPP_EXPORT Request_Get_Jobs : public Request {
     SingleValue<bool> my_jobs{this, AttrName::my_jobs};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Get_Jobs();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Get_Jobs : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -3773,6 +4012,7 @@ struct IPP_EXPORT Response_Get_Jobs : public Response {
   SetOfGroups<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Response_Get_Jobs();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Get_Printer_Attributes : public Request {
   struct G_operation_attributes : public Collection {
@@ -3788,12 +4028,14 @@ struct IPP_EXPORT Request_Get_Printer_Attributes : public Request {
     SingleValue<std::string> document_format{this, AttrName::document_format};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Get_Printer_Attributes();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -3811,6 +4053,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_back_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_cover_front_default : public Collection {
@@ -3819,6 +4062,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_cover_front_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_document_format_details_default : public Collection {
@@ -3839,6 +4083,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
           this, AttrName::document_source_os_version};
       C_document_format_details_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col_database : public Collection {
@@ -3847,6 +4092,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -3855,6 +4101,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -3863,6 +4110,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -3870,6 +4118,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -3880,6 +4129,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -3889,11 +4139,13 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -3903,6 +4155,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -3916,6 +4169,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -3928,6 +4182,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -3950,6 +4205,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col_database() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col_default : public Collection {
@@ -3958,6 +4214,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -3966,6 +4223,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -3974,6 +4232,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -3981,6 +4240,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -3991,6 +4251,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -4000,11 +4261,13 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -4014,6 +4277,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -4027,6 +4291,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -4039,6 +4304,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -4061,6 +4327,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_finishings_col_ready : public Collection {
@@ -4069,6 +4336,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -4077,6 +4345,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -4085,6 +4354,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -4092,6 +4362,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -4102,6 +4373,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -4111,11 +4383,13 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -4125,6 +4399,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -4138,6 +4413,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -4150,6 +4426,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -4172,6 +4449,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_finishings_col_ready() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_insert_sheet_default : public Collection {
@@ -4182,6 +4460,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_insert_sheet_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_accounting_sheets_default : public Collection {
@@ -4193,6 +4472,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_accounting_sheets_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_constraints_supported : public Collection {
@@ -4200,6 +4480,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                     AttrName::resolver_name};
       C_job_constraints_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_back_default : public Collection {
@@ -4208,6 +4489,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_back_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_cover_front_default : public Collection {
@@ -4216,6 +4498,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_cover_front_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_error_sheet_default : public Collection {
@@ -4227,6 +4510,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_error_sheet_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_finishings_col_default : public Collection {
@@ -4235,6 +4519,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -4243,6 +4528,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -4251,6 +4537,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -4258,6 +4545,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -4268,6 +4556,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -4277,11 +4566,13 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -4291,6 +4582,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -4304,6 +4596,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -4316,6 +4609,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -4338,6 +4632,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_job_finishings_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_finishings_col_ready : public Collection {
@@ -4346,6 +4641,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
         C_baling() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_binding : public Collection {
@@ -4354,6 +4650,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
         C_binding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_coating : public Collection {
@@ -4362,6 +4659,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
         C_coating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_covering : public Collection {
@@ -4369,6 +4667,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::covering_name};
         C_covering() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_folding : public Collection {
@@ -4379,6 +4678,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::folding_reference_edge};
         C_folding() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_laminating : public Collection {
@@ -4388,11 +4688,13 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::laminating_type};
         C_laminating() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_size : public Collection {
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_punching : public Collection {
@@ -4402,6 +4704,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::punching_reference_edge};
         C_punching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_stitching : public Collection {
@@ -4415,6 +4718,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
             this, AttrName::stitching_reference_edge};
         C_stitching() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_trimming : public Collection {
@@ -4427,6 +4731,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                    AttrName::trimming_when};
         C_trimming() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -4449,6 +4754,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
       C_job_finishings_col_ready() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_resolvers_supported : public Collection {
@@ -4456,6 +4762,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                     AttrName::resolver_name};
       C_job_resolvers_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_job_sheets_col_default : public Collection {
@@ -4464,6 +4771,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleCollection<C_media_col> media_col{this, AttrName::media_col};
       C_job_sheets_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col_database : public Collection {
@@ -4472,6 +4780,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_source_properties : public Collection {
@@ -4482,6 +4791,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                 this, AttrName::media_source_feed_orientation};
         C_media_source_properties() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -4514,6 +4824,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
           this, AttrName::media_source_properties};
       C_media_col_database() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col_default : public Collection {
@@ -4522,6 +4833,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -4552,6 +4864,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleValue<int> media_weight_metric{this, AttrName::media_weight_metric};
       C_media_col_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_col_ready : public Collection {
@@ -4560,6 +4873,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         SingleValue<int> y_dimension{this, AttrName::y_dimension};
         C_media_size() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       struct C_media_source_properties : public Collection {
@@ -4570,6 +4884,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                 this, AttrName::media_source_feed_orientation};
         C_media_source_properties() : Collection(&defs_) {}
         std::vector<Attribute*> GetKnownAttributes() override;
+        std::vector<const Attribute*> GetKnownAttributes() const override;
         static const std::map<AttrName, AttrDef> defs_;
       };
       SingleValue<E_media_back_coating> media_back_coating{
@@ -4602,6 +4917,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
           this, AttrName::media_source_properties};
       C_media_col_ready() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_media_size_supported : public Collection {
@@ -4609,6 +4925,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleValue<RangeOfInteger> y_dimension{this, AttrName::y_dimension};
       C_media_size_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_pdl_init_file_default : public Collection {
@@ -4620,6 +4937,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
           this, AttrName::pdl_init_file_name};
       C_pdl_init_file_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_printer_contact_col : public Collection {
@@ -4630,6 +4948,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
                                                     AttrName::contact_vcard};
       C_printer_contact_col() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_printer_icc_profiles : public Collection {
@@ -4638,6 +4957,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleValue<std::string> profile_url{this, AttrName::profile_url};
       C_printer_icc_profiles() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_printer_xri_supported : public Collection {
@@ -4647,6 +4967,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleValue<std::string> xri_uri{this, AttrName::xri_uri};
       C_printer_xri_supported() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_proof_print_default : public Collection {
@@ -4655,6 +4976,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
       SingleValue<int> proof_print_copies{this, AttrName::proof_print_copies};
       C_proof_print_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     struct C_separator_sheets_default : public Collection {
@@ -4664,6 +4986,7 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
           this, AttrName::separator_sheets_type};
       C_separator_sheets_default() : Collection(&defs_) {}
       std::vector<Attribute*> GetKnownAttributes() override;
+      std::vector<const Attribute*> GetKnownAttributes() const override;
       static const std::map<AttrName, AttrDef> defs_;
     };
     OpenSetOfValues<E_baling_type_supported> baling_type_supported{
@@ -5279,12 +5602,14 @@ struct IPP_EXPORT Response_Get_Printer_Attributes : public Response {
         this, AttrName::y_side2_image_shift_supported};
     G_printer_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_printer_attributes> printer_attributes{
       GroupTag::printer_attributes};
   Response_Get_Printer_Attributes();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Hold_Job : public Request {
   struct G_operation_attributes : public Collection {
@@ -5302,12 +5627,14 @@ struct IPP_EXPORT Request_Hold_Job : public Request {
                                                  AttrName::job_hold_until};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Hold_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Hold_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -5320,6 +5647,7 @@ struct IPP_EXPORT Response_Hold_Job : public Response {
       GroupTag::unsupported_attributes};
   Response_Hold_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Pause_Printer : public Request {
   struct G_operation_attributes : public Collection {
@@ -5332,12 +5660,14 @@ struct IPP_EXPORT Request_Pause_Printer : public Request {
         this, AttrName::requesting_user_name};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Pause_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Pause_Printer : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -5350,6 +5680,7 @@ struct IPP_EXPORT Response_Pause_Printer : public Response {
       GroupTag::unsupported_attributes};
   Response_Pause_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Print_Job : public Request {
   struct G_operation_attributes : public Collection {
@@ -5374,6 +5705,7 @@ struct IPP_EXPORT Request_Print_Job : public Request {
     SingleValue<int> job_media_sheets{this, AttrName::job_media_sheets};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
@@ -5382,6 +5714,7 @@ struct IPP_EXPORT Request_Print_Job : public Request {
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Request_Print_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Print_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -5396,6 +5729,7 @@ struct IPP_EXPORT Response_Print_Job : public Response {
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Response_Print_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Print_URI : public Request {
   struct G_operation_attributes : public Collection {
@@ -5421,6 +5755,7 @@ struct IPP_EXPORT Request_Print_URI : public Request {
     SingleValue<int> job_media_sheets{this, AttrName::job_media_sheets};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
@@ -5429,6 +5764,7 @@ struct IPP_EXPORT Request_Print_URI : public Request {
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Request_Print_URI();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Print_URI : public Response {
   struct G_operation_attributes : public Collection {
@@ -5444,6 +5780,7 @@ struct IPP_EXPORT Response_Print_URI : public Response {
         this, AttrName::document_access_error};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
@@ -5456,6 +5793,7 @@ struct IPP_EXPORT Response_Print_URI : public Response {
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Response_Print_URI();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Release_Job : public Request {
   typedef Request_Cancel_Job::G_operation_attributes G_operation_attributes;
@@ -5463,6 +5801,7 @@ struct IPP_EXPORT Request_Release_Job : public Request {
       GroupTag::operation_attributes};
   Request_Release_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Release_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -5475,6 +5814,7 @@ struct IPP_EXPORT Response_Release_Job : public Response {
       GroupTag::unsupported_attributes};
   Response_Release_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Resume_Printer : public Request {
   typedef Request_Pause_Printer::G_operation_attributes G_operation_attributes;
@@ -5482,6 +5822,7 @@ struct IPP_EXPORT Request_Resume_Printer : public Request {
       GroupTag::operation_attributes};
   Request_Resume_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Resume_Printer : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -5494,6 +5835,7 @@ struct IPP_EXPORT Response_Resume_Printer : public Response {
       GroupTag::unsupported_attributes};
   Response_Resume_Printer();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Send_Document : public Request {
   struct G_operation_attributes : public Collection {
@@ -5515,12 +5857,14 @@ struct IPP_EXPORT Request_Send_Document : public Request {
     SingleValue<bool> last_document{this, AttrName::last_document};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Send_Document();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Send_Document : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -5535,6 +5879,7 @@ struct IPP_EXPORT Response_Send_Document : public Response {
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Response_Send_Document();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Send_URI : public Request {
   struct G_operation_attributes : public Collection {
@@ -5557,12 +5902,14 @@ struct IPP_EXPORT Request_Send_URI : public Request {
     SingleValue<std::string> document_uri{this, AttrName::document_uri};
     G_operation_attributes() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleGroup<G_operation_attributes> operation_attributes{
       GroupTag::operation_attributes};
   Request_Send_URI();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Send_URI : public Response {
   typedef Response_Print_URI::G_operation_attributes G_operation_attributes;
@@ -5576,6 +5923,7 @@ struct IPP_EXPORT Response_Send_URI : public Response {
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Response_Send_URI();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Request_Validate_Job : public Request {
   typedef Request_Print_Job::G_operation_attributes G_operation_attributes;
@@ -5585,6 +5933,7 @@ struct IPP_EXPORT Request_Validate_Job : public Request {
   SingleGroup<G_job_attributes> job_attributes{GroupTag::job_attributes};
   Request_Validate_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 struct IPP_EXPORT Response_Validate_Job : public Response {
   typedef Response_CUPS_Add_Modify_Class::G_operation_attributes
@@ -5597,6 +5946,7 @@ struct IPP_EXPORT Response_Validate_Job : public Response {
       GroupTag::unsupported_attributes};
   Response_Validate_Job();
   std::vector<Group*> GetKnownGroups() override;
+  std::vector<const Group*> GetKnownGroups() const override;
 };
 }  // namespace ipp
 

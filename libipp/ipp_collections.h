@@ -26,6 +26,7 @@ struct IPP_EXPORT C_job_constraints_supported : public Collection {
   SingleValue<StringWithLanguage> resolver_name{this, AttrName::resolver_name};
   C_job_constraints_supported() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 struct IPP_EXPORT C_job_finishings_col_actual : public Collection {
@@ -34,6 +35,7 @@ struct IPP_EXPORT C_job_finishings_col_actual : public Collection {
     SingleValue<int> y_dimension{this, AttrName::y_dimension};
     C_media_size() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleValue<E_media_back_coating> media_back_coating{
@@ -63,6 +65,7 @@ struct IPP_EXPORT C_job_finishings_col_actual : public Collection {
   SingleValue<int> media_weight_metric{this, AttrName::media_weight_metric};
   C_job_finishings_col_actual() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_job_constraints_supported C_job_resolvers_supported;
@@ -74,6 +77,7 @@ struct IPP_EXPORT C_job_save_disposition : public Collection {
     SingleValue<StringWithLanguage> save_name{this, AttrName::save_name};
     C_save_info() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleValue<E_save_disposition> save_disposition{this,
@@ -81,6 +85,7 @@ struct IPP_EXPORT C_job_save_disposition : public Collection {
   SetOfCollections<C_save_info> save_info{this, AttrName::save_info};
   C_job_save_disposition() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_job_finishings_col_actual C_media_col;
@@ -91,6 +96,7 @@ struct IPP_EXPORT C_media_col_database : public Collection {
     SingleValue<int> y_dimension{this, AttrName::y_dimension};
     C_media_size() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_media_source_properties : public Collection {
@@ -100,6 +106,7 @@ struct IPP_EXPORT C_media_col_database : public Collection {
         this, AttrName::media_source_feed_orientation};
     C_media_source_properties() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleValue<E_media_back_coating> media_back_coating{
@@ -131,6 +138,7 @@ struct IPP_EXPORT C_media_col_database : public Collection {
       this, AttrName::media_source_properties};
   C_media_col_database() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_job_finishings_col_actual C_media_col_default;
@@ -140,6 +148,7 @@ struct IPP_EXPORT C_media_size_supported : public Collection {
   SingleValue<RangeOfInteger> y_dimension{this, AttrName::y_dimension};
   C_media_size_supported() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 struct IPP_EXPORT C_pdl_init_file : public Collection {
@@ -151,6 +160,7 @@ struct IPP_EXPORT C_pdl_init_file : public Collection {
       this, AttrName::pdl_init_file_name};
   C_pdl_init_file() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_pdl_init_file C_pdl_init_file_default;
@@ -160,6 +170,7 @@ struct IPP_EXPORT C_printer_contact_col : public Collection {
   SetOfValues<StringWithLanguage> contact_vcard{this, AttrName::contact_vcard};
   C_printer_contact_col() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 struct IPP_EXPORT C_printer_icc_profiles : public Collection {
@@ -167,6 +178,7 @@ struct IPP_EXPORT C_printer_icc_profiles : public Collection {
   SingleValue<std::string> profile_url{this, AttrName::profile_url};
   C_printer_icc_profiles() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 struct IPP_EXPORT C_printer_xri_supported : public Collection {
@@ -176,6 +188,7 @@ struct IPP_EXPORT C_printer_xri_supported : public Collection {
   SingleValue<std::string> xri_uri{this, AttrName::xri_uri};
   C_printer_xri_supported() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 struct IPP_EXPORT C_proof_print : public Collection {
@@ -184,6 +197,7 @@ struct IPP_EXPORT C_proof_print : public Collection {
   SingleValue<int> proof_print_copies{this, AttrName::proof_print_copies};
   C_proof_print() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_proof_print C_proof_print_default;
@@ -194,6 +208,7 @@ struct IPP_EXPORT C_separator_sheets : public Collection {
       this, AttrName::separator_sheets_type};
   C_separator_sheets() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_separator_sheets C_separator_sheets_actual;
@@ -204,6 +219,7 @@ struct IPP_EXPORT C_cover_back : public Collection {
   SingleCollection<C_media_col> media_col{this, AttrName::media_col};
   C_cover_back() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_cover_back C_cover_back_actual;
@@ -229,6 +245,7 @@ struct IPP_EXPORT C_document_format_details_default : public Collection {
       this, AttrName::document_source_os_version};
   C_document_format_details_default() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_document_format_details_default C_document_format_details_supplied;
@@ -238,6 +255,7 @@ struct IPP_EXPORT C_finishings_col : public Collection {
     SingleValue<E_baling_when> baling_when{this, AttrName::baling_when};
     C_baling() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_binding : public Collection {
@@ -246,6 +264,7 @@ struct IPP_EXPORT C_finishings_col : public Collection {
     SingleValue<E_binding_type> binding_type{this, AttrName::binding_type};
     C_binding() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_coating : public Collection {
@@ -253,12 +272,14 @@ struct IPP_EXPORT C_finishings_col : public Collection {
     SingleValue<E_coating_type> coating_type{this, AttrName::coating_type};
     C_coating() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_covering : public Collection {
     SingleValue<E_covering_name> covering_name{this, AttrName::covering_name};
     C_covering() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_folding : public Collection {
@@ -269,6 +290,7 @@ struct IPP_EXPORT C_finishings_col : public Collection {
         this, AttrName::folding_reference_edge};
     C_folding() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_laminating : public Collection {
@@ -278,11 +300,13 @@ struct IPP_EXPORT C_finishings_col : public Collection {
                                                    AttrName::laminating_type};
     C_laminating() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_media_size : public Collection {
     C_media_size() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_punching : public Collection {
@@ -292,6 +316,7 @@ struct IPP_EXPORT C_finishings_col : public Collection {
         this, AttrName::punching_reference_edge};
     C_punching() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_stitching : public Collection {
@@ -304,6 +329,7 @@ struct IPP_EXPORT C_finishings_col : public Collection {
         this, AttrName::stitching_reference_edge};
     C_stitching() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   struct C_trimming : public Collection {
@@ -314,6 +340,7 @@ struct IPP_EXPORT C_finishings_col : public Collection {
     SingleValue<E_trimming_when> trimming_when{this, AttrName::trimming_when};
     C_trimming() : Collection(&defs_) {}
     std::vector<Attribute*> GetKnownAttributes() override;
+    std::vector<const Attribute*> GetKnownAttributes() const override;
     static const std::map<AttrName, AttrDef> defs_;
   };
   SingleCollection<C_baling> baling{this, AttrName::baling};
@@ -336,6 +363,7 @@ struct IPP_EXPORT C_finishings_col : public Collection {
   SetOfCollections<C_trimming> trimming{this, AttrName::trimming};
   C_finishings_col() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_finishings_col C_finishings_col_actual;
@@ -350,6 +378,7 @@ struct IPP_EXPORT C_insert_sheet : public Collection {
   SingleCollection<C_media_col> media_col{this, AttrName::media_col};
   C_insert_sheet() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_insert_sheet C_insert_sheet_actual;
@@ -363,6 +392,7 @@ struct IPP_EXPORT C_job_accounting_sheets : public Collection {
   SingleCollection<C_media_col> media_col{this, AttrName::media_col};
   C_job_accounting_sheets() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_job_accounting_sheets C_job_accounting_sheets_actual;
@@ -382,6 +412,7 @@ struct IPP_EXPORT C_job_error_sheet : public Collection {
   SingleCollection<C_media_col> media_col{this, AttrName::media_col};
   C_job_error_sheet() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_job_error_sheet C_job_error_sheet_actual;
@@ -395,6 +426,7 @@ struct IPP_EXPORT C_job_sheets_col : public Collection {
   SingleCollection<C_media_col> media_col{this, AttrName::media_col};
   C_job_sheets_col() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_job_sheets_col C_job_sheets_col_actual;
@@ -508,6 +540,7 @@ struct IPP_EXPORT C_overrides : public Collection {
   SetOfValues<RangeOfInteger> pages{this, AttrName::pages};
   C_overrides() : Collection(&defs_) {}
   std::vector<Attribute*> GetKnownAttributes() override;
+  std::vector<const Attribute*> GetKnownAttributes() const override;
   static const std::map<AttrName, AttrDef> defs_;
 };
 typedef C_overrides C_overrides_actual;
