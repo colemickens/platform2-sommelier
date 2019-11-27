@@ -6,7 +6,7 @@
 
 """Wrapper for building the Chromium OS platform.
 
-Takes care of running GN/ninja/etc... with all the right values.
+Takes care of running gyp/ninja/etc... with all the right values.
 """
 
 from __future__ import print_function
@@ -144,7 +144,7 @@ class Platform2(object):
 
 
   def get_src_dir(self):
-    """Return the path to build tools and common GN files"""
+    """Return the path to build tools and common GYP files"""
     return os.path.realpath(os.path.dirname(__file__))
 
   def get_platform2_root(self):
@@ -191,7 +191,7 @@ class Platform2(object):
                                         allow_undefined=True)
 
   def get_build_environment(self):
-    """Returns a dict containing environment variables we will use to run GN.
+    """Returns a dict containing environment variables we will use to run GYP.
 
     We do this to set the various CC/CXX/AR names for the target board.
     """
@@ -212,6 +212,15 @@ class Platform2(object):
       env['%s_target' % var] = (board_env[var] if board_env[var] else \
                                 '%s-%s' % (board_env['CHOST'], tool))
 
+    # ToT GYP uses these environment variables directly when generating ninja
+    # files. Remove them from the environment used to run GYP to avoid
+    # targets ending up with flags they can't remove. These environment values
+    # are passed via external_*flags GYP variables.
+    env.pop('CFLAGS', None)
+    env.pop('CXXFLAGS', None)
+    env.pop('CPPFLAGS', None)
+    env.pop('LDFLAGS', None)
+
     return env
 
   def get_components_glob(self):
@@ -224,11 +233,8 @@ class Platform2(object):
     return glob.glob(os.path.join(self.get_products_path(),
                                   'gen/components_*'))
 
-  def can_use_gn(self):
-    """Returns true if GN can be used on configure.
-
-    All packages in platform2/ should be configured by GN.
-    """
+  def should_use_gn(self):
+    """Returns true if GN should be used on configure."""
     build_gn = os.path.join(self.get_platform2_root(), self.platform_subdir,
                             'BUILD.gn')
     return os.path.isfile(build_gn)
@@ -237,24 +243,20 @@ class Platform2(object):
     """Runs the configure step of the Platform2 build.
 
     Creates the build root if it doesn't already exists.  Then runs the
-    appropriate configure tool. Currenty only GN is supported.
+    appropriate configure tool (e.g. GYP, GN, etc...).
     """
-    assert self.can_use_gn()
-    # The args was used only for gyp.
-    # TODO(crbug.com/767517): remove code for handling args.
-    # There is a logic to in the platform eclass file, which detects a .gyp
-    # file under project root and passes it to here an arg.
-    if args:
-      print('Warning: Args for GYP was given. We will no longer use GYP. '
-            'Ignoring it and continuing configuration with GN.')
-
     if not os.path.isdir(self.get_buildroot()):
       os.makedirs(self.get_buildroot())
 
     if not self.incremental:
       osutils.RmDir(self.get_products_path(), ignore_missing=True)
 
-    self.configure_gn()
+    if self.should_use_gn():
+      # The args is only for gyp.
+      assert len(args) == 0 or (len(args) == 1 and '.gyp' in args[0])
+      self.configure_gn()
+    else:
+      self.configure_gyp(args)
 
   def gen_common_args(self, should_parse_shell_string):
     """Generates common arguments for the tools to configure as a dict.
@@ -282,6 +284,43 @@ class Platform2(object):
         'external_ldflags': flags(os.environ.get('LDFLAGS', '')),
     }
     return args
+
+  def configure_gyp(self, args):
+    """Configure with GYP.
+
+    Generates flags to run GYP with, and then runs GYP.
+    """
+    targets = [os.path.join(self.get_src_dir(), 'platform.gyp')]
+    if args:
+      targets = args
+
+    common_gyp = os.path.join(self.get_src_dir(), 'common.gypi')
+
+    # The common root folder of platform2/.
+    # Used as (DEPTH) variable in specific project .gyp files.
+    src_root = os.path.normpath(os.path.join(self.get_src_dir(), '..'))
+
+    # Do NOT pass the board name into GYP. If you think you need to so, you're
+    # probably doing it wrong.
+    gyp_args = ['gyp'] + targets + [
+        '--format=ninja',
+        '--include=%s' % common_gyp,
+        '--depth=%s' % src_root,
+        '--toplevel-dir=%s' % self.get_platform2_root(),
+        '--generator-output=%s' % self.get_buildroot(),
+    ]
+    common_args = self.gen_common_args(False)
+    for k, v in common_args.items():
+      if isinstance(v, bool):
+        v = int(v)
+      gyp_args.append('-D%s=%s' % (k, v))
+
+    # USE flags allow some chars that gyp does not, so normalize them.
+    gyp_args += ['-DUSE_%s=1' % (use_flag.replace('-', '_'),)
+                 for use_flag in self.use_flags]
+
+    cros_build_lib.RunCommand(gyp_args, env=self.get_build_environment(),
+                              cwd=self.get_platform2_root())
 
   def configure_gn(self):
     """Configure with GN.
@@ -350,7 +389,8 @@ class Platform2(object):
     for component in self.get_components_glob():
       os.remove(component)
 
-    args = ['%s:%s' % (self.platform_subdir, x) for x in args]
+    if self.should_use_gn():
+      args = ['%s:%s' % (self.platform_subdir, x) for x in args]
     ninja_args = ['ninja', '-C', self.get_products_path()]
     if self.jobs:
       ninja_args += ['-j', str(self.jobs)]
