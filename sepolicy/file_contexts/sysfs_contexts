@@ -63,4 +63,6 @@
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/scaling_setspeed   u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/sched/down_throttle_nsec u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/sched/up_throttle_nsec   u:object_r:sysfs:s0
+/sys/devices/system/cpu/cpufreq/policy[0-9]+/schedutil/down_rate_limit_us u:object_r:sysfs:s0
+/sys/devices/system/cpu/cpufreq/policy[0-9]+/schedutil/up_rate_limit_us u:object_r:sysfs:s0
 
