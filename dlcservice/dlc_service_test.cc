@@ -606,22 +606,11 @@ TEST_F(DlcServiceTest, PeriodCheckUpdateEngineInstallSignalRaceChecker) {
 
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
-  MessageLoopRunUntil(&loop_, base::TimeDelta::FromSeconds(kUECheckTimeout * 2),
+  MessageLoopRunUntil(&loop_, base::TimeDelta::FromSeconds(kUECheckTimeout * 5),
                       base::Bind([]() { return false; }));
 
-  // TODO(crbug.com/1028379): Update this test to make sure cleanup of DLC(s)
-  // being installed happens once a mechanism of verifying the validity of a
-  // |Operation::IDLE| from update_engine is completely true during an install.
-  // Currently the flow that it doesn't handle is:
-  // 1) DLCService starts an install
-  // 2) Update Engine performs the DLC install
-  // 3) DLCService period check kicks in
-  // 3.5) During DLCService's period check that asks for Update Engine status
-  //      synchronously, Update Engine sends a install completion signal, but
-  //      will run after the Periodic check.
-  // 4) Periodic check thinks Update Engine is in a bad state when it's not.
   for (const string& dlc_id : dlc_ids)
-    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+    EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
 }
 
 }  // namespace dlcservice

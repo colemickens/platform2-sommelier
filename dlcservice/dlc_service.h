@@ -71,9 +71,14 @@ class DlcService {
   // when update_engine's install is complete it will return true.
   bool HandleStatusResult(const update_engine::StatusResult& status_result);
 
-  // The period checker that runs as a delayed task that checks update_engine
+  // The periodic check that runs as a delayed task that checks update_engine
   // status during an install to make sure update_engine is active.
-  void PeriodicUECheckDuringInstall();
+  void PeriodicInstallCheck();
+
+  // Schedules the method |PeriodicInstallCheck()| to be ran at a later time,
+  // taking as an argument a boolean |retry| that determines a once retry when
+  // update_engine indicates an idle status while dlcservice expects an install.
+  void SchedulePeriodicInstallCheck(bool retry);
 
   // Creates the necessary directories and images for DLC installation. Will set
   // |path| to the top DLC directory for cleanup scoping.
@@ -118,7 +123,13 @@ class DlcService {
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;
 
+  // Holds the ML task id of the delayed |PeriodicInstallCheck()| if an install
+  // is in progress.
   brillo::MessageLoop::TaskId scheduled_period_ue_check_id_;
+
+  // Indicates whether a retry to check update_engine's status during an install
+  // needs to happen to make sure the install completion signal is not lost.
+  bool scheduled_period_ue_check_retry_ = false;
 
   // DLC modules being installed. An empty module infos signifies no install.
   DlcModuleList dlc_modules_being_installed_;
