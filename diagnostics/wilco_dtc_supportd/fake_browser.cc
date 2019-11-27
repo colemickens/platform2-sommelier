@@ -14,7 +14,7 @@
 #include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/buffer.h>
 
-#include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
+#include "diagnostics/common/mojo_utils.h"
 
 namespace diagnostics {
 

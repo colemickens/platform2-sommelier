@@ -23,6 +23,7 @@ group("all") {
       ":libtelem_test",
       ":routine_test",
       ":wilco_dtc_supportd_test",
+      "//diagnostics/common:libcommon_test",
       "//diagnostics/grpc_async_adapter:libgrpc_async_adapter_test",
     ]
   }
@@ -179,6 +180,7 @@ source_set("libwilco_dtc_supportd") {
   deps = [
     ":diagnostics_mojo_bindings",
     ":libdiag_routine",
+    "//diagnostics/common:libcommon",
     "//diagnostics/constants:libconstants",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
     "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
@@ -187,7 +189,6 @@ source_set("libwilco_dtc_supportd") {
   sources = [
     "wilco_dtc_supportd/ec_constants.cc",
     "wilco_dtc_supportd/json_utils.cc",
-    "wilco_dtc_supportd/mojo_utils.cc",
     "wilco_dtc_supportd/routine_factory_impl.cc",
     "wilco_dtc_supportd/routine_service.cc",
     "wilco_dtc_supportd/system/bluetooth_client.cc",
@@ -390,7 +391,7 @@ if (use.test) {
     deps = [
       ":libcros_healthd_utils",
       "../common-mk/testrunner:testrunner",
-      "common:libcommon",
+      "//diagnostics/common:libcommon",
     ]
     sources = [
       "cros_healthd/utils/battery_utils_test.cc",
@@ -414,7 +415,7 @@ if (use.test) {
     deps = [
       ":libwilco_dtc_supportd",
       "../common-mk/testrunner:testrunner",
-      "common:libcommon",
+      "//diagnostics/common:libcommon",
     ]
     sources = [
       "wilco_dtc_supportd/ec_constants_test.cc",
@@ -423,7 +424,6 @@ if (use.test) {
       "wilco_dtc_supportd/fake_wilco_dtc.cc",
       "wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.cc",
       "wilco_dtc_supportd/mojo_test_utils.cc",
-      "wilco_dtc_supportd/mojo_utils_test.cc",
       "wilco_dtc_supportd/routine_service_test.cc",
       "wilco_dtc_supportd/system/bluetooth_client_impl_test.cc",
       "wilco_dtc_supportd/system/debugd_adapter_impl_test.cc",
@@ -482,7 +482,7 @@ if (use.test) {
     deps = [
       ":libtelem",
       "../common-mk/testrunner:testrunner",
-      "common:libcommon",
+      "//diagnostics/common:libcommon",
     ]
     sources = [
       "telem/battery_utils_test.cc",
@@ -508,7 +508,7 @@ if (use.test) {
     deps = [
       ":libdiag_routine",
       "../common-mk/testrunner:testrunner",
-      "common:libcommon",
+      "//diagnostics/common:libcommon",
     ]
     sources = [
       "routines/battery/battery_test.cc",

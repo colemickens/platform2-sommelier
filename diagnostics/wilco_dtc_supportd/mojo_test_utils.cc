@@ -16,7 +16,7 @@
 #include <base/logging.h>
 #include <base/memory/shared_memory.h>
 #include <base/posix/eintr_wrapper.h>
-#include <diagnostics/wilco_dtc_supportd/mojo_utils.h>
+#include <diagnostics/common/mojo_utils.h>
 
 namespace diagnostics {
 
