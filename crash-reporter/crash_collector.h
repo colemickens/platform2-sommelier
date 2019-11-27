@@ -16,6 +16,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/dbus/file_descriptor.h>
@@ -246,12 +247,11 @@ class CrashCollector {
 
   bool GetUserCrashDirectories(std::vector<base::FilePath>* directories);
   base::FilePath GetUserCrashDirectory();
-  base::FilePath GetCrashDirectoryInfo(uid_t process_euid,
-                                       uid_t default_user_id,
-                                       gid_t default_user_group,
-                                       mode_t* mode,
-                                       uid_t* directory_owner,
-                                       gid_t* directory_group);
+  base::Optional<base::FilePath> GetCrashDirectoryInfo(uid_t process_euid,
+                                                       uid_t default_user_id,
+                                                       mode_t* mode,
+                                                       uid_t* directory_owner,
+                                                       gid_t* directory_group);
 
   // Determines the crash directory for given euid, and creates the
   // directory if necessary with appropriate permissions.  If

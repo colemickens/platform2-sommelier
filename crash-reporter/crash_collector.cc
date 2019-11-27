@@ -64,7 +64,8 @@ const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
 const char kLsbOsDescriptionKey[] = "CHROMEOS_RELEASE_DESCRIPTION";
 
 // Directory mode of the user crash spool directory.
-const mode_t kUserCrashPathMode = 0700;
+// This is SGID so that files created in it are also accessible to the group.
+const mode_t kUserCrashPathMode = 02770;
 
 // Directory mode of the system crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
@@ -79,6 +80,7 @@ constexpr mode_t kCrashReporterStateDirectoryMode = 0700;
 
 constexpr gid_t kRootGroup = 0;
 constexpr char kCrashGroupName[] = "crash-access";
+constexpr char kCrashUserGroupName[] = "crash-user-access";
 
 // Directory mode of /run/metrics/external/crash-reporter. Anyone in "metrics"
 // group can read/write, and not readable by any other user.
@@ -707,12 +709,12 @@ FilePath CrashCollector::GetUserCrashDirectory() {
   return user_directory;
 }
 
-FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
-                                               uid_t default_user_id,
-                                               gid_t default_user_group,
-                                               mode_t* mode,
-                                               uid_t* directory_owner,
-                                               gid_t* directory_group) {
+base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
+    uid_t process_euid,
+    uid_t default_user_id,
+    mode_t* mode,
+    uid_t* directory_owner,
+    gid_t* directory_group) {
   // User crashes should go into the cryptohome, since they may contain PII.
   // For system crashes, there may not be a cryptohome mounted, so we use the
   // system crash path.
@@ -720,13 +722,17 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
       crash_directory_selection_method_ == kAlwaysUseUserCrashDirectory) {
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
-    *directory_group = default_user_group;
+    if (!brillo::userdb::GetGroupInfo(kCrashUserGroupName, directory_group)) {
+      PLOG(ERROR) << "Couldn't look up group " << kCrashUserGroupName;
+      return base::nullopt;
+    }
     return GetUserCrashDirectory();
   } else {
     *mode = kSystemCrashDirectoryMode;
     *directory_owner = kRootUid;
     if (!brillo::userdb::GetGroupInfo(kCrashGroupName, directory_group)) {
-      PLOG(FATAL) << "Couldn't look up group " << kCrashGroupName;
+      PLOG(ERROR) << "Couldn't look up group " << kCrashGroupName;
+      return base::nullopt;
     }
     return system_crash_path_;
   }
@@ -735,10 +741,6 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
 bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
                                                     FilePath* crash_directory,
                                                     bool* out_of_capacity) {
-  base::FilePath full_path;
-  uid_t default_user_id;
-  gid_t default_user_group;
-
   if (out_of_capacity)
     *out_of_capacity = false;
 
@@ -755,17 +757,23 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
     return true;
   }
 
+  uid_t default_user_id;
   if (!brillo::userdb::GetUserInfo(kDefaultUserName, &default_user_id,
-                                   &default_user_group)) {
+                                   nullptr)) {
     LOG(ERROR) << "Could not find default user info";
     return false;
   }
+
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
-  full_path = GetCrashDirectoryInfo(euid, default_user_id, default_user_group,
-                                    &directory_mode, &directory_owner,
-                                    &directory_group);
+  base::Optional<base::FilePath> maybe_path =
+      GetCrashDirectoryInfo(euid, default_user_id, &directory_mode,
+                            &directory_owner, &directory_group);
+  if (!maybe_path) {
+    return false;
+  }
+  base::FilePath full_path = *maybe_path;
 
   // Note: We "leak" dirfd to children so the /proc symlink below stays valid
   // in their own context.  We can't pass other /proc paths as they might not
@@ -774,6 +782,7 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   int dirfd;
   if (!CreateDirectoryWithSettings(full_path, directory_mode, directory_owner,
                                    directory_group, &dirfd)) {
+    LOG(ERROR) << "CreateDirectory failed";
     return false;
   }
 

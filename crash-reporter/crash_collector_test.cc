@@ -578,26 +578,28 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   const int kRootUid = 0;
   const int kNtpUid = 5;
   const int kChronosUid = 1000;
-  const int kChronosGid = 1001;
   const int kCrashAccessGid = 419;
+  const int kCrashUserAccessGid = 420;
   const mode_t kExpectedSystemMode = 02770;
-  const mode_t kExpectedUserMode = 0700;
+  const mode_t kExpectedUserMode = 02770;
 
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
 
-  path = collector_.GetCrashDirectoryInfo(kRootUid, kChronosUid, kChronosGid,
-                                          &directory_mode, &directory_owner,
-                                          &directory_group);
+  path = collector_
+             .GetCrashDirectoryInfo(kRootUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+             .value();
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kCrashAccessGid, directory_group);
 
-  path = collector_.GetCrashDirectoryInfo(kNtpUid, kChronosUid, kChronosGid,
-                                          &directory_mode, &directory_owner,
-                                          &directory_group);
+  path = collector_
+             .GetCrashDirectoryInfo(kNtpUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+             .value();
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
@@ -607,14 +609,15 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   test_util::SetActiveSessions(mock, {{"user", "hashcakes"}});
   collector_.session_manager_proxy_.reset(mock);
 
-  path = collector_.GetCrashDirectoryInfo(kChronosUid, kChronosUid, kChronosGid,
-                                          &directory_mode, &directory_owner,
-                                          &directory_group);
+  path = collector_
+             .GetCrashDirectoryInfo(kChronosUid, kChronosUid, &directory_mode,
+                                    &directory_owner, &directory_group)
+             .value();
   EXPECT_EQ(test_dir_.Append("home/user/hashcakes/crash").value(),
             path.value());
   EXPECT_EQ(kExpectedUserMode, directory_mode);
   EXPECT_EQ(kChronosUid, directory_owner);
-  EXPECT_EQ(kChronosGid, directory_group);
+  EXPECT_EQ(kCrashUserAccessGid, directory_group);
 }
 
 TEST_F(CrashCollectorTest, FormatDumpBasename) {
