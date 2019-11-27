@@ -286,6 +286,7 @@ class DlcServiceUtil : public brillo::Daemon {
         std::cout << "squashfs" << std::endl;
         break;
     }
+    std::cout << "\tdlc_path: " << dlc_path.value() << std::endl;
     return true;
   }
 
