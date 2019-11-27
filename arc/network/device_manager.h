@@ -73,6 +73,9 @@ class DeviceManager : public DeviceManagerBase {
                 HelperProcess* nd_proxy = nullptr);
   virtual ~DeviceManager();
 
+  // Provided as part of DeviceManager for testing.
+  virtual bool IsMulticastInterface(const std::string& ifname) const;
+
   // Used by guest service implementations to be notified when tracked devices
   // are updated.
   void RegisterDeviceAddedHandler(GuestMessage::GuestType guest,

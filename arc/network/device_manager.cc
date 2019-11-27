@@ -59,34 +59,6 @@ bool IsWifiInterface(const std::string& ifname) {
   return false;
 }
 
-bool IsMulticastInterface(const std::string& ifname) {
-  if (ifname.empty()) {
-    return false;
-  }
-
-  int fd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (fd < 0) {
-    // If IPv4 fails, try to open a socket using IPv6.
-    fd = socket(AF_INET6, SOCK_DGRAM, 0);
-    if (fd < 0) {
-      LOG(ERROR) << "Unable to create socket";
-      return false;
-    }
-  }
-
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
-  if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
-    PLOG(ERROR) << "SIOCGIFFLAGS failed for " << ifname;
-    close(fd);
-    return false;
-  }
-
-  close(fd);
-  return (ifr.ifr_flags & IFF_MULTICAST);
-}
-
 }  // namespace
 
 DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
@@ -125,6 +97,34 @@ DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
 DeviceManager::~DeviceManager() {
   shill_client_->UnregisterDevicesChangedHandler();
   shill_client_->UnregisterDefaultInterfaceChangedHandler();
+}
+
+bool DeviceManager::IsMulticastInterface(const std::string& ifname) const {
+  if (ifname.empty()) {
+    return false;
+  }
+
+  int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0) {
+    // If IPv4 fails, try to open a socket using IPv6.
+    fd = socket(AF_INET6, SOCK_DGRAM, 0);
+    if (fd < 0) {
+      LOG(ERROR) << "Unable to create socket";
+      return false;
+    }
+  }
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+    PLOG(ERROR) << "SIOCGIFFLAGS failed for " << ifname;
+    close(fd);
+    return false;
+  }
+
+  close(fd);
+  return (ifr.ifr_flags & IFF_MULTICAST);
 }
 
 void DeviceManager::RegisterDeviceAddedHandler(GuestMessage::GuestType guest,

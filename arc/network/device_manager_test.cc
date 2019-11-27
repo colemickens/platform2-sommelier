@@ -26,6 +26,23 @@ namespace arc_networkd {
 
 namespace {
 
+class MockDeviceManager : public DeviceManager {
+ public:
+  MockDeviceManager(std::unique_ptr<ShillClient> shill_client,
+                    AddressManager* addr_mgr,
+                    Datapath* datapath,
+                    HelperProcess* mcast_proxy,
+                    HelperProcess* nd_proxy = nullptr)
+      : DeviceManager(std::move(shill_client),
+                      addr_mgr,
+                      datapath,
+                      mcast_proxy,
+                      nd_proxy) {}
+  ~MockDeviceManager() = default;
+
+  MOCK_CONST_METHOD1(IsMulticastInterface, bool(const std::string& ifname));
+};
+
 class FakeAddressManager : public AddressManager {
  public:
   FakeAddressManager()
@@ -60,14 +77,14 @@ class DeviceManagerTest : public testing::Test {
     base::RunLoop().RunUntilIdle();
   }
 
-  std::unique_ptr<DeviceManager> NewManager() {
+  std::unique_ptr<MockDeviceManager> NewManager() {
     shill_helper_ = std::make_unique<FakeShillClientHelper>();
     auto shill_client = shill_helper_->FakeClient();
     shill_client_ = shill_client.get();
 
-    auto mgr = std::make_unique<DeviceManager>(std::move(shill_client),
-                                               &addr_mgr_, datapath_.get(),
-                                               dummy_mcast_proxy_.get());
+    auto mgr = std::make_unique<MockDeviceManager>(std::move(shill_client),
+                                                   &addr_mgr_, datapath_.get(),
+                                                   dummy_mcast_proxy_.get());
     return mgr;
   }
 
@@ -222,6 +239,37 @@ TEST_F(DeviceManagerTest, PreviousDevicesRemoved) {
     EXPECT_TRUE(mgr->Exists("eth1"));
     EXPECT_FALSE(mgr->Exists("wlan0"));
   }
+}
+
+TEST_F(DeviceManagerTest, MakeDeviceNonAndroid_CheckMulticast) {
+  auto mgr = NewManager();
+
+  EXPECT_CALL(*mgr, IsMulticastInterface("dev0")).WillOnce(Return(true));
+  auto dev0 = mgr->MakeDevice("dev0");
+  EXPECT_TRUE(dev0->options().fwd_multicast);
+  dev0.reset();
+
+  EXPECT_CALL(*mgr, IsMulticastInterface("dev1")).WillOnce(Return(false));
+  auto dev1 = mgr->MakeDevice("dev1");
+  EXPECT_FALSE(dev1->options().fwd_multicast);
+  dev1.reset();
+}
+
+TEST_F(DeviceManagerTest, MakeDeviceAndroid_CheckMulticast) {
+  auto mgr = NewManager();
+  EXPECT_CALL(*mgr, IsMulticastInterface(_)).Times(0);
+
+  auto arc0 = mgr->MakeDevice(kAndroidDevice);
+  EXPECT_FALSE(arc0->options().fwd_multicast);
+  arc0.reset();
+
+  auto android = mgr->MakeDevice(kAndroidLegacyDevice);
+  EXPECT_TRUE(android->options().fwd_multicast);
+  android.reset();
+
+  auto arcvm = mgr->MakeDevice(kAndroidVmDevice);
+  EXPECT_TRUE(arcvm->options().fwd_multicast);
+  arcvm.reset();
 }
 
 }  // namespace arc_networkd
