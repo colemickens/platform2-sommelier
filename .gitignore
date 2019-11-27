@@ -65,3 +65,6 @@ target/
 
 # Intellij project dirs
 .idea
+
+# clangd cache dir
+.clangd
