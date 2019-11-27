@@ -241,6 +241,8 @@ bool ArcVm::Start(base::FilePath kernel,
 
   if (!process_.Start()) {
     LOG(ERROR) << "Failed to start VM process";
+    // Release any network resources.
+    network_client_->NotifyArcVmShutdown(vsock_cid_);
     return false;
   }
 
@@ -248,6 +250,13 @@ bool ArcVm::Start(base::FilePath kernel,
 }
 
 bool ArcVm::Shutdown() {
+  // Notify arc-networkd that ARCVM is down.
+  // This should run before the process existence check below since we still
+  // want to release the network resources on crash.
+  if (!network_client_->NotifyArcVmShutdown(vsock_cid_)) {
+    LOG(WARNING) << "Unable to notify networking services";
+  }
+
   // Do a sanity check here to make sure the process is still around.  It may
   // have crashed and we don't want to be waiting around for an RPC response
   // that's never going to come.  kill with a signal value of 0 is explicitly
@@ -259,11 +268,6 @@ bool ArcVm::Shutdown() {
   }
 
   LOG(INFO) << "Shutting down ARCVM";
-
-  // Notify arc-networkd that ARCVM is down.
-  if (!network_client_->NotifyArcVmShutdown(vsock_cid_)) {
-    LOG(WARNING) << "Unable to notify networking services";
-  }
 
   // Ask arc-powerctl running on the guest to power off the VM.
   // TODO(yusukes): We should call ShutdownArcVm() only after the guest side
