@@ -17,6 +17,4 @@ filetrans_pattern(cros_periodic_scheduler, cros_var_spool, cros_periodic_schedul
 allow cros_periodic_scheduler cros_periodic_scheduler_cache_t:file create_file_perms;
 allow cros_periodic_scheduler cros_periodic_scheduler_cache_t:dir create_dir_perms;
 
-# TODO(fqj): use audit log to find out non-init executing periodic_scheduler
-domain_auto_trans(chromeos_domain, cros_periodic_scheduler_exec, cros_periodic_scheduler);
-auditallow { chromeos_domain -cros_init } cros_periodic_scheduler_exec:file execute;
+domain_auto_trans({ cros_init cros_init_scripts }, cros_periodic_scheduler_exec, cros_periodic_scheduler);
