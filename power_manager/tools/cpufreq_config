@@ -192,3 +192,8 @@ if [ "${CPUFREQ_GOVERNOR}" = "interactive" ]; then
 elif [ "${CPUFREQ_GOVERNOR}" = "ondemand" ]; then
   cpufreq_config_ondemand
 fi
+
+# Set SELinux contexts for the newly created files (if any)
+if [ -f /sys/fs/selinux/enforce ]; then
+  /sbin/restorecon -R "${CPUFREQ_DIR}"
+fi
