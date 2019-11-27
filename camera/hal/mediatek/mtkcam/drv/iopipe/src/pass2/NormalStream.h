@@ -248,6 +248,12 @@ class VISIBILITY_PUBLIC NormalStream : public INormalStream,
                                     IImageBuffer* dst_buffer,
                                     IImageBuffer* src_buffer);
   virtual MBOOL _is_single_output(int streamTag);
+  virtual status_t _set_format_and_buffers(int port,
+                                           MINT img_fmt,
+                                           MSize img_size,
+                                           size_t plane_num,
+                                           MINT32 color_profile = -1,
+                                           MINT32 sensor_order = -1);
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  Variables.

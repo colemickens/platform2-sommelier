@@ -25,6 +25,7 @@
 #include <utility>
 #include <cutils/compiler.h>
 
+using NSCam::eCOLORPROFILE_UNKNOWN;
 using NSCam::v4l2::FramePackage;
 using NSCam::v4l2::NormalStream;
 
@@ -337,6 +338,44 @@ status_t NormalStream::_applyPortPolicy(MSize img_size,
 
 MBOOL NormalStream::_is_swap_width_height(int transform) {
   return (transform & eTransform_ROT_90) || (transform & eTransform_ROT_270);
+}
+
+status_t NormalStream::_set_format_and_buffers(int port,
+                                               MINT img_fmt,
+                                               MSize img_size,
+                                               size_t plane_num,
+                                               MINT32 color_profile,
+                                               MINT32 sensor_order) {
+  LOGI("+");
+  status_t status = NO_ERROR;
+  MINT32 color_pf = eCOLORPROFILE_UNKNOWN;
+  MINT32 color_order = 0;
+  MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+  MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+  std::shared_ptr<V4L2StreamNode> node;
+  if (color_profile >= 0)
+    color_pf = color_profile;
+  if (sensor_order >= 0)
+    color_order = sensor_order;
+  IImageBufferAllocator::ImgParam imgParam(img_fmt, img_size, bufStridesInBytes,
+                                           bufBoundaryInBytes, plane_num,
+                                           color_pf, color_order);
+  status = validNode(port, &node);
+  if (status != NO_ERROR) {
+    LOGE("Fail to validNode, s=%d, p=%d", mStreamTag, port);
+    return status;
+  }
+  status = node->setBufFormat(&imgParam);
+  if (status != NO_ERROR) {
+    LOGE("setBufFormat failed, s=%d, p=%d", mStreamTag, port);
+    return status;
+  }
+  status = node->setupBuffers();
+  if (status != NO_ERROR) {
+    LOGE("setupBuffers failed, s=%d, p=%d", mStreamTag, port);
+    return status;
+  }
+  return OK;
 }
 
 status_t NormalStream::_find_format_and_erase(MSize img_size,
@@ -894,6 +933,13 @@ NormalStream::uninit(char const* szCallerName) {
 /******************************************************************************
  *
  ******************************************************************************/
+typedef enum {
+  NONE_CROP_GROUP = 0,
+  IMG2O_CROP_GROUP,
+  WDMAO_CROP_GROUP,
+  WROTO_CROP_GROUP
+} CROP_GROUP_ENUM;
+
 MBOOL
 NormalStream::enque(QParams* pParams) {
   LOGI("+");
@@ -937,11 +983,9 @@ NormalStream::enque(QParams* pParams) {
 
       if (it->mvIn[i].mPortID.index == NSImageio::NSIspio::EPortIndex_IMGCI) {
         lsc_buffer = it->mvIn[i].mBuffer;
-        LOGD("IMGCI enqued");
       } else if (it->mvIn[i].mPortID.index ==
                  NSImageio::NSIspio::EPortIndex_LCEI) {
         lce_buffer = it->mvIn[i].mBuffer;
-        LOGD("LCEI enqued");
       } else if (it->mvIn[i].mPortID.index ==
                  NSImageio::NSIspio::EPortIndex_DEPI) {
         LOGD("DEPI enqued");
@@ -949,7 +993,6 @@ NormalStream::enque(QParams* pParams) {
         if (it->mvIn[i].mPortID.index ==
             NSImageio::NSIspio::EPortIndex_TUNING) {
           tuning_buffer = it->mvIn[i].mBuffer;
-          LOGD("tuning buffer enqued");
         } else if (it->mvIn[i].mPortID.index ==
                    NSImageio::NSIspio::EPortIndex_IMGI) {
           imgi_w = it->mvIn[i].mBuffer->getImgSize().w;
@@ -958,31 +1001,18 @@ NormalStream::enque(QParams* pParams) {
                    NSImageio::NSIspio::EPortIndex_VIPI) {
           vipi_enqued = true;
         }
-
         // Dynamic Link
         if (mFirstFrame && it == pParams->mvFrameParams.begin()) {
           unstarted_node_num++;
           if (it->mvIn[i].mPortID.index !=
               NSImageio::NSIspio::EPortIndex_TUNING) {
-            if (!node->isPrepared()) {
-              MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
-              MUINT32 bufStridesInBytes[3] = {0, 0, 0};
-              IImageBufferAllocator::ImgParam imgParam(
+            if (!node->isPrepared())
+              _set_format_and_buffers(
+                  it->mvIn[i].mPortID.index,
                   it->mvIn[i].mBuffer->getImgFormat(),
-                  it->mvIn[i].mBuffer->getImgSize(), bufStridesInBytes,
-                  bufBoundaryInBytes, 1, it->mvIn[i].mBuffer->getColorProfile(),
+                  it->mvIn[i].mBuffer->getImgSize(), 1,
+                  it->mvIn[i].mBuffer->getColorProfile(),
                   it->mvIn[i].mBuffer->getColorArrangement());
-              status = node->setBufFormat(&imgParam);
-              if (status != NO_ERROR) {
-                LOGE("setBufFormat failed, %d", it->mvIn[i].mPortID.index);
-                return MFALSE;
-              }
-              status = node->setupBuffers();
-              if (status != NO_ERROR) {
-                LOGE("setupBuffers failed, %d", it->mvIn[i].mPortID.index);
-                return MFALSE;
-              }
-            }
           }
           // remove info in mPortIdxToFmt
           auto search = mPortIdxToFmt.find(it->mvIn[i].mPortID.index);
@@ -1009,8 +1039,6 @@ NormalStream::enque(QParams* pParams) {
           } else {
             if (it->mvIn[i].mPortID.index !=
                 NSImageio::NSIspio::EPortIndex_TUNING) {
-              LOGD("Cannot find config in mPortIdxToFmt for port: %d",
-                   it->mvIn[i].mPortID.index);
               _find_format_and_erase(it->mvIn[i].mBuffer->getImgSize(),
                                      it->mvIn[i].mBuffer->getImgFormat(),
                                      it->mvIn[i].mTransform,
@@ -1032,41 +1060,22 @@ NormalStream::enque(QParams* pParams) {
       }
     }
 
-    //--------------------------------------------------------
     if (mStreamTag == NSCam::v4l2::ENormalStreamTag_3DNR && mFirstFrame &&
-        it == pParams->mvFrameParams.begin() && vipi_enqued == false) {
+        vipi_enqued == false && it == pParams->mvFrameParams.begin()) {
+      int p_vipi = NSImageio::NSIspio::EPortIndex_VIPI;
       std::shared_ptr<V4L2StreamNode> node;
-      status = validNode(NSImageio::NSIspio::EPortIndex_VIPI, &node);
+      status = validNode(p_vipi, &node);
       if (status != NO_ERROR) {
-        LOGE("Fail to validNode, port = %d",
-             NSImageio::NSIspio::EPortIndex_VIPI);
+        LOGE("Fail to validNode, port = %d", p_vipi);
         return MFALSE;
       }
-
       if (!node->isPrepared() && imgi_w > 0 && imgi_h > 0) {
-        MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
-        MUINT32 bufStridesInBytes[3] = {0, 0, 0};
-
-        IImageBufferAllocator::ImgParam imgParam(
-            eImgFmt_YV12, MSize(imgi_w, imgi_h), bufStridesInBytes,
-            bufBoundaryInBytes, 1);
-
-        status = node->setBufFormat(&imgParam);
-        if (status != NO_ERROR) {
-          LOGE("setBufFormat failed, %d", NSImageio::NSIspio::EPortIndex_VIPI);
-          return MFALSE;
-        }
-        status = node->setupBuffers();
-        if (status != NO_ERROR) {
-          LOGE("setupBuffers failed, %d", NSImageio::NSIspio::EPortIndex_VIPI);
-          return MFALSE;
-        }
-        auto search = mPortIdxToFmt.find(NSImageio::NSIspio::EPortIndex_VIPI);
+        _set_format_and_buffers(p_vipi, eImgFmt_YV12, MSize(imgi_w, imgi_h), 1);
+        auto search = mPortIdxToFmt.find(p_vipi);
         if (search != mPortIdxToFmt.end())
           mPortIdxToFmt.erase(search);
       }
     }
-    //-------------------------------------------------------------
 
     // set or clear LSC header and copy LSC data buffer
     if (tuning_buffer) {
@@ -1076,12 +1085,11 @@ NormalStream::enque(QParams* pParams) {
                        lce_buffer);
     }
 
-    LOGD("total un-started input nodes = %d", unstarted_node_num);
-
     for (size_t i = 0; i < it->mvOut.size(); ++i) {
       BufInfo buf = {};
       std::shared_ptr<V4L2StreamNode> node;
       int p_idx = it->mvOut[i].mPortID.index;
+      int c_gid;
       int p_sel_wdmao = NSImageio::NSIspio::EPortIndex_UNKNOWN;
       int p_sel_wroto = NSImageio::NSIspio::EPortIndex_UNKNOWN;
 
@@ -1116,23 +1124,38 @@ NormalStream::enque(QParams* pParams) {
         }
       }
 
-      for (size_t j = 0; j < it->mvCropRsInfo.size(); ++j) {
-        if ((it->mvCropRsInfo[j].mGroupID == 1 &&
-             it->mvOut[i].mPortID.index ==
-                 NSImageio::NSIspio::EPortIndex_IMG2O) ||
-            (it->mvCropRsInfo[j].mGroupID == 2 &&
-             p_idx == NSImageio::NSIspio::EPortIndex_WDMAO) ||
-            (it->mvCropRsInfo[j].mGroupID == 3 &&
-             p_idx == NSImageio::NSIspio::EPortIndex_WROTO)) {
-          buf.FrameBased.mResizeDst = it->mvCropRsInfo[j].mResizeDst;
-          buf.FrameBased.mCropRect = it->mvCropRsInfo[j].mCropRect;
-          buf.FrameBased.mCropRect.w_fractional = V4L2StreamNode::PAD_MDP0;
-          buf.FrameBased.mCropRect.h_fractional = V4L2StreamNode::PAD_MDP1;
-          LOGI("mCropRect: %d, %d, %d, %d",
-               buf.FrameBased.mCropRect.p_integral.x,
-               buf.FrameBased.mCropRect.p_integral.y,
-               buf.FrameBased.mCropRect.s.w, buf.FrameBased.mCropRect.s.h);
+      switch (it->mvOut[i].mPortID.index) {
+        case NSImageio::NSIspio::EPortIndex_IMG2O:
+          c_gid = IMG2O_CROP_GROUP;
           break;
+        case NSImageio::NSIspio::EPortIndex_WDMAO:
+          c_gid = WDMAO_CROP_GROUP;
+          break;
+        case NSImageio::NSIspio::EPortIndex_WROTO:
+          c_gid = WROTO_CROP_GROUP;
+          break;
+        default:
+          c_gid = NONE_CROP_GROUP;
+          break;
+      }
+
+      if (c_gid != NONE_CROP_GROUP) {
+        for (size_t j = 0; j < it->mvCropRsInfo.size(); ++j) {
+          if (it->mvCropRsInfo[j].mGroupID == c_gid) {
+            buf.FrameBased.mResizeDst = it->mvCropRsInfo[j].mResizeDst;
+            buf.FrameBased.mCropRect = it->mvCropRsInfo[j].mCropRect;
+            buf.FrameBased.mCropRect.w_fractional = V4L2StreamNode::PAD_MDP0;
+            buf.FrameBased.mCropRect.h_fractional = V4L2StreamNode::PAD_MDP1;
+            if ((buf.FrameBased.mResizeDst.w !=
+                 it->mvOut[i].mBuffer->getImgSize().w) ||
+                (buf.FrameBased.mResizeDst.h !=
+                 it->mvOut[i].mBuffer->getImgSize().h))
+              LOGW("Invalid Dest Crop: (%d, %d), (%d, %d)",
+                   it->mvOut[i].mBuffer->getImgSize().w,
+                   it->mvOut[i].mBuffer->getImgSize().h,
+                   buf.FrameBased.mResizeDst.w, buf.FrameBased.mResizeDst.h);
+            break;
+          }
         }
       }
 
@@ -1146,24 +1169,10 @@ NormalStream::enque(QParams* pParams) {
       if (mFirstFrame && it == pParams->mvFrameParams.begin()) {
         unstarted_node_num++;
 
-        if (!node->isPrepared()) {
-          MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
-          MUINT32 bufStridesInBytes[3] = {0, 0, 0};
-          IImageBufferAllocator::ImgParam imgParam(
-              it->mvOut[i].mBuffer->getImgFormat(),
-              it->mvOut[i].mBuffer->getImgSize(), bufStridesInBytes,
-              bufBoundaryInBytes, 1, it->mvOut[i].mBuffer->getColorProfile());
-          status = node->setBufFormat(&imgParam);
-          if (status != NO_ERROR) {
-            LOGE("setBufFormat failed, %d", p_idx);
-            return MFALSE;
-          }
-          status = node->setupBuffers();
-          if (status != NO_ERROR) {
-            LOGE("setupBuffers failed, %d", p_idx);
-            return MFALSE;
-          }
-        }
+        if (!node->isPrepared())
+          _set_format_and_buffers(p_idx, it->mvOut[i].mBuffer->getImgFormat(),
+                                  it->mvOut[i].mBuffer->getImgSize(), 1,
+                                  it->mvOut[i].mBuffer->getColorProfile());
 
         if (mStreamTag != NSCam::v4l2::ENormalStreamTag_Cap_S) {
           // remove info in mPortIdxToFmt
@@ -1188,7 +1197,6 @@ NormalStream::enque(QParams* pParams) {
               }
             }
           } else {
-            LOGD("Cannot find config in mPortIdxToFmt for port: %d", p_idx);
             _find_format_and_erase(it->mvOut[i].mBuffer->getImgSize(),
                                    it->mvOut[i].mBuffer->getImgFormat(),
                                    it->mvOut[i].mTransform, p_idx);
@@ -1242,48 +1250,28 @@ NormalStream::enque(QParams* pParams) {
       if (check == mFmtKeyToNode.end())
         mFmtKeyToNode.insert(std::make_pair(port_idx, node));
     }
-    LOGD("total un-started all nodes = %d", unstarted_node_num);
-
-    //---------------------------------------------------------------------
+    //---
     if (mStreamTag == NSCam::v4l2::ENormalStreamTag_3DNR && mFirstFrame &&
-        it == pParams->mvFrameParams.begin() && img3o_enqued == false) {
+        img3o_enqued == false && it == pParams->mvFrameParams.begin()) {
+      int p_img3o = NSImageio::NSIspio::EPortIndex_IMG3O;
       std::shared_ptr<V4L2StreamNode> node;
-      status = validNode(NSImageio::NSIspio::EPortIndex_IMG3O, &node);
+      status = validNode(p_img3o, &node);
       if (status != NO_ERROR) {
-        LOGE("Fail to validNode, port = %d",
-             NSImageio::NSIspio::EPortIndex_IMG3O);
+        LOGE("Fail to validNode, port = %d", p_img3o);
         return MFALSE;
       }
 
       if (!node->isPrepared() && imgi_w > 0 && imgi_h > 0) {
-        MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
-        MUINT32 bufStridesInBytes[3] = {0, 0, 0};
-
-        IImageBufferAllocator::ImgParam imgParam(
-            eImgFmt_YV12, MSize(imgi_w, imgi_h), bufStridesInBytes,
-            bufBoundaryInBytes, 1);
-
-        status = node->setBufFormat(&imgParam);
-        if (status != NO_ERROR) {
-          LOGE("setBufFormat failed, %d", NSImageio::NSIspio::EPortIndex_IMG3O);
-          return MFALSE;
-        }
-        status = node->setupBuffers();
-        if (status != NO_ERROR) {
-          LOGE("setupBuffers failed, %d", NSImageio::NSIspio::EPortIndex_IMG3O);
-          return MFALSE;
-        }
-        //---
-        auto search = mPortIdxToFmt.find(NSImageio::NSIspio::EPortIndex_IMG3O);
+        _set_format_and_buffers(p_img3o, eImgFmt_YV12, MSize(imgi_w, imgi_h),
+                                1);
+        auto search = mPortIdxToFmt.find(p_img3o);
         if (search != mPortIdxToFmt.end())
           mPortIdxToFmt.erase(search);
       }
     }
-    //---------------------------------------------------------------------
 
     // remove fake mapping
     if (!mPortIdxToFmt.empty()) {
-      LOGD("start to remove fake node here");
       for (auto it = mPortIdxToFmt.begin(); it != mPortIdxToFmt.end();) {
         if (it->second.imgFormat == eImgFmt_UNKNOWN) {
           bool changed = false;
@@ -1409,8 +1397,7 @@ NormalStream::enque(QParams* pParams) {
         }
       }
     }
-
-    //---------------------------------------------------------
+    //----
     std::shared_ptr<V4L2StreamNode> node_vipi;
     status = validNode(NSImageio::NSIspio::EPortIndex_VIPI, &node_vipi);
     if (status == NO_ERROR) {
@@ -1423,8 +1410,7 @@ NormalStream::enque(QParams* pParams) {
       if (node_img3o->isPrepared())
         node_img3o->start();
     }
-    //---------------------------------------------------------------
-
+    //----
     if (mFirstFrame)
       mFirstFrame = false;
 
