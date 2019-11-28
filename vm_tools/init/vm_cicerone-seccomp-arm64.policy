@@ -80,12 +80,10 @@ setresuid: 1
 setresgid: 1
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
-unlink: 1
-readlink: 1
+unlinkat: 1
 readlinkat: 1
-lstat: 1
 getcpu: 1
-inotify_init: 1
+inotify_init1: 1
 inotify_add_watch: 1
 inotify_rm_watch: 1
-dup2: 1
+dup3: 1
