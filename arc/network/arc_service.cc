@@ -197,6 +197,13 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
 }
 
 bool ArcService::Start(int32_t id) {
+  int32_t prev_id;
+  if (impl_->IsStarted(&prev_id)) {
+    LOG(WARNING) << "Already running - did something crash?"
+                 << " Stopping and restarting...";
+    Stop(prev_id);
+  }
+
   if (!impl_->Start(id))
     return false;
 
@@ -460,6 +467,11 @@ GuestMessage::GuestType ArcService::ContainerImpl::guest() const {
 }
 
 bool ArcService::ContainerImpl::Start(int32_t pid) {
+  // This could happen if something crashes and the stop signal is not sent.
+  // It can probably be addressed by stopping and restarting the service.
+  if (pid_ != kInvalidPID)
+    return false;
+
   // TODO(garrick): Remove this test hack.
   if (pid == kTestPID) {
     LOG(WARNING) << "Running with test PID";
@@ -510,7 +522,10 @@ void ArcService::ContainerImpl::Stop(int32_t /*pid*/) {
   pid_ = kInvalidPID;
 }
 
-bool ArcService::ContainerImpl::IsStarted() const {
+bool ArcService::ContainerImpl::IsStarted(int32_t* pid) const {
+  if (pid)
+    *pid = pid_;
+
   return pid_ != kInvalidPID;
 }
 
@@ -786,6 +801,11 @@ GuestMessage::GuestType ArcService::VmImpl::guest() const {
 }
 
 bool ArcService::VmImpl::Start(int32_t cid) {
+  // This can happen if concierge crashes and doesn't send the vm down RPC.
+  // It can probably be addressed by stopping and restarting the service.
+  if (cid_ != kInvalidCID)
+    return false;
+
   if (cid <= kInvalidCID) {
     LOG(ERROR) << "Invalid VM cid " << cid;
     return false;
@@ -807,7 +827,10 @@ void ArcService::VmImpl::Stop(int32_t cid) {
   cid_ = kInvalidCID;
 }
 
-bool ArcService::VmImpl::IsStarted() const {
+bool ArcService::VmImpl::IsStarted(int32_t* cid) const {
+  if (cid)
+    *cid = cid_;
+
   return cid_ > kInvalidCID;
 }
 

@@ -374,18 +374,21 @@ TEST_F(VmImplTest, OnStartDevice) {
   EXPECT_TRUE(Impl()->OnStartDevice(dev.get()));
   EXPECT_EQ(ctx->TAP(), "vmtap0");
 }
+
 TEST_F(VmImplTest, OnStartDevice_NoContext) {
   // For now, ARCVM uses the legacy device since it behaves similarly.
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   EXPECT_FALSE(Impl()->OnStartDevice(dev.get()));
 }
+
 TEST_F(VmImplTest, OnStartDevice_OtherDevice) {
   // For now, ARCVM uses the legacy device since it behaves similarly.
   auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
   ASSERT_TRUE(dev);
   EXPECT_FALSE(Impl()->OnStartDevice(dev.get()));
 }
+
 TEST_F(VmImplTest, OnStopDevice) {
   // For now, ARCVM uses the legacy device since it behaves similarly.
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
@@ -397,6 +400,7 @@ TEST_F(VmImplTest, OnStopDevice) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap0")));
   Impl()->OnStopDevice(dev.get());
 }
+
 TEST_F(VmImplTest, OnStopDevice_OtherDevice) {
   EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
   // For now, ARCVM uses the legacy device since it behaves similarly.
