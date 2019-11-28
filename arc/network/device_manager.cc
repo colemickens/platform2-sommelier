@@ -160,11 +160,6 @@ void DeviceManager::OnGuestStop(GuestMessage::GuestType guest) {
   for (auto& d : devices_) {
     d.second->OnGuestStop(guest);
   }
-
-  default_iface_handlers_.erase(guest);
-  ipv6_handlers_.erase(guest);
-  rm_handlers_.erase(guest);
-  add_handlers_.erase(guest);
 }
 
 void DeviceManager::OnDeviceMessageFromNDProxy(const DeviceMessage& msg) {
