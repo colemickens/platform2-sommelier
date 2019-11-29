@@ -30,6 +30,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libcryptohome-client",
     "libmetrics-${libbase_ver}",
     "libminijail",
+    "libpatchpanel-client",
     "libselinux",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear

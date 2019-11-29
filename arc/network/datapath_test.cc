@@ -68,7 +68,7 @@ TEST(DatapathTest, AddTAPNoAddrs) {
   auto ifname = datapath.AddTAP("foo0", nullptr, nullptr, "");
   EXPECT_EQ(ifname, "foo0");
   std::set<ioctl_req_t> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
-                                      SIOCSIFFLAGS};
+                                    SIOCSIFFLAGS};
   EXPECT_EQ(ioctl_reqs, expected);
   ioctl_reqs.clear();
 }

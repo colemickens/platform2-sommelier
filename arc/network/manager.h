@@ -68,9 +68,6 @@ class Manager final : public brillo::DBusDaemon {
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
-  // TODO(garrick): Remove this workaround ASAP.
-  bool OnSignal(const struct signalfd_siginfo& info);
-
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
   // Guest services.

@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 
+#include <arc/network/client.h>
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/environment.h>
@@ -1964,6 +1965,8 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   }
   LOG(INFO) << "Running " << kCommand << " took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
+
+  StartNetworking();
 }
 
 void ArcSetup::EnsureContainerDirectories() {
@@ -1994,6 +1997,17 @@ void ArcSetup::SetUpTestharness(bool is_dev_mode) {
     EXIT_IF(!InstallDirectory(0000, kHostRootUid, kHostRootGid,
                               arc_paths_->testharness_directory));
   }
+}
+
+void ArcSetup::StartNetworking() {
+  if (!patchpanel::Client::New()->NotifyArcStartup(config_.GetIntOrDie("CONTAINER_PID")))
+    LOG(ERROR) << "Failed to notify network service";
+}
+
+void ArcSetup::StopNetworking() {
+  // The container pid isn't available at this point.
+  if (!patchpanel::Client::New()->NotifyArcShutdown())
+    LOG(ERROR) << "Failed to notify network service";
 }
 
 void ArcSetup::MountOnOnetimeSetup() {
@@ -2246,6 +2260,7 @@ void ArcSetup::OnBootContinue() {
 }
 
 void ArcSetup::OnStop() {
+  StopNetworking();
   CleanUpBinFmtMiscSetUp();
   UnmountOnStop();
   RemoveBugreportPipe();

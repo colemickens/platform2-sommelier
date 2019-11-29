@@ -230,14 +230,11 @@ class ArcSetup {
   // Initialize the testharness directory and key file inside for testharness.
   void SetUpTestharness(bool is_dev_mode);
 
-  // TODO(b/68814859): Remove this function once WiFi works again.  Creates
-  // /data/misc/ethernet/ipconfig.txt so that the container can set up
-  // networking by itself.
-  //
-  // This file is populated with a static address and default gateway defined
-  // in arc_setup.cc.  The Google Public DNS servers (8.8.8.8 and
-  // 8.8.4.4) as set as the DNS resolvers.
-  void SetUpNetwork();
+  // Notifies networking service that the container is starting.
+  void StartNetworking();
+
+  // Notifies networking service that the container is stopping.
+  void StopNetworking();
 
   // Makes some mount points read-only.
   void MakeMountPointsReadOnly();

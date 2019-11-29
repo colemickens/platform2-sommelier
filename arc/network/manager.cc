@@ -134,13 +134,6 @@ int Manager::OnInit() {
                  nd_proxy_->pid())))
       << "Failed to watch nd-proxy child process";
 
-  // TODO(garrick): Remove this workaround ASAP.
-  // Handle signals for ARC lifecycle.
-  RegisterHandler(SIGUSR1,
-                  base::Bind(&Manager::OnSignal, base::Unretained(this)));
-  RegisterHandler(SIGUSR2,
-                  base::Bind(&Manager::OnSignal, base::Unretained(this)));
-
   // Run after Daemon::OnInit().
   base::MessageLoopForIO::current()->task_runner()->PostTask(
       FROM_HERE,
@@ -190,21 +183,6 @@ void Manager::InitialSetup() {
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
 
   nd_proxy_->Listen();
-}
-
-// TODO(garrick): Remove this workaround ASAP.
-bool Manager::OnSignal(const struct signalfd_siginfo& info) {
-  // Only ARC++ scripts send signals so nothing to do for VM.
-  if (info.ssi_signo == SIGUSR1) {
-    // For now this value is ignored and the service discovers the
-    // container pid on its own. Later, this is arrive via DBus message.
-    StartArc(0 /*pid*/);
-  } else {
-    StopArc(0 /*pid*/);
-  }
-
-  // Stay registered.
-  return false;
 }
 
 void Manager::OnShutdown(int* exit_code) {

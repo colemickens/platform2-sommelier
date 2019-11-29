@@ -159,24 +159,6 @@ void OneTimeSetup(const Datapath& datapath) {
   done = true;
 }
 
-// TODO(garrick): Remove this workaround ASAP.
-int GetContainerPID() {
-  const base::FilePath path("/run/containers/android-run_oci/container.pid");
-  std::string pid_str;
-  if (!base::ReadFileToStringWithMaxSize(path, &pid_str, 16 /* max size */)) {
-    LOG(ERROR) << "Failed to read pid file";
-    return kInvalidPID;
-  }
-  int pid;
-  if (!base::StringToInt(base::TrimWhitespaceASCII(pid_str, base::TRIM_ALL),
-                         &pid)) {
-    LOG(ERROR) << "Failed to convert container pid string";
-    return kInvalidPID;
-  }
-  LOG(INFO) << "Read container pid as " << pid;
-  return pid;
-}
-
 bool IsArcVm() {
   const base::FilePath path("/run/chrome/is_arcvm");
   std::string contents;
@@ -492,11 +474,11 @@ bool ArcService::ContainerImpl::Start(int32_t pid) {
     pid_ = pid;
     return true;
   }
-  pid_ = GetContainerPID();
-  if (pid_ == kInvalidPID) {
+  if (pid == kInvalidPID) {
     LOG(ERROR) << "Cannot start service - invalid container PID";
     return false;
   }
+  pid_ = pid;
 
   // Start listening for RTNetlink messages in the container's net namespace
   // to be notified whenever it brings up an interface.
@@ -528,6 +510,9 @@ bool ArcService::ContainerImpl::Start(int32_t pid) {
 }
 
 void ArcService::ContainerImpl::Stop(int32_t /*pid*/) {
+  if (!IsStarted())
+      return;
+
   rtnl_handler_->RemoveListener(link_listener_.get());
   link_listener_.reset();
   rtnl_handler_.reset();
