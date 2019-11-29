@@ -22,6 +22,7 @@ group("all") {
 # Binary
 executable("arc-keymasterd") {
   sources = [
+    "cert_store_instance.cc",
     "conversion.cc",
     "daemon.cc",
     "keymaster_server.cc",
@@ -42,6 +43,7 @@ executable("arc-keymasterd") {
 # Mojo bindings
 generate_mojom_bindings("keymaster_mojo_bindings") {
   sources = [
+    "mojo/cert_store.mojom",
     "mojo/keymaster.mojom",
   ]
 }

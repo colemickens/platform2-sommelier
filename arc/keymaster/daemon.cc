@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/bindings/strong_binding.h>
 #include <mojo/public/cpp/system/invitation.h>
 
+#include "arc/keymaster/cert_store_instance.h"
 #include "arc/keymaster/keymaster_server.h"
 
 namespace arc {
@@ -89,11 +90,23 @@ void Daemon::BootstrapMojoConnection(
 void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
-  mojo::ScopedMessagePipeHandle child_pipe =
-      invitation.ExtractMessagePipe("arc-keymaster-pipe");
-  mojo::MakeStrongBinding(
-      std::make_unique<KeymasterServer>(),
-      mojo::InterfaceRequest<arc::mojom::KeymasterServer>(std::move(child_pipe)));
+  {
+    mojo::ScopedMessagePipeHandle child_pipe =
+        invitation.ExtractMessagePipe("arc-keymaster-pipe");
+    mojo::MakeStrongBinding(
+        std::make_unique<KeymasterServer>(),
+        mojo::MakeRequest<arc::mojom::KeymasterServer>(std::move(child_pipe)));
+  }
+  {
+    mojo::ScopedMessagePipeHandle child_pipe =
+        invitation.ExtractMessagePipe("arc-cert-store-pipe");
+
+    // TODO(b/147573396): remove strong binding to be able to use cert store.
+    mojo::MakeStrongBinding(
+        std::make_unique<CertStoreInstance>(),
+        mojo::MakeRequest<arc::keymaster::mojom::CertStoreInstance>(
+            std::move(child_pipe)));
+  }
   is_bound_ = true;
 }
 
