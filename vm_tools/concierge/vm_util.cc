@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -142,13 +143,18 @@ bool CallUsbControl(brillo::ProcessImpl crosvm, UsbControlResponse* response) {
 
 std::string GetVmMemoryMiB() {
   int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
+  int64_t vm_memory_mb;
   if (sys_memory_mb >= 4096) {
-    int64_t vm_memory_mb = sys_memory_mb - 1024;
-    return std::to_string(vm_memory_mb);
+    vm_memory_mb = sys_memory_mb - 1024;
   } else {
-    int64_t vm_memory_mb = sys_memory_mb / 4 * 3;
-    return std::to_string(vm_memory_mb);
+    vm_memory_mb = sys_memory_mb / 4 * 3;
   }
+
+  // Limit guest memory size to avoid running out of host process address space.
+  int64_t size_max_mb = int64_t(SIZE_MAX / (1024 * 1024));
+  vm_memory_mb = std::min(vm_memory_mb, size_max_mb / 4 * 3);
+
+  return std::to_string(vm_memory_mb);
 }
 
 bool SetUpCrosvmProcess(const base::FilePath& cpu_cgroup) {
