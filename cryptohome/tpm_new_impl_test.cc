@@ -297,6 +297,47 @@ TEST_F(TpmNewImplTest, ClearStoredPassword) {
   EXPECT_FALSE(GetTpm()->ClearStoredPassword());
 }
 
+TEST_F(TpmNewImplTest, GetVersionInfoCache) {
+  Tpm::TpmVersionInfo expected_version_info;
+  expected_version_info.family = 1;
+  expected_version_info.spec_level = 2;
+  expected_version_info.manufacturer = 3;
+  expected_version_info.tpm_model = 4;
+  expected_version_info.firmware_version = 5;
+  expected_version_info.vendor_specific = "aa";
+
+  EXPECT_CALL(mock_tpm_manager_utility_, GetVersionInfo(_, _, _, _, _, _))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(
+          SetArgPointee<0>(expected_version_info.family),
+          SetArgPointee<1>(expected_version_info.spec_level),
+          SetArgPointee<2>(expected_version_info.manufacturer),
+          SetArgPointee<3>(expected_version_info.tpm_model),
+          SetArgPointee<4>(expected_version_info.firmware_version),
+          SetArgPointee<5>(expected_version_info.vendor_specific),
+          Return(true)));
+
+  Tpm::TpmVersionInfo actual_version_info;
+  // Requests from tpm_manager, failed, not cached
+  EXPECT_FALSE(GetTpm()->GetVersionInfo(&actual_version_info));
+
+  // Requests from tpm_manager, succeeded, cached
+  EXPECT_TRUE(GetTpm()->GetVersionInfo(&actual_version_info));
+  EXPECT_EQ(expected_version_info.GetFingerprint(),
+            actual_version_info.GetFingerprint());
+
+  // Returns from cache
+  EXPECT_TRUE(GetTpm()->GetVersionInfo(&actual_version_info));
+  EXPECT_EQ(expected_version_info.GetFingerprint(),
+            actual_version_info.GetFingerprint());
+}
+
+TEST_F(TpmNewImplTest, GetVersionInfoBadInput) {
+  EXPECT_CALL(mock_tpm_manager_utility_, GetVersionInfo(_, _, _, _, _, _))
+      .Times(0);
+  EXPECT_FALSE(GetTpm()->GetVersionInfo(nullptr));
+}
+
 TEST_F(TpmNewImplTest, BadTpmManagerUtility) {
   EXPECT_CALL(mock_tpm_manager_utility_, Initialize())
       .WillRepeatedly(Return(false));

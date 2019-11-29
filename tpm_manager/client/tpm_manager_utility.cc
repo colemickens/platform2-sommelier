@@ -4,6 +4,8 @@
 
 #include "tpm_manager/client/tpm_manager_utility.h"
 
+#include <string>
+
 #include <base/bind.h>
 #include <base/logging.h>
 
@@ -67,6 +69,38 @@ bool TpmManagerUtility::GetTpmStatus(bool* is_enabled,
   *is_enabled = tpm_status.enabled();
   *is_owned = tpm_status.owned();
   tpm_status.mutable_local_data()->Swap(local_data);
+  return true;
+}
+
+bool TpmManagerUtility::GetVersionInfo(uint32_t* family,
+                                       uint64_t* spec_level,
+                                       uint32_t* manufacturer,
+                                       uint32_t* tpm_model,
+                                       uint64_t* firmware_version,
+                                       std::string* vendor_specific) {
+  if (!family || !spec_level || !manufacturer || !tpm_model ||
+      !firmware_version || !vendor_specific) {
+    LOG(ERROR) << __func__ << ": some input args are not initialized.";
+    return false;
+  }
+
+  tpm_manager::GetVersionInfoReply version_info;
+  SendTpmManagerRequestAndWait(
+      base::Bind(&tpm_manager::TpmOwnershipInterface::GetVersionInfo,
+                 base::Unretained(tpm_owner_),
+                 tpm_manager::GetVersionInfoRequest()),
+      &version_info);
+  if (version_info.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << __func__ << ": failed to get version info from tpm_managerd.";
+    return false;
+  }
+
+  *family = version_info.family();
+  *spec_level = version_info.spec_level();
+  *manufacturer = version_info.manufacturer();
+  *tpm_model = version_info.tpm_model();
+  *firmware_version = version_info.firmware_version();
+  *vendor_specific = version_info.vendor_specific();
   return true;
 }
 

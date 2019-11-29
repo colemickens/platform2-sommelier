@@ -201,4 +201,36 @@ bool TpmNewImpl::ClearStoredPassword() {
   return tpm_manager_utility_->ClearStoredOwnerPassword();
 }
 
+bool TpmNewImpl::GetVersionInfo(TpmVersionInfo* version_info) {
+  if (!version_info) {
+    LOG(ERROR) << __func__ << "version_info is not initialized.";
+    return false;
+  }
+
+  // Version info on a device never changes. Returns from cache directly if we
+  // have the cache.
+  if (version_info_) {
+    *version_info = *version_info_;
+    return true;
+  }
+
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+
+  if (!tpm_manager_utility_->GetVersionInfo(&version_info->family,
+                                            &version_info->spec_level,
+                                            &version_info->manufacturer,
+                                            &version_info->tpm_model,
+                                            &version_info->firmware_version,
+                                            &version_info->vendor_specific)) {
+    LOG(ERROR) << __func__ << ": failed to get version info from tpm_manager.";
+    return false;
+  }
+
+  version_info_ = *version_info;
+  return true;
+}
+
 }  // namespace cryptohome

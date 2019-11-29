@@ -51,6 +51,16 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
                             bool* is_owned,
                             LocalData* local_data);
 
+  // Blocking call of |TpmOwnershipDBusProxy::GetVersionInfo|.
+  // Returns true iff the operation succeeds. On success, various parts of
+  // version info are stored in the output args respectively.
+  virtual bool GetVersionInfo(uint32_t* family,
+                              uint64_t* spec_level,
+                              uint32_t* manufacturer,
+                              uint32_t* tpm_model,
+                              uint64_t* firmware_version,
+                              std::string* vendor_specific);
+
   // Blocking call of
   // |TpmOwnershipDBusProxy::RemoveOwnerDependency|. Returns |true| iff the
   // operation succeeds. |dependency| is the idenitier of the dependency.

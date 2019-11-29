@@ -22,6 +22,8 @@ class TPM_MANAGER_EXPORT MockTpmManagerUtility : public TpmManagerUtility {
     ON_CALL(*this, Initialize()).WillByDefault(Return(true));
     ON_CALL(*this, TakeOwnership()).WillByDefault(Return(true));
     ON_CALL(*this, GetTpmStatus(_, _, _)).WillByDefault(Return(true));
+    ON_CALL(*this, GetVersionInfo(_, _, _, _, _, _))
+        .WillByDefault(Return(true));
     ON_CALL(*this, RemoveOwnerDependency(_)).WillByDefault(Return(true));
     ON_CALL(*this, ClearStoredOwnerPassword()).WillByDefault(Return(true));
     ON_CALL(*this, GetDictionaryAttackInfo(_, _, _, _))
@@ -36,6 +38,11 @@ class TPM_MANAGER_EXPORT MockTpmManagerUtility : public TpmManagerUtility {
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(bool, TakeOwnership, (), (override));
   MOCK_METHOD(bool, GetTpmStatus, (bool*, bool*, LocalData*), (override));
+  MOCK_METHOD(
+      bool,
+      GetVersionInfo,
+      (uint32_t*, uint64_t*, uint32_t*, uint32_t*, uint64_t*, std::string*),
+      (override));
   MOCK_METHOD(bool, RemoveOwnerDependency, (const std::string&), (override));
   MOCK_METHOD(bool, ClearStoredOwnerPassword, (), (override));
   MOCK_METHOD(bool,

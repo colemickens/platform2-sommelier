@@ -7,6 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <string>
 #include <tuple>
 
 #include "tpm_manager/common/mock_tpm_nvram_interface.h"
@@ -44,6 +45,9 @@ class TpmManagerUtilityTest : public Test {
         .WillByDefault(InvokeCallbackArgument<1>(ByRef(take_ownership_reply_)));
     ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
         .WillByDefault(InvokeCallbackArgument<1>(ByRef(get_tpm_status_reply_)));
+    ON_CALL(mock_tpm_owner_, GetVersionInfo(_, _))
+        .WillByDefault(
+            InvokeCallbackArgument<1>(ByRef(get_version_info_reply_)));
     ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .WillByDefault(
             InvokeCallbackArgument<1>(ByRef(remove_owner_dependency_reply_)));
@@ -66,6 +70,7 @@ class TpmManagerUtilityTest : public Test {
   // fake replies from TpmManager
   tpm_manager::TakeOwnershipReply take_ownership_reply_;
   tpm_manager::GetTpmStatusReply get_tpm_status_reply_;
+  tpm_manager::GetVersionInfoReply get_version_info_reply_;
   tpm_manager::RemoveOwnerDependencyReply remove_owner_dependency_reply_;
   tpm_manager::ClearStoredOwnerPasswordReply clear_stored_owner_password_reply_;
   tpm_manager::GetDictionaryAttackInfoReply get_dictionary_attack_info_reply_;
@@ -127,6 +132,55 @@ TEST_F(TpmManagerUtilityTest, GetTpmStatusFail) {
   get_tpm_status_reply_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
   EXPECT_FALSE(
       tpm_manager_utility_.GetTpmStatus(&is_enabled, &is_owned, &local_data));
+}
+
+TEST_F(TpmManagerUtilityTest, GetVersionInfo) {
+  uint32_t family = 0;
+  uint64_t spec_level = 0;
+  uint32_t manufacturer = 0;
+  uint32_t tpm_model = 0;
+  uint64_t firmware_version = 0;
+  std::string vendor_specific;
+
+  get_version_info_reply_.set_status(tpm_manager::STATUS_SUCCESS);
+  get_version_info_reply_.set_family(1);
+  get_version_info_reply_.set_spec_level(2);
+  get_version_info_reply_.set_manufacturer(3);
+  get_version_info_reply_.set_tpm_model(4);
+  get_version_info_reply_.set_firmware_version(5);
+  get_version_info_reply_.set_vendor_specific("aa");
+
+  EXPECT_TRUE(tpm_manager_utility_.GetVersionInfo(
+      &family, &spec_level, &manufacturer, &tpm_model, &firmware_version,
+      &vendor_specific));
+  EXPECT_EQ(family, 1);
+  EXPECT_EQ(spec_level, 2);
+  EXPECT_EQ(manufacturer, 3);
+  EXPECT_EQ(tpm_model, 4);
+  EXPECT_EQ(firmware_version, 5);
+  EXPECT_EQ(vendor_specific, "aa");
+}
+
+TEST_F(TpmManagerUtilityTest, GetVersionInfoFail) {
+  EXPECT_FALSE(tpm_manager_utility_.GetVersionInfo(
+      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
+
+  uint32_t family;
+  uint64_t spec_level;
+  uint32_t manufacturer;
+  uint32_t tpm_model;
+  uint64_t firmware_version;
+  std::string vendor_specific;
+
+  get_version_info_reply_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(tpm_manager_utility_.GetVersionInfo(
+      &family, &spec_level, &manufacturer, &tpm_model, &firmware_version,
+      &vendor_specific));
+
+  get_version_info_reply_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
+  EXPECT_FALSE(tpm_manager_utility_.GetVersionInfo(
+      &family, &spec_level, &manufacturer, &tpm_model, &firmware_version,
+      &vendor_specific));
 }
 
 TEST_F(TpmManagerUtilityTest, RemoveOwnerDependency) {

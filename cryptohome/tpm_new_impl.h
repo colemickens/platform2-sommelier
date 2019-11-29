@@ -5,6 +5,9 @@
 #ifndef CRYPTOHOME_TPM_NEW_IMPL_H_
 #define CRYPTOHOME_TPM_NEW_IMPL_H_
 
+#include <memory>
+
+#include <base/optional.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 
 #include "cryptohome/tpm_impl.h"
@@ -44,6 +47,7 @@ class TpmNewImpl : public TpmImpl {
   bool RemoveOwnerDependency(
       TpmPersistentState::TpmOwnerDependency dependency) override;
   bool ClearStoredPassword() override;
+  bool GetVersionInfo(TpmVersionInfo* version_info) override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
@@ -83,6 +87,9 @@ class TpmNewImpl : public TpmImpl {
   // Records |LocalData| from tpm_manager last time we query, either by
   // explicitly requesting the update or from dbus signal.
   tpm_manager::LocalData last_tpm_manager_data_;
+
+  // Cache of TPM version info, base::nullopt if cache doesn't exist.
+  base::Optional<TpmVersionInfo> version_info_;
 
   // The following fields are for testing purpose.
   friend class TpmNewImplTest;
