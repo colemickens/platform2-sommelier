@@ -1615,6 +1615,11 @@ bool Tpm2Impl::ClearStoredPassword() {
 }
 
 bool Tpm2Impl::GetVersionInfo(TpmVersionInfo* version_info) {
+  if (!version_info) {
+    LOG(ERROR) << "version_info is uninitialized.";
+    return false;
+  }
+
   if (version_info_) {
     *version_info = *version_info_;
     return true;

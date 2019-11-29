@@ -324,6 +324,8 @@ TEST_F(Tpm2Test, GetVersionInfo) {
 }
 
 TEST_F(Tpm2Test, GetVersionInfoError) {
+  EXPECT_FALSE(tpm_->GetVersionInfo(nullptr));
+
   version_info_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
 
   Tpm::TpmVersionInfo info;
