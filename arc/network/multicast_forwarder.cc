@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sysexits.h>
 
 #include <utility>
 
@@ -391,7 +392,7 @@ int MulticastProxy::OnInit() {
   // Prevent the main process from sending us any signals.
   if (setsid() < 0) {
     PLOG(ERROR) << "Failed to created a new session with setsid; exiting";
-    return -1;
+    return EX_OSERR;
   }
 
   EnterChildProcessJail();
