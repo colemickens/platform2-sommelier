@@ -49,6 +49,7 @@ _IUSE = [
     'dhcpv6',
     'direncryption',
     'dlc',
+    'double_extend_pcr_issue',
     'fake_drivefs_launcher',
     'feedback',
     'fp_on_power_button',
