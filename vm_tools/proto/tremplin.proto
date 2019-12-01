@@ -711,7 +711,7 @@ message UpgradeContainerProgress {
 // Request to cancel an in-progress upgrade.
 message CancelUpgradeContainerRequest {
   // Name of the container to cancel the upgrade on.
-  string container = 1;
+  string container_name = 1;
 }
 
 // The response to trying to cancel an upgrade.

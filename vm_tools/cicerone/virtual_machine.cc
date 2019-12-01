@@ -813,7 +813,7 @@ VirtualMachine::CancelUpgradeContainer(Container* container,
   vm_tools::tremplin::CancelUpgradeContainerRequest request;
   vm_tools::tremplin::CancelUpgradeContainerResponse response;
 
-  request.set_container(container->name());
+  request.set_container_name(container->name());
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
