@@ -25,7 +25,7 @@ class BRILLO_EXPORT Client {
   ~Client() = default;
 
   bool NotifyArcStartup(pid_t pid);
-  bool NotifyArcShutdown(pid_t pid);
+  bool NotifyArcShutdown();
   std::vector<patchpanel::Device> NotifyArcVmStartup(int cid);
   bool NotifyArcVmShutdown(int cid);
 

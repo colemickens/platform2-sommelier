@@ -61,13 +61,11 @@ bool Client::NotifyArcStartup(pid_t pid) {
   return true;
 }
 
-bool Client::NotifyArcShutdown(pid_t pid) {
+bool Client::NotifyArcShutdown() {
   dbus::MethodCall method_call(kPatchPanelInterface, kArcShutdownMethod);
   dbus::MessageWriter writer(&method_call);
 
   ArcShutdownRequest request;
-  request.set_pid(static_cast<uint32_t>(pid));
-
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode ArcShutdownRequest proto";
     return false;
