@@ -51,10 +51,12 @@ void Device::IPv6Config::clear() {
 
 Device::Device(const std::string& ifname,
                std::unique_ptr<Device::Config> config,
-               const Device::Options& options)
+               const Device::Options& options,
+               GuestMessage::GuestType guest)
     : ifname_(ifname),
       config_(std::move(config)),
       options_(options),
+      guest_(guest),
       host_link_up_(false) {
   DCHECK(config_);
 }
@@ -76,21 +78,20 @@ const Device::Options& Device::options() const {
   return options_;
 }
 
-void Device::set_context(GuestMessage::GuestType guest,
-                         std::unique_ptr<Device::Context> ctx) {
-  ctx_[guest] = std::move(ctx);
+void Device::set_context(std::unique_ptr<Device::Context> ctx) {
+  ctx_ = std::move(ctx);
 }
 
-Device::Context* Device::context(GuestMessage::GuestType guest) {
-  auto it = ctx_.find(guest);
-  if (it != ctx_.end())
-    return it->second.get();
-
-  return nullptr;
+Device::Context* Device::context() {
+  return ctx_.get();
 }
 
 bool Device::IsAndroid() const {
   return options_.is_android;
+}
+
+bool Device::IsArc() const {
+  return guest_ == GuestMessage::ARC;
 }
 
 bool Device::UsesDefaultInterface() const {
@@ -109,14 +110,7 @@ bool Device::IsFullyUp() const {
   if (!host_link_up_)
     return false;
 
-  // TODO(garrick): Clean this up when more guests are added.
-  // This is really just a hack around not having to worry about specific guests
-  for (const auto& c : ctx_) {
-    if (!c.second->IsLinkUp())
-      return false;
-  }
-
-  return true;
+  return ctx_->IsLinkUp();
 }
 
 void Device::Enable(const std::string& ifname) {

@@ -48,7 +48,8 @@ class DeviceTest : public testing::Test {
         "host", "guest", MacAddressGenerator().Generate(),
         std::move(ipv4_subnet), std::move(host_ipv4_addr),
         std::move(guest_ipv4_addr));
-    return std::make_unique<Device>(name, std::move(config), options);
+    return std::make_unique<Device>(name, std::move(config), options,
+                                    GuestMessage::ARC);
   }
 
   bool ipv6_down_;

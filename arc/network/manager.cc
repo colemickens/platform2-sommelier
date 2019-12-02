@@ -279,8 +279,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     // Populate the response with the known devices.
     auto build_resp = [](patchpanel::ArcVmStartupResponse* resp,
                          Device* device) {
-      auto* ctx = dynamic_cast<ArcService::Context*>(
-          device->context(GuestMessage::ARC_VM));
+      auto* ctx = dynamic_cast<ArcService::Context*>(device->context());
       if (!ctx || ctx->TAP().empty())
         return;
 

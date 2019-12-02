@@ -351,7 +351,6 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       .use_default_interface = false,
       .is_android = false,
       .is_sticky = false,
-      .is_arc = true,  // Always true for now.
   };
   std::string host_ifname, guest_ifname;
   AddressManager::Guest guest = AddressManager::Guest::ARC;
@@ -419,7 +418,9 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
 
-  return std::make_unique<Device>(name, std::move(config), opts);
+  // ARC guest is used for any variant (N, P, VM).
+  return std::make_unique<Device>(name, std::move(config), opts,
+                                  GuestMessage::ARC);
 }
 
 void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {

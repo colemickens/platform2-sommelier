@@ -250,7 +250,7 @@ void ArcService::Stop(int32_t id) {
 }
 
 bool ArcService::AllowDevice(Device* device) const {
-  if (!device->options().is_arc)
+  if (!device->IsArc())
     return false;
 
   // ARC P+ is multi-network enabled and should process all devices.
@@ -297,7 +297,7 @@ void ArcService::OnDeviceAdded(Device* device) {
       LOG(ERROR) << "Failed to configure egress traffic rules";
   }
 
-  device->set_context(guest_, std::make_unique<Context>());
+  device->set_context(std::make_unique<Context>());
 
   StartDevice(device);
 }
@@ -312,7 +312,7 @@ void ArcService::StartDevice(Device* device) {
 
   // If there is no context, then this is a new device and it needs to run
   // through the full setup process.
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  Context* ctx = dynamic_cast<Context*>(device->context());
   if (!ctx)
     return OnDeviceAdded(device);
 
@@ -354,7 +354,7 @@ void ArcService::OnDeviceRemoved(Device* device) {
 
   datapath_->RemoveBridge(config.host_ifname());
 
-  device->set_context(guest_, nullptr);
+  device->set_context(nullptr);
 }
 
 void ArcService::StopDevice(Device* device) {
@@ -366,7 +366,7 @@ void ArcService::StopDevice(Device* device) {
   if (!impl_->IsStarted())
     return;
 
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  Context* ctx = dynamic_cast<Context*>(device->context());
   if (!ctx) {
     LOG(ERROR) << "Attempt to stop removed device " << device->ifname();
     return;
@@ -628,7 +628,7 @@ void ArcService::ContainerImpl::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (!device)
     return;
 
-  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
+  Context* ctx = dynamic_cast<Context*>(device->context());
   if (!ctx) {
     LOG(DFATAL) << "Context missing";
     return;
@@ -663,7 +663,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
   if (ipv6_config.ifname.empty())
     return;
 
-  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
+  Context* ctx = dynamic_cast<Context*>(device->context());
   if (!ctx) {
     LOG(DFATAL) << "Context missing";
     return;
@@ -756,7 +756,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
 }
 
 void ArcService::ContainerImpl::TeardownIPv6(Device* device) {
-  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
+  Context* ctx = dynamic_cast<Context*>(device->context());
   if (!ctx || !ctx->HasIPv6())
     return;
 
@@ -846,7 +846,7 @@ bool ArcService::VmImpl::OnStartDevice(Device* device) {
             << " bridge: " << config.host_ifname()
             << " guest_iface: " << config.guest_ifname() << " cid: " << cid_;
 
-  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
+  Context* ctx = dynamic_cast<Context*>(device->context());
   if (!ctx) {
     LOG(ERROR) << "Context missing";
     return false;
@@ -887,7 +887,7 @@ void ArcService::VmImpl::OnStopDevice(Device* device) {
             << " bridge: " << config.host_ifname()
             << " guest_iface: " << config.guest_ifname() << " cid: " << cid_;
 
-  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
+  Context* ctx = dynamic_cast<Context*>(device->context());
   if (!ctx) {
     LOG(ERROR) << "Context missing";
     return;

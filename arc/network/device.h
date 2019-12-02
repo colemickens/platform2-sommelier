@@ -105,9 +105,6 @@ class Device {
     // Indicates this device is managed directly by a guest service and should
     // not be mutated in response to shill updates.
     bool is_sticky;
-
-    // Indicates this device is managed by the ARC service.
-    bool is_arc;
   };
 
   struct IPv6Config {
@@ -124,7 +121,8 @@ class Device {
 
   Device(const std::string& ifname,
          std::unique_ptr<Config> config,
-         const Options& options);
+         const Options& options,
+         GuestMessage::GuestType guest);
   ~Device() = default;
 
   const std::string& ifname() const;
@@ -132,10 +130,11 @@ class Device {
   IPv6Config& ipv6_config();
   const Options& options() const;
 
-  void set_context(GuestMessage::GuestType guest, std::unique_ptr<Context> ctx);
-  Context* context(GuestMessage::GuestType guest);
+  void set_context(std::unique_ptr<Context> ctx);
+  Context* context();
 
   bool IsAndroid() const;
+  bool IsArc() const;
 
   bool UsesDefaultInterface() const;
 
@@ -172,8 +171,8 @@ class Device {
   const std::string ifname_;
   std::unique_ptr<Config> config_;
   const Options options_;
-
-  std::map<GuestMessage::GuestType, std::unique_ptr<Context>> ctx_;
+  GuestMessage::GuestType guest_;
+  std::unique_ptr<Context> ctx_;
 
   // Indicates if the host-side interface is up. Guest-size interfaces
   // may be tracked in the guest-specific context.

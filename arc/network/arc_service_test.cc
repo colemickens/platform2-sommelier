@@ -63,7 +63,6 @@ std::unique_ptr<Device> MakeDevice(const std::string& name,
   Device::Options opt{
       .use_default_interface = (name == kAndroidLegacyDevice),
       .is_android = (name == kAndroidDevice) || (name == kAndroidLegacyDevice),
-      .is_arc = is_arc,
   };
   auto subnet = addr_mgr.AllocateIPv4Subnet(
       opt.is_android ? AddressManager::Guest::ARC
@@ -73,7 +72,9 @@ std::unique_ptr<Device> MakeDevice(const std::string& name,
   auto cfg = std::make_unique<Device::Config>(
       host, guest, addr_mgr.GenerateMacAddress(), std::move(subnet),
       std::move(addr0), std::move(addr1));
-  return std::make_unique<Device>(name, std::move(cfg), opt);
+  return std::make_unique<Device>(
+      name, std::move(cfg), opt,
+      is_arc ? GuestMessage::ARC : GuestMessage::UNKNOWN_GUEST);
 }
 
 }  // namespace
@@ -359,7 +360,7 @@ TEST_F(VmImplTest, OnStartDevice) {
   ASSERT_TRUE(dev);
   auto context = std::make_unique<ArcService::Context>();
   auto* ctx = context.get();
-  dev->set_context(GuestMessage::ARC_VM, std::move(context));
+  dev->set_context(std::move(context));
   EXPECT_CALL(*datapath_, AddTAP(StrEq(""), nullptr, nullptr, StrEq("crosvm")))
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
@@ -396,7 +397,7 @@ TEST_F(VmImplTest, OnStopDevice) {
   auto context = std::make_unique<ArcService::Context>();
   auto* ctx = context.get();
   ctx->SetTAP("vmtap0");
-  dev->set_context(GuestMessage::ARC_VM, std::move(context));
+  dev->set_context(std::move(context));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap0")));
   Impl()->OnStopDevice(dev.get());
 }
