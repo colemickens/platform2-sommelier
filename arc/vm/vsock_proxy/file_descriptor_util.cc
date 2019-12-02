@@ -40,7 +40,7 @@ bool ToSockAddr(const base::FilePath& path, struct sockaddr_un* sa) {
 
 base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreatePipe() {
   int fds[2];
-  if (pipe2(fds, O_CLOEXEC) == -1) {
+  if (pipe2(fds, O_CLOEXEC | O_NONBLOCK) == -1) {
     PLOG(ERROR) << "Failed to create pipe";
     return base::nullopt;
   }

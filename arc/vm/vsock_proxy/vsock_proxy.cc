@@ -20,7 +20,6 @@
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/file_stream.h"
-#include "arc/vm/vsock_proxy/pipe_stream.h"
 #include "arc/vm/vsock_proxy/socket_stream.h"
 
 namespace arc {
@@ -32,11 +31,12 @@ std::unique_ptr<StreamBase> CreateStream(
     base::OnceClosure error_handler) {
   switch (fd_type) {
     case arc_proxy::FileDescriptor::SOCKET:
-      return std::make_unique<SocketStream>(std::move(fd),
+      return std::make_unique<SocketStream>(std::move(fd), true,
                                             std::move(error_handler));
     case arc_proxy::FileDescriptor::FIFO_READ:
     case arc_proxy::FileDescriptor::FIFO_WRITE:
-      return std::make_unique<PipeStream>(std::move(fd));
+      return std::make_unique<SocketStream>(std::move(fd), false,
+                                            std::move(error_handler));
     case arc_proxy::FileDescriptor::REGULAR_FILE:
       return std::make_unique<FileStream>(std::move(fd));
     case arc_proxy::FileDescriptor::DMABUF:

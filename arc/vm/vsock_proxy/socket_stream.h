@@ -22,15 +22,16 @@
 
 namespace arc {
 
-// Wrapper of socket file descriptor to support reading and writing
-// Message protocol buffer.
+// SocketStream supports writing and reading from a socket or a pipe.
 class SocketStream : public StreamBase {
  public:
-  // Instantiates SocketStream based on the given |socket_fd|.
+  // |can_send_fds| must be true to send/receive FDs using this object.
   // |error_handler| will be run on async IO error.
   // TODO(hashimoto): Change StreamBase interface to report all IO errors via
   // |error_handler|, instead of synchronously returning bool.
-  SocketStream(base::ScopedFD socket_fd, base::OnceClosure error_handler);
+  SocketStream(base::ScopedFD fd,
+               bool can_send_fds,
+               base::OnceClosure error_handler);
   ~SocketStream() override;
 
   // StreamBase overrides:
@@ -44,7 +45,8 @@ class SocketStream : public StreamBase {
  private:
   void TrySendMsg();
 
-  base::ScopedFD socket_fd_;
+  base::ScopedFD fd_;
+  const bool can_send_fds_;
   base::OnceClosure error_handler_;
 
   struct Data {
