@@ -29,6 +29,32 @@ class CrosHealthdMojoAdapter final {
       const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&
           categories_to_probe);
 
+  // Runs the urandom routine.
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunUrandomRoutine(
+      uint32_t length_seconds);
+
+  // Runs the battery capacity routine.
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+  RunBatteryCapacityRoutine(uint32_t low_mah, uint32_t high_mah);
+
+  // Runs the battery health routine.
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunBatteryHealthRoutine(
+      uint32_t maximum_cycle_count, uint32_t percent_battery_wear_allowed);
+
+  // Runs the smartctl-check routine.
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+  RunSmartctlCheckRoutine();
+
+  // Returns which routines are available on the platform.
+  std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
+  GetAvailableRoutines();
+
+  // Gets an update for the specified routine.
+  chromeos::cros_healthd::mojom::RoutineUpdatePtr GetRoutineUpdate(
+      int32_t id,
+      chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
+      bool include_output);
+
  private:
   // Establishes a mojo connection with cros_healthd.
   void Connect();

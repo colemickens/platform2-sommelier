@@ -24,10 +24,10 @@
 namespace diagnostics {
 namespace {
 // Saves |response| to |response_destination|.
-void OnMojoResponseReceived(
-    chromeos::cros_healthd::mojom::TelemetryInfoPtr* response_destination,
-    base::Closure quit_closure,
-    chromeos::cros_healthd::mojom::TelemetryInfoPtr response) {
+template <class T>
+void OnMojoResponseReceived(T* response_destination,
+                            base::Closure quit_closure,
+                            T response) {
   *response_destination = std::move(response);
   quit_closure.Run();
 }
@@ -97,7 +97,119 @@ CrosHealthdMojoAdapter::GetTelemetryInfo(
   base::RunLoop run_loop;
   cros_healthd_service_->ProbeTelemetryInfo(
       categories_to_probe,
-      base::Bind(&OnMojoResponseReceived, &response, run_loop.QuitClosure()));
+      base::Bind(&OnMojoResponseReceived<
+                     chromeos::cros_healthd::mojom::TelemetryInfoPtr>,
+                 &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapter::RunUrandomRoutine(uint32_t length_seconds) {
+  if (!cros_healthd_service_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_service_->RunUrandomRoutine(
+      length_seconds,
+      base::Bind(&OnMojoResponseReceived<
+                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                 &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapter::RunBatteryCapacityRoutine(uint32_t low_mah,
+                                                  uint32_t high_mah) {
+  if (!cros_healthd_service_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_service_->RunBatteryCapacityRoutine(
+      low_mah, high_mah,
+      base::Bind(&OnMojoResponseReceived<
+                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                 &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapter::RunBatteryHealthRoutine(
+    uint32_t maximum_cycle_count, uint32_t percent_battery_wear_allowed) {
+  if (!cros_healthd_service_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_service_->RunBatteryHealthRoutine(
+      maximum_cycle_count, percent_battery_wear_allowed,
+      base::Bind(&OnMojoResponseReceived<
+                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                 &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapter::RunSmartctlCheckRoutine() {
+  if (!cros_healthd_service_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_service_->RunSmartctlCheckRoutine(
+      base::Bind(&OnMojoResponseReceived<
+                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                 &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
+CrosHealthdMojoAdapter::GetAvailableRoutines() {
+  if (!cros_healthd_service_.is_bound())
+    Connect();
+
+  std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum> response;
+  base::RunLoop run_loop;
+  cros_healthd_service_->GetAvailableRoutines(base::Bind(
+      [](std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>* out,
+         base::Closure quit_closure,
+         const std::vector<
+             chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>& routines) {
+        *out = routines;
+        quit_closure.Run();
+      },
+      &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RoutineUpdatePtr
+CrosHealthdMojoAdapter::GetRoutineUpdate(
+    int32_t id,
+    chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
+    bool include_output) {
+  if (!cros_healthd_service_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::RoutineUpdatePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_service_->GetRoutineUpdate(
+      id, command, include_output,
+      base::Bind(&OnMojoResponseReceived<
+                     chromeos::cros_healthd::mojom::RoutineUpdatePtr>,
+                 &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
