@@ -102,8 +102,14 @@ class ApkCacheDatabase {
   // Deletes |session| from database. Any file entries referencing this session
   // will also be removed. Returns true if no error occurred.
   bool DeleteSession(int64_t session_id) const;
+  // Deletes sessions without any file entries. Do not delete |current_session|.
+  // Returns number of rows affected. Returns -1 if error occurred.
+  int DeleteSessionsWithoutFileEntries(int64_t current_session) const;
   // Deletes |file_entry| from database. Returns true if no error occurred.
   bool DeleteFileEntry(int64_t file_id) const;
+  // Deletes all file entries in a package. Returns number of rows affected.
+  // Returns -1 if error occurred
+  int DeletePackage(const std::string& name, int64_t version) const;
   // Updates session status. Returns true if successful.
   bool UpdateSessionStatus(int64_t id, int32_t status) const;
 

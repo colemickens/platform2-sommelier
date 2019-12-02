@@ -82,6 +82,15 @@ class OpaqueFilesCleaner {
   int64_t OpenSession(const ApkCacheDatabase& db) const;
   // Closes a cache cleaner session. Returns true if successful.
   bool CloseSession(const ApkCacheDatabase& db, uint64_t id) const;
+  // Deletes packages with outdated files. Returns true if successful.
+  bool CleanOutdatedFiles(const ApkCacheDatabase& db) const;
+  // Deletes sessions without any reference from |file_entries| table. Current
+  // cleaner session is specified in |cleaner_session_id|.
+  bool CleanSessionsWithoutFile(const ApkCacheDatabase& db,
+                                int64_t cleaner_session_id) const;
+  // Cleans up files in files/ directory. Deletes all files without a record in
+  // |file_entries| table.
+  bool CleanFiles(const ApkCacheDatabase& db) const;
 
   base::FilePath cache_root_;
   base::FilePath db_path_;

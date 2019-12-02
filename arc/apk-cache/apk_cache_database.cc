@@ -282,6 +282,16 @@ bool ApkCacheDatabase::DeleteSession(int64_t session_id) const {
   return true;
 }
 
+int ApkCacheDatabase::DeleteSessionsWithoutFileEntries(
+    int64_t current_session) const {
+  const std::string sql = base::StringPrintf(
+      "DELETE FROM sessions WHERE id IN ("
+      "SELECT s.id FROM sessions s LEFT JOIN file_entries f ON "
+      "s.id = f.session_id WHERE f.id IS NULL AND s.id != %" PRId64 ")",
+      current_session);
+  return ExecDeleteSQL(sql);
+}
+
 bool ApkCacheDatabase::DeleteFileEntry(int64_t file_id) const {
   const std::string sql = base::StringPrintf(
       "DELETE FROM file_entries WHERE id = %" PRId64, file_id);
@@ -291,6 +301,16 @@ bool ApkCacheDatabase::DeleteFileEntry(int64_t file_id) const {
   }
 
   return true;
+}
+
+int ApkCacheDatabase::DeletePackage(const std::string& name,
+                                    int64_t version) const {
+  const std::string sql = base::StringPrintf(
+      "DELETE FROM file_entries WHERE "
+      "package_name = '%s' AND version_code = %" PRId64,
+      EscapeSQLString(name).c_str(), version);
+
+  return ExecDeleteSQL(sql);
 }
 
 bool ApkCacheDatabase::UpdateSessionStatus(int64_t id, int32_t status) const {

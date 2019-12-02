@@ -7,7 +7,10 @@
 #include <array>
 #include <inttypes.h>
 #include <iomanip>
+#include <set>
 #include <stdint.h>
+#include <tuple>
+#include <unordered_set>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -43,6 +46,23 @@ constexpr base::TimeDelta kSessionMaxAge = base::TimeDelta::FromMinutes(10);
 // Maximum age of cached files. If a file expires, the whole package will be
 // removed.
 constexpr base::TimeDelta kValidityPeriod = base::TimeDelta::FromDays(30);
+
+namespace {
+
+// A package is represented by name and version. All file entries with the same
+// package name and version code belongs to the same package.
+struct Package {
+  const std::string name;
+  const int64_t version;
+  Package(const std::string& name, int64_t version)
+      : name(name), version(version) {}
+};
+
+inline bool operator<(const Package& lhs, const Package& rhs) {
+  return std::tie(lhs.name, lhs.version) < std::tie(rhs.name, rhs.version);
+}
+
+}  // namespace
 
 std::string GetFileNameById(int64_t id) {
   return base::StringPrintf("%016" PRIx64, id);
@@ -107,8 +127,20 @@ bool OpaqueFilesCleaner::Clean() {
     return false;
   }
 
+  bool success = true;
+
+  if (!CleanOutdatedFiles(db))
+    success = false;
+
+  if (!CleanSessionsWithoutFile(db, session_id))
+    success = false;
+
+  if (!CleanFiles(db))
+    success = false;
+
   // Close cache cleaner session.
-  bool success = CloseSession(db, session_id);
+  if (!CloseSession(db, session_id))
+    success = false;
 
   int result = db.Close();
   if (result != SQLITE_OK) {
@@ -200,6 +232,64 @@ int64_t OpaqueFilesCleaner::OpenSession(const ApkCacheDatabase& db) const {
 bool OpaqueFilesCleaner::CloseSession(const ApkCacheDatabase& db,
                                       uint64_t id) const {
   return db.UpdateSessionStatus(id, kSessionStatusClosed);
+}
+
+bool OpaqueFilesCleaner::CleanOutdatedFiles(const ApkCacheDatabase& db) const {
+  auto file_entries = db.GetFileEntries();
+  if (!file_entries)
+    return false;
+
+  std::set<Package> packages_to_delete;
+
+  base::Time current_time = base::Time::Now();
+
+  for (const FileEntry& file_entry : *file_entries) {
+    // Check timestamp.
+    base::TimeDelta age = current_time - file_entry.access_time;
+    if (age > kValidityPeriod) {
+      LOG(INFO) << "Found outdated file " << file_entry.id;
+      packages_to_delete.emplace(file_entry.package_name,
+                                 file_entry.version_code);
+    }
+  }
+
+  // Delete all invalid packages.
+  for (const Package& package : packages_to_delete) {
+    int deleted_rows = db.DeletePackage(package.name, package.version);
+    if (deleted_rows > 0)
+      LOG(INFO) << "Deleted " << deleted_rows << " files in package "
+                << package.name << " version " << package.version;
+  }
+
+  return true;
+}
+
+bool OpaqueFilesCleaner::CleanSessionsWithoutFile(
+    const ApkCacheDatabase& db, int64_t cleaner_session_id) const {
+  int result = db.DeleteSessionsWithoutFileEntries(cleaner_session_id);
+  if (result > 0)
+    LOG(INFO) << "Deleted " << result << " sessions";
+
+  return result != -1;
+}
+
+bool OpaqueFilesCleaner::CleanFiles(const ApkCacheDatabase& db) const {
+  // Get all recorded file entries.
+  auto file_entries = db.GetFileEntries();
+  if (!file_entries)
+    return false;
+
+  // Convert ID to file name
+  std::unordered_set<std::string> known_file_names;
+  for (const FileEntry& file_entry : *file_entries)
+    known_file_names.insert(GetFileNameById(file_entry.id));
+
+  return RemoveUnexpectedItemsFromDir(
+      files_path_,
+      base::FileEnumerator::FileType::FILES |
+          base::FileEnumerator::FileType::DIRECTORIES |
+          base::FileEnumerator::FileType::SHOW_SYM_LINKS,
+      known_file_names);
 }
 
 }  // namespace apk_cache

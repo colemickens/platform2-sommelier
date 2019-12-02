@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/bind.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/optional.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 #include <sqlite3.h>
@@ -191,6 +194,29 @@ TEST_F(CacheCleanerDBTest, OtherSessionActive) {
     EXPECT_NE(session.source, kCacheCleanerSessionSource);
 }
 
+// Session without file entries should be removed.
+TEST_F(CacheCleanerDBTest, SessionWithoutFileEntries) {
+  base::FilePath db_path = temp_path().Append(kDatabaseFile);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
+  EXPECT_TRUE(base::PathExists(db_path));
+  // Create session.
+  CreateSession(db_path, kTestSessionId, kSessionStatusClosed);
+  // Clean.
+  EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
+  // Test session should be removed.
+  ApkCacheDatabase db(db_path);
+  ASSERT_EQ(db.Init(), SQLITE_OK);
+  auto sessions = db.GetSessions();
+  ASSERT_TRUE(sessions);
+  bool session_exists = false;
+  for (Session session : *sessions)
+    if (session.id == kTestSessionId) {
+      session_exists = true;
+      break;
+    }
+  EXPECT_FALSE(session_exists);
+}
+
 // Expired open sessions should be removed.
 TEST_F(CacheCleanerDBTest, ExpiredOpenSessions) {
   base::FilePath db_path = temp_path().Append(kDatabaseFile);
@@ -224,6 +250,94 @@ TEST_F(CacheCleanerDBTest, ExpiredOpenSessions) {
   auto file_entries = db.GetFileEntries();
   ASSERT_TRUE(file_entries);
   EXPECT_EQ(file_entries->size(), 0);
+}
+
+// Valid package should not be removed.
+TEST_F(CacheCleanerDBTest, ValidPackage) {
+  base::FilePath db_path = temp_path().Append(kDatabaseFile);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
+  EXPECT_TRUE(base::PathExists(db_path));
+  // Create valid package.
+  base::FilePath files_path = temp_path().Append(kFilesBase);
+  ASSERT_TRUE(base::CreateDirectory(files_path));
+  EXPECT_TRUE(CreateValidPackage(db_path, files_path));
+  // Clean.
+  EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
+  // Package should still exist.
+  ApkCacheDatabase db(db_path);
+  ASSERT_EQ(db.Init(), SQLITE_OK);
+  auto file_entries = db.GetFileEntries();
+  ASSERT_TRUE(file_entries);
+  EXPECT_EQ(file_entries->size(), 2);
+}
+
+// If a file is expired, the whole package should be removed.
+TEST_F(CacheCleanerDBTest, ExpiredFile) {
+  base::FilePath db_path = temp_path().Append(kDatabaseFile);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
+  EXPECT_TRUE(base::PathExists(db_path));
+  // Create valid package.
+  base::FilePath files_path = temp_path().Append(kFilesBase);
+  ASSERT_TRUE(base::CreateDirectory(files_path));
+  EXPECT_TRUE(CreateValidPackage(db_path, files_path));
+  // Update timestamp so that base APK is expired.
+  base::Time access_time =
+      base::Time::Now() - kValidityPeriod - base::TimeDelta::FromSeconds(1);
+  ASSERT_TRUE(
+      UpdateFileAccessTimeForTesting(db_path, kTestBaseApkId, access_time));
+  // Clean.
+  EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
+  // Package should be removed.
+  ApkCacheDatabase db(db_path);
+  ASSERT_EQ(db.Init(), SQLITE_OK);
+  auto file_entries = db.GetFileEntries();
+  ASSERT_TRUE(file_entries);
+  EXPECT_EQ(file_entries->size(), 0);
+}
+
+// If a file does not have a record in database, it should be removed.
+TEST_F(CacheCleanerDBTest, FileWithoutRecord) {
+  base::FilePath db_path = temp_path().Append(kDatabaseFile);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
+  EXPECT_TRUE(base::PathExists(db_path));
+  // Create valid package.
+  base::FilePath files_path = temp_path().Append(kFilesBase);
+  ASSERT_TRUE(base::CreateDirectory(files_path));
+  EXPECT_TRUE(CreateValidPackage(db_path, files_path));
+  // Create a random file in files directory.
+  base::FilePath random_file = files_path.Append("foobar");
+  base::WriteFile(random_file, kTestFileContent, strlen(kTestFileContent));
+  // The file should exist.
+  EXPECT_TRUE(base::PathExists(random_file));
+  // Clean.
+  EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
+  // The file should be removed.
+  EXPECT_FALSE(base::PathExists(random_file));
+}
+
+// If a directory appears in files directory, it should be removed.
+TEST_F(CacheCleanerDBTest, DirectoryInFiles) {
+  base::FilePath db_path = temp_path().Append(kDatabaseFile);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
+  EXPECT_TRUE(base::PathExists(db_path));
+  // Create valid package.
+  base::FilePath files_path = temp_path().Append(kFilesBase);
+  ASSERT_TRUE(base::CreateDirectory(files_path));
+  EXPECT_TRUE(CreateValidPackage(db_path, files_path));
+  // Create a random directory in files directory.
+  base::FilePath random_dir = files_path.Append("foobar");
+  base::CreateDirectory(random_dir);
+  base::FilePath random_file = random_dir.Append("test");
+  ASSERT_TRUE(
+      base::WriteFile(random_file, kTestFileContent, strlen(kTestFileContent)));
+  // The directory should exist.
+  EXPECT_TRUE(base::PathExists(random_dir));
+  EXPECT_TRUE(base::PathExists(random_file));
+  // Clean.
+  EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
+  // The directory should be removed.
+  EXPECT_FALSE(base::PathExists(random_dir));
+  EXPECT_FALSE(base::PathExists(random_file));
 }
 
 }  // namespace apk_cache

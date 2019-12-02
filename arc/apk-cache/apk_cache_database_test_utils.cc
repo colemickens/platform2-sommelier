@@ -149,4 +149,25 @@ bool UpdateSessionStatusForTesting(const base::FilePath& db_path,
   return ExecSQL(db_path, {sql}) == SQLITE_OK;
 }
 
+bool UpdateFileAccessTimeForTesting(const base::FilePath& db_path,
+                                    int64_t id,
+                                    const base::Time& access_time) {
+  const std::string sql = base::StringPrintf(
+      "UPDATE file_entries SET access_time = %" PRId64 " WHERE id = %" PRId64,
+      access_time.ToJavaTime(), id);
+  return ExecSQL(db_path, {sql}) == SQLITE_OK;
+}
+
+bool DeleteFilesOfTypeForTesting(const base::FilePath& db_path,
+                                 const std::string& package_name,
+                                 int64_t version_code,
+                                 const std::string& type) {
+  const std::string sql = base::StringPrintf(
+      "DELETE FROM file_entries WHERE package_name = '%s'"
+      " AND version_code = %" PRId64 " AND type = '%s'",
+      EscapeSQLString(package_name).c_str(), version_code,
+      EscapeSQLString(type).c_str());
+  return ExecSQL(db_path, {sql}) == SQLITE_OK;
+}
+
 }  // namespace apk_cache

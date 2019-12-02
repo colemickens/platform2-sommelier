@@ -6,6 +6,7 @@
 #define ARC_APK_CACHE_APK_CACHE_DATABASE_TEST_UTILS_H_
 
 #include <stdint.h>
+#include <string>
 
 namespace base {
 class FilePath;
@@ -35,6 +36,15 @@ bool UpdateSessionTimestampForTesting(const base::FilePath& db_path,
 bool UpdateSessionStatusForTesting(const base::FilePath& db_path,
                                    int64_t id,
                                    int32_t status);
+// Update file entry access time for testing.
+bool UpdateFileAccessTimeForTesting(const base::FilePath& db_path,
+                                    int64_t id,
+                                    const base::Time& access_time);
+// Delete files of specific type for testing.
+bool DeleteFilesOfTypeForTesting(const base::FilePath& db_path,
+                                 const std::string& package_name,
+                                 int64_t version_code,
+                                 const std::string& type);
 
 }  // namespace apk_cache
 
