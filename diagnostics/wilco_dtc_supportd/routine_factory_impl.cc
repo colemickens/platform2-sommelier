@@ -13,6 +13,13 @@
 
 namespace diagnostics {
 
+namespace {
+// When the battery routine's low_mah and high_mah parameters are not set, we
+// default to low_mah = 1000 and high_mah = 10000.
+constexpr int kRoutineBatteryDefaultLowmAh = 1000;
+constexpr int kRoutineBatteryDefaultHighmAh = 10000;
+}  // namespace
+
 RoutineFactoryImpl::RoutineFactoryImpl() = default;
 RoutineFactoryImpl::~RoutineFactoryImpl() = default;
 
@@ -22,16 +29,23 @@ std::unique_ptr<DiagnosticRoutine> RoutineFactoryImpl::CreateRoutine(
     case grpc_api::ROUTINE_BATTERY:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kBatteryParams);
-      return std::make_unique<BatteryRoutine>(request.battery_params());
+      return std::make_unique<BatteryRoutine>(
+          request.battery_params().low_mah()
+              ? request.battery_params().low_mah()
+              : kRoutineBatteryDefaultLowmAh,
+          request.battery_params().high_mah()
+              ? request.battery_params().high_mah()
+              : kRoutineBatteryDefaultHighmAh);
     case grpc_api::ROUTINE_BATTERY_SYSFS:
       return std::make_unique<BatterySysfsRoutine>(
-          request.battery_sysfs_params());
+          request.battery_sysfs_params().maximum_cycle_count(),
+          request.battery_sysfs_params().percent_battery_wear_allowed());
     case grpc_api::ROUTINE_URANDOM:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kUrandomParams);
-      return CreateUrandomRoutine(request.urandom_params());
+      return CreateUrandomRoutine(request.urandom_params().length_seconds());
     case grpc_api::ROUTINE_SMARTCTL_CHECK:
-      return CreateSmartctlCheckRoutine(request.smartctl_check_params());
+      return CreateSmartctlCheckRoutine();
     default:
       LOG(ERROR) << "RunRoutineRequest routine not set or unrecognized.";
       return nullptr;

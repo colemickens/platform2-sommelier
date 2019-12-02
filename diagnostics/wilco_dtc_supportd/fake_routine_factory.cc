@@ -4,58 +4,167 @@
 
 #include "diagnostics/wilco_dtc_supportd/fake_routine_factory.h"
 
+#include <cstdint>
+#include <utility>
+
+#include "diagnostics/common/mojo_utils.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
+
 namespace diagnostics {
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
-class FakeDiagnosticRoutine final : public DiagnosticRoutine {
+class FakeDiagnosticRoutine : public DiagnosticRoutine {
  public:
-  FakeDiagnosticRoutine();
+  FakeDiagnosticRoutine(mojo_ipc::DiagnosticRoutineStatusEnum status,
+                        uint32_t progress_percent,
+                        const std::string& output);
   // DiagnosticRoutine overrides:
   ~FakeDiagnosticRoutine() override;
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(grpc_api::GetRoutineUpdateResponse* response,
+  void PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
                             bool include_output) override;
-  grpc_api::DiagnosticRoutineStatus GetStatus() override;
+  mojo_ipc::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
-  grpc_api::DiagnosticRoutineStatus status_;
+  const mojo_ipc::DiagnosticRoutineStatusEnum status_;
+  const uint32_t progress_percent_;
+  const std::string output_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeDiagnosticRoutine);
 };
+
+class InteractiveFakeDiagnosticRoutine final : public FakeDiagnosticRoutine {
+ public:
+  InteractiveFakeDiagnosticRoutine(
+      mojo_ipc::DiagnosticRoutineUserMessageEnum user_message,
+      uint32_t progress_percent,
+      const std::string& output);
+  ~InteractiveFakeDiagnosticRoutine() override;
+
+  // DiagnosticRoutine overrides:
+  void PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+                            bool include_output) override;
+
+ private:
+  const mojo_ipc::DiagnosticRoutineUserMessageEnum user_message_;
+
+  DISALLOW_COPY_AND_ASSIGN(InteractiveFakeDiagnosticRoutine);
+};
+
+class NonInteractiveFakeDiagnosticRoutine final : public FakeDiagnosticRoutine {
+ public:
+  NonInteractiveFakeDiagnosticRoutine(
+      mojo_ipc::DiagnosticRoutineStatusEnum status,
+      const std::string& status_message,
+      uint32_t progress_percent,
+      const std::string& output);
+  ~NonInteractiveFakeDiagnosticRoutine() override;
+
+  // DiagnosticRoutine overrides:
+  void PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+                            bool include_output) override;
+
+ private:
+  const std::string status_message_;
+
+  DISALLOW_COPY_AND_ASSIGN(NonInteractiveFakeDiagnosticRoutine);
+};
+
+FakeDiagnosticRoutine::FakeDiagnosticRoutine(
+    mojo_ipc::DiagnosticRoutineStatusEnum status,
+    uint32_t progress_percent,
+    const std::string& output)
+    : status_(status), progress_percent_(progress_percent), output_(output) {}
+
+FakeDiagnosticRoutine::~FakeDiagnosticRoutine() = default;
+
+void FakeDiagnosticRoutine::Start() {}
+void FakeDiagnosticRoutine::Resume() {}
+void FakeDiagnosticRoutine::Cancel() {}
+
+void FakeDiagnosticRoutine::PopulateStatusUpdate(
+    mojo_ipc::RoutineUpdate* response, bool include_output) {
+  DCHECK(response);
+
+  response->progress_percent = progress_percent_;
+
+  if (output_.empty())
+    return;
+
+  response->output = CreateReadOnlySharedMemoryMojoHandle(output_);
+}
+
+mojo_ipc::DiagnosticRoutineStatusEnum FakeDiagnosticRoutine::GetStatus() {
+  return status_;
+}
+
+InteractiveFakeDiagnosticRoutine::InteractiveFakeDiagnosticRoutine(
+    mojo_ipc::DiagnosticRoutineUserMessageEnum user_message,
+    uint32_t progress_percent,
+    const std::string& output)
+    : FakeDiagnosticRoutine(mojo_ipc::DiagnosticRoutineStatusEnum::kReady,
+                            progress_percent,
+                            output),
+      user_message_(user_message) {}
+
+InteractiveFakeDiagnosticRoutine::~InteractiveFakeDiagnosticRoutine() = default;
+
+void InteractiveFakeDiagnosticRoutine::PopulateStatusUpdate(
+    mojo_ipc::RoutineUpdate* response, bool include_output) {
+  FakeDiagnosticRoutine::PopulateStatusUpdate(response, include_output);
+  mojo_ipc::InteractiveRoutineUpdate update;
+  update.user_message = user_message_;
+  response->routine_update_union->set_interactive_update(update.Clone());
+}
+
+NonInteractiveFakeDiagnosticRoutine::NonInteractiveFakeDiagnosticRoutine(
+    mojo_ipc::DiagnosticRoutineStatusEnum status,
+    const std::string& status_message,
+    uint32_t progress_percent,
+    const std::string& output)
+    : FakeDiagnosticRoutine(status, progress_percent, output),
+      status_message_(status_message) {}
+
+NonInteractiveFakeDiagnosticRoutine::~NonInteractiveFakeDiagnosticRoutine() =
+    default;
+
+void NonInteractiveFakeDiagnosticRoutine::PopulateStatusUpdate(
+    mojo_ipc::RoutineUpdate* response, bool include_output) {
+  FakeDiagnosticRoutine::PopulateStatusUpdate(response, include_output);
+  mojo_ipc::NonInteractiveRoutineUpdate update;
+  update.status = GetStatus();
+  update.status_message = status_message_;
+  response->routine_update_union->set_noninteractive_update(update.Clone());
+}
+
 }  // namespace
 
 FakeRoutineFactory::FakeRoutineFactory() = default;
 FakeRoutineFactory::~FakeRoutineFactory() = default;
 
+void FakeRoutineFactory::SetInteractiveStatus(
+    mojo_ipc::DiagnosticRoutineUserMessageEnum user_message,
+    uint32_t progress_percent,
+    const std::string& output) {
+  next_routine_ = std::make_unique<InteractiveFakeDiagnosticRoutine>(
+      user_message, progress_percent, output);
+}
+
+void FakeRoutineFactory::SetNonInteractiveStatus(
+    mojo_ipc::DiagnosticRoutineStatusEnum status,
+    const std::string& status_message,
+    uint32_t progress_percent,
+    const std::string& output) {
+  next_routine_ = std::make_unique<NonInteractiveFakeDiagnosticRoutine>(
+      status, status_message, progress_percent, output);
+}
+
 std::unique_ptr<DiagnosticRoutine> FakeRoutineFactory::CreateRoutine(
     const grpc_api::RunRoutineRequest& request) {
-  return std::make_unique<FakeDiagnosticRoutine>();
-}
-
-FakeDiagnosticRoutine::FakeDiagnosticRoutine() = default;
-FakeDiagnosticRoutine::~FakeDiagnosticRoutine() = default;
-
-void FakeDiagnosticRoutine::Start() {
-  status_ = grpc_api::ROUTINE_STATUS_RUNNING;
-}
-
-void FakeDiagnosticRoutine::Resume() {
-  status_ = grpc_api::ROUTINE_STATUS_RUNNING;
-}
-
-void FakeDiagnosticRoutine::Cancel() {
-  status_ = grpc_api::ROUTINE_STATUS_CANCELLED;
-}
-
-void FakeDiagnosticRoutine::PopulateStatusUpdate(
-    grpc_api::GetRoutineUpdateResponse* response, bool include_output) {
-  response->set_status(status_);
-}
-
-grpc_api::DiagnosticRoutineStatus FakeDiagnosticRoutine::GetStatus() {
-  return status_;
+  return std::move(next_routine_);
 }
 
 }  // namespace diagnostics

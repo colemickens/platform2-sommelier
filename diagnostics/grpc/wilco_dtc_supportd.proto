@@ -312,6 +312,7 @@ enum DiagnosticRoutineStatus {
 // These messages prompt interaction from the user of the routine.
 enum DiagnosticRoutineUserMessage {
   ROUTINE_USER_MESSAGE_UNSET = 0;  // No user interaction needed.
+  ROUTINE_USER_MESSAGE_UNPLUG_AC_POWER = 1;  // User needs to unplug AC power.
 }
 
 // Parameters for the GetAvailableRoutines RPC. Although the message is
