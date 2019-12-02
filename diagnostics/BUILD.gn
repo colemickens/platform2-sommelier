@@ -19,7 +19,6 @@ group("all") {
     deps += [
       ":cros_healthd_test",
       ":libcros_healthd_utils_test",
-      ":libdiag_test",
       ":libtelem_test",
       ":wilco_dtc_supportd_test",
       "//diagnostics/common:libcommon_test",
@@ -125,27 +124,6 @@ source_set("libcros_healthd") {
     "cros_healthd/cros_healthd.cc",
     "cros_healthd/cros_healthd_mojo_service.cc",
     "cros_healthd/cros_healthd_routine_service_impl.cc",
-  ]
-}
-
-# Library that provides core functionality for the diag tool.
-pkg_config("libdiag_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-  ]
-}
-
-source_set("libdiag") {
-  deps = [
-    "//diagnostics/constants:libconstants",
-    "//diagnostics/grpc:wilco_dtc_grpc_protos",
-    "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
-  ]
-  all_dependent_configs = [ ":libdiag_pkg_deps" ]
-  sources = [
-    "diag/diag_async_grpc_client_adapter_impl.cc",
-    "diag/diag_routine_requester.cc",
   ]
 }
 
@@ -262,7 +240,8 @@ pkg_config("diag_pkg_deps") {
 
 executable("diag") {
   deps = [
-    ":libdiag",
+    ":libcros_healthd_mojo_adapter",
+    "//diagnostics/common:libcommon",
   ]
   configs += [ ":diag_pkg_deps" ]
   sources = [
@@ -400,27 +379,6 @@ if (use.test) {
       "wilco_dtc_supportd/telemetry/fake_system_files_service.cc",
       "wilco_dtc_supportd/telemetry/powerd_event_service_impl_test.cc",
       "wilco_dtc_supportd/telemetry/system_files_service_impl_test.cc",
-    ]
-  }
-
-  pkg_config("libdiag_test_pkg_deps") {
-    pkg_deps = [
-      "libchrome-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-    ]
-  }
-
-  executable("libdiag_test") {
-    configs += [
-      "//common-mk:test",
-      ":libdiag_test_pkg_deps",
-    ]
-    deps = [
-      ":libdiag",
-      "../common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "diag/diag_routine_requester_test.cc",
     ]
   }
 

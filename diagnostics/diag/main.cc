@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/no_destructor.h>
@@ -15,9 +16,12 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
-#include "diagnostics/constants/grpc_constants.h"
-#include "diagnostics/diag/diag_routine_requester.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
+#include "mojo/cros_healthd.mojom.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
 // Poll interval while waiting for a routine to finish.
@@ -29,31 +33,31 @@ constexpr base::TimeDelta kMaximumRoutineExecutionTimeDelta =
 
 const struct {
   const char* switch_name;
-  diagnostics::grpc_api::DiagnosticRoutine routine;
+  mojo_ipc::DiagnosticRoutineEnum routine;
 } kDiagnosticRoutineSwitches[] = {
-    {"battery", diagnostics::grpc_api::ROUTINE_BATTERY},
-    {"battery_sysfs", diagnostics::grpc_api::ROUTINE_BATTERY_SYSFS},
-    {"urandom", diagnostics::grpc_api::ROUTINE_URANDOM},
-    {"smartctl-check", diagnostics::grpc_api::ROUTINE_SMARTCTL_CHECK}};
+    {"battery_capacity", mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity},
+    {"battery_health", mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth},
+    {"urandom", mojo_ipc::DiagnosticRoutineEnum::kUrandom},
+    {"smartctl_check", mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck}};
 
 const struct {
   const char* readable_status;
-  diagnostics::grpc_api::DiagnosticRoutineStatus status;
+  mojo_ipc::DiagnosticRoutineStatusEnum status;
 } kDiagnosticRoutineReadableStatuses[] = {
-    {"Ready", diagnostics::grpc_api::ROUTINE_STATUS_READY},
-    {"Running", diagnostics::grpc_api::ROUTINE_STATUS_RUNNING},
-    {"Waiting", diagnostics::grpc_api::ROUTINE_STATUS_WAITING},
-    {"Passed", diagnostics::grpc_api::ROUTINE_STATUS_PASSED},
-    {"Failed", diagnostics::grpc_api::ROUTINE_STATUS_FAILED},
-    {"Error", diagnostics::grpc_api::ROUTINE_STATUS_ERROR},
-    {"Cancelled", diagnostics::grpc_api::ROUTINE_STATUS_CANCELLED},
-    {"Failed to start", diagnostics::grpc_api::ROUTINE_STATUS_FAILED_TO_START},
-    {"Removed", diagnostics::grpc_api::ROUTINE_STATUS_REMOVED}};
+    {"Ready", mojo_ipc::DiagnosticRoutineStatusEnum::kReady},
+    {"Running", mojo_ipc::DiagnosticRoutineStatusEnum::kRunning},
+    {"Waiting", mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting},
+    {"Passed", mojo_ipc::DiagnosticRoutineStatusEnum::kPassed},
+    {"Failed", mojo_ipc::DiagnosticRoutineStatusEnum::kFailed},
+    {"Error", mojo_ipc::DiagnosticRoutineStatusEnum::kError},
+    {"Cancelled", mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled},
+    {"Failed to start", mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart},
+    {"Removed", mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved},
+    {"Cancelling", mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling}};
 
-std::string GetSwitchFromRoutine(
-    diagnostics::grpc_api::DiagnosticRoutine routine) {
+std::string GetSwitchFromRoutine(mojo_ipc::DiagnosticRoutineEnum routine) {
   static base::NoDestructor<
-      std::map<diagnostics::grpc_api::DiagnosticRoutine, std::string>>
+      std::map<mojo_ipc::DiagnosticRoutineEnum, std::string>>
       diagnostic_routine_to_switch;
 
   if (diagnostic_routine_to_switch->empty()) {
@@ -70,86 +74,94 @@ std::string GetSwitchFromRoutine(
   return routine_itr->second;
 }
 
-bool RunRoutineWithRequest(
-    const diagnostics::grpc_api::RunRoutineRequest& request) {
-  diagnostics::DiagRoutineRequester routine_requester;
-  routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcDomainSocketUri);
-
-  auto routine_info = routine_requester.RunRoutine(request);
-
-  if (!routine_info) {
-    std::cout << "No RunRoutineResponse received." << std::endl;
-    return false;
-  }
-
-  auto response = routine_requester.GetRoutineUpdate(
-      routine_info->uuid(),
-      diagnostics::grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+bool RunRoutineAndProcessResult(int32_t id,
+                                diagnostics::CrosHealthdMojoAdapter* adapter) {
+  auto response = adapter->GetRoutineUpdate(
+      id, mojo_ipc::DiagnosticRoutineCommandEnum::kGetStatus,
       true /* include_output */);
+
   const base::TimeTicks start_time = base::TimeTicks::Now();
-  while (response &&
-         response->status() == diagnostics::grpc_api::ROUTINE_STATUS_RUNNING &&
+  while (!response.is_null() &&
+         response->routine_update_union->is_noninteractive_update() &&
+         response->routine_update_union->get_noninteractive_update()->status ==
+             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning &&
          base::TimeTicks::Now() <
              start_time + kMaximumRoutineExecutionTimeDelta) {
     base::PlatformThread::Sleep(kRoutinePollIntervalTimeDelta);
-    std::cerr << "Progress: " << response->progress_percent() << std::endl;
+    std::cout << "Progress: " << response->progress_percent << std::endl;
 
-    response = routine_requester.GetRoutineUpdate(
-        routine_info->uuid(),
-        diagnostics::grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+    response = adapter->GetRoutineUpdate(
+        id, mojo_ipc::DiagnosticRoutineCommandEnum::kGetStatus,
         true /* include_output */);
   }
 
-  if (!response) {
+  if (response.is_null()) {
     std::cout << "No GetRoutineUpdateResponse received." << std::endl;
     return false;
   }
 
-  std::cout << "Routine: " << GetSwitchFromRoutine(request.routine())
-            << std::endl;
-
-  bool status_found = false;
-  diagnostics::grpc_api::DiagnosticRoutineStatus status = response->status();
-  for (const auto& item : kDiagnosticRoutineReadableStatuses) {
-    if (item.status == status) {
-      status_found = true;
-      std::cout << "Status: " << item.readable_status << std::endl;
-      break;
-    }
-  }
-  LOG_IF(FATAL, !status_found)
-      << "Invalid readable status lookup with status: " << status;
-
-  std::cout << "Status message: " << response->status_message() << std::endl;
-  std::cout << "Output: " << response->output() << std::endl;
-  std::cout << "Progress: " << response->progress_percent() << std::endl;
-
-  if (status != diagnostics::grpc_api::ROUTINE_STATUS_FAILED_TO_START) {
-    response = routine_requester.GetRoutineUpdate(
-        routine_info->uuid(),
-        diagnostics::grpc_api::GetRoutineUpdateRequest::REMOVE,
-        false /* include_output */);
-
-    if (!response ||
-        response->status() != diagnostics::grpc_api::ROUTINE_STATUS_REMOVED) {
-      std::cout << "Failed to remove routine." << std::endl;
+  if (response->output.is_valid()) {
+    auto shared_memory = diagnostics::GetReadOnlySharedMemoryFromMojoHandle(
+        std::move(response->output));
+    if (shared_memory) {
+      std::cout << "Output: "
+                << std::string(
+                       static_cast<const char*>(shared_memory->memory()),
+                       shared_memory->mapped_size())
+                << std::endl;
+    } else {
+      LOG(ERROR) << "Failed to read output.";
       return false;
     }
+  }
+
+  std::cout << "Progress: " << response->progress_percent << std::endl;
+  if (response->routine_update_union->is_noninteractive_update()) {
+    bool status_found = false;
+    mojo_ipc::DiagnosticRoutineStatusEnum status =
+        response->routine_update_union->get_noninteractive_update()->status;
+    for (const auto& item : kDiagnosticRoutineReadableStatuses) {
+      if (item.status == status) {
+        status_found = true;
+        std::cout << "Status: " << item.readable_status << std::endl;
+        break;
+      }
+    }
+    LOG_IF(FATAL, !status_found)
+        << "Invalid readable status lookup with status: " << status;
+
+    std::cout << "Status message: "
+              << response->routine_update_union->get_noninteractive_update()
+                     ->status_message
+              << std::endl;
+
+    if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart) {
+      response = adapter->GetRoutineUpdate(
+          id, mojo_ipc::DiagnosticRoutineCommandEnum::kRemove,
+          false /* include_output */);
+
+      if (response.is_null() ||
+          !response->routine_update_union->is_noninteractive_update() ||
+          response->routine_update_union->get_noninteractive_update()->status !=
+              mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved) {
+        std::cout << "Failed to remove routine." << std::endl;
+        return false;
+      }
+    }
+  } else {
+    // TODO(pmoy): Add support for interactive routines here. Right now, we
+    // assume all responses are noninteractive. This should display the user
+    // message, prompt the user for input, wait for that input, then maybe
+    // recursively call this method again?
   }
 
   return true;
 }
 
 bool ActionGetRoutines() {
-  diagnostics::DiagRoutineRequester routine_requester;
-  routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcDomainSocketUri);
-
-  auto reply = routine_requester.GetAvailableRoutines();
-
-  if (!reply)
-    return false;
-
-  for (auto routine : reply.value()) {
+  diagnostics::CrosHealthdMojoAdapter adapter;
+  auto reply = adapter.GetAvailableRoutines();
+  for (auto routine : reply) {
     std::cout << "Available routine: " << GetSwitchFromRoutine(routine)
               << std::endl;
   }
@@ -157,37 +169,34 @@ bool ActionGetRoutines() {
   return true;
 }
 
-bool ActionRunBatteryRoutine(int low_mah, int high_mah) {
-  diagnostics::grpc_api::RunRoutineRequest request;
-  request.set_routine(diagnostics::grpc_api::ROUTINE_BATTERY);
-  request.mutable_battery_params()->set_low_mah(low_mah);
-  request.mutable_battery_params()->set_high_mah(high_mah);
-  return RunRoutineWithRequest(request);
+bool ActionRunBatteryCapacityRoutine(int low_mah, int high_mah) {
+  diagnostics::CrosHealthdMojoAdapter adapter;
+  auto response = adapter.RunBatteryCapacityRoutine(low_mah, high_mah);
+  CHECK(response) << "No RunRoutineResponse received.";
+  return RunRoutineAndProcessResult(response->id, &adapter);
 }
 
-bool ActionRunBatterySysfsRoutine(int maximum_cycle_count,
-                                  int percent_battery_wear_allowed) {
-  diagnostics::grpc_api::RunRoutineRequest request;
-  request.set_routine(diagnostics::grpc_api::ROUTINE_BATTERY_SYSFS);
-  request.mutable_battery_sysfs_params()->set_maximum_cycle_count(
-      maximum_cycle_count);
-  request.mutable_battery_sysfs_params()->set_percent_battery_wear_allowed(
-      percent_battery_wear_allowed);
-  return RunRoutineWithRequest(request);
+bool ActionRunBatteryHealthRoutine(int maximum_cycle_count,
+                                   int percent_battery_wear_allowed) {
+  diagnostics::CrosHealthdMojoAdapter adapter;
+  auto response = adapter.RunBatteryHealthRoutine(maximum_cycle_count,
+                                                  percent_battery_wear_allowed);
+  CHECK(response) << "No RunRoutineResponse received.";
+  return RunRoutineAndProcessResult(response->id, &adapter);
 }
 
 bool ActionRunUrandomRoutine(int length_seconds) {
-  diagnostics::grpc_api::RunRoutineRequest request;
-  request.set_routine(diagnostics::grpc_api::ROUTINE_URANDOM);
-  request.mutable_urandom_params()->set_length_seconds(length_seconds);
-  return RunRoutineWithRequest(request);
+  diagnostics::CrosHealthdMojoAdapter adapter;
+  auto response = adapter.RunUrandomRoutine(length_seconds);
+  CHECK(response) << "No RunRoutineResponse received.";
+  return RunRoutineAndProcessResult(response->id, &adapter);
 }
 
 bool ActionRunSmartctlCheckRoutine() {
-  diagnostics::grpc_api::RunRoutineRequest request;
-  request.set_routine(diagnostics::grpc_api::ROUTINE_SMARTCTL_CHECK);
-  request.mutable_smartctl_check_params();
-  return RunRoutineWithRequest(request);
+  diagnostics::CrosHealthdMojoAdapter adapter;
+  auto response = adapter.RunSmartctlCheckRoutine();
+  CHECK(response) << "No RunRoutineResponse received.";
+  return RunRoutineAndProcessResult(response->id, &adapter);
 }
 
 }  // namespace
@@ -217,6 +226,8 @@ int main(int argc, char** argv) {
 
   logging::InitLogging(logging::LoggingSettings());
 
+  base::AtExitManager at_exit_manager;
+
   base::MessageLoopForIO message_loop;
 
   if (FLAGS_action == "") {
@@ -229,7 +240,7 @@ int main(int argc, char** argv) {
     return ActionGetRoutines() ? EXIT_SUCCESS : EXIT_FAILURE;
 
   if (FLAGS_action == "run_routine") {
-    std::map<std::string, diagnostics::grpc_api::DiagnosticRoutine>
+    std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
         switch_to_diagnostic_routine;
     for (const auto& item : kDiagnosticRoutineSwitches)
       switch_to_diagnostic_routine[item.switch_name] = item.routine;
@@ -241,17 +252,18 @@ int main(int argc, char** argv) {
 
     bool routine_result;
     switch (itr->second) {
-      case diagnostics::grpc_api::ROUTINE_BATTERY:
-        routine_result = ActionRunBatteryRoutine(FLAGS_low_mah, FLAGS_high_mah);
+      case mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity:
+        routine_result =
+            ActionRunBatteryCapacityRoutine(FLAGS_low_mah, FLAGS_high_mah);
         break;
-      case diagnostics::grpc_api::ROUTINE_BATTERY_SYSFS:
-        routine_result = ActionRunBatterySysfsRoutine(
+      case mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth:
+        routine_result = ActionRunBatteryHealthRoutine(
             FLAGS_maximum_cycle_count, FLAGS_percent_battery_wear_allowed);
         break;
-      case diagnostics::grpc_api::ROUTINE_URANDOM:
+      case mojo_ipc::DiagnosticRoutineEnum::kUrandom:
         routine_result = ActionRunUrandomRoutine(FLAGS_length_seconds);
         break;
-      case diagnostics::grpc_api::ROUTINE_SMARTCTL_CHECK:
+      case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
         routine_result = ActionRunSmartctlCheckRoutine();
         break;
       default:
