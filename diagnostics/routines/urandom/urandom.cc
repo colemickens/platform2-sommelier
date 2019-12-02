@@ -21,15 +21,14 @@ constexpr char kUrandomExePath[] = "/usr/libexec/diagnostics/urandom";
 }  // namespace
 
 std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
-    const grpc_api::UrandomRoutineParameters& parameters) {
-  std::string time_delta_ms_value =
-      std::to_string(base::TimeDelta::FromSeconds(parameters.length_seconds())
-                         .InMilliseconds());
+    uint32_t length_seconds) {
+  std::string time_delta_ms_value = std::to_string(
+      base::TimeDelta::FromSeconds(length_seconds).InMilliseconds());
   return std::make_unique<SubprocRoutine>(
       base::CommandLine(std::vector<std::string>{
           kUrandomExePath, "--time_delta_ms=" + time_delta_ms_value,
           "--urandom_path=/dev/urandom"}),
-      parameters.length_seconds());
+      length_seconds);
 }
 
 }  // namespace diagnostics

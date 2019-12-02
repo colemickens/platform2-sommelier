@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_ROUTINES_DIAG_ROUTINE_H_
 #define DIAGNOSTICS_ROUTINES_DIAG_ROUTINE_H_
 
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 
@@ -30,8 +30,10 @@ class DiagnosticRoutine {
   virtual void Cancel() = 0;
   // Populates |response| with the current status of the diagnostic routine.
   virtual void PopulateStatusUpdate(
-      grpc_api::GetRoutineUpdateResponse* response, bool include_output) = 0;
-  virtual grpc_api::DiagnosticRoutineStatus GetStatus() = 0;
+      chromeos::cros_healthd::mojom::RoutineUpdate* response,
+      bool include_output) = 0;
+  virtual chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum
+  GetStatus() = 0;
 };
 
 }  // namespace diagnostics

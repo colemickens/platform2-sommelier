@@ -12,9 +12,10 @@
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/routines/battery/battery.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
 constexpr int kLowmAh = 1000;
@@ -35,9 +36,7 @@ std::string FakeBadFileContents() {
 class BatteryRoutineTest : public testing::Test {
  protected:
   BatteryRoutineTest() {
-    params_.set_low_mah(kLowmAh);
-    params_.set_high_mah(kHighmAh);
-    routine_ = std::make_unique<BatteryRoutine>(params_);
+    routine_ = std::make_unique<BatteryRoutine>(kLowmAh, kHighmAh);
   }
 
   void SetUp() override {
@@ -47,14 +46,14 @@ class BatteryRoutineTest : public testing::Test {
 
   BatteryRoutine* routine() { return routine_.get(); }
 
-  grpc_api::GetRoutineUpdateResponse* response() { return &response_; }
+  mojo_ipc::RoutineUpdate* update() { return &update_; }
 
   void RunRoutineAndWaitForExit() {
     routine_->Start();
 
     // Since the BatteryRoutine has finished by the time Start() returns, there
     // is no need to wait.
-    routine_->PopulateStatusUpdate(&response_, true);
+    routine_->PopulateStatusUpdate(&update_, true);
   }
 
   void WriteChargeFullDesign(const std::string& file_contents) {
@@ -68,8 +67,8 @@ class BatteryRoutineTest : public testing::Test {
  private:
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<BatteryRoutine> routine_;
-  grpc_api::GetRoutineUpdateResponse response_;
-  grpc_api::BatteryRoutineParameters params_;
+  mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                                  mojo_ipc::RoutineUpdateUnion::New()};
 
   DISALLOW_COPY_AND_ASSIGN(BatteryRoutineTest);
 };
@@ -77,8 +76,14 @@ class BatteryRoutineTest : public testing::Test {
 // Test that the battery routine fails if charge_full_design does not exist.
 TEST_F(BatteryRoutineTest, NoChargeFullDesign) {
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(), kBatteryNoChargeFullDesignMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_ERROR);
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
+            kBatteryNoChargeFullDesignMessage);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
 }
 
 // Test that the battery routine fails if charge_full_design is outside the
@@ -86,8 +91,14 @@ TEST_F(BatteryRoutineTest, NoChargeFullDesign) {
 TEST_F(BatteryRoutineTest, LowChargeFullDesign) {
   WriteChargeFullDesign(FakeBadFileContents());
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(), kBatteryRoutineFailedMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_FAILED);
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
+            kBatteryRoutineFailedMessage);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kFailed);
 }
 
 // Test that the battery routine passes if charge_full_design is within the
@@ -95,8 +106,14 @@ TEST_F(BatteryRoutineTest, LowChargeFullDesign) {
 TEST_F(BatteryRoutineTest, GoodChargeFullDesign) {
   WriteChargeFullDesign(FakeGoodFileContents());
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(), kBatteryRoutineSucceededMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_PASSED);
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
+            kBatteryRoutineSucceededMessage);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
 }
 
 }  // namespace diagnostics

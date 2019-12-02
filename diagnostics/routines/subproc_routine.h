@@ -16,7 +16,6 @@
 
 #include "diagnostics/routines/diag_process_adapter.h"
 #include "diagnostics/routines/diag_routine.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -73,9 +72,11 @@ class SubprocRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(grpc_api::GetRoutineUpdateResponse* response,
-                            bool include_output) override;
-  grpc_api::DiagnosticRoutineStatus GetStatus() override;
+  void PopulateStatusUpdate(
+      chromeos::cros_healthd::mojom::RoutineUpdate* response,
+      bool include_output) override;
+  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
+      override;
 
  private:
   // Functions to manipulate the child process.

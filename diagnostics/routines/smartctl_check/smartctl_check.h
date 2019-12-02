@@ -8,12 +8,10 @@
 #include <memory>
 
 #include "diagnostics/routines/subproc_routine.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
-std::unique_ptr<DiagnosticRoutine> CreateSmartctlCheckRoutine(
-    const grpc_api::SmartctlCheckRoutineParameters& parameters);
+std::unique_ptr<DiagnosticRoutine> CreateSmartctlCheckRoutine();
 
 }  // namespace diagnostics
 

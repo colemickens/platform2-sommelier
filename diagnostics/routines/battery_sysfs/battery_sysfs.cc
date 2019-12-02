@@ -4,6 +4,7 @@
 
 #include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -11,15 +12,18 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
+#include "diagnostics/common/mojo_utils.h"
+
 namespace diagnostics {
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
 
-int CalculateProgressPercent(grpc_api::DiagnosticRoutineStatus status) {
+int CalculateProgressPercent(mojo_ipc::DiagnosticRoutineStatusEnum status) {
   // Since the battery_sysfs routine cannot be cancelled, the progress percent
   // can only be 0 or 100.
-  if (status == grpc_api::ROUTINE_STATUS_PASSED ||
-      status == grpc_api::ROUTINE_STATUS_FAILED)
+  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
+      status == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed)
     return 100;
   return 0;
 }
@@ -87,14 +91,16 @@ const char kBatterySysfsExcessiveCycleCountMessage[] =
     "Battery cycle count is too high.";
 const char kBatterySysfsRoutinePassedMessage[] = "Routine passed.";
 
-BatterySysfsRoutine::BatterySysfsRoutine(
-    const grpc_api::BatterySysfsRoutineParameters& parameters)
-    : status_(grpc_api::ROUTINE_STATUS_READY), parameters_(parameters) {}
+BatterySysfsRoutine::BatterySysfsRoutine(uint32_t maximum_cycle_count,
+                                         uint32_t percent_battery_wear_allowed)
+    : status_(mojo_ipc::DiagnosticRoutineStatusEnum::kReady),
+      maximum_cycle_count_(maximum_cycle_count),
+      percent_battery_wear_allowed_(percent_battery_wear_allowed) {}
 
 BatterySysfsRoutine::~BatterySysfsRoutine() = default;
 
 void BatterySysfsRoutine::Start() {
-  DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_READY);
+  DCHECK_EQ(status_, mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
   if (!RunBatterySysfsRoutine())
     LOG(ERROR) << "Routine failed: " << status_message_;
 }
@@ -104,22 +110,26 @@ void BatterySysfsRoutine::Resume() {}
 void BatterySysfsRoutine::Cancel() {}
 
 void BatterySysfsRoutine::PopulateStatusUpdate(
-    grpc_api::GetRoutineUpdateResponse* response, bool include_output) {
-  // Because the battery routine is non-interactive, we will never include a
-  // user message.
-  response->set_status(status_);
-  response->set_status_message(status_message_);
-  response->set_progress_percent(CalculateProgressPercent(status_));
+    mojo_ipc::RoutineUpdate* response, bool include_output) {
+  // Because the battery_sysfs routine is non-interactive, we will never include
+  // a user message.
+  mojo_ipc::NonInteractiveRoutineUpdate update;
+  update.status = status_;
+  update.status_message = status_message_;
+
+  response->routine_update_union->set_noninteractive_update(update.Clone());
+  response->progress_percent = CalculateProgressPercent(status_);
 
   if (include_output) {
     std::string output;
     for (const auto& key_val : battery_sysfs_log_)
       output += key_val.first + ": " + key_val.second + "\n";
-    response->set_output(output);
+    response->output =
+        CreateReadOnlySharedMemoryMojoHandle(base::StringPiece(output));
   }
 }
 
-grpc_api::DiagnosticRoutineStatus BatterySysfsRoutine::GetStatus() {
+mojo_ipc::DiagnosticRoutineStatusEnum BatterySysfsRoutine::GetStatus() {
   return status_;
 }
 
@@ -149,7 +159,7 @@ bool BatterySysfsRoutine::RunBatterySysfsRoutine() {
     return false;
 
   status_message_ = kBatterySysfsRoutinePassedMessage;
-  status_ = grpc_api::ROUTINE_STATUS_PASSED;
+  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
   return true;
 }
 
@@ -195,23 +205,24 @@ bool BatterySysfsRoutine::ReadCycleCount(int* cycle_count) {
 }
 
 bool BatterySysfsRoutine::TestWearPercentage() {
-  int percent_battery_wear_allowed = parameters_.percent_battery_wear_allowed();
-
   int capacity;
   int design_capacity;
   if (!ReadBatteryCapacities(&capacity, &design_capacity) || capacity < 0 ||
-      design_capacity < 0 || capacity > design_capacity) {
+      design_capacity < 0) {
     status_message_ = kBatterySysfsFailedCalculatingWearPercentageMessage;
-    status_ = grpc_api::ROUTINE_STATUS_ERROR;
+    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
     return false;
   }
 
-  int wear_percentage = 100 - capacity * 100 / design_capacity;
+  // Cap the wear percentage at 0. There are cases where the capacity can be
+  // higher than the design capacity, due to variance in batteries or vendors
+  // setting conservative design capacities.
+  int wear_percentage = std::max(0, 100 - capacity * 100 / design_capacity);
 
   battery_sysfs_log_["Wear Percentage"] = std::to_string(wear_percentage);
-  if (wear_percentage > percent_battery_wear_allowed) {
+  if (wear_percentage > percent_battery_wear_allowed_) {
     status_message_ = kBatterySysfsExcessiveWearMessage;
-    status_ = grpc_api::ROUTINE_STATUS_FAILED;
+    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
     return false;
   }
 
@@ -219,18 +230,17 @@ bool BatterySysfsRoutine::TestWearPercentage() {
 }
 
 bool BatterySysfsRoutine::TestCycleCount() {
-  int maximum_cycle_count = parameters_.maximum_cycle_count();
   int cycle_count;
   if (!ReadCycleCount(&cycle_count) || cycle_count < 0) {
     status_message_ = kBatterySysfsFailedReadingCycleCountMessage;
-    status_ = grpc_api::ROUTINE_STATUS_ERROR;
+    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
     return false;
   }
 
   battery_sysfs_log_["Cycle Count"] = std::to_string(cycle_count);
-  if (cycle_count > maximum_cycle_count) {
+  if (cycle_count > maximum_cycle_count_) {
     status_message_ = kBatterySysfsExcessiveCycleCountMessage;
-    status_ = grpc_api::ROUTINE_STATUS_FAILED;
+    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
     return false;
   }
 

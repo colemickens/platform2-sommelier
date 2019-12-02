@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
@@ -11,12 +12,15 @@
 #include <base/strings/string_split.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <mojo/edk/embedder/embedder.h>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
 
@@ -62,9 +66,9 @@ std::string ConstructOutput() {
 class BatterySysfsRoutineTest : public testing::Test {
  protected:
   BatterySysfsRoutineTest() {
-    params_.set_maximum_cycle_count(kMaximumCycleCount);
-    params_.set_percent_battery_wear_allowed(kPercentBatteryWearAllowed);
-    routine_ = std::make_unique<BatterySysfsRoutine>(params_);
+    mojo::edk::Init();
+    routine_ = std::make_unique<BatterySysfsRoutine>(
+        kMaximumCycleCount, kPercentBatteryWearAllowed);
   }
 
   void SetUp() override {
@@ -74,14 +78,14 @@ class BatterySysfsRoutineTest : public testing::Test {
 
   BatterySysfsRoutine* routine() { return routine_.get(); }
 
-  grpc_api::GetRoutineUpdateResponse* response() { return &response_; }
+  mojo_ipc::RoutineUpdate* update() { return &update_; }
 
   void RunRoutineAndWaitForExit() {
     routine_->Start();
 
     // Since the BatterySysfsRoutine has finished by the time Start() returns,
     // there is no need to wait.
-    routine_->PopulateStatusUpdate(&response_, true);
+    routine_->PopulateStatusUpdate(&update_, true);
   }
 
   void WriteFilesReadByLog() {
@@ -110,8 +114,8 @@ class BatterySysfsRoutineTest : public testing::Test {
  private:
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<BatterySysfsRoutine> routine_;
-  grpc_api::GetRoutineUpdateResponse response_;
-  grpc_api::BatterySysfsRoutineParameters params_;
+  mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                                  mojo_ipc::RoutineUpdateUnion::New()};
 
   DISALLOW_COPY_AND_ASSIGN(BatterySysfsRoutineTest);
 };
@@ -125,9 +129,14 @@ TEST_F(BatterySysfsRoutineTest, HighCycleCount) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kHighCycleCount));
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(),
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
             kBatterySysfsExcessiveCycleCountMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_FAILED);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kFailed);
 }
 
 // Test that the battery_sysfs routine fails if cycle_count is not present.
@@ -137,9 +146,14 @@ TEST_F(BatterySysfsRoutineTest, NoCycleCount) {
   WriteFileContents(kBatterySysfsChargeFullDesignPath,
                     std::to_string(kFakeBatteryChargeFullDesign));
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(),
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
             kBatterySysfsFailedReadingCycleCountMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
 }
 
 // Test that the battery_sysfs routine fails if the wear percentage is too
@@ -152,8 +166,14 @@ TEST_F(BatterySysfsRoutineTest, HighWearPercentage) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kLowCycleCount));
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(), kBatterySysfsExcessiveWearMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_FAILED);
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
+            kBatterySysfsExcessiveWearMessage);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kFailed);
 }
 
 // Test that the battery_sysfs routine fails if neither charge_full nor
@@ -162,9 +182,14 @@ TEST_F(BatterySysfsRoutineTest, NoWearPercentage) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kLowCycleCount));
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(),
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
             kBatterySysfsFailedCalculatingWearPercentageMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
 }
 
 // Test that the battery_sysfs routine passes if the cycle count and wear
@@ -178,14 +203,25 @@ TEST_F(BatterySysfsRoutineTest, GoodParameters) {
                     std::to_string(kLowCycleCount));
   WriteFilesReadByLog();
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(), kBatterySysfsRoutinePassedMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_PASSED);
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
+            kBatterySysfsRoutinePassedMessage);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
   base::StringPairs expected_output_pairs;
   base::StringPairs actual_output_pairs;
   ASSERT_TRUE(base::SplitStringIntoKeyValuePairs(ConstructOutput(), ':', '\n',
                                                  &expected_output_pairs));
-  ASSERT_TRUE(base::SplitStringIntoKeyValuePairs(response()->output(), ':',
-                                                 '\n', &actual_output_pairs));
+  auto shared_memory = diagnostics::GetReadOnlySharedMemoryFromMojoHandle(
+      std::move(update()->output));
+  ASSERT_TRUE(shared_memory);
+  ASSERT_TRUE(base::SplitStringIntoKeyValuePairs(
+      base::StringPiece(static_cast<const char*>(shared_memory->memory()),
+                        shared_memory->mapped_size()),
+      ':', '\n', &actual_output_pairs));
   EXPECT_THAT(actual_output_pairs,
               UnorderedElementsAreArray(expected_output_pairs));
 }
@@ -199,8 +235,14 @@ TEST_F(BatterySysfsRoutineTest, EnergyReportingBattery) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kLowCycleCount));
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(), kBatterySysfsRoutinePassedMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_PASSED);
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
+            kBatterySysfsRoutinePassedMessage);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
 }
 
 // Test that the battery_sysfs routine uses the expected full path to
@@ -214,8 +256,14 @@ TEST_F(BatterySysfsRoutineTest, FullCycleCountPath) {
       temp_dir_path().AppendASCII(kFullCycleCountPath),
       std::to_string(kLowCycleCount)));
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->status_message(), kBatterySysfsRoutinePassedMessage);
-  EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_PASSED);
+  const auto& update_union = update()->routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message,
+            kBatterySysfsRoutinePassedMessage);
+  EXPECT_EQ(noninteractive_update->status,
+            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
 }
 
 }  // namespace diagnostics

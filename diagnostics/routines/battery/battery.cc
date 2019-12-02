@@ -12,20 +12,17 @@
 #include <base/strings/string_util.h>
 
 namespace diagnostics {
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
-// When the battery routine's low_mah and high_mah parameters are not set, we
-// default to low_mah = 1000 and high_mah = 10000.
-constexpr int kDefaultLowmAh = 1000;
-constexpr int kDefaultHighmAh = 10000;
 // Conversion factor from uAh to mAh.
 constexpr int kuAhTomAhDivisor = 1000;
 
-int CalculateProgressPercent(grpc_api::DiagnosticRoutineStatus status) {
+int CalculateProgressPercent(mojo_ipc::DiagnosticRoutineStatusEnum status) {
   // Since the battery test cannot be cancelled, the progress percent can only
   // be 0 or 100.
-  if (status == grpc_api::ROUTINE_STATUS_PASSED ||
-      status == grpc_api::ROUTINE_STATUS_FAILED)
+  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
+      status == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed)
     return 100;
   return 0;
 }
@@ -47,16 +44,17 @@ const char kBatteryRoutineSucceededMessage[] =
 const char kBatteryRoutineFailedMessage[] =
     "Battery design capacity not within given limits.";
 
-BatteryRoutine::BatteryRoutine(
-    const grpc_api::BatteryRoutineParameters& parameters)
-    : status_(grpc_api::ROUTINE_STATUS_READY), parameters_(parameters) {}
+BatteryRoutine::BatteryRoutine(uint32_t low_mah, uint32_t high_mah)
+    : status_(mojo_ipc::DiagnosticRoutineStatusEnum::kReady),
+      low_mah_(low_mah),
+      high_mah_(high_mah) {}
 
 BatteryRoutine::~BatteryRoutine() = default;
 
 void BatteryRoutine::Start() {
-  DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_READY);
+  DCHECK_EQ(status_, mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
   status_ = RunBatteryRoutine();
-  if (status_ != grpc_api::ROUTINE_STATUS_PASSED)
+  if (status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed)
     LOG(ERROR) << "Routine failed: " << status_message_;
 }
 
@@ -64,16 +62,19 @@ void BatteryRoutine::Start() {
 void BatteryRoutine::Resume() {}
 void BatteryRoutine::Cancel() {}
 
-void BatteryRoutine::PopulateStatusUpdate(
-    grpc_api::GetRoutineUpdateResponse* response, bool include_output) {
+void BatteryRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+                                          bool include_output) {
   // Because the battery routine is non-interactive, we will never include a
   // user message.
-  response->set_status(status_);
-  response->set_progress_percent(CalculateProgressPercent(status_));
-  response->set_status_message(status_message_);
+  mojo_ipc::NonInteractiveRoutineUpdate update;
+  update.status = status_;
+  update.status_message = status_message_;
+
+  response->routine_update_union->set_noninteractive_update(update.Clone());
+  response->progress_percent = CalculateProgressPercent(status_);
 }
 
-grpc_api::DiagnosticRoutineStatus BatteryRoutine::GetStatus() {
+mojo_ipc::DiagnosticRoutineStatusEnum BatteryRoutine::GetStatus() {
   return status_;
 }
 
@@ -81,14 +82,10 @@ void BatteryRoutine::set_root_dir_for_testing(const base::FilePath& root_dir) {
   root_dir_ = root_dir;
 }
 
-grpc_api::DiagnosticRoutineStatus BatteryRoutine::RunBatteryRoutine() {
-  int low_mah = parameters_.low_mah() ? parameters_.low_mah() : kDefaultLowmAh;
-  int high_mah =
-      parameters_.high_mah() ? parameters_.high_mah() : kDefaultHighmAh;
-
-  if (low_mah > high_mah) {
+mojo_ipc::DiagnosticRoutineStatusEnum BatteryRoutine::RunBatteryRoutine() {
+  if (low_mah_ > high_mah_) {
     status_message_ = kBatteryRoutineParametersInvalidMessage;
-    return grpc_api::ROUTINE_STATUS_ERROR;
+    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
   }
 
   base::FilePath charge_full_design_path(
@@ -96,14 +93,14 @@ grpc_api::DiagnosticRoutineStatus BatteryRoutine::RunBatteryRoutine() {
 
   if (!base::PathExists(charge_full_design_path)) {
     status_message_ = kBatteryNoChargeFullDesignMessage;
-    return grpc_api::ROUTINE_STATUS_ERROR;
+    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
   }
 
   std::string charge_full_design_contents;
   if (!base::ReadFileToString(charge_full_design_path,
                               &charge_full_design_contents)) {
     status_message_ = kBatteryFailedReadingChargeFullDesignMessage;
-    return grpc_api::ROUTINE_STATUS_ERROR;
+    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
   }
 
   base::TrimWhitespaceASCII(charge_full_design_contents, base::TRIM_TRAILING,
@@ -112,20 +109,20 @@ grpc_api::DiagnosticRoutineStatus BatteryRoutine::RunBatteryRoutine() {
   if (!base::StringToInt(charge_full_design_contents,
                          &charge_full_design_uah)) {
     status_message_ = kBatteryFailedParsingChargeFullDesignMessage;
-    return grpc_api::ROUTINE_STATUS_ERROR;
+    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
   }
 
   // Conversion is necessary because the inputs are given in mAh, whereas the
   // design capacity is reported in uAh.
   int charge_full_design_mah = charge_full_design_uah / kuAhTomAhDivisor;
-  if (!(charge_full_design_mah >= low_mah) ||
-      !(charge_full_design_mah <= high_mah)) {
+  if (!(charge_full_design_mah >= low_mah_) ||
+      !(charge_full_design_mah <= high_mah_)) {
     status_message_ = kBatteryRoutineFailedMessage;
-    return grpc_api::ROUTINE_STATUS_FAILED;
+    return mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
   }
 
   status_message_ = kBatteryRoutineSucceededMessage;
-  return grpc_api::ROUTINE_STATUS_PASSED;
+  return mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
 }
 
 }  // namespace diagnostics

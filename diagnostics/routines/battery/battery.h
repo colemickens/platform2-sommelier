@@ -5,13 +5,13 @@
 #ifndef DIAGNOSTICS_ROUTINES_BATTERY_BATTERY_H_
 #define DIAGNOSTICS_ROUTINES_BATTERY_BATTERY_H_
 
+#include <cstdint>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
 
 #include "diagnostics/routines/diag_routine.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -30,26 +30,30 @@ extern const char kBatteryRoutineFailedMessage[];
 // kBatteryChargeFullDesignPath.
 class BatteryRoutine final : public DiagnosticRoutine {
  public:
-  explicit BatteryRoutine(const grpc_api::BatteryRoutineParameters& parameters);
+  BatteryRoutine(uint32_t low_mah, uint32_t high_mah);
 
   // DiagnosticRoutine overrides:
   ~BatteryRoutine() override;
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(grpc_api::GetRoutineUpdateResponse* response,
-                            bool include_output) override;
-  grpc_api::DiagnosticRoutineStatus GetStatus() override;
+  void PopulateStatusUpdate(
+      chromeos::cros_healthd::mojom::RoutineUpdate* response,
+      bool include_output) override;
+  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
+      override;
 
   // Overrides the file system root directory for file operations in tests.
   // If used, this function needs to be called before Start().
   void set_root_dir_for_testing(const base::FilePath& root_dir);
 
  private:
-  grpc_api::DiagnosticRoutineStatus RunBatteryRoutine();
+  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum
+  RunBatteryRoutine();
 
-  grpc_api::DiagnosticRoutineStatus status_;
-  const grpc_api::BatteryRoutineParameters parameters_;
+  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
+  uint32_t low_mah_;
+  uint32_t high_mah_;
   std::string status_message_;
   base::FilePath root_dir_{"/"};
 

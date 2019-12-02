@@ -19,7 +19,7 @@
 namespace diagnostics {
 
 std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
-    const grpc_api::UrandomRoutineParameters& parameters);
+    uint32_t length_seconds);
 
 }  // namespace diagnostics
 

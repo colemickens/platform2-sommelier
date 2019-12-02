@@ -21,8 +21,7 @@ constexpr char kSmartctlCheckExecutableInstallLocation[] =
     "/usr/libexec/diagnostics/smartctl-check";
 }
 
-std::unique_ptr<DiagnosticRoutine> CreateSmartctlCheckRoutine(
-    const grpc_api::SmartctlCheckRoutineParameters& parameters) {
+std::unique_ptr<DiagnosticRoutine> CreateSmartctlCheckRoutine() {
   return std::make_unique<SubprocRoutine>(
       base::CommandLine({kSmartctlCheckExecutableInstallLocation}),
       0 /*predicted_duration_in_seconds*/);

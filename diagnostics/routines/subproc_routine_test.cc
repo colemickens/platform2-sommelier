@@ -16,15 +16,29 @@
 #include "diagnostics/routines/diag_process_adapter.h"
 
 namespace diagnostics {
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
 
 using ::testing::_;
+using ::testing::AtMost;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using ::testing::Test;
-using ::testing::AtMost;
+
+void CheckRoutineUpdate(int progress_percent,
+                        std::string status_message,
+                        mojo_ipc::DiagnosticRoutineStatusEnum status,
+                        const mojo_ipc::RoutineUpdate& update) {
+  EXPECT_EQ(update.progress_percent, progress_percent);
+  const auto& update_union = update.routine_update_union;
+  ASSERT_FALSE(update_union.is_null());
+  ASSERT_TRUE(update_union->is_noninteractive_update());
+  const auto& noninteractive_update = update_union->get_noninteractive_update();
+  EXPECT_EQ(noninteractive_update->status_message, status_message);
+  EXPECT_EQ(noninteractive_update->status, status);
+}
 
 class MockDiagProcessAdapter : public DiagProcessAdapter {
  public:
@@ -82,19 +96,19 @@ class SubprocRoutineTest : public Test {
 
   void PopulateStatusUpdateForRunningRoutine(base::TerminationStatus status) {
     EXPECT_CALL(*mock_adapter_, GetStatus(_)).WillOnce(Return(status));
-    routine_->PopulateStatusUpdate(&response_, true);
+    routine_->PopulateStatusUpdate(&update_, true);
   }
 
   void PopulateStatusUpdate() {
-    routine_->PopulateStatusUpdate(&response_, true);
+    routine_->PopulateStatusUpdate(&update_, true);
   }
 
  private:
   StrictMock<MockDiagProcessAdapter>* mock_adapter_;  // Owned by |routine_|.
   base::SimpleTestTickClock* tick_clock_;             // Owned by |routine_|.
   std::unique_ptr<SubprocRoutine> routine_;
-  grpc_api::GetRoutineUpdateResponse response_;
-  grpc_api::UrandomRoutineParameters params_;
+  mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                                  mojo_ipc::RoutineUpdateUnion::New()};
 
   DISALLOW_COPY_AND_ASSIGN(SubprocRoutineTest);
 };
@@ -108,12 +122,12 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithSuccess) {
       .WillOnce(Return(base::TERMINATION_STATUS_NORMAL_TERMINATION));
   routine()->Start();
 
-  grpc_api::GetRoutineUpdateResponse response;
-  routine()->PopulateStatusUpdate(&response, false);
+  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                 mojo_ipc::RoutineUpdateUnion::New()};
+  routine()->PopulateStatusUpdate(&update, false);
 
-  EXPECT_EQ(response.progress_percent(), 100);
-  EXPECT_EQ(response.status_message(), kSubprocRoutineSucceededMessage);
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_PASSED);
+  CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
+                     mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
 }
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithFailure) {
@@ -124,19 +138,20 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithFailure) {
       .WillOnce(Return(base::TERMINATION_STATUS_ABNORMAL_TERMINATION));
   routine()->Start();
 
-  grpc_api::GetRoutineUpdateResponse response;
-  routine()->PopulateStatusUpdate(&response, false);
+  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                 mojo_ipc::RoutineUpdateUnion::New()};
+  routine()->PopulateStatusUpdate(&update, false);
 
-  EXPECT_EQ(response.progress_percent(), 100);
-  EXPECT_EQ(response.status_message(), kSubprocRoutineFailedMessage);
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_FAILED);
+  CheckRoutineUpdate(100, kSubprocRoutineFailedMessage,
+                     mojo_ipc::DiagnosticRoutineStatusEnum::kFailed, update);
 }
 
 TEST_F(SubprocRoutineTest, FailInvokingSubproc) {
   EXPECT_CALL(*mock_adapter(), StartProcess(_, _)).WillOnce(Return(false));
   routine()->Start();
 
-  EXPECT_EQ(routine()->GetStatus(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  EXPECT_EQ(routine()->GetStatus(),
+            mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart);
 }
 
 TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
@@ -152,12 +167,12 @@ TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
 
   tick_clock()->Advance(base::TimeDelta::FromSeconds(5));
 
-  grpc_api::GetRoutineUpdateResponse response;
-  routine()->PopulateStatusUpdate(&response, false);
+  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                 mojo_ipc::RoutineUpdateUnion::New()};
+  routine()->PopulateStatusUpdate(&update, false);
 
-  EXPECT_EQ(response.progress_percent(), 50);
-  EXPECT_EQ(response.status_message(), kSubprocRoutineProcessRunningMessage);
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_RUNNING);
+  CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
+                     mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
 }
 
 TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
@@ -175,29 +190,28 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
   routine()->Start();
 
   tick_clock()->Advance(base::TimeDelta::FromSeconds(5));
-  grpc_api::GetRoutineUpdateResponse response;
-  routine()->PopulateStatusUpdate(&response, false);
+  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                 mojo_ipc::RoutineUpdateUnion::New()};
+  routine()->PopulateStatusUpdate(&update, false);
 
-  EXPECT_EQ(response.progress_percent(), 50);
-  EXPECT_EQ(response.status_message(), kSubprocRoutineProcessRunningMessage);
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_RUNNING);
+  CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
+                     mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
 
   routine()->Cancel();
 
   tick_clock()->Advance(base::TimeDelta::FromSeconds(1));
 
-  routine()->PopulateStatusUpdate(&response, false);
+  routine()->PopulateStatusUpdate(&update, false);
 
-  EXPECT_EQ(response.progress_percent(), 50);
-  EXPECT_EQ(response.status_message(), kSubprocRoutineProcessCancellingMessage);
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_CANCELLING);
+  CheckRoutineUpdate(50, kSubprocRoutineProcessCancellingMessage,
+                     mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling,
+                     update);
 
   // Now the process should appear dead
-  routine()->PopulateStatusUpdate(&response, false);
+  routine()->PopulateStatusUpdate(&update, false);
 
-  EXPECT_EQ(response.progress_percent(), 50);
-  EXPECT_EQ(response.status_message(), kSubprocRoutineCancelled);
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_CANCELLED);
+  CheckRoutineUpdate(50, kSubprocRoutineCancelled,
+                     mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled, update);
 }
 
 }  // namespace diagnostics

@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_ROUTINES_BATTERY_SYSFS_BATTERY_SYSFS_H_
 #define DIAGNOSTICS_ROUTINES_BATTERY_SYSFS_BATTERY_SYSFS_H_
 
+#include <cstdint>
 #include <map>
 #include <string>
 
@@ -12,7 +13,6 @@
 #include <base/macros.h>
 
 #include "diagnostics/routines/diag_routine.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 // Relative path to the directory with files read by the BatterySysfs routine.
@@ -43,17 +43,19 @@ extern const char kBatterySysfsRoutinePassedMessage[];
 // kBatteryChargeFullDesignPath.
 class BatterySysfsRoutine final : public DiagnosticRoutine {
  public:
-  explicit BatterySysfsRoutine(
-      const grpc_api::BatterySysfsRoutineParameters& parameters);
+  BatterySysfsRoutine(uint32_t maximum_cycle_count,
+                      uint32_t percent_battery_wear_allowed);
 
   // DiagnosticRoutine overrides:
   ~BatterySysfsRoutine() override;
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(grpc_api::GetRoutineUpdateResponse* response,
-                            bool include_output) override;
-  grpc_api::DiagnosticRoutineStatus GetStatus() override;
+  void PopulateStatusUpdate(
+      chromeos::cros_healthd::mojom::RoutineUpdate* response,
+      bool include_output) override;
+  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
+      override;
 
   // Overrides the file system root directory for file operations in tests.
   // If used, this function needs to be called before Start().
@@ -66,8 +68,9 @@ class BatterySysfsRoutine final : public DiagnosticRoutine {
   bool TestWearPercentage();
   bool TestCycleCount();
 
-  grpc_api::DiagnosticRoutineStatus status_;
-  const grpc_api::BatterySysfsRoutineParameters parameters_;
+  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
+  uint32_t maximum_cycle_count_;
+  uint32_t percent_battery_wear_allowed_;
   std::map<std::string, std::string> battery_sysfs_log_;
   std::string status_message_;
   base::FilePath root_dir_{"/"};
