@@ -57,6 +57,8 @@ class DeviceManagerBase {
   virtual const std::string& DefaultInterface() const = 0;
 
   virtual bool Add(const std::string& name) = 0;
+  virtual bool AddWithContext(const std::string& name,
+                              std::unique_ptr<Device::Context>) = 0;
   virtual bool Remove(const std::string& name) = 0;
 };
 
@@ -111,6 +113,8 @@ class DeviceManager : public DeviceManagerBase {
   // Adds a new device by name. Returns whether the device was successfully
   // added.
   bool Add(const std::string& name) override;
+  bool AddWithContext(const std::string& name,
+                      std::unique_ptr<Device::Context>) override;
   bool Remove(const std::string& name) override;
 
  private:

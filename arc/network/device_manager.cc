@@ -173,12 +173,20 @@ void DeviceManager::OnDeviceMessageFromNDProxy(const DeviceMessage& msg) {
 }
 
 bool DeviceManager::Add(const std::string& name) {
+  return AddWithContext(name, nullptr);
+}
+
+bool DeviceManager::AddWithContext(const std::string& name,
+                                   std::unique_ptr<Device::Context> ctx) {
   if (name.empty() || Exists(name))
     return false;
 
   auto dev = MakeDevice(name);
   if (!dev)
     return false;
+
+  if (ctx)
+    dev->set_context(std::move(ctx));
 
   LOG(INFO) << "Adding device " << *dev;
   auto* device = dev.get();

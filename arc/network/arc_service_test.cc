@@ -53,6 +53,8 @@ class MockDeviceManager : public DeviceManagerBase {
   MOCK_CONST_METHOD1(FindByGuestInterface, Device*(const std::string& ifname));
   MOCK_CONST_METHOD0(DefaultInterface, const std::string&());
   MOCK_METHOD1(Add, bool(const std::string&));
+  MOCK_METHOD2(AddWithContext,
+               bool(const std::string&, std::unique_ptr<Device::Context>));
   MOCK_METHOD1(Remove, bool(const std::string&));
 };
 
