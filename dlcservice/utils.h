@@ -39,20 +39,19 @@ class ScopedCleanups {
 };
 
 // Returns the path to a DLC module ID's based directory given |id|.
-base::FilePath GetDlcModulePath(const base::FilePath& dlc_module_root_path,
-                                const std::string& id);
+base::FilePath GetDlcPath(const base::FilePath& dlc_root_path,
+                          const std::string& id);
 
 // Returns the path to a DLC module base directory given the |id| and |package|.
-base::FilePath GetDlcModulePackagePath(
-    const base::FilePath& dlc_module_root_path,
-    const std::string& id,
-    const std::string& package);
+base::FilePath GetDlcPackagePath(const base::FilePath& dlc_root_path,
+                                 const std::string& id,
+                                 const std::string& package);
 
 // Returns the path to a DLC module image given the |id| and |package|.
-base::FilePath GetDlcModuleImagePath(const base::FilePath& dlc_module_root_path,
-                                     const std::string& id,
-                                     const std::string& package,
-                                     int current_slot);
+base::FilePath GetDlcImagePath(const base::FilePath& dlc_root_path,
+                               const std::string& id,
+                               const std::string& package,
+                               int current_slot);
 
 bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
                     const std::string& id,

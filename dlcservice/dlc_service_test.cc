@@ -93,10 +93,12 @@ class DlcServiceTest : public testing::Test {
     manifest_path_ = scoped_temp_dir_.GetPath().Append("rootfs");
     content_path_ = scoped_temp_dir_.GetPath().Append("stateful");
     mount_path_ = scoped_temp_dir_.GetPath().Append("mount");
+    metadata_path_ = scoped_temp_dir_.GetPath().Append("metadata");
     base::FilePath mount_root_path = mount_path_.Append("root");
     base::CreateDirectory(manifest_path_);
     base::CreateDirectory(content_path_);
     base::CreateDirectory(mount_root_path);
+    base::CreateDirectory(metadata_path_);
     base::FilePath testdata_dir =
         base::FilePath(getenv("SRC")).Append("testdata");
 
@@ -110,16 +112,20 @@ class DlcServiceTest : public testing::Test {
 
     // Create DLC content sub-directories and empty images.
     base::FilePath image_a_path =
-        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, kPackage, 0);
+        utils::GetDlcImagePath(content_path_, kFirstDlc, kPackage, 0);
     base::CreateDirectory(image_a_path.DirName());
     base::File image_a(image_a_path,
                        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
 
     base::FilePath image_b_path =
-        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, kPackage, 1);
+        utils::GetDlcImagePath(content_path_, kFirstDlc, kPackage, 1);
     base::CreateDirectory(image_b_path.DirName());
     base::File image_b(image_b_path,
                        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
+
+    base::FilePath metadata_path_dlc =
+        utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage);
+    base::CreateDirectory(metadata_path_dlc);
 
     // Create mocks with default behaviors.
     mock_boot_device_ = std::make_unique<MockBootDevice>();
@@ -151,7 +157,7 @@ class DlcServiceTest : public testing::Test {
     dlc_service_ = std::make_unique<DlcService>(
         move(mock_image_loader_proxy_), move(mock_update_engine_proxy_),
         std::make_unique<BootSlot>(move(mock_boot_device_)), manifest_path_,
-        content_path_);
+        content_path_, metadata_path_);
 
     dlc_service_test_observer_ = std::make_unique<DlcServiceTestObserver>();
     dlc_service_->AddObserver(dlc_service_test_observer_.get());
@@ -174,6 +180,7 @@ class DlcServiceTest : public testing::Test {
   base::FilePath manifest_path_;
   base::FilePath content_path_;
   base::FilePath mount_path_;
+  base::FilePath metadata_path_;
 
   std::unique_ptr<MockBootDevice> mock_boot_device_;
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyMock>
@@ -242,6 +249,7 @@ TEST_F(DlcServiceTest, UninstallTest) {
 
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_FALSE(base::PathExists(metadata_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceTest, UninstallNotInstalledIsValidTest) {
@@ -254,6 +262,7 @@ TEST_F(DlcServiceTest, UninstallUnmountFailureTest) {
 
   EXPECT_FALSE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
@@ -263,6 +272,7 @@ TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
   // |ImageLoader| not avaiable.
   EXPECT_FALSE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceTest, UninstallUpdateEngineBusyFailureTest) {
@@ -273,6 +283,7 @@ TEST_F(DlcServiceTest, UninstallUpdateEngineBusyFailureTest) {
 
   EXPECT_FALSE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceTest, UninstallUpdatedNeedRebootSuccessTest) {
@@ -283,6 +294,7 @@ TEST_F(DlcServiceTest, UninstallUpdatedNeedRebootSuccessTest) {
 
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_FALSE(base::PathExists(metadata_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceTest, InstallEmptyDlcModuleListFailsTest) {
@@ -304,16 +316,20 @@ TEST_F(DlcServiceTest, InstallTest) {
   constexpr int expected_permissions = 0755;
   int permissions;
   base::FilePath module_path =
-      utils::GetDlcModulePackagePath(content_path_, kSecondDlc, kPackage);
+      utils::GetDlcPackagePath(content_path_, kSecondDlc, kPackage);
   base::GetPosixFilePermissions(module_path, &permissions);
   EXPECT_EQ(permissions, expected_permissions);
   base::FilePath image_a_path =
-      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, kPackage, 0);
+      utils::GetDlcImagePath(content_path_, kSecondDlc, kPackage, 0);
   base::GetPosixFilePermissions(image_a_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
   base::FilePath image_b_path =
-      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, kPackage, 1);
+      utils::GetDlcImagePath(content_path_, kSecondDlc, kPackage, 1);
   base::GetPosixFilePermissions(image_b_path.DirName(), &permissions);
+  EXPECT_EQ(permissions, expected_permissions);
+  base::FilePath metadata_path =
+      utils::GetDlcPackagePath(metadata_path_, kSecondDlc, kPackage);
+  base::GetPosixFilePermissions(metadata_path, &permissions);
   EXPECT_EQ(permissions, expected_permissions);
 }
 
@@ -329,6 +345,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledValid) {
 
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceTest, InstallDuplicatesFail) {
@@ -345,6 +362,8 @@ TEST_F(DlcServiceTest, InstallDuplicatesFail) {
 
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
+  EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
+  EXPECT_FALSE(base::PathExists(metadata_path_.Append(kSecondDlc)));
 }
 
 TEST_F(DlcServiceTest, InstallAlreadyInstalledAndDuplicatesFail) {
@@ -361,6 +380,8 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledAndDuplicatesFail) {
 
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
+  EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
+  EXPECT_FALSE(base::PathExists(metadata_path_.Append(kSecondDlc)));
 }
 
 TEST_F(DlcServiceTest, InstallFailureCleansUp) {
@@ -377,6 +398,8 @@ TEST_F(DlcServiceTest, InstallFailureCleansUp) {
 
   EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kThirdDlc)));
+  EXPECT_FALSE(base::PathExists(metadata_path_.Append(kSecondDlc)));
+  EXPECT_FALSE(base::PathExists(metadata_path_.Append(kThirdDlc)));
 }
 
 TEST_F(DlcServiceTest, InstallUrlTest) {

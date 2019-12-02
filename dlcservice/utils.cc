@@ -31,26 +31,25 @@ namespace dlcservice {
 
 namespace utils {
 
-FilePath GetDlcModulePath(const FilePath& dlc_module_root_path,
-                          const string& id) {
-  return dlc_module_root_path.Append(id);
+FilePath GetDlcPath(const FilePath& dlc_root_path, const string& id) {
+  return dlc_root_path.Append(id);
 }
 
-FilePath GetDlcModulePackagePath(const FilePath& dlc_module_root_path,
-                                 const string& id,
-                                 const string& package) {
-  return GetDlcModulePath(dlc_module_root_path, id).Append(package);
+FilePath GetDlcPackagePath(const FilePath& dlc_root_path,
+                           const string& id,
+                           const string& package) {
+  return GetDlcPath(dlc_root_path, id).Append(package);
 }
 
-FilePath GetDlcModuleImagePath(const FilePath& dlc_module_root_path,
-                               const string& id,
-                               const string& package,
-                               int current_slot) {
+FilePath GetDlcImagePath(const FilePath& dlc_root_path,
+                         const string& id,
+                         const string& package,
+                         int current_slot) {
   if (current_slot < 0) {
     LOG(ERROR) << "current_slot is negative:" << current_slot;
     return FilePath();
   }
-  return GetDlcModulePackagePath(dlc_module_root_path, id, package)
+  return GetDlcPackagePath(dlc_root_path, id, package)
       .Append(current_slot == 0 ? kDlcDirAName : kDlcDirBName)
       .Append(kDlcImageFileName);
 }
@@ -62,8 +61,7 @@ bool GetDlcManifest(const FilePath& dlc_manifest_path,
                     imageloader::Manifest* manifest_out) {
   string dlc_json_str;
   FilePath dlc_manifest_file =
-      GetDlcModulePackagePath(dlc_manifest_path, id, package)
-          .Append(kManifestName);
+      GetDlcPackagePath(dlc_manifest_path, id, package).Append(kManifestName);
 
   if (!base::ReadFileToString(dlc_manifest_file, &dlc_json_str)) {
     LOG(ERROR) << "Failed to read DLC manifest file '"

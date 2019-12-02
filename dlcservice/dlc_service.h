@@ -44,7 +44,8 @@ class DlcService {
                  update_engine_proxy,
              std::unique_ptr<BootSlot> boot_slot,
              const base::FilePath& manifest_dir,
-             const base::FilePath& content_dir);
+             const base::FilePath& content_dir,
+             const base::FilePath& metadata_dir);
   ~DlcService();
 
   // Loads installed DLC module images.
@@ -81,9 +82,11 @@ class DlcService {
   void SchedulePeriodicInstallCheck(bool retry);
 
   // Creates the necessary directories and images for DLC installation. Will set
-  // |path| to the top DLC directory for cleanup scoping.
+  // |path| to the top DLC directory and met_path to the metadata directory for
+  // cleanup scoping.
   bool CreateDlc(const std::string& id,
-                 base::FilePath* path,
+                 base::FilePath* content_path,
+                 base::FilePath* metadata_path,
                  brillo::ErrorPtr* err);
 
   // Deletes the DLC installation.
@@ -122,6 +125,7 @@ class DlcService {
 
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;
+  base::FilePath metadata_dir_;
 
   // Holds the ML task id of the delayed |PeriodicInstallCheck()| if an install
   // is in progress.

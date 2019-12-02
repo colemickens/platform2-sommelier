@@ -97,12 +97,14 @@ DlcService::DlcService(
         update_engine_proxy,
     unique_ptr<BootSlot> boot_slot,
     const FilePath& manifest_dir,
-    const FilePath& content_dir)
+    const FilePath& content_dir,
+    const FilePath& metadata_dir)
     : image_loader_proxy_(std::move(image_loader_proxy)),
       update_engine_proxy_(std::move(update_engine_proxy)),
       boot_slot_(std::move(boot_slot)),
       manifest_dir_(manifest_dir),
       content_dir_(content_dir),
+      metadata_dir_(metadata_dir),
       scheduled_period_ue_check_id_(MessageLoop::kTaskIdNull),
       weak_ptr_factory_(this) {
   // Get current boot slot.
@@ -248,19 +250,23 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
 
   for (const DlcModuleInfo& dlc_module :
        unique_dlc_module_list_to_install.dlc_module_infos()) {
-    FilePath path;
+    FilePath content_path, metadata_path;
     const string& id = dlc_module.dlc_id();
-    auto scoped_path = std::make_unique<ScopedTempDir>();
 
-    if (!CreateDlc(id, &path, err))
+    if (!CreateDlc(id, &content_path, &metadata_path, err))
       return false;
 
-    if (!scoped_path->Set(path)) {
-      LOG(ERROR) << "Failed when scoping path during install: " << path.value();
-      return false;
+    for (const auto& path : {content_path, metadata_path}) {
+      auto scoped_path = std::make_unique<ScopedTempDir>();
+
+      if (!scoped_path->Set(path)) {
+        LOG(ERROR) << "Failed when scoping path during install: "
+                   << path.value();
+        return false;
+      }
+
+      scoped_paths.emplace_back(std::move(scoped_path));
     }
-
-    scoped_paths.emplace_back(std::move(scoped_path));
   }
 
   // Invokes update_engine to install the DLC module.
@@ -468,9 +474,14 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
 }
 
 bool DlcService::CreateDlc(const string& id,
-                           FilePath* path,
+                           FilePath* content_path,
+                           FilePath* metadata_path,
                            brillo::ErrorPtr* err) {
-  path->clear();
+  CHECK(content_path != nullptr);
+  CHECK(metadata_path != nullptr);
+
+  content_path->clear();
+  metadata_path->clear();
   if (supported_dlc_modules_.find(id) == supported_dlc_modules_.end()) {
     LogAndSetError(err, kErrorInvalidDlc,
                    "The DLC ID provided is not supported.");
@@ -478,22 +489,22 @@ bool DlcService::CreateDlc(const string& id,
   }
 
   const string& package = ScanDlcModulePackage(id);
-  FilePath module_path = utils::GetDlcModulePath(content_dir_, id);
-  FilePath module_package_path =
-      utils::GetDlcModulePackagePath(content_dir_, id, package);
+  FilePath content_path_local = utils::GetDlcPath(content_dir_, id);
+  FilePath content_package_path =
+      utils::GetDlcPackagePath(content_dir_, id, package);
 
-  if (base::PathExists(module_path)) {
+  if (base::PathExists(content_path_local)) {
     LogAndSetError(err, kErrorInternal,
                    "The DLC module is installed or duplicate.");
     return false;
   }
   // Create the DLC ID directory with correct permissions.
-  if (!CreateDirWithDlcPermissions(module_path)) {
+  if (!CreateDirWithDlcPermissions(content_path_local)) {
     LogAndSetError(err, kErrorInternal, "Failed to create DLC ID directory");
     return false;
   }
   // Create the DLC package directory with correct permissions.
-  if (!CreateDirWithDlcPermissions(module_package_path)) {
+  if (!CreateDirWithDlcPermissions(content_package_path)) {
     LogAndSetError(err, kErrorInternal,
                    "Failed to create DLC ID package directory");
     return false;
@@ -515,9 +526,26 @@ bool DlcService::CreateDlc(const string& id,
     return false;
   }
 
+  // Create the metadata directory.
+  FilePath metadata_path_local = utils::GetDlcPath(metadata_dir_, id);
+  FilePath metadata_package_path =
+      utils::GetDlcPackagePath(metadata_dir_, id, package);
+
+  // Create the DLC ID metadata directory with correct permissions.
+  if (!CreateDirWithDlcPermissions(metadata_path_local)) {
+    LogAndSetError(err, kErrorInternal,
+                   "Failed to create the DLC ID metadata directory");
+    return false;
+  }
+  // Create the DLC package metadata directory with correct permissions.
+  if (!CreateDirWithDlcPermissions(metadata_package_path)) {
+    LogAndSetError(err, kErrorInternal,
+                   "Failed to create the DLC package metadata directory");
+    return false;
+  }
+
   // Creates image A.
-  FilePath image_a_path =
-      utils::GetDlcModuleImagePath(content_dir_, id, package, 0);
+  FilePath image_a_path = utils::GetDlcImagePath(content_dir_, id, package, 0);
   if (!CreateImageFile(image_a_path, image_size)) {
     LogAndSetError(err, kErrorInternal,
                    "Failed to create slot A DLC image file");
@@ -525,22 +553,29 @@ bool DlcService::CreateDlc(const string& id,
   }
 
   // Creates image B.
-  FilePath image_b_path =
-      utils::GetDlcModuleImagePath(content_dir_, id, package, 1);
+  FilePath image_b_path = utils::GetDlcImagePath(content_dir_, id, package, 1);
   if (!CreateImageFile(image_b_path, image_size)) {
     LogAndSetError(err, kErrorInternal, "Failed to create slot B image file");
     return false;
   }
 
-  *path = module_path;
+  *content_path = content_path_local;
+  *metadata_path = metadata_path_local;
   return true;
 }
 
 bool DlcService::DeleteDlc(const std::string& id, brillo::ErrorPtr* err) {
-  FilePath dlc_module_path = utils::GetDlcModulePath(content_dir_, id);
-  if (!DeleteFile(dlc_module_path, true)) {
+  FilePath dlc_content_path = utils::GetDlcPath(content_dir_, id);
+  if (!DeleteFile(dlc_content_path, true)) {
     LogAndSetError(err, kErrorInternal,
                    "DLC image folder could not be deleted.");
+    return false;
+  }
+
+  FilePath metadata_path = utils::GetDlcPath(metadata_dir_, id);
+  if (!DeleteFile(metadata_path, true)) {
+    LogAndSetError(err, kErrorInternal,
+                   "DLC metadata folder could not be deleted.");
     return false;
   }
   return true;

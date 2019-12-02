@@ -18,38 +18,37 @@ constexpr char kDlcPackage[] = "package";
 
 class UtilsTest : public testing::Test {};
 
-TEST(UtilsTest, GetDlcModulePathTest) {
-  EXPECT_EQ(
-      utils::GetDlcModulePath(base::FilePath(kDlcRootPath), kDlcId).value(),
-      "/tmp/dlc/id");
+TEST(UtilsTest, GetDlcPathTest) {
+  EXPECT_EQ(utils::GetDlcPath(base::FilePath(kDlcRootPath), kDlcId).value(),
+            "/tmp/dlc/id");
 }
 
-TEST(UtilsTest, GetDlcModulePackagePathTest) {
-  EXPECT_EQ(utils::GetDlcModulePackagePath(base::FilePath(kDlcRootPath), kDlcId,
-                                           kDlcPackage)
+TEST(UtilsTest, GetDlcPackagePathTest) {
+  EXPECT_EQ(utils::GetDlcPackagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                     kDlcPackage)
                 .value(),
             "/tmp/dlc/id/package");
 }
 
-TEST(UtilsTest, GetDlcModuleImagePathBadSlotTest) {
-  // IF current_slot is negative, THEN GetDlcModuleImagePath() returns an empty
+TEST(UtilsTest, GetDlcImagePathBadSlotTest) {
+  // IF current_slot is negative, THEN GetDlcImagePath() returns an empty
   // path.
-  EXPECT_TRUE(utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId,
-                                           kDlcPackage, -1)
+  EXPECT_TRUE(utils::GetDlcImagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                     kDlcPackage, -1)
                   .value()
                   .empty());
 }
 
-TEST(UtilsTest, GetDlcModuleImagePathA) {
-  EXPECT_EQ(utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId,
-                                         kDlcPackage, 0)
+TEST(UtilsTest, GetDlcImagePathA) {
+  EXPECT_EQ(utils::GetDlcImagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                   kDlcPackage, 0)
                 .value(),
             "/tmp/dlc/id/package/dlc_a/dlc.img");
 }
 
-TEST(UtilsTest, GetDlcModuleImagePathB) {
-  EXPECT_EQ(utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId,
-                                         kDlcPackage, 1)
+TEST(UtilsTest, GetDlcImagePathB) {
+  EXPECT_EQ(utils::GetDlcImagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                   kDlcPackage, 1)
                 .value(),
             "/tmp/dlc/id/package/dlc_b/dlc.img");
 }
