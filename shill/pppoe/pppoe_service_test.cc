@@ -29,6 +29,7 @@ using std::map;
 using std::string;
 using testing::_;
 using testing::Mock;
+using testing::NiceMock;
 using testing::Return;
 using testing::StrEq;
 
@@ -38,7 +39,8 @@ class PPPoEServiceTest : public testing::Test {
  public:
   PPPoEServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        ethernet_(new MockEthernet(&manager_, "ethernet", "aabbccddeeff", 0)),
+        ethernet_(new NiceMock<MockEthernet>(
+            &manager_, "ethernet", "aabbccddeeff", 0)),
         device_info_(&manager_),
         service_(new PPPoEService(&manager_,
                                   ethernet_->weak_ptr_factory_.GetWeakPtr())) {
@@ -70,12 +72,12 @@ class PPPoEServiceTest : public testing::Test {
   int max_failure() { return service_->max_failure_; }
 
   EventDispatcherForTest dispatcher_;
-  MockMetrics metrics_;
-  MockControl control_interface_;
-  MockProcessManager process_manager_;
-  MockManager manager_;
-  scoped_refptr<MockEthernet> ethernet_;
-  MockDeviceInfo device_info_;
+  NiceMock<MockMetrics> metrics_;
+  NiceMock<MockControl> control_interface_;
+  NiceMock<MockProcessManager> process_manager_;
+  NiceMock<MockManager> manager_;
+  scoped_refptr<NiceMock<MockEthernet>> ethernet_;
+  NiceMock<MockDeviceInfo> device_info_;
 
   scoped_refptr<PPPoEService> service_;
 
