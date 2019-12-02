@@ -29,6 +29,8 @@
 #include "cryptohome/mount_utils.h"
 #include "cryptohome/obfuscated_username.h"
 
+#include "cryptohome/namespace_mounter_ipc.pb.h"
+
 using base::FilePath;
 using base::StringPrintf;
 
@@ -105,7 +107,6 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
       platform_->CreateProcessInstance();
 
   mount_helper->AddArg("/usr/sbin/cryptohome-namespace-mounter");
-  mount_helper->AddArg(base::StringPrintf("--username=%s", username.c_str()));
 
   mount_helper->RedirectUsingPipe(
       STDIN_FILENO, true /* is_input, from child's perspective */);
@@ -125,9 +126,24 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
       base::Bind(&OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary,
                  base::Unretained(this)));
 
-  if (!base::WriteFileDescriptor(write_to_helper_, system_salt_.char_data(),
-                                 system_salt_.size())) {
-    PLOG(ERROR) << "Failed to write system salt";
+  OutOfProcessMountRequest request;
+  request.set_username(username);
+  request.set_system_salt(system_salt_.to_string());
+  request.set_legacy_home(legacy_home_);
+  size_t proto_size = request.ByteSizeLong();
+
+  if (!base::WriteFileDescriptor(write_to_helper_,
+                                 reinterpret_cast<char*>(&proto_size),
+                                 sizeof(proto_size))) {
+    PLOG(ERROR) << "Failed to write protobuf size";
+    return false;
+  }
+
+  brillo::SecureBlob buf(proto_size);
+  request.SerializeToArray(buf.data(), buf.size());
+  if (!base::WriteFileDescriptor(write_to_helper_, buf.char_data(),
+                                 buf.size())) {
+    PLOG(ERROR) << "Failed to write protobuf";
     return false;
   }
 

@@ -1,0 +1,20 @@
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// These protobufs are used between cryptohome and cryptohome-namespace-mounter.
+
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+
+package cryptohome;
+
+message OutOfProcessMountRequest {
+  string username = 1;
+  string system_salt = 2;
+  bool legacy_home = 3;
+}
+
+message OutOfProcessMountResponse {
+  repeated string paths = 1;
+}

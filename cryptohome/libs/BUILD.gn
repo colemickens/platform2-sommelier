@@ -329,6 +329,7 @@ static_library("libcryptohome") {
     ":cryptohome-proto",
     ":libcrosplatform",
     ":libcrostpm",
+    ":namespace-mounter-ipc-proto",
     ":userdataauth_adaptors",
   ]
 
@@ -455,4 +456,15 @@ if (use.tpm2) {
       ":libcrosplatform",
     ]
   }
+}
+
+# cryptohome <-> cryptohome-namespace-mounter IPC proto.
+proto_library("namespace-mounter-ipc-proto") {
+  proto_in_dir = "../cryptohome_namespace_mounter"
+  proto_out_dir = "include/cryptohome"
+
+  sources = [
+    "${proto_in_dir}/namespace_mounter_ipc.proto",
+  ]
+  configs = [ ":cryptohome-proto_config" ]
 }

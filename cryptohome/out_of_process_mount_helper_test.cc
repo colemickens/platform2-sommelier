@@ -24,10 +24,12 @@
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_platform.h"
 
+#include "cryptohome/namespace_mounter_ipc.pb.h"
+
 using brillo::cryptohome::home::kGuestUserName;
+using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::_;
 
 namespace {
 
@@ -52,8 +54,8 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
     helper_.SetUpSystemSalt();
     helper_.InjectSystemSalt(&platform_, kImageSaltFile);
 
-    out_of_process_mounter_.reset(
-        new OutOfProcessMountHelper(helper_.system_salt, &platform_));
+    out_of_process_mounter_.reset(new OutOfProcessMountHelper(
+        helper_.system_salt, true /* legacy_mount */, &platform_));
   }
 
   void TearDown() {
@@ -115,13 +117,48 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOP) {
   out_of_process_mounter_->TearDownEphemeralMount();
 }
 
+TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPWriteProtobuf) {
+  brillo::ProcessMock* process = platform_.mock_process();
+  EXPECT_CALL(*process, Start()).WillOnce(Return(true));
+  EXPECT_CALL(*process, pid()).WillRepeatedly(Return(kOOPHelperPid));
+  EXPECT_CALL(*process, Wait()).WillOnce(Return(0));
+
+  // Reading from the helper always succeeds.
+  base::ScopedFD dev_zero = GetDevZeroFd();
+  ASSERT_TRUE(dev_zero.is_valid());
+  EXPECT_CALL(*process, GetPipe(STDOUT_FILENO))
+      .WillOnce(Return(dev_zero.get()));
+
+  // Allow writing from cryptohome's perspective.
+  base::ScopedFD read_end, write_end;
+  ASSERT_TRUE(CreatePipe(&read_end, &write_end));
+  EXPECT_CALL(*process, GetPipe(STDIN_FILENO))
+      .WillOnce(Return(write_end.get()));
+
+  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+
+  size_t proto_size = 0;
+  ASSERT_TRUE(base::ReadFromFD(
+      read_end.get(), reinterpret_cast<char*>(&proto_size), sizeof(size_t)));
+  std::vector<char> proto_data(proto_size);
+  ASSERT_TRUE(
+      base::ReadFromFD(read_end.get(), proto_data.data(), proto_data.size()));
+
+  OutOfProcessMountRequest r;
+  ASSERT_TRUE(r.ParseFromArray(proto_data.data(), proto_size));
+  EXPECT_EQ(r.username(), kGuestUserName);
+
+  EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
+  out_of_process_mounter_->TearDownEphemeralMount();
+}
+
 TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToStart) {
   brillo::ProcessMock* process = platform_.mock_process();
   EXPECT_CALL(*process, Start()).WillOnce(Return(false));
   ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
 }
 
-TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToWriteSalt) {
+TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToWriteProtobuf) {
   brillo::ProcessMock* process = platform_.mock_process();
   EXPECT_CALL(*process, Start()).WillOnce(Return(true));
   // After the PID is checked once and the process is killed, pid() should
@@ -130,8 +167,7 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToWriteSalt) {
       .WillOnce(Return(kOOPHelperPid))
       .WillRepeatedly(Return(0));
 
-
-  // Writing the system salt fails.
+  // Writing the protobuf fails.
   EXPECT_CALL(*process, GetPipe(STDIN_FILENO)).WillOnce(Return(kInvalidFd));
 
   // Reading from the helper always succeeds.
@@ -140,7 +176,7 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToWriteSalt) {
   EXPECT_CALL(*process, GetPipe(STDOUT_FILENO))
       .WillOnce(Return(dev_zero.get()));
 
-  // If passing the system salt fails, OOP mount helper should be killed.
+  // If writing the protobuf fails, OOP mount helper should be killed.
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
 
   ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));

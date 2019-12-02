@@ -148,6 +148,7 @@ executable("cryptohome-namespace-mounter") {
   ]
   deps = [
     "libs:libcryptohome",
+    "libs:namespace-mounter-ipc-proto",
   ]
   pkg_deps = [
     "libbrillo-${libbase_ver}",

@@ -31,8 +31,10 @@ namespace cryptohome {
 class OutOfProcessMountHelper : public EphemeralMountHelperInterface {
  public:
   OutOfProcessMountHelper(const brillo::SecureBlob& system_salt,
+                          bool legacy_home,
                           Platform* platform)
       : system_salt_(system_salt),
+        legacy_home_(legacy_home),
         platform_(platform),
         username_(),
         write_to_helper_(-1) {}
@@ -62,6 +64,9 @@ class OutOfProcessMountHelper : public EphemeralMountHelperInterface {
 
   // Stores the global system salt.
   brillo::SecureBlob system_salt_;
+
+  // Whether to make the legacy home directory (/home/chronos/user) available.
+  bool legacy_home_;
 
   Platform* platform_;  // Un-owned.
 

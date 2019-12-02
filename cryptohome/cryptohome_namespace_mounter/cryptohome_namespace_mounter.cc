@@ -13,7 +13,6 @@
 #include <sys/types.h>
 #include <sysexits.h>
 
-#include <iostream>
 #include <memory>
 
 #include <base/at_exit.h>
@@ -34,13 +33,11 @@
 #include "cryptohome/mount_helper.h"
 #include "cryptohome/mount_stack.h"
 
+#include "cryptohome/namespace_mounter_ipc.pb.h"
+
 using base::FilePath;
 
 namespace {
-constexpr char kUserSwitch[] = "username";
-
-constexpr size_t kSaltLength = CRYPTOHOME_DEFAULT_SALT_LENGTH;
-
 void TearDown(cryptohome::MountHelper* mounter) {
   mounter->TearDownEphemeralMount();
 }
@@ -66,52 +63,45 @@ int main(int argc, char** argv) {
   brillo::AsynchronousSignalHandler sig_handler;
   sig_handler.Init();
 
-  base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   brillo::InitLog(brillo::kLogToSyslog);
-
-  std::string username = cl->GetSwitchValueASCII(kUserSwitch);
-  if (username == "") {
-    LOG(ERROR) << "Username not provided";
-    return EX_USAGE;
-  }
-  VLOG(1) << "username is " << username;
 
   constexpr uid_t uid = 1000;  // UID for 'chronos'.
   constexpr gid_t gid = 1000;  // GID for 'chronos'.
   constexpr gid_t access_gid = 1001;  // GID for 'chronos-access'.
 
-  // Avoid passing the system salt in the command-line where it is visible in
-  // 'ps' output and in /proc, so read it from stdin.
-  // While the system salt is considered device-public, it should ideally not
-  // be exfiltrated over the network, and avoiding it in the command-line helps
-  // with that.
-  // The username above is passed on the command-line because this code is
-  // currently only used to mount Guest sessions, where the username is
-  // hardcoded and not secret.
-  // TODO(jorgelo, crbug.com/985492): Consider passing username/salt as a
-  // protobuf once this code is used for non-Guest ephemeral sessions and
-  // regular user sessions.
-  brillo::SecureBlob system_salt(kSaltLength);
-  if (!base::ReadFromFD(STDIN_FILENO, system_salt.char_data(), kSaltLength)) {
-    PLOG(ERROR) << "Failed to read system salt";
+  size_t proto_size = 0;
+  if (!base::ReadFromFD(STDIN_FILENO, reinterpret_cast<char*>(&proto_size),
+                        sizeof(proto_size))) {
+    PLOG(ERROR) << "Failed to read protobuf size";
     return EX_NOINPUT;
   }
 
+  std::vector<char> proto_data(proto_size);
+  if (!base::ReadFromFD(STDIN_FILENO, proto_data.data(), proto_size)) {
+    PLOG(ERROR) << "Failed to read protobuf";
+    return EX_NOINPUT;
+  }
+
+  cryptohome::OutOfProcessMountRequest request;
+  if (!request.ParseFromArray(proto_data.data(), proto_size)) {
+    LOG(ERROR) << "Failed to deserialize protobuf";
+    return EX_NOINPUT;
+  }
+
+  brillo::SecureBlob system_salt(request.system_salt());
+
   cryptohome::Platform platform;
-  // TODO(jorgelo, crbug.com/985492): Pass |legacy_mount| in from cryptohome
-  // instead of hardcoding it here.
   cryptohome::MountHelper mounter(
       uid, gid, access_gid, FilePath(cryptohome::kDefaultShadowRoot),
       FilePath(cryptohome::kDefaultSkeletonSource), system_salt,
-      true /* legacy_mount */, &platform);
+      request.legacy_home(), &platform);
 
   // If PerformEphemeralMount fails, or reporting back to cryptohome fails,
   // attempt to clean up.
   base::ScopedClosureRunner tear_down_runner(
       base::Bind(&TearDown, base::Unretained(&mounter)));
 
-  if (!mounter.PerformEphemeralMount(username)) {
+  if (!mounter.PerformEphemeralMount(request.username())) {
     LOG(ERROR) << "PerformEphemeralMount failed";
     return EX_SOFTWARE;
   }
