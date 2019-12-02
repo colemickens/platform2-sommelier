@@ -16,11 +16,9 @@ EVENTLOG_FILE="/var/log/eventlog.txt"
 # Moved here to keep out of critical boot path
 
 if ! mosys eventlog list > ${EVENTLOG_FILE} 2> /dev/null; then
-  # If a sub-command is not available on a platform, mosys will fail with
-  # a non-zero exit code (EXIT_FAILURE) and print the help menu. For example,
-  # this will happen if a "mosys smbios" sub-command is run on ARM since ARM
-  # platforms do not support SMBIOS. If mosys fails, delete the output file to
-  # avoid placing non-relevant or confusing output in /var/log.
+  # If a mosys sub-command is not available, mosys will fail with a non-zero
+  # exit code and print the help menu. Write the output only if the command
+  # succeeded.
   echo "unavailable" > ${EVENTLOG_FILE}
 fi
 

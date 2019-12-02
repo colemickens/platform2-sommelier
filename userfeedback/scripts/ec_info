@@ -17,11 +17,9 @@ rm -f ${EC_INFO_FILE}
 
 for ec_type in ec pd sh; do
   if out=$(mosys -l ${ec_type} info 2> /dev/null); then
-    # If a sub-command is not available on a platform, mosys will fail with
-    # a non-zero exit code (EXIT_FAILURE) and print the help menu. For example,
-    # this will happen if a "mosys smbios" sub-command is run on ARM since ARM
-    # platforms do not support SMBIOS. Write the output of mosys command only
-    # if the command succeeded.
+    # If a mosys sub-command is not available, mosys will fail with a non-zero
+    # exit code and print the help menu. Write the output only if the command
+    # succeeded.
     echo "${out}" >> ${EC_INFO_FILE}
   fi
 done
