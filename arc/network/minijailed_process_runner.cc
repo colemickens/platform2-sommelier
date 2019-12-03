@@ -16,13 +16,16 @@ namespace {
 
 constexpr char kUnprivilegedUser[] = "nobody";
 constexpr char kNetworkUnprivilegedUser[] = "arc-networkd";
+constexpr char kChownCapMask = CAP_TO_MASK(CAP_CHOWN);
 constexpr uint64_t kIpTablesCapMask =
     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
 constexpr uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
 constexpr uint64_t kRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
+constexpr char kChownPath[] = "/bin/chown";
 constexpr char kModprobePath[] = "/sbin/modprobe";
 constexpr char kNsEnterPath[] = "/usr/bin/nsenter";
 constexpr char kTouchPath[] = "/system/bin/touch";
+constexpr char kSysctlPath[] = "/usr/sbin/sysctl";
 constexpr char kSentinelFile[] = "/dev/.arc_network_ready";
 
 int RunSyncDestroy(const std::vector<std::string>& argv,
@@ -123,6 +126,23 @@ int MinijailedProcessRunner::ModprobeAll(
   mj_->UseCapabilities(jail, kModprobeCapMask);
   std::vector<std::string> args = {kModprobePath, "-a"};
   args.insert(args.end(), modules.begin(), modules.end());
+  return RunSyncDestroy(args, mj_, jail, true);
+}
+
+int MinijailedProcessRunner::SysctlWrite(const std::string& key,
+                                         const std::string& value) {
+  minijail* jail = mj_->New();
+  std::vector<std::string> args = {kSysctlPath, "-w", key + "=" + value};
+  return RunSyncDestroy(args, mj_, jail, true);
+}
+
+int MinijailedProcessRunner::Chown(const std::string& uid,
+                                   const std::string& gid,
+                                   const std::string& file) {
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
+  mj_->UseCapabilities(jail, kChownCapMask);
+  std::vector<std::string> args = {kChownPath, uid + ":" + gid, file};
   return RunSyncDestroy(args, mj_, jail, true);
 }
 

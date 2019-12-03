@@ -124,4 +124,23 @@ TEST_F(MinijailProcessRunnerTest, ModprobeAll) {
   runner_.ModprobeAll({"module1", "module2"});
 }
 
+TEST_F(MinijailProcessRunnerTest, SysctlWrite) {
+  const std::vector<std::string> args = {"-w", "a.b.c=1"};
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_,
+              RunSyncAndDestroy(_, IsProcessArgs("/usr/sbin/sysctl", args), _));
+  runner_.SysctlWrite("a.b.c", "1");
+}
+
+TEST_F(MinijailProcessRunnerTest, Chown) {
+  uint64_t caps = CAP_TO_MASK(CAP_CHOWN);
+
+  const std::vector<std::string> args = {"12345:23456", "foo"};
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
+  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(_, IsProcessArgs("/bin/chown", args), _));
+  runner_.Chown("12345", "23456", "foo");
+}
+
 }  // namespace arc_networkd

@@ -103,15 +103,17 @@ bool ShouldEnableMultinet() {
   return true;
 }
 
-// Load networking modules needed by Android that are not compiled in the
-// kernel. Android does not allow auto-loading of kernel modules.
-void LoadModules(const Datapath& datapath) {
+void OneTimeSetup(const Datapath& datapath) {
   static bool done = false;
   if (done)
     return;
 
+  auto& runner = datapath.runner();
+
+  // Load networking modules needed by Android that are not compiled in the
+  // kernel. Android does not allow auto-loading of kernel modules.
   // These must succeed.
-  if (datapath.runner().ModprobeAll({
+  if (runner.ModprobeAll({
           // The netfilter modules needed by netd for iptables commands.
           "ip6table_filter",
           "ip6t_ipv6header",
@@ -129,7 +131,7 @@ void LoadModules(const Datapath& datapath) {
                << " Some Android functionality may be broken.";
   }
   // Optional modules.
-  if (datapath.runner().ModprobeAll({
+  if (runner.ModprobeAll({
           // This module is not available in kernels < 3.18
           "nf_reject_ipv6",
           // These modules are needed for supporting Chrome traffic on Android
@@ -140,6 +142,18 @@ void LoadModules(const Datapath& datapath) {
           "nf_nat_tftp",
       }) != 0) {
     LOG(WARNING) << "One or more optional kernel modules failed to load.";
+  }
+
+  // Enable IPv6 packet forarding and neighbor discovery.
+  if (runner.SysctlWrite("net.ipv6.conf.all.forwarding", "1") != 0 ||
+      runner.SysctlWrite("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
+    LOG(ERROR) << "Failed to update kernel parameters. IPv6 routing and/or"
+               << " neighbor discovery may be broken.";
+  }
+
+  // This is only needed for CTS (b/27932574).
+  if (runner.Chown("655360", "655360", "/sys/class/xt_idletimer") != 0) {
+    LOG(ERROR) << "Failed to change ownership of xt_idletimer.";
   }
 
   done = true;
@@ -459,7 +473,7 @@ ArcService::ContainerImpl::ContainerImpl(DeviceManagerBase* dev_mgr,
                                          Datapath* datapath,
                                          GuestMessage::GuestType guest)
     : pid_(kInvalidPID), dev_mgr_(dev_mgr), datapath_(datapath), guest_(guest) {
-  LoadModules(*datapath_);
+  OneTimeSetup(*datapath_);
 }
 
 GuestMessage::GuestType ArcService::ContainerImpl::guest() const {

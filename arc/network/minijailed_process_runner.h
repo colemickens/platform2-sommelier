@@ -55,6 +55,14 @@ class MinijailedProcessRunner {
   // Installs all |modules| via modprobe.
   virtual int ModprobeAll(const std::vector<std::string>& modules);
 
+  // Updates kernel parameter |key| to |value| using sysctl.
+  virtual int SysctlWrite(const std::string& key, const std::string& value);
+
+  // Runs chown to update file ownership.
+  virtual int Chown(const std::string& uid,
+                    const std::string& gid,
+                    const std::string& file);
+
  private:
   brillo::Minijail* mj_;
 
