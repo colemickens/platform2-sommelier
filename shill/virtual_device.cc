@@ -50,14 +50,16 @@ void VirtualDevice::Start(Error* error,
   if (!fixed_ip_params()) {
     rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   }
-  // TODO(quiche): Should we call OnEnabledStateChanged, like other Devices?
+  // TODO(crbug.com/1030324) We should call OnEnabledStateChanged, as for other
+  // Devices, so that VirtualDevices can have enabled() == true.
   if (error)
     error->Reset();  // indicate immediate completion
 }
 
 void VirtualDevice::Stop(Error* error,
                          const EnabledStateChangedCallback& /*callback*/) {
-  // TODO(quiche): Should we call OnEnabledStateChanged, like other Devices?
+  // TODO(crbug.com/1030324) We should call OnEnabledStateChanged, as for other
+  // Devices.
   if (error)
     error->Reset();  // indicate immediate completion
 }
