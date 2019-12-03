@@ -24,6 +24,8 @@
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
+#include <base/optional.h>
+#include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 
 #include "tpm_manager/common/tpm_nvram_interface.h"
@@ -255,6 +257,13 @@ class TpmManagerService : public TpmNvramInterface,
   TpmStatus* tpm_status_ = nullptr;
   TpmInitializer* tpm_initializer_ = nullptr;
   TpmNvram* tpm_nvram_ = nullptr;
+
+  // Cache of TPM version info, base::nullopt if cache doesn't exist.
+  base::Optional<GetVersionInfoReply> version_info_cache_;
+
+  // Lock for |version_info_cache_|, which might be accessed from both the main
+  // and worker threads.
+  base::Lock version_info_cache_lock_;
 
   // base::Thread subclass so we can implement CleanUp.
   class ServiceWorkerThread : public base::Thread {

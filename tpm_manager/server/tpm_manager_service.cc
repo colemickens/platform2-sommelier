@@ -23,6 +23,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
+#include <base/synchronization/lock.h>
 
 namespace {
 
@@ -203,6 +204,14 @@ void TpmManagerService::GetTpmStatusTask(
 
 void TpmManagerService::GetVersionInfo(const GetVersionInfoRequest& request,
                                        const GetVersionInfoCallback& callback) {
+  {
+    base::AutoLock lock(version_info_cache_lock_);
+    if (version_info_cache_) {
+      callback.Run(*version_info_cache_);
+      return;
+    }
+  }
+
   PostTaskToWorkerThread<GetVersionInfoReply>(
       request, callback, &TpmManagerService::GetVersionInfoTask);
 }
@@ -211,6 +220,14 @@ void TpmManagerService::GetVersionInfoTask(
     const GetVersionInfoRequest& request,
     const std::shared_ptr<GetVersionInfoReply>& reply) {
   VLOG(1) << __func__;
+
+  // It's possible that cache was not available when the request came to the
+  // main thread but became available when the task is being processed here.
+  // Checks the cache again to save one TPM call.
+  if (version_info_cache_) {
+    *reply = *version_info_cache_;
+    return;
+  }
 
   if (!tpm_status_) {
     LOG(ERROR) << __func__ << ": tpm status is uninitialized.";
@@ -240,6 +257,11 @@ void TpmManagerService::GetVersionInfoTask(
   reply->set_vendor_specific(reinterpret_cast<char*>(vendor_specific.data()),
                              vendor_specific.size());
   reply->set_status(STATUS_SUCCESS);
+
+  {
+    base::AutoLock lock(version_info_cache_lock_);
+    version_info_cache_ = *reply;
+  }
 }
 
 void TpmManagerService::GetDictionaryAttackInfo(

@@ -19,6 +19,7 @@
 
 #include <base/bind.h>
 #include <base/run_loop.h>
+#include <base/synchronization/lock.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -314,6 +315,8 @@ TEST_F(TpmManagerServiceTest, GetVersionInfoSuccess) {
       }));
 
   auto callback = [](TpmManagerServiceTest* self,
+                     int* call_count,
+                     base::Lock* call_count_lock,
                      const GetVersionInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(1, reply.family());
@@ -322,11 +325,26 @@ TEST_F(TpmManagerServiceTest, GetVersionInfoSuccess) {
     EXPECT_EQ(4, reply.tpm_model());
     EXPECT_EQ(5, reply.firmware_version());
     EXPECT_EQ("ab", reply.vendor_specific());
-    self->Quit();
+
+    {
+      base::AutoLock lock(*call_count_lock);
+      ++*call_count;
+      if (*call_count == 2) {
+        self->Quit();
+      }
+    }
   };
 
+  int count = 0;
   GetVersionInfoRequest request;
-  service_->GetVersionInfo(request, base::Bind(callback, this));
+  base::Lock call_count_lock;
+
+  // Only one of the following calls will get version info from the TPM. The
+  // other call will return from cache directly.
+  service_->GetVersionInfo(
+      request, base::Bind(callback, this, &count, &call_count_lock));
+  service_->GetVersionInfo(
+      request, base::Bind(callback, this, &count, &call_count_lock));
   Run();
 }
 
