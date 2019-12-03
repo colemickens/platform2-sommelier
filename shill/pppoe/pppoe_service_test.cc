@@ -12,15 +12,17 @@
 
 #include <base/memory/ref_counted.h>
 
+#include "shill/dhcp/mock_dhcp_config.h"
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_external_task.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_ppp_device.h"
-#include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_process_manager.h"
+#include "shill/ppp_device.h"
+#include "shill/ppp_device_factory.h"
 #include "shill/service.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
@@ -28,10 +30,12 @@
 using std::map;
 using std::string;
 using testing::_;
+using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrEq;
+using testing::WithoutArgs;
 
 namespace shill {
 
@@ -70,6 +74,8 @@ class PPPoEServiceTest : public testing::Test {
   void OnPPPDied(pid_t pid, int exit) { service_->OnPPPDied(pid, exit); }
 
   int max_failure() { return service_->max_failure_; }
+
+  const PPPDeviceRefPtr& device() { return service_->ppp_device_; }
 
   EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
@@ -136,29 +142,37 @@ TEST_F(PPPoEServiceTest, ConnectFailsWhenEthernetLinkDown) {
 }
 
 TEST_F(PPPoEServiceTest, OnPPPConnected) {
-  // Setup device factory.
-  MockPPPDeviceFactory* factory = MockPPPDeviceFactory::GetInstance();
-  service_->ppp_device_factory_ = factory;
-
   static const char kLinkName[] = "ppp0";
   map<string, string> params = {{kPPPInterfaceName, kLinkName}};
-  MockPPPDevice* device = new MockPPPDevice(&manager_, kLinkName, 0);
 
   EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName))).WillOnce(Return(0));
-  EXPECT_CALL(*factory, CreatePPPDevice(_, _, _)).WillOnce(Return(device));
-  EXPECT_CALL(device_info_, RegisterDevice(IsRefPtrTo(device)));
-  EXPECT_CALL(*device, SetEnabled(true));
-  EXPECT_CALL(*device, SelectService(_));
-  EXPECT_CALL(*device,
-              UpdateIPConfigFromPPP(params, false /* blackhole_ipv6 */));
+  EXPECT_CALL(device_info_, RegisterDevice(_));
 #ifndef DISABLE_DHCPV6
+  // Lead to the creation of a mock rather than real DHCPConfig to avoid trying
+  // to create a dhcpcd process.
+  NiceMock<MockDHCPProvider> dhcp_provider;
+  EXPECT_CALL(dhcp_provider, CreateIPv6Config(_, _))
+      .WillOnce(
+          Return(new NiceMock<MockDHCPConfig>(&control_interface_, kLinkName)));
   EXPECT_CALL(manager_, IsDHCPv6EnabledForDevice(StrEq(kLinkName)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*device, AcquireIPv6Config());
+      .WillOnce(WithoutArgs(Invoke([this, &dhcp_provider]() {
+        this->device()->set_dhcp_provider(&dhcp_provider);
+        return true;
+      })));
 #endif  // DISABLE_DHCPV6
   EXPECT_CALL(manager_, OnInnerDevicesChanged());
   service_->OnPPPConnected(params);
   Mock::VerifyAndClearExpectations(&manager_);
+
+  // Note that crbug.com/1030324 precludes the ability of VirtualDevices to be
+  // enabled(). running() suffices here.
+  EXPECT_TRUE(device()->running());
+  EXPECT_EQ(device()->selected_service(), service_);
+  ASSERT_NE(device()->ipconfig(), nullptr);
+  EXPECT_FALSE(device()->ipconfig()->properties().blackhole_ipv6);
+#ifndef DISABLE_DHCPV6
+  EXPECT_NE(device()->dhcpv6_config(), nullptr);
+#endif  // DISABLE_DHCPV6
 }
 
 TEST_F(PPPoEServiceTest, Connect) {
@@ -189,17 +203,17 @@ TEST_F(PPPoEServiceTest, Disconnect) {
                            base::Bind(&PPPoEService::OnPPPDied, weak_ptr));
   service_->pppd_.reset(pppd);
 
-  MockPPPDevice* ppp_device = new MockPPPDevice(&manager_, "ppp0", 0);
+  PPPDevice* ppp_device =
+      PPPDeviceFactory::GetInstance()->CreatePPPDevice(&manager_, "ppp0", 0);
   service_->ppp_device_ = ppp_device;
+  ppp_device->SelectService(service_);
 
-  EXPECT_CALL(*ppp_device, DropConnection());
   EXPECT_CALL(*pppd, OnDelete());
 
-  {
-    Error error;
-    service_->Disconnect(&error, "in test");
-    EXPECT_TRUE(error.IsSuccess());
-  }
+  Error error;
+  service_->Disconnect(&error, "in test");
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(ppp_device->selected_service(), nullptr);
 }
 
 TEST_F(PPPoEServiceTest, DisconnectDuringAssociation) {
