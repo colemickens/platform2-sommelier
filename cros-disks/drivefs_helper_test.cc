@@ -48,7 +48,6 @@ class MockPlatform : public Platform {
         .WillByDefault(Invoke(this, &MockPlatform::GetGroupIdImpl));
     ON_CALL(*this, GetRealPath(_, _))
         .WillByDefault(Invoke(this, &MockPlatform::GetRealPathImpl));
-    ON_CALL(*this, IsDirectoryEmpty(_)).WillByDefault(Return(true));
     ON_CALL(*this, DirectoryExists(_)).WillByDefault(Return(true));
     ON_CALL(*this, PathExists(EndsWith("-seccomp.policy")))
         .WillByDefault(Return(false));
@@ -72,7 +71,6 @@ class MockPlatform : public Platform {
               (const, override));
   MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
   MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
-  MOCK_METHOD(bool, IsDirectoryEmpty, (const std::string&), (const, override));
   MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
   MOCK_METHOD(bool,
               RemoveEmptyDirectory,

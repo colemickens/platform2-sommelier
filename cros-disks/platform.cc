@@ -50,10 +50,6 @@ bool Platform::DirectoryExists(const std::string& path) const {
   return base::DirectoryExists(base::FilePath(path));
 }
 
-bool Platform::IsDirectoryEmpty(const std::string& dir) const {
-  return base::IsDirectoryEmpty(base::FilePath(dir));
-}
-
 bool Platform::CreateDirectory(const std::string& path) const {
   if (!base::CreateDirectory(base::FilePath(path))) {
     LOG(ERROR) << "Cannot create directory " << quote(path);

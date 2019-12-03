@@ -34,9 +34,6 @@ class Platform {
   // Returns whether |path| exists and is a directory.
   virtual bool DirectoryExists(const std::string& path) const;
 
-  // Returns whether |dir| is an empty directory.
-  virtual bool IsDirectoryEmpty(const std::string& dir) const;
-
   // Creates a directory at |path| if it does not exist. Returns true on
   // success.
   virtual bool CreateDirectory(const std::string& path) const;
