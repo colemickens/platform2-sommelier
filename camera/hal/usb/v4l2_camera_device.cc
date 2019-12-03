@@ -693,7 +693,24 @@ bool V4L2CameraDevice::IsAutoFocusSupported(const std::string& device_path) {
   struct v4l2_queryctrl query_ctrl;
   query_ctrl.id = V4L2_CID_FOCUS_AUTO;
   if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCTRL, &query_ctrl)) < 0) {
-    LOGF(WARNING) << "Failed to qery V4L2_CID_FOCUS_AUTO";
+    LOGF(WARNING) << "Failed to query V4L2_CID_FOCUS_AUTO";
+    return false;
+  }
+  return !(query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED);
+}
+
+// static
+bool V4L2CameraDevice::IsConstantFrameRateSupported(
+    const std::string& device_path) {
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  if (!fd.is_valid()) {
+    PLOGF(ERROR) << "Failed to open " << device_path;
+    return false;
+  }
+  struct v4l2_queryctrl query_ctrl;
+  query_ctrl.id = V4L2_CID_EXPOSURE_AUTO_PRIORITY;
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCTRL, &query_ctrl)) < 0) {
+    LOGF(WARNING) << "Failed to query V4L2_CID_EXPOSURE_AUTO_PRIORITY";
     return false;
   }
   return !(query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED);

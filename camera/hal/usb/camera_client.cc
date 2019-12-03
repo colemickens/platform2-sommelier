@@ -195,9 +195,9 @@ int CameraClient::ConfigureStreams(
   }
 
   // We don't have enough information to decide whether to enable constant frame
-  // rate or not here.  Tried some common camera apps and seems that true is a
-  // sensible default.
-  bool constant_frame_rate = true;
+  // rate or not here. Tried some common camera apps and seems that true is a
+  // sensible default. False if constant frame rate is not supported.
+  bool constant_frame_rate = !device_info_.constant_framerate_unsupported;
 
   int num_buffers;
   int ret = StreamOn(stream_on_resolution, constant_frame_rate,

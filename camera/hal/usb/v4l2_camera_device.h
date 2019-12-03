@@ -97,6 +97,8 @@ class V4L2CameraDevice {
 
   static bool IsAutoFocusSupported(const std::string& device_path);
 
+  static bool IsConstantFrameRateSupported(const std::string& device_path);
+
   static bool IsCameraDevice(const std::string& device_path);
 
   // Get clock type in UVC driver to report the same time base in user space.
