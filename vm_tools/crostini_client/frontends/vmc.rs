@@ -371,7 +371,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 self.args[0],
                 self.args[1],
                 "https://storage.googleapis.com/cros-containers/%d",
-                "debian/stretch",
+                "debian/buster",
             ),
             4 => (self.args[0], self.args[1], self.args[2], self.args[3]),
             _ => return Err(ExpectedVmAndContainer.into()),
