@@ -105,23 +105,8 @@ typeDefs:
         type: integer
         minimum: 0x0
         maximum: 0xFF
-      limit-5g-1:
-        description: "5G band 1 power limit (dBm)"
-        type: integer
-        minimum: 0x0
-        maximum: 0xFF
-      limit-5g-2:
-        description: "5G band 2 power limit (dBm)"
-        type: integer
-        minimum: 0x0
-        maximum: 0xFF
-      limit-5g-3:
-        description: "5G band 3 power limit (dBm)"
-        type: integer
-        minimum: 0x0
-        maximum: 0xFF
-      limit-5g-4:
-        description: "5G band 4 power limit (dBm)"
+      limit-5g:
+        description: "5G band power limit (dBm)"
         type: integer
         minimum: 0x0
         maximum: 0xFF

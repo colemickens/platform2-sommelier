@@ -545,19 +545,13 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | limit-2g | integer |  | False |  | False | 2G band power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g | integer |  | False |  | False | 5G band power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### tablet-mode-power-table
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | limit-2g | integer |  | False |  | False | 2G band power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
-| limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g | integer |  | False |  | False | 5G band power limit (dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 
 [](end_definitions)
