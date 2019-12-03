@@ -97,7 +97,7 @@ typeDefs:
     - default
     - old
   wifi-transmit-power-chain: &wifi-transmit-power-chain
-    description: "WiFi power chain"
+    description: "WiFi power chain. Currently only used for QCA ath10k drivers."
     type: object
     properties:
       limit-2g:
@@ -234,6 +234,8 @@ properties:
               - config
             wifi:
               type: object
+              description: Sets limits on maximum WiFi transmit power for tablet and non-tablet
+                device configurations. Currently only used for QCA ath10k WiFi driver.
               properties:
                 tablet-mode-power-table: *wifi-transmit-power-chain
                 non-tablet-mode-power-table: *wifi-transmit-power-chain

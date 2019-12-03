@@ -319,7 +319,7 @@ In the tables below,
 | touch | [touch](#touch) |  | False |  | False |  |
 | ui | [ui](#ui) |  | False |  | False |  |
 | wallpaper | string |  | False |  | False | Base filename of the default wallpaper to show on this device. |
-| wifi | [wifi](#wifi) |  | False |  | False |  |
+| wifi | [wifi](#wifi) |  | False |  | False | Sets limits on maximum WiFi transmit power for tablet and non-tablet device configurations. Currently only used for QCA ath10k WiFi driver. |
 
 ### arc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -538,8 +538,8 @@ In the tables below,
 ### wifi
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| non-tablet-mode-power-table | [non-tablet-mode-power-table](#non-tablet-mode-power-table) |  | False |  | False | WiFi power chain |
-| tablet-mode-power-table | [tablet-mode-power-table](#tablet-mode-power-table) |  | False |  | False | WiFi power chain |
+| non-tablet-mode-power-table | [non-tablet-mode-power-table](#non-tablet-mode-power-table) |  | False |  | False | WiFi power chain. Currently only used for QCA ath10k drivers. |
+| tablet-mode-power-table | [tablet-mode-power-table](#tablet-mode-power-table) |  | False |  | False | WiFi power chain. Currently only used for QCA ath10k drivers. |
 
 ### non-tablet-mode-power-table
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
