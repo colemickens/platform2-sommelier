@@ -84,11 +84,8 @@ bool OutOfProcessMountHelper::MountPerformed() const {
   return helper_process_ && helper_process_->pid() > 0;
 }
 
-// TODO(jorgelo, crbug.com/985492): Implement this before enabling
-// out-of-process mounts for Guest sessions.
 bool OutOfProcessMountHelper::IsPathMounted(const base::FilePath& path) const {
-  NOTIMPLEMENTED();
-  return false;
+  return mounted_paths_.count(path.value()) > 0;
 }
 
 void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
@@ -130,41 +127,37 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
   request.set_username(username);
   request.set_system_salt(system_salt_.to_string());
   request.set_legacy_home(legacy_home_);
-  size_t proto_size = request.ByteSizeLong();
 
-  if (!base::WriteFileDescriptor(write_to_helper_,
-                                 reinterpret_cast<char*>(&proto_size),
-                                 sizeof(proto_size))) {
-    PLOG(ERROR) << "Failed to write protobuf size";
-    return false;
-  }
-
-  brillo::SecureBlob buf(proto_size);
-  request.SerializeToArray(buf.data(), buf.size());
-  if (!base::WriteFileDescriptor(write_to_helper_, buf.char_data(),
-                                 buf.size())) {
-    PLOG(ERROR) << "Failed to write protobuf";
+  if (!WriteProtobuf(write_to_helper_, request)) {
+    LOG(ERROR) << "Failed to write request protobuf";
     return false;
   }
 
   // Avoid blocking forever in the read(2) call below by poll(2)-ing the file
   // descriptor with a |kOutOfProcessHelperMountTimeout| long timeout.
   if (!WaitForHelper(read_from_helper, kOutOfProcessHelperMountTimeout)) {
-    LOG(ERROR) << "OOP mount helper did not ack in time";
+    LOG(ERROR) << "OOP mount helper did not respond in time";
     return false;
   }
 
-  char indata;
-  if (!base::ReadFromFD(read_from_helper, &indata, sizeof(indata))) {
-    PLOG(ERROR) << "Failed to read ack from OOP mount helper";
+  OutOfProcessMountResponse response;
+  if (!ReadProtobuf(read_from_helper, &response)) {
+    LOG(ERROR) << "Failed to read response protobuf";
     return false;
   }
 
   // OOP mount helper started successfully, release the clean-up closure.
   ignore_result(kill_runner.Release());
 
-  // Once the clean-up closure is released, store the username.
+  // Once the clean-up closure is released, store the username and the mounted
+  // paths.
   username_ = username;
+
+  if (response.paths_size() > 0) {
+    for (int i = 0; i < response.paths_size(); i++) {
+      mounted_paths_.insert(response.paths(i));
+    }
+  }
 
   LOG(INFO) << "OOP mount helper started successfully";
   return true;
@@ -186,7 +179,8 @@ void OutOfProcessMountHelper::TearDownEphemeralMount() {
                  base::Unretained(this)));
 
   // Once the clean-up closure is scheduled and the helper process is guaranteed
-  // to be killed, clear the username.
+  // to be killed, clear the set of mounted paths and the username.
+  mounted_paths_.clear();
   username_.clear();
 
   constexpr char outdata = '0';

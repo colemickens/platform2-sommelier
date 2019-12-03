@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -81,6 +82,9 @@ class OutOfProcessMountHelper : public EphemeralMountHelperInterface {
   // This file descriptor is owned by |helper_process_|, so it's not
   // scoped.
   int write_to_helper_;
+
+  // Set of mounts returned by the helper.
+  std::set<std::string> mounted_paths_;
 
   DISALLOW_COPY_AND_ASSIGN(OutOfProcessMountHelper);
 };

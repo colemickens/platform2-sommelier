@@ -919,4 +919,8 @@ bool MountHelper::IsPathMounted(const base::FilePath& path) const {
   return stack_.ContainsDest(path);
 }
 
+std::vector<base::FilePath> MountHelper::MountedPaths() const {
+  return stack_.MountDestinations();
+}
+
 }  // namespace cryptohome

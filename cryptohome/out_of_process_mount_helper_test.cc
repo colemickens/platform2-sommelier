@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/posix/eintr_wrapper.h>
@@ -23,9 +24,11 @@
 
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mount_utils.h"
 
 #include "cryptohome/namespace_mounter_ipc.pb.h"
 
+using base::FilePath;
 using brillo::cryptohome::home::kGuestUserName;
 using ::testing::_;
 using ::testing::NiceMock;
@@ -108,10 +111,16 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOP) {
   ASSERT_TRUE(dev_null.is_valid());
   EXPECT_CALL(*process, GetPipe(STDIN_FILENO)).WillOnce(Return(dev_null.get()));
 
-  constexpr char out_data = '0';
-  ASSERT_TRUE(
-      base::WriteFileDescriptor(write_end.get(), &out_data, sizeof(out_data)));
+  FilePath legacy_home("/home/chronos/user");
+
+  OutOfProcessMountResponse resp;
+  resp.add_paths(legacy_home.value());
+  ASSERT_TRUE(WriteProtobuf(write_end.get(), resp));
   ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+
+  EXPECT_TRUE(out_of_process_mounter_->IsPathMounted(legacy_home));
+  EXPECT_FALSE(
+      out_of_process_mounter_->IsPathMounted(FilePath("/invalid/path")));
 
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
   out_of_process_mounter_->TearDownEphemeralMount();
@@ -137,15 +146,8 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPWriteProtobuf) {
 
   ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
 
-  size_t proto_size = 0;
-  ASSERT_TRUE(base::ReadFromFD(
-      read_end.get(), reinterpret_cast<char*>(&proto_size), sizeof(size_t)));
-  std::vector<char> proto_data(proto_size);
-  ASSERT_TRUE(
-      base::ReadFromFD(read_end.get(), proto_data.data(), proto_data.size()));
-
   OutOfProcessMountRequest r;
-  ASSERT_TRUE(r.ParseFromArray(proto_data.data(), proto_size));
+  ASSERT_TRUE(ReadProtobuf(read_end.get(), &r));
   EXPECT_EQ(r.username(), kGuestUserName);
 
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));

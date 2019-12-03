@@ -49,4 +49,12 @@ bool MountStack::ContainsDest(const FilePath& dest) const {
   return false;
 }
 
+std::vector<base::FilePath> MountStack::MountDestinations() const {
+  std::vector<base::FilePath> res;
+  for (const auto& mount : mounts_) {
+    res.push_back(mount.dest);
+  }
+  return res;
+}
+
 }  // namespace cryptohome

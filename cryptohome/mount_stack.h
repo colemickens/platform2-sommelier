@@ -25,6 +25,8 @@ class MountStack {
   virtual bool ContainsDest(const base::FilePath& dest) const;
   virtual size_t size() const { return mounts_.size(); }
 
+  virtual std::vector<base::FilePath> MountDestinations() const;
+
  private:
   struct MountInfo {
     MountInfo(const base::FilePath& src, const base::FilePath& dest);

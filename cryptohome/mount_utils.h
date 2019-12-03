@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_MOUNT_UTILS_H_
 #define CRYPTOHOME_MOUNT_UTILS_H_
 
+#include <google/protobuf/message_lite.h>
+
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -20,6 +22,11 @@ class ScopedUmask {
   Platform* platform_;
   int old_mask_;
 };
+
+// Cryptohome uses protobufs to communicate with the out-of-process mount
+// helper.
+bool ReadProtobuf(int fd, google::protobuf::MessageLite* message);
+bool WriteProtobuf(int fd, const google::protobuf::MessageLite& message);
 
 }  // namespace cryptohome
 

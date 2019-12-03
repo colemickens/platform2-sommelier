@@ -31,7 +31,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/mount_constants.h"
 #include "cryptohome/mount_helper.h"
-#include "cryptohome/mount_stack.h"
+#include "cryptohome/mount_utils.h"
 
 #include "cryptohome/namespace_mounter_ipc.pb.h"
 
@@ -69,22 +69,9 @@ int main(int argc, char** argv) {
   constexpr gid_t gid = 1000;  // GID for 'chronos'.
   constexpr gid_t access_gid = 1001;  // GID for 'chronos-access'.
 
-  size_t proto_size = 0;
-  if (!base::ReadFromFD(STDIN_FILENO, reinterpret_cast<char*>(&proto_size),
-                        sizeof(proto_size))) {
-    PLOG(ERROR) << "Failed to read protobuf size";
-    return EX_NOINPUT;
-  }
-
-  std::vector<char> proto_data(proto_size);
-  if (!base::ReadFromFD(STDIN_FILENO, proto_data.data(), proto_size)) {
-    PLOG(ERROR) << "Failed to read protobuf";
-    return EX_NOINPUT;
-  }
-
   cryptohome::OutOfProcessMountRequest request;
-  if (!request.ParseFromArray(proto_data.data(), proto_size)) {
-    LOG(ERROR) << "Failed to deserialize protobuf";
+  if (!cryptohome::ReadProtobuf(STDIN_FILENO, &request)) {
+    LOG(ERROR) << "Failed to read request protobuf";
     return EX_NOINPUT;
   }
 
@@ -107,12 +94,16 @@ int main(int argc, char** argv) {
   }
   VLOG(1) << "PerformEphemeralMount succeeded";
 
-  constexpr char outdata = '0';
-  if (!base::WriteFileDescriptor(STDOUT_FILENO, &outdata, sizeof(outdata))) {
-    PLOG(ERROR) << "Failed to write to stdout";
+  cryptohome::OutOfProcessMountResponse response;
+  for (const auto& path : mounter.MountedPaths()) {
+    response.add_paths(path.value());
+  }
+
+  if (!cryptohome::WriteProtobuf(STDOUT_FILENO, response)) {
+    LOG(ERROR) << "Failed to write response protobuf";
     return EX_OSERR;
   }
-  VLOG(1) << "Sent ack";
+  VLOG(1) << "Sent protobuf";
 
   // Mount and ack succeeded, release the closure without running it.
   ignore_result(tear_down_runner.Release());

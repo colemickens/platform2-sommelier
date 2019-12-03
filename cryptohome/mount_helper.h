@@ -145,6 +145,9 @@ class MountHelper : public EphemeralMountHelperInterface {
   // Returns whether |path| is the destination of an existing mount.
   bool IsPathMounted(const base::FilePath& path) const override;
 
+  // Returns a list of paths that have been mounted as part of the mount.
+  std::vector<base::FilePath> MountedPaths() const;
+
  private:
   // Returns the names of all tracked subdirectories.
   static std::vector<base::FilePath> GetTrackedSubdirectories();
