@@ -131,12 +131,6 @@ const REQUEST_VPN_SETUP: &str = "RequestVpnSetup";
 const REMOVE_VPN_SETUP: &str = "RemoveVpnSetup";
 const POWER_CYCLE_USB_PORTS: &str = "PowerCycleUsbPorts";
 
-// lock_to_single_user dbus-constants.h
-const LOCK_TO_SINGLE_USER_INTERFACE: &str = "org.chromium.LockToSingleUser";
-const LOCK_TO_SINGLE_USER_SERVICE_PATH: &str = "/org/chromium/LockToSingleUser";
-const LOCK_TO_SINGLE_USER_SERVICE_NAME: &str = "org.chromium.LockToSingleUser";
-const NOTIFY_VM_STARTING_METHOD: &str = "NotifyVmStarting";
-
 enum ChromeOSError {
     BadChromeFeatureStatus,
     BadConciergeStatus,
@@ -369,20 +363,6 @@ impl ChromeOS {
             Some(false) => Ok(false),
             _ => Err(BadChromeFeatureStatus.into()),
         }
-    }
-
-    fn notify_vm_starting(&mut self) -> Result<(), Box<Error>> {
-        let method = Message::new_method_call(
-            LOCK_TO_SINGLE_USER_SERVICE_NAME,
-            LOCK_TO_SINGLE_USER_SERVICE_PATH,
-            LOCK_TO_SINGLE_USER_INTERFACE,
-            NOTIFY_VM_STARTING_METHOD,
-        )?;
-
-        self.connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
-
-        Ok(())
     }
 
     fn is_crostini_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<Error>> {
@@ -1301,7 +1281,6 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         features: VmFeatures,
     ) -> Result<(), Box<Error>> {
-        self.notify_vm_starting()?;
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(name, user_id_hash)? {
             if !self.is_plugin_vm_enabled(user_id_hash)? {
