@@ -203,11 +203,11 @@ constexpr char begin_suspend_stats[] =
 constexpr char end_suspend_stats[] =
     "--- end /sys/kernel/debug/suspend_stats ---";
 constexpr LazyRE2 last_failed_dev = {
-    R"(\w*last_failed_dev: (.+)\n)"};
+    R"(\s*last_failed_dev: (.+))"};
 constexpr LazyRE2 last_failed_errno = {
-    R"(\w*last_failed_errno: (.+)\n)"};
+    R"(\s*last_failed_errno: (.+))"};
 constexpr LazyRE2 last_failed_step = {
-    R"(\w*last_failed_step: (.+)\n)"};
+    R"(\s*last_failed_step: (.+))"};
 
 MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
   if (last_line_ == LineType::None && line.find(begin_suspend_stats) == 0) {

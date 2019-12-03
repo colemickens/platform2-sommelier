@@ -38,6 +38,7 @@ using anomaly::CrashReporterParser;
 using anomaly::KernelParser;
 using anomaly::SELinuxParser;
 using anomaly::ServiceParser;
+using anomaly::SuspendParser;
 using anomaly::TerminaParser;
 using test_util::AdvancingClock;
 
@@ -197,6 +198,14 @@ TEST(AnomalyDetectorTest, SELinuxViolation) {
           "-selinux-u:r:init:s0-u:r:kernel:s0-module_request-init-"s,
       .expected_flag = "--selinux_violation"s};
   ParserTest<SELinuxParser>("TEST_SELINUX", {selinux_violation});
+}
+
+TEST(AnomalyDetectorTest, SuspendFailure) {
+  ParserRun suspend_failure = {
+      .expected_text =
+          "-suspend failure: device: dummy_dev step: suspend errno: -22"s,
+      .expected_flag = "--suspend_failure"s};
+  ParserTest<SuspendParser>("TEST_SUSPEND_FAILURE", {suspend_failure});
 }
 
 TEST(CrashReporterParserTest, MatchedCrashTest) {
