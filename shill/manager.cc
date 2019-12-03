@@ -2442,6 +2442,19 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
   return nullptr;
 }
 
+DeviceRefPtr Manager::FindDeviceFromService(const ServiceRefPtr& service) {
+  if (!service) {
+    return nullptr;
+  }
+
+  for (auto& device : devices_) {
+    if (device->selected_service() == service) {
+      return device;
+    }
+  }
+  return nullptr;
+}
+
 ServiceRefPtr Manager::GetPrimaryPhysicalService() {
   // Note that |services_| is kept sorted in order of highest priority to
   // lowest.
