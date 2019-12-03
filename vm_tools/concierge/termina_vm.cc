@@ -277,6 +277,14 @@ bool TerminaVm::Start(base::FilePath kernel,
 }
 
 bool TerminaVm::Shutdown() {
+  // Notify arc-networkd that the VM is down.
+  // This should run before the process existence check below since we still
+  // want to release the network resources on crash.
+  // Note the client will only be null during testing.
+  if (network_client_ && !network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
+    LOG(WARNING) << "Unable to notify networking services";
+  }
+
   // Do a sanity check here to make sure the process is still around.  It may
   // have crashed and we don't want to be waiting around for an RPC response
   // that's never going to come.  kill with a signal value of 0 is explicitly
@@ -285,10 +293,6 @@ bool TerminaVm::Shutdown() {
     // The process is already gone.
     process_.Release();
     return true;
-  }
-
-  if (!network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
-    LOG(WARNING) << "Unable to notify networking services";
   }
 
   grpc::ClientContext ctx;
