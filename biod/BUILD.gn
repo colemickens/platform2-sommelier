@@ -52,7 +52,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libbiod") {
-  configs += [ ":target_defaults" ]
   sources = [
     "biod_crypto.cc",
     "biod_metrics.cc",
@@ -71,57 +70,58 @@ static_library("libbiod") {
     "scoped_umask.cc",
     "uinput_device.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("fake_libbiod") {
-  configs += [ ":target_defaults" ]
   sources = [
     "fake_power_manager_client.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("biod") {
-  configs += [ ":target_defaults" ]
   sources = [
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libbiod",
   ]
 }
 
 executable("bio_crypto_init") {
-  configs += [ ":target_defaults" ]
   sources = [
     "tools/bio_crypto_init.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libbiod",
   ]
 }
 
 executable("bio_wash") {
-  configs += [ ":target_defaults" ]
   sources = [
     "tools/bio_wash.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libbiod",
   ]
 }
 
 executable("biod_client_tool") {
-  configs += [ ":target_defaults" ]
   sources = [
     "tools/biod_client_tool.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("bio_fw_updater") {
-  configs += [ ":target_defaults" ]
   sources = [
     "tools/bio_fw_updater.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libbiod",
   ]
@@ -132,11 +132,6 @@ if (use.test) {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("biod_test_runner") {
-    configs += [
-      "//common-mk:test",
-      ":libchrome_test_config",
-      ":target_defaults",
-    ]
     sources = [
       "biod_crypto_test.cc",
       "biod_metrics_test.cc",
@@ -154,6 +149,11 @@ if (use.test) {
       "power_manager_client_test.cc",
       "tools/bio_crypto_init_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":libchrome_test_config",
+      ":target_defaults",
+    ]
     deps = [
       ":fake_libbiod",
       ":libbiod",
@@ -167,26 +167,26 @@ if (use.fuzzer) {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("biod_storage_fuzzer") {
+    sources = [
+      "biod_storage_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":libchrome_test_config",
       ":target_defaults",
-    ]
-    sources = [
-      "biod_storage_fuzzer.cc",
     ]
     deps = [
       ":libbiod",
     ]
   }
   executable("biod_crypto_validation_value_fuzzer") {
+    sources = [
+      "biod_crypto_validation_value_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":libchrome_test_config",
       ":target_defaults",
-    ]
-    sources = [
-      "biod_crypto_validation_value_fuzzer.cc",
     ]
     deps = [
       ":libbiod",
