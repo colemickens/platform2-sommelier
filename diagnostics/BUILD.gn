@@ -115,6 +115,7 @@ source_set("libcros_healthd_utils") {
   sources = [
     "cros_healthd/utils/battery_utils.cc",
     "cros_healthd/utils/disk_utils.cc",
+    "cros_healthd/utils/file_utils.cc",
   ]
 }
 

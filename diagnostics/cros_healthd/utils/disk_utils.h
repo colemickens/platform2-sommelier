@@ -7,6 +7,8 @@
 
 #include <vector>
 
+#include <base/files/file_path.h>
+
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {

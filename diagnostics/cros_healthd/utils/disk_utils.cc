@@ -10,15 +10,13 @@
 #include <string>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
-#include <unordered_map>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
-#include <base/files/file_util.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/values.h>
+
+#include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
 
@@ -30,51 +28,6 @@ using CachedVpdInfo = ::chromeos::cros_healthd::mojom::CachedVpdInfo;
 using CachedVpdInfoPtr = ::chromeos::cros_healthd::mojom::CachedVpdInfoPtr;
 
 namespace {
-
-// Reads the contents of |filename| within |directory| into |out|, trimming
-// trailing whitespace.  Returns true on success.
-bool ReadAndTrimString(const base::FilePath& directory,
-                       const std::string& filename,
-                       std::string* out) {
-  if (!base::ReadFileToString(directory.Append(filename), out))
-    return false;
-
-  base::TrimWhitespaceASCII(*out, base::TRIM_TRAILING, out);
-  return true;
-}
-
-// Reads a 64-bit decimal-encoded integer value from a text file and returns
-// true on success.
-bool ReadInt64(const base::FilePath& directory,
-               const std::string& filename,
-               int64_t* out) {
-  std::string buffer;
-  if (!ReadAndTrimString(directory, filename, &buffer))
-    return false;
-  return base::StringToInt64(buffer, out);
-}
-
-// Reads a 64-bit hex-encoded unsigned integer value from a text file and
-// returns true on success.
-bool ReadHexUInt64(const base::FilePath& directory,
-                   const std::string& filename,
-                   uint64_t* out) {
-  std::string buffer;
-  if (!ReadAndTrimString(directory, filename, &buffer))
-    return false;
-  return base::HexStringToUInt64(buffer, out);
-}
-
-// Reads a 32-bit hex-encoded unsigned integer value from a file and returns
-// true on success.
-bool ReadHexUint32(const base::FilePath& directory,
-                   const std::string& filename,
-                   uint32_t* out) {
-  std::string buffer;
-  if (!ReadAndTrimString(directory, filename, &buffer))
-    return false;
-  return base::HexStringToUInt(buffer, out);
-}
 
 // Look through all the block devices and find the ones that are explicitly
 // non-removable.
