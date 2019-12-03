@@ -13,11 +13,12 @@
 
 namespace {
 
-std::unique_ptr<base::DictionaryValue> SaveAsJson(ipp::Collection* coll);
+std::unique_ptr<base::DictionaryValue> SaveAsJson(const ipp::Collection* coll);
 
 // It saves a single value (at given index) from the attribute as JSON
 // structure. The parameter "attr" cannot be nullptr, "index" must be correct.
-std::unique_ptr<base::Value> SaveAsJson(ipp::Attribute* attr, unsigned index) {
+std::unique_ptr<base::Value> SaveAsJson(const ipp::Attribute* attr,
+                                        unsigned index) {
   CHECK(attr != nullptr);
   CHECK(index < attr->GetSize());
   using AttrType = ipp::AttrType;
@@ -75,7 +76,7 @@ std::unique_ptr<base::Value> SaveAsJson(ipp::Attribute* attr, unsigned index) {
 
 // It saves all attribute's values as JSON structure.
 // The parameter "attr" cannot be nullptr.
-std::unique_ptr<base::Value> SaveAsJson(ipp::Attribute* attr) {
+std::unique_ptr<base::Value> SaveAsJson(const ipp::Attribute* attr) {
   CHECK(attr != nullptr);
   if (attr->IsASet()) {
     auto arr = std::make_unique<base::ListValue>();
@@ -90,10 +91,10 @@ std::unique_ptr<base::Value> SaveAsJson(ipp::Attribute* attr) {
 
 // It saves a given Collection as JSON object.
 // The parameter "coll" cannot be nullptr.
-std::unique_ptr<base::DictionaryValue> SaveAsJson(ipp::Collection* coll) {
+std::unique_ptr<base::DictionaryValue> SaveAsJson(const ipp::Collection* coll) {
   CHECK(coll != nullptr);
   auto obj = std::make_unique<base::DictionaryValue>();
-  std::vector<ipp::Attribute*> attrs = coll->GetAllAttributes();
+  std::vector<const ipp::Attribute*> attrs = coll->GetAllAttributes();
 
   for (auto a : attrs) {
     auto state = a->GetState();
@@ -115,10 +116,10 @@ std::unique_ptr<base::DictionaryValue> SaveAsJson(ipp::Collection* coll) {
 
 // It saves all groups from given Package as JSON object.
 // The parameter "pkg" cannot be nullptr.
-std::unique_ptr<base::DictionaryValue> SaveAsJson(ipp::Package* pkg) {
+std::unique_ptr<base::DictionaryValue> SaveAsJson(const ipp::Package* pkg) {
   CHECK(pkg != nullptr);
   auto obj = std::make_unique<base::DictionaryValue>();
-  std::vector<ipp::Group*> groups = pkg->GetAllGroups();
+  std::vector<const ipp::Group*> groups = pkg->GetAllGroups();
 
   for (auto g : groups) {
     if (g->IsASet()) {
@@ -153,7 +154,7 @@ std::unique_ptr<base::ListValue> SaveAsJson(const std::vector<ipp::Log>& log) {
 
 }  // namespace
 
-bool ConvertToJson(ipp::Response& response,  // NOLINT(runtime/references)
+bool ConvertToJson(const ipp::Response& response,
                    const std::vector<ipp::Log>& log,
                    bool compressed_json,
                    std::string* json) {

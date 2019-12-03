@@ -897,6 +897,16 @@ std::vector<Attribute*> Collection::GetAllAttributes() {
   return v;
 }
 
+std::vector<const Attribute*> Collection::GetAllAttributes() const {
+  const std::vector<const Attribute*> known_attr = GetKnownAttributes();
+  std::vector<const Attribute*> v;
+  v.reserve(known_attr.size() + unknown_attributes.size());
+  v.insert(v.end(), known_attr.begin(), known_attr.end());
+  for (const auto& e : unknown_attributes)
+    v.push_back(e.second.object);
+  return v;
+}
+
 // Saves |value| to attribute |name| at position |index| in collection |coll|.
 // Proper conversion is applied when needed. The attribute is also resized when
 // |index| is greater than the attribute's size. |coll| cannot be nullptr. The

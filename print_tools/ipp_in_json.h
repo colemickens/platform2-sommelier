@@ -12,8 +12,7 @@
 
 // This function build JSON representation of the given IPP response along with
 // the log from parsing it.
-// TODO(pawliczek) - add const to the first param (bug chromium:994893)
-bool ConvertToJson(ipp::Response& response,  // NOLINT(runtime/references)
+bool ConvertToJson(const ipp::Response& response,
                    const std::vector<ipp::Log>& log,
                    bool compressed_json,
                    std::string* json);

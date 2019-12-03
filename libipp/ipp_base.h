@@ -65,6 +65,7 @@ class IPP_EXPORT Response : public Package {
 
   // Returns reference to status code of the response.
   Status& StatusCode() { return status_code_; }
+  Status StatusCode() const { return status_code_; }
 
  private:
   const Operation operation_id_;
