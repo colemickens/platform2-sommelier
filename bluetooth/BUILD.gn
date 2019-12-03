@@ -49,7 +49,6 @@ pkg_config("target_defaults") {
 }
 
 static_library("libcommon") {
-  configs += [ ":target_defaults" ]
   sources = [
     "common/dbus_client.cc",
     "common/dbus_daemon.cc",
@@ -58,12 +57,12 @@ static_library("libcommon") {
     "common/runtime_flags.cc",
     "common/util.cc",
   ]
+  configs += [ ":target_defaults" ]
   defines =
       [ "USE_BLUETOOTH_SUSPEND_MANAGEMENT=${use.bluetooth_suspend_management}" ]
 }
 
 static_library("libdispatcher") {
-  configs += [ ":target_defaults" ]
   sources = [
     "dispatcher/bluez_interface_handler.cc",
     "dispatcher/catch_all_forwarder.cc",
@@ -79,10 +78,10 @@ static_library("libdispatcher") {
     "dispatcher/service_watcher.cc",
     "dispatcher/suspend_manager.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("libnewblued") {
-  configs += [ ":target_defaults" ]
   sources = [
     "newblued/adapter_interface_handler.cc",
     "newblued/advertising_manager_interface_handler.cc",
@@ -99,13 +98,14 @@ static_library("libnewblued") {
     "newblued/util.cc",
     "newblued/uuid.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("btdispatch") {
-  configs += [ ":target_defaults" ]
   sources = [
     "dispatcher/main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libcommon",
     ":libdispatcher",
@@ -113,10 +113,10 @@ executable("btdispatch") {
 }
 
 executable("newblued") {
-  configs += [ ":target_defaults" ]
   sources = [
     "newblued/main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libcommon",
     ":libnewblued",
@@ -128,11 +128,6 @@ if (use.test) {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("bluetooth_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":test_config",
-    ]
     sources = [
       "common/dbus_client_test.cc",
       "common/exported_object_manager_wrapper_test.cc",
@@ -154,6 +149,11 @@ if (use.test) {
       "newblued/util_test.cc",
       "newblued/uuid_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
     deps = [
       ":libcommon",
       ":libdispatcher",
@@ -166,12 +166,12 @@ if (use.test) {
 # Fuzzer targets
 if (use.fuzzer) {
   executable("bluetooth_parsedataintouuids_fuzzer") {
+    sources = [
+      "newblued/fuzzers/parsedataintouuids_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/parsedataintouuids_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -179,12 +179,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_parsedataintoservicedata_fuzzer") {
+    sources = [
+      "newblued/fuzzers/parsedataintoservicedata_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/parsedataintoservicedata_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -192,12 +192,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_parseeir_fuzzer") {
+    sources = [
+      "newblued/fuzzers/parseeir_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/parseeir_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -205,12 +205,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_parsereportdescriptor_fuzzer") {
+    sources = [
+      "newblued/fuzzers/parsereportdescriptor_fuzzer.cc",
+    ]
     configs += [
       ":target_defaults",
       "//common-mk/common_fuzzer",
-    ]
-    sources = [
-      "newblued/fuzzers/parsereportdescriptor_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -218,12 +218,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_trimadapterfromobjectpath_fuzzer") {
+    sources = [
+      "newblued/fuzzers/trimadapterfromobjectpath_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/trimadapterfromobjectpath_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -231,12 +231,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_trimdevicefromobjectpath_fuzzer") {
+    sources = [
+      "newblued/fuzzers/trimdevicefromobjectpath_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/trimdevicefromobjectpath_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -244,12 +244,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_trimservicefromobjectpath_fuzzer") {
+    sources = [
+      "newblued/fuzzers/trimservicefromobjectpath_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/trimservicefromobjectpath_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -257,12 +257,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_trimcharacteristicfromobjectpath_fuzzer") {
+    sources = [
+      "newblued/fuzzers/trimcharacteristicfromobjectpath_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/trimcharacteristicfromobjectpath_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
@@ -270,12 +270,12 @@ if (use.fuzzer) {
     ]
   }
   executable("bluetooth_trimdescriptorfromobjectpath_fuzzer") {
+    sources = [
+      "newblued/fuzzers/trimdescriptorfromobjectpath_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
-    ]
-    sources = [
-      "newblued/fuzzers/trimdescriptorfromobjectpath_fuzzer.cc",
     ]
     deps = [
       ":libcommon",
