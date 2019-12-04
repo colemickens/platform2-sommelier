@@ -24,3 +24,19 @@ static_library("libvsh") {
   ]
   pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
+
+executable("vshd") {
+  sources = [
+    "vsh/vsh_forwarder.cc",
+    "vsh/vshd.cc",
+  ]
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "protobuf",
+    "vm_protos",
+    "libchrome-${libbase_ver}",
+  ]
+  deps = [
+    ":libvsh",
+  ]
+}

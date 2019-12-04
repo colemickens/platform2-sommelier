@@ -15,6 +15,7 @@ group("host") {
     ":vm_concierge",
     ":vmlog_forwarder",
     ":vsh",
+    "//vm_tools:vshd",
   ]
   if (use.test) {
     deps += [
