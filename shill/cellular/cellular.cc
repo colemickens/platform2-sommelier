@@ -324,7 +324,8 @@ void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   if (manager() && manager()->device_info() && socket_destroyer_) {
     DisableIPv6();
 
-    for (const auto& address : GetAddresses()) {
+    for (const auto& address :
+         manager()->device_info()->GetAddresses(interface_index())) {
       rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
       socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
     }
@@ -577,18 +578,6 @@ void Cellular::OnScanReply(const Stringmaps& found_networks,
   }
 
   set_found_networks(found_networks);
-}
-
-std::vector<IPAddress> Cellular::GetAddresses() const {
-  std::vector<DeviceInfo::AddressData> address_data;
-  if (!manager()->device_info()->GetAddresses(interface_index(), &address_data))
-    LOG(WARNING) << "Could not get addresses for modem";
-  std::vector<IPAddress> addresses;
-  for (const auto& data : address_data) {
-    if (data.address.IsValid())
-      addresses.push_back(data.address);
-  }
-  return addresses;
 }
 
 // Called from an asyc D-Bus function

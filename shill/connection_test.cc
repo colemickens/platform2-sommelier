@@ -180,14 +180,8 @@ class ConnectionTest : public Test {
     EXPECT_CALL(*device, technology()).WillRepeatedly(Return(technology));
     EXPECT_CALL(*device_info_, GetDevice(device->interface_index()))
         .WillRepeatedly(Return(device));
-    ON_CALL(*device_info_, GetAddresses(device->interface_index(), _))
-        .WillByDefault(WithArg<1>(testing::Invoke(
-            [](std::vector<DeviceInfo::AddressData>* addresses) {
-              *addresses = {
-                  DeviceInfo::AddressData(IPAddress(kIPAddress0), 0, 0),
-              };
-              return true;
-            })));
+    ON_CALL(*device_info_, GetAddresses(device->interface_index()))
+        .WillByDefault(Return(std::vector<IPAddress>{IPAddress(kIPAddress0)}));
     return device;
   }
 
@@ -238,7 +232,7 @@ class ConnectionTest : public Test {
   void AddPhysicalRoutingPolicyExpectations(DeviceRefPtr device,
                                             uint32_t priority,
                                             bool is_primary_physical) {
-    EXPECT_CALL(*device_info_, GetAddresses(device->interface_index(), _))
+    EXPECT_CALL(*device_info_, GetAddresses(device->interface_index()))
         .Times(testing::AnyNumber());
 
     EXPECT_CALL(routing_table_, FlushRules(device->interface_index()));
@@ -272,13 +266,11 @@ class ConnectionTest : public Test {
           .WillOnce(Return(true));
     }
 
-    std::vector<DeviceInfo::AddressData> addr_data;
-    EXPECT_TRUE(
-        device_info_->GetAddresses(device->interface_index(), &addr_data));
-    for (const auto& data : addr_data) {
+    for (const auto& address :
+         device_info_->GetAddresses(device->interface_index())) {
       EXPECT_CALL(routing_table_,
                   AddRule(device->interface_index(),
-                          IsValidRoutingRule(data.address.family(), priority)))
+                          IsValidRoutingRule(address.family(), priority)))
           .WillOnce(Return(true));
     }
     // Physical interfaces will have both iif and oif rules to send to the

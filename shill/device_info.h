@@ -42,17 +42,6 @@ class Nl80211Message;
 
 class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
  public:
-  struct AddressData {
-    AddressData() : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
-    AddressData(const IPAddress& address_in,
-                unsigned char flags_in,
-                unsigned char scope_in)
-        : address(address_in), flags(flags_in), scope(scope_in) {}
-    IPAddress address;
-    unsigned char flags;
-    unsigned char scope;
-  };
-
   explicit DeviceInfo(Manager* manager);
   virtual ~DeviceInfo();
 
@@ -92,8 +81,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   virtual bool GetByteCounts(int interface_index,
                              uint64_t* rx_bytes,
                              uint64_t* tx_bytes) const;
-  virtual bool GetAddresses(int interface_index,
-                            std::vector<AddressData>* addresses) const;
+  virtual std::vector<IPAddress> GetAddresses(int interface_index) const;
 
   // Flush all addresses associated with |interface_index|.
   virtual void FlushAddresses(int interface_index) const;
@@ -153,6 +141,17 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   FRIEND_TEST(DeviceInfoTest, IPv6DnsServerAddressesChanged);  // For infos_.
   FRIEND_TEST(DeviceInfoMockedGetUserId,
               AddRemoveAllowedInterface);  // For rtnl_handler_, routing_table_.
+
+  struct AddressData {
+    AddressData() : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
+    AddressData(const IPAddress& address_in,
+                unsigned char flags_in,
+                unsigned char scope_in)
+        : address(address_in), flags(flags_in), scope(scope_in) {}
+    IPAddress address;
+    unsigned char flags;
+    unsigned char scope;
+  };
 
   struct Info {
     Info()

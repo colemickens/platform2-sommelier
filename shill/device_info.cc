@@ -854,14 +854,25 @@ bool DeviceInfo::GetMacAddressOfPeer(int interface_index,
   return true;
 }
 
-bool DeviceInfo::GetAddresses(int interface_index,
-                              vector<AddressData>* addresses) const {
+vector<IPAddress> DeviceInfo::GetAddresses(int interface_index) const {
   const Info* info = GetInfo(interface_index);
   if (!info) {
-    return false;
+    // Note that VirtualDevices may exist even after a relevant execution of
+    // DelLinkMsgHandler, as the VirtualDevice client could retain ownership of
+    // the instance. Therefore we handle this condition gracefully rather than
+    // using a CHECK.
+    LOG(WARNING) << "Attempted to get addresses from unknown interface index: "
+                 << interface_index;
+    return {};
   }
-  *addresses = info->ip_addresses;
-  return true;
+
+  vector<IPAddress> addresses;
+  for (auto address_data : info->ip_addresses) {
+    if (address_data.address.IsValid()) {
+      addresses.push_back(address_data.address);
+    }
+  }
+  return addresses;
 }
 
 void DeviceInfo::FlushAddresses(int interface_index) const {

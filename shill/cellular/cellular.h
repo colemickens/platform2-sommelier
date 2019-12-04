@@ -453,8 +453,6 @@ class Cellular : public Device,
 
   void UpdateScanning();
 
-  std::vector<IPAddress> GetAddresses() const;
-
   void GetLocationCallback(const std::string& gpp_lac_ci_string,
                            const Error& error);
 

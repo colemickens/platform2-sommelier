@@ -339,12 +339,9 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
     //
     // TODO(crbug.com/941597) This may need to change when NDProxy allows guests
     // to provision IPv6 addresses.
-    std::vector<DeviceInfo::AddressData> addr_data;
-    bool ok = device_info_->GetAddresses(interface_index_, &addr_data);
-    DCHECK(ok);
-    for (const auto& data : addr_data) {
+    for (const auto& address : device_info_->GetAddresses(interface_index_)) {
       routing_table_->AddRule(interface_index_,
-                              RoutingPolicyEntry::CreateFromSrc(data.address)
+                              RoutingPolicyEntry::CreateFromSrc(address)
                                   .SetTable(table_id)
                                   .SetPriority(base_priority));
     }
