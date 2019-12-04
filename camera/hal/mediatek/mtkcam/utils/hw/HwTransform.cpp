@@ -182,13 +182,6 @@ SensorInfo::getMatrix(MUINT32 const sensorMode,
         //
         pSensorList->querySensorStaticInfo(
             pSensorList->querySensorDevIdx(openId), &staticInfo);
-        // OV5695 preview mode is crop from full FOV
-        if (staticInfo.sensorDevID == NSCam::SENSOR_ID_OV5695 &&
-            sensorMode != NSCam::SENSOR_SCENARIO_ID_NORMAL_CAPTURE) {
-          MY_LOGW("senor %d, id %x, skip crop infos", openId,
-                  staticInfo.sensorDevID);
-          return MFALSE;
-        }
       }
       MY_LOGD("senor %d, mode %d: crop infos", openId, sensorMode);
       MY_LOGD("full %dx%d, crop0(%d,%d,%dx%d), resized(%d,%d)",

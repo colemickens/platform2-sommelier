@@ -36,8 +36,8 @@ struct IMGSENSOR_SENSOR_LIST gimgsensor_sensor_list[MAX_NUM_OF_SUPPORT_SENSOR] =
 static SENSOR_WINSIZE_INFO_STRUCT gImgsensor_winsize_info[][SCENARIO_ID_MAX] = {
     {
         // ov5695
-        {2592, 1944, 0, 0, 2592, 1944, 1920, 1080, 0, 0, 1920, 1080, 0, 0, 1920,
-         1080}, /*preview */
+        {2592, 1944, 0, 0, 2592, 1944, 2592, 1944, 0, 0, 2592, 1944, 0, 0, 2592,
+         1944}, /*preview */
         {2592, 1944, 0, 0, 2592, 1944, 2592, 1944, 0, 0, 2592, 1944, 0, 0, 2592,
          1944}, /*capture */
         {2592, 1944, 0, 0, 2592, 1944, 1280, 720, 0, 0, 1280, 720, 0, 0, 1280,
@@ -96,14 +96,14 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
             {
                 /*data rate 1099.20 Mbps/lane */
                 .pclk = 45000000,    /* record different mode's pclk */
-                .linelength = 672,   /* record different mode's linelength */
-                .framelength = 2232, /* record different mode's framelength */
+                .linelength = 740,   /* record different mode's linelength */
+                .framelength = 2024, /* record different mode's framelength */
                 .startx = 0, /* record different mode's startx of grabwindow */
                 .starty = 0, /* record different mode's starty of grabwindow */
                 .grabwindow_width =
-                    1920, /* record different mode's width of grabwindow */
+                    2592, /* record different mode's width of grabwindow */
                 .grabwindow_height =
-                    1080, /* record different mode's height of grabwindow */
+                    1944, /* record different mode's height of grabwindow */
                 /*     following for MIPIDataLowPwr2HighSpeedSettleDelayCount by
                    different scenario    */
                 .mipi_data_lp2hs_settle_dc = 85, /* unit , ns */
@@ -303,7 +303,7 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .mclk = 24, /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
         /* record sensor support all write id addr, only supprt 4must end with
            0xff */
-        .i2c_speed = 400, /* i2c read/write speed */
+        .i2c_speed = 400,                    /* i2c read/write speed */
         .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
@@ -555,7 +555,7 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .mclk = 24, /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
         /* record sensor support all write id addr, only supprt 4must end with
            0xff */
-        .i2c_speed = 400, /* i2c read/write speed */
+        .i2c_speed = 400,                    /* i2c read/write speed */
         .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
@@ -789,8 +789,8 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         /*sensor output first pixel color*/
         .sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,
 
-        .mclk = 24, /*mclk value, suggest 24 or 26 for 24Mhz or 26Mhz*/
-        .i2c_speed = 400,                    /* i2c read/write speed */
+        .mclk = 24,       /*mclk value, suggest 24 or 26 for 24Mhz or 26Mhz*/
+        .i2c_speed = 400, /* i2c read/write speed */
         .mipi_lane_num = SENSOR_MIPI_4_LANE, /*mipi lane num*/
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
@@ -1040,7 +1040,7 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .mclk = 24, /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
         /* record sensor support all write id addr, only supprt 4must end with
            0xff */
-        .i2c_speed = 400, /* i2c read/write speed */
+        .i2c_speed = 400,                    /* i2c read/write speed */
         .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
