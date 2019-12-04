@@ -32,10 +32,10 @@ executable("bootstat") {
 
 if (use.test) {
   executable("libbootstat_unittests") {
-    configs += [ "//common-mk:test" ]
     sources = [
       "bootstat_test.cc",
     ]
+    configs += [ "//common-mk:test" ]
     deps = [
       ":libbootstat",
       "//common-mk/testrunner",
