@@ -41,11 +41,10 @@ ScopedCameraMetadata GetStaticInfoFromDeviceInfo(
 
   SupportedFormats supported_formats =
       V4L2CameraDevice::GetDeviceSupportedFormats(device_info.device_path);
-  bool is_external = device_info.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
   SupportedFormats qualified_formats =
       GetQualifiedFormats(supported_formats, device_info.quirks);
   if (MetadataHandler::FillMetadataFromSupportedFormats(
-          qualified_formats, &metadata, is_external) != 0) {
+          qualified_formats, device_info, &metadata) != 0) {
     return nullptr;
   }
 

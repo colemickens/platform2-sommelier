@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <limits>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -242,8 +243,10 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
 
 int MetadataHandler::FillMetadataFromSupportedFormats(
     const SupportedFormats& supported_formats,
-    android::CameraMetadata* metadata,
-    bool is_external) {
+    const DeviceInfo& device_info,
+    android::CameraMetadata* metadata) {
+  bool is_external = device_info.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
+
   if (supported_formats.empty()) {
     return -EINVAL;
   }
@@ -257,6 +260,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   int32_t max_fps = std::numeric_limits<int32_t>::min();
   int32_t min_fps = kMinFpsMax;
   int64_t max_frame_duration = kOneSecOfNanoUnit / min_fps;
+  std::set<int32_t> supported_fps;
 
   std::vector<int> hal_formats{HAL_PIXEL_FORMAT_BLOB,
                                HAL_PIXEL_FORMAT_YCbCr_420_888,
@@ -301,6 +305,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
       if (per_format_max_fps < static_cast<int32_t>(frame_rate)) {
         per_format_max_fps = static_cast<int32_t>(frame_rate);
       }
+      supported_fps.insert(frame_rate);
     }
     if (per_format_max_fps > max_fps) {
       max_fps = per_format_max_fps;
@@ -355,15 +360,26 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 
   // The document in aeAvailableTargetFpsRanges section says the min_fps should
   // not be larger than 15.
-  // We cannot support fixed 30fps but Android requires (min, max) and
-  // (max, max) ranges.
-  int32_t fps_ranges[] = {min_fps, max_fps, max_fps, max_fps};
-  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES, fps_ranges,
-         ARRAY_SIZE(fps_ranges));
+  // We enumerate all possible fps and put (min, fps) as available fps range. If
+  // the device support constant frame rate, put (fps, fps) into the list as
+  // well.
+  // TODO(wtlee): Handle non-integer fps when setting controls.
+  bool support_constant_framerate = !device_info.constant_framerate_unsupported;
+  std::vector<int32_t> available_fps_ranges;
+  for (auto fps : supported_fps) {
+    available_fps_ranges.push_back(min_fps);
+    available_fps_ranges.push_back(fps);
 
-  // CTS expects the (maxFps == minFps) for recording.
-  int32_t ae_fps_ranges[] = {max_fps, max_fps};
-  UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, ae_fps_ranges, 2);
+    if (support_constant_framerate) {
+      available_fps_ranges.push_back(fps);
+      available_fps_ranges.push_back(fps);
+    }
+  }
+  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
+         available_fps_ranges.data(), available_fps_ranges.size());
+
+  int32_t target_fps_range[] = {min_fps, max_fps};
+  UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, target_fps_range, 2);
 
   UPDATE(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
          stream_configurations.data(), stream_configurations.size());
