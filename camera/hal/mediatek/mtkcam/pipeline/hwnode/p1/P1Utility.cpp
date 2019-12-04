@@ -366,6 +366,32 @@ MBOOL verifySizeResizer(MUINT32 pixelMode,
 /******************************************************************************
  *
  ******************************************************************************/
+void queryRollingSkew(MUINT const openId,
+                      MINT64* nsRolling,
+                      MINT32 mLogLevelI) {
+  MINT64 rolling = 0;
+  std::shared_ptr<NSCam::IHalSensor> pSensorHalObj;
+  auto pHalSensorList = GET_HalSensorList();
+  auto deleter = [&](IHalSensor* p_halsensor) {
+    if (CC_LIKELY(p_halsensor != nullptr)) {
+      p_halsensor->destroyInstance(LOG_TAG);
+    }
+  };
+  pSensorHalObj.reset(pHalSensorList->createSensor(LOG_TAG, openId), deleter);
+  MINT res = pSensorHalObj->sendCommand(
+      pHalSensorList->querySensorDevIdx(openId),
+      SENSOR_CMD_GET_SENSOR_ROLLING_SHUTTER, (MUINTPTR)(&rolling),
+      sizeof(MINT64), (MUINTPTR)(0), sizeof(MINT32), (MUINTPTR)(0),
+      sizeof(MINT32));
+  MY_LOGD("rolling:%lld", rolling);
+  if (res) {
+    *nsRolling = rolling;
+  }
+}
+
+/******************************************************************************
+ *
+ ******************************************************************************/
 void generateMetaInfoStr(IMetadata::IEntry const& entry, std::string* string) {
   base::StringAppendF(string, "[TAG:0x%X _%d #%d]={ ", entry.tag(),
                       entry.type(), entry.count());

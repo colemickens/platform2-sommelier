@@ -4724,10 +4724,11 @@ P1NodeImp::generateAppMeta(P1QueAct* rAct,
 
   // [sensor section]
   // android.sensor.rollingshutterskew
-  // [TODO] should query from sensor
   {
+    MINT64 skew = 0;
+    queryRollingSkew(getOpenId(), &skew, mLogLevelI);
     IMetadata::IEntry entry(MTK_SENSOR_ROLLING_SHUTTER_SKEW);
-    entry.push_back(33000000, Type2Type<MINT64>());
+    entry.push_back(skew, Type2Type<MINT64>());
     (*appMetadata).update(MTK_SENSOR_ROLLING_SHUTTER_SKEW, entry);
   }
 }

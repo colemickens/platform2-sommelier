@@ -732,11 +732,35 @@ MINT HalSensor::sendCommand(MUINT indexDual,
       }
       break;
 
+    case SENSOR_CMD_GET_SENSOR_ROLLING_SHUTTER:
+      if ((reinterpret_cast<MINT64*>(arg1) != NULL) &&
+          (arg1_size == sizeof(MINT64))) {
+        SENSOR_WINSIZE_INFO_STRUCT* cropInfo;
+        cropInfo =
+            HalSensorList::singleton()->getWinSizeInfo(sensorIdx, mScenarioId);
+        if (!cropInfo) {
+          *reinterpret_cast<MINT64*>(arg1) = 0;
+          CAM_LOGE("Null cropInfo\n");
+        } else if (m_pixClk != 0) {
+          MINT64 tg_size = cropInfo->h2_tg_size;
+          *reinterpret_cast<MINT64*>(arg1) =
+              ((m_linelength * tg_size * 1000000000) / m_pixClk);
+          CAM_LOGD("arg1:%lld", *reinterpret_cast<MINT64*>(arg1));
+          ret = MTRUE;
+        } else {
+          *reinterpret_cast<MINT64*>(arg1) = 0;
+          CAM_LOGE("Wrong pixel clock\n");
+        }
+      } else {
+        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        ret = MFALSE;
+      }
+      break;
+
     case SENSOR_CMD_GET_SENSOR_VC_INFO:
     case SENSOR_CMD_GET_SENSOR_PDAF_INFO:
     case SENSOR_CMD_GET_DEFAULT_FRAME_RATE_BY_SCENARIO:
     case SENSOR_CMD_GET_SENSOR_PDAF_CAPACITY:
-    case SENSOR_CMD_GET_SENSOR_ROLLING_SHUTTER:
     case SENSOR_CMD_GET_VERTICAL_BLANKING:
       CAM_LOGD("TODO sendCommand(0x%x)\n", cmd);
       ret = MFALSE;

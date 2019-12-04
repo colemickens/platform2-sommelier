@@ -90,6 +90,8 @@ MBOOL verifySizeResizer(MUINT32 pixelMode,
                         MSize* resultBufSize,
                         MINT32 mLogLevelI);
 
+void queryRollingSkew(MUINT const openId, MINT64* nsRolling, MINT32 mLogLevelI);
+
 void generateMetaInfoStr(IMetadata::IEntry const& entry, std::string* string);
 
 void logMeta(MINT32 option,

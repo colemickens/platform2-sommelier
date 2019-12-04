@@ -296,7 +296,6 @@ class P1NodeImp : public BaseNode,
 
   REV_MODE mReceiveMode;
   MUINT mSensorFormatOrder;
-
   mutable std::mutex mQualitySwitchLock;
   MBOOL mQualitySwitching;
 
