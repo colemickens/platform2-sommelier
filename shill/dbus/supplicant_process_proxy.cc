@@ -80,15 +80,23 @@ SupplicantProcessProxy::SupplicantProcessProxy(
   properties_->ConnectSignals();
   properties_->GetAll();
 
-  // Monitor service owner changes. This callback lives for the lifetime of
-  // the ObjectProxy.
-  supplicant_proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
-      base::Bind(&SupplicantProcessProxy::OnServiceOwnerChanged,
-                 weak_factory_.GetWeakPtr()));
+  // Don't bother registering for NameOwner changes, if nobody's listening.
+  // Note that only one caller can listen for the same service on the same
+  // ObjectProxy, so this helps paper over the fact that there are potentially
+  // multiple SupplicantProcessProxy users.
+  if (!service_appeared_callback_.is_null() ||
+      !service_vanished_callback_.is_null()) {
+    // Monitor service owner changes. This callback lives for the lifetime of
+    // the ObjectProxy.
+    supplicant_proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
+        base::Bind(&SupplicantProcessProxy::OnServiceOwnerChanged,
+                   weak_factory_.GetWeakPtr()));
 
-  // One time callback when service becomes available.
-  supplicant_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::Bind(
-      &SupplicantProcessProxy::OnServiceAvailable, weak_factory_.GetWeakPtr()));
+    // One time callback when service becomes available.
+    supplicant_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+        base::Bind(&SupplicantProcessProxy::OnServiceAvailable,
+                   weak_factory_.GetWeakPtr()));
+  }
 }
 
 SupplicantProcessProxy::~SupplicantProcessProxy() = default;
