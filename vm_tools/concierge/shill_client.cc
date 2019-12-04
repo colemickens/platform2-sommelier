@@ -97,6 +97,9 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
 
   // The default service has changed, so update the proxy object and register
   // a handler for its properties.
+  if (default_service_proxy_) {
+    default_service_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+  }
   default_service_proxy_.reset(new ServiceProxy(bus_, service_path));
   default_service_proxy_->RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnServicePropertyChange,
@@ -161,6 +164,9 @@ void ShillClient::OnServicePropertyChange(const std::string& property_name,
   }
 
   // This is an IPv4 config, so use it as the default IPConfig for nameservers.
+  if (default_ipconfig_proxy_) {
+    default_ipconfig_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+  }
   default_ipconfig_proxy_ = std::move(ipconfig_proxy);
   default_ipconfig_proxy_->RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnIPConfigPropertyChange,
