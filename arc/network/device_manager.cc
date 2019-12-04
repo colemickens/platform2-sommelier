@@ -24,11 +24,6 @@ constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
 constexpr std::array<const char*, 2> kEthernetInterfacePrefixes{{"eth", "usb"}};
 constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
 
-// Global compile time switch for the method configuring Ipv6 address for ARC.
-// When set to true, arc-networkd will try to generate an address and set onto
-// ARC interface (legacy method); when set to false, NDProxy is enabled.
-constexpr const bool kFindIpv6RoutesLegacy = true;
-
 bool IsArcDevice(const std::string& ifname) {
   return base::StartsWith(ifname, kArcDevicePrefix,
                           base::CompareCase::INSENSITIVE_ASCII);
@@ -364,7 +359,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   Device::Options opts{
       .fwd_multicast = false,
       .ipv6_enabled = false,
-      .find_ipv6_routes_legacy = kFindIpv6RoutesLegacy,
+      .find_ipv6_routes_legacy = !nd_proxy_,
       .use_default_interface = false,
       .is_android = false,
       .is_sticky = false,

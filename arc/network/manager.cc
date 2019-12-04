@@ -17,15 +17,70 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/key_value_store.h>
 #include <brillo/minijail/minijail.h>
 
 #include "arc/network/ipc.pb.h"
 
 namespace arc_networkd {
 namespace {
+
+bool ShouldEnableNDProxy() {
+  static const char kLsbReleasePath[] = "/etc/lsb-release";
+  static int kMinAndroidSdkVersion = 28;  // P
+  static int kMinChromeMilestone = 80;
+  static std::array<std::string, 2> kSupportedBoards = {"atlas", "eve"};
+
+  brillo::KeyValueStore store;
+  if (!store.Load(base::FilePath(kLsbReleasePath))) {
+    LOG(ERROR) << "Could not read lsb-release";
+    return false;
+  }
+
+  std::string value;
+  if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
+    LOG(ERROR) << "NDProxy disabled - cannot determine Android SDK version";
+    return false;
+  }
+  int ver = 0;
+  if (!base::StringToInt(value.c_str(), &ver)) {
+    LOG(ERROR) << "NDProxy disabled - invalid Android SDK version";
+    return false;
+  }
+  if (ver < kMinAndroidSdkVersion) {
+    LOG(INFO) << "NDProxy disabled for Android SDK " << value;
+    return false;
+  }
+
+  if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
+    LOG(ERROR) << "NDProxy disabled - cannot determine ChromeOS milestone";
+    return false;
+  }
+  if (!base::StringToInt(value.c_str(), &ver)) {
+    LOG(ERROR) << "NDProxy disabled - invalid ChromeOS milestone";
+    return false;
+  }
+  if (ver < kMinChromeMilestone) {
+    LOG(INFO) << "NDProxy disabled for ChromeOS milestone " << value;
+    return false;
+  }
+
+  if (!store.GetString("CHROMEOS_RELEASE_BOARD", &value)) {
+    LOG(ERROR) << "NDProxy disabled - cannot determine board";
+    return false;
+  }
+  if (std::find(kSupportedBoards.begin(), kSupportedBoards.end(), value) ==
+      kSupportedBoards.end()) {
+    LOG(INFO) << "NDProxy disabled for board " << value;
+    return false;
+  }
+  LOG(INFO) << "NDProxy enabled";
+  return true;
+}
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns nullptr, an empty response is
@@ -130,7 +185,7 @@ void Manager::InitialSetup() {
 
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(bus_), &addr_mgr_, datapath_.get(),
-      mcast_proxy_.get(), nd_proxy_.get());
+      mcast_proxy_.get(), ShouldEnableNDProxy() ? nd_proxy_.get() : nullptr);
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
 
