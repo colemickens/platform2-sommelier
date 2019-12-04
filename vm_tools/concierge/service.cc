@@ -113,7 +113,8 @@ constexpr char kCryptohomeRoot[] = "/home/root";
 
 // Extended attribute indicating that user has picked a disk size and it should
 // not be resized.
-constexpr char kDiskImageFixedSizeXattr[] = "user.crostini.fixed_size";
+constexpr char kDiskImageUserChosenSizeXattr[] =
+    "user.crostini.user_chosen_size";
 
 // File extension for raw disk types
 constexpr char kRawImageExtension[] = ".img";
@@ -2063,11 +2064,12 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
     // Automatically extend existing disk images if disk_size was not specified.
     if (request.disk_size() == 0) {
-      // If the user.crostini.fixed_size xattr exists, don't resize the disk.
-      // (The value stored in the xattr is ignored; only its existence matters.)
-      if (getxattr(disk_path.value().c_str(), kDiskImageFixedSizeXattr, NULL,
-                   0) > 0) {
-        LOG(INFO) << "Disk image has " << kDiskImageFixedSizeXattr
+      // If the user.crostini.user_chosen_size xattr exists, don't resize the
+      // disk. (The value stored in the xattr is ignored; only its existence
+      // matters.)
+      if (getxattr(disk_path.value().c_str(), kDiskImageUserChosenSizeXattr,
+                   NULL, 0) > 0) {
+        LOG(INFO) << "Disk image has " << kDiskImageUserChosenSizeXattr
                   << " xattr - keeping existing size " << current_size;
       } else {
         uint64_t disk_size = CalculateDesiredDiskSize(current_usage);
