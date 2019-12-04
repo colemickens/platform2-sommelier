@@ -152,6 +152,7 @@ struct hal3a_send3actrl_params {
     MUINT32 tline;
     MINT32 verticalBlanking;
     MINT32 AeStable;
+    NS3Av3::IpcPeriSensorData_T periSensorData;
   } arg1;
 
   union {

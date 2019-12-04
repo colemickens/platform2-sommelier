@@ -772,6 +772,28 @@ MINT32 Hal3AIpcAdapter::send3ACtrlHalSensor(hal3a_send3actrl_params* params,
   return MTRUE;
 }
 
+MINT32 Hal3AIpcAdapter::send3ACtrlPeriSensor(hal3a_send3actrl_params* params,
+                                             E3ACtrl_T e3ACtrl,
+                                             MINTPTR i4Arg1,
+                                             MINTPTR i4Arg2) {
+  if (i4Arg1) {
+    NS3Av3::IpcPeriSensorData_T* data =
+        reinterpret_cast<NS3Av3::IpcPeriSensorData_T*>(i4Arg1);
+    params->arg1.periSensorData.acceleration[0] = data->acceleration[0];
+    params->arg1.periSensorData.acceleration[1] = data->acceleration[1];
+    params->arg1.periSensorData.acceleration[2] = data->acceleration[2];
+  } else {
+    IPC_LOGE("IpcPeriSensorData_T is empty");
+    return MFALSE;
+  }
+
+  params->e3ACtrl = e3ACtrl;
+  CheckError(sendRequest(IPC_HAL3A_SEND3ACTRL, &mMemSend3aCtrl) == false,
+             FAILED_TRANSACTION, "@%s, requestSync fails", __FUNCTION__);
+
+  return MTRUE;
+}
+
 MINT32 Hal3AIpcAdapter::send3ACtrl(E3ACtrl_T e3ACtrl,
                                    MINTPTR i4Arg1,
                                    MINTPTR i4Arg2) {
@@ -830,7 +852,9 @@ MINT32 Hal3AIpcAdapter::send3ACtrl(E3ACtrl_T e3ACtrl,
     case E3ACtrl_IPC_VerticalBlanking:
       send3ACtrlHalSensor(params, e3ACtrl, i4Arg1, i4Arg2);
       break;
-
+    case E3ACtrl_IPC_SetPeriSensorData:
+      send3ACtrlPeriSensor(params, e3ACtrl, i4Arg1, i4Arg2);
+      break;
     case E3ACtrl_GetAEInitExpoSetting:
       pAEInitExpoSetting = reinterpret_cast<AEInitExpoSetting_T*>(i4Arg1);
       if (pAEInitExpoSetting) {

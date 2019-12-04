@@ -36,6 +36,7 @@
 #include <mtkcam/v4l2/V4L2SttPipeMgr.h>
 #include <mtkcam/v4l2/V4L2TuningPipeMgr.h>
 #endif
+#include <TuningUtils/AccelerationDetector.h>
 
 #include <atomic>
 #include <list>
@@ -342,6 +343,7 @@ class P1NodeImp : public BaseNode,
   std::shared_ptr<V4L2IIOPipe> mpCamIO;
   std::shared_ptr<IHal3A_T> mp3A;
   LcsHal* mpLCS;
+  std::unique_ptr<cros::NSCam::AccelerationDetector> mpAccDetector;
   //
   Cfg mCfg;
   //

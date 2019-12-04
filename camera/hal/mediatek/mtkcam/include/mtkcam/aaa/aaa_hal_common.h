@@ -461,6 +461,8 @@ enum E3ACtrl_T {
   E3ACtrl_IPC_DefFrameRate,
   E3ACtrl_IPC_RollingShutter,
   E3ACtrl_IPC_VerticalBlanking,
+  /* acceleration sensor */
+  E3ACtrl_IPC_SetPeriSensorData,
   // }}}
   E3ACtrl_IPC_End,
   //
@@ -756,6 +758,10 @@ struct IpcMetaStaticInfo_T {
         availableFocalLengths(0),
         availableApertures(0) {}
   ~IpcMetaStaticInfo_T() {}
+};
+
+struct IpcPeriSensorData_T {
+  float acceleration[3];
 };
 
 }  // namespace NS3Av3

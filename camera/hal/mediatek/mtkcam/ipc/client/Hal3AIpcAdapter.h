@@ -269,6 +269,10 @@ class Hal3AIpcAdapter : public IHal3A {
                              E3ACtrl_T e3ACtrl,
                              MINTPTR i4Arg1,
                              MINTPTR i4Arg2);
+  MINT32 send3ACtrlPeriSensor(hal3a_send3actrl_params* params,
+                              E3ACtrl_T e3ACtrl,
+                              MINTPTR i4Arg1,
+                              MINTPTR i4Arg2);
 
   Mtk3aCommon mCommon;
 

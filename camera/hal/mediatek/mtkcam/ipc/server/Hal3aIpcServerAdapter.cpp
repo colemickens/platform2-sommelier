@@ -1091,6 +1091,13 @@ MINT32 Hal3aIpcServerAdapter::send3ACtrl(void* addr, int dataSize) {
       LOG1("E3ACtrl_GetAEInitExpoSetting u4AfeGain:%d",
            a_rAEInitExpoSetting->u4AfeGain);
       break;
+    case E3ACtrl_IPC_SetPeriSensorData:
+      if (mpHal3A[sensor_index]->send3ACtrl(
+              params->e3ACtrl, reinterpret_cast<MINTPTR>(&params->arg1), 0)) {
+        IPC_LOGE("%s fail to set sensor data!", __func__);
+        return -1;
+      }
+      break;
 
     case E3ACtrl_IPC_SetStaticInfo:
       pHalSensorList = IIPCHalSensorList::getInstance();

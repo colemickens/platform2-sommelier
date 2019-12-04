@@ -479,6 +479,9 @@ P1NodeImp::init(InitParams const& rParams) {
     return NO_MEMORY;
   }
 
+  mpAccDetector = std::make_unique<cros::NSCam::AccelerationDetector>();
+  mpAccDetector->prepare();
+
   FUNCTION_OUT;
 
   return NO_ERROR;
@@ -2354,6 +2357,12 @@ MVOID
 P1NodeImp::onSyncEnd() {
   FUNCTION_IN;
   //
+  {
+    NS3Av3::IpcPeriSensorData_T data;
+    if (mpAccDetector->getAcceleration(data.acceleration))
+      mp3A->send3ACtrl(NS3Av3::E3ACtrl_IPC_SetPeriSensorData,
+                       reinterpret_cast<MINTPTR>(&data), 0);
+  }
   MBOOL toSet = MFALSE;
   if (mpHwStateCtrl != nullptr) {
     if (mpHwStateCtrl->checkSkipSync()) {
