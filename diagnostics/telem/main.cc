@@ -22,6 +22,8 @@
 
 namespace {
 
+using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
+
 constexpr std::pair<const char*,
                     chromeos::cros_healthd::mojom::ProbeCategoryEnum>
     kCategorySwitches[] = {
@@ -30,7 +32,17 @@ constexpr std::pair<const char*,
                         kNonRemovableBlockDevices},
         {"cached_vpd",
          chromeos::cros_healthd::mojom::ProbeCategoryEnum::kCachedVpdData},
+        {"cpu", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kCpu},
 };
+
+std::string GetArchitectureString(CpuArchitectureEnum architecture) {
+  switch (architecture) {
+    case CpuArchitectureEnum::kUnknown:
+      return "unknown";
+    case CpuArchitectureEnum::kX86_64:
+      return "x86_64";
+  }
+}
 
 void DisplayBatteryInfo(
     const chromeos::cros_healthd::mojom::BatteryInfoPtr& battery) {
@@ -71,6 +83,16 @@ void DisplayCachedVpdInfo(
   printf("%s\n", vpd->sku_number.c_str());
 }
 
+void DisplayCpuInfo(
+    const std::vector<chromeos::cros_healthd::mojom::CpuInfoPtr>& cpus) {
+  printf("model_name,architecture,max_clock_speed_khz\n");
+  for (const auto& cpu : cpus) {
+    printf("%s,%s,%u\n", cpu->model_name.c_str(),
+           GetArchitectureString(cpu->architecture).c_str(),
+           cpu->max_clock_speed_khz);
+  }
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(
     const chromeos::cros_healthd::mojom::TelemetryInfoPtr& info) {
@@ -85,6 +107,10 @@ void DisplayTelemetryInfo(
   const auto& vpd = info->vpd_info;
   if (!vpd.is_null())
     DisplayCachedVpdInfo(vpd);
+
+  const auto& cpus = info->cpu_info;
+  if (cpus)
+    DisplayCpuInfo(cpus.value());
 }
 
 // Create a stringified list of the category names for use in help.

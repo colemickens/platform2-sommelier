@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
+#include "diagnostics/cros_healthd/utils/cpu_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
 #include "diagnostics/cros_healthd/utils/vpd_utils.h"
 
@@ -43,6 +44,10 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
       case ProbeCategoryEnum::kCachedVpdData: {
         auto vpd_info = FetchCachedVpdInfo(base::FilePath("/"));
         telemetry_info.vpd_info.Swap(&vpd_info);
+        break;
+      }
+      case ProbeCategoryEnum::kCpu: {
+        telemetry_info.cpu_info = FetchCpuInfo(base::FilePath("/"));
         break;
       }
       case ProbeCategoryEnum::kNonRemovableBlockDevices: {

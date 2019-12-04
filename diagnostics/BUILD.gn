@@ -95,6 +95,7 @@ source_set("libcros_healthd_utils") {
   all_dependent_configs = [ ":libcros_healthd_utils_pkg_deps" ]
   sources = [
     "cros_healthd/utils/battery_utils.cc",
+    "cros_healthd/utils/cpu_utils.cc",
     "cros_healthd/utils/disk_utils.cc",
     "cros_healthd/utils/file_utils.cc",
     "cros_healthd/utils/vpd_utils.cc",
@@ -345,6 +346,7 @@ if (use.test) {
     ]
     sources = [
       "cros_healthd/utils/battery_utils_test.cc",
+      "cros_healthd/utils/cpu_utils_test.cc",
       "cros_healthd/utils/vpd_utils_test.cc",
     ]
   }
