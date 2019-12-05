@@ -61,9 +61,10 @@ class KerberosArtifactSynchronizer {
   // false if it fails. The parent directory of |path| must exist.
   bool WriteFile(const base::FilePath& path, const std::string& kerberos_file);
 
-  // Connects to the 'UserKerberosFilesChanged' D-Bus signal. Called by
-  // WriteFiles() on initial setup.
-  void ConnectToKerberosFilesChangedSignal(SetupKerberosCallback callback);
+  // Connects to the 'UserKerberosFilesChanged' D-Bus signal. Runs as a callback
+  // to GetFiles().
+  void ConnectToKerberosFilesChangedSignal(SetupKerberosCallback callback,
+                                           bool success);
 
   // Callback for 'UserKerberosFilesChanged' D-Bus signal.
   void OnKerberosFilesChanged(dbus::Signal* signal);

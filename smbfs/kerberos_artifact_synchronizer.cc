@@ -28,10 +28,13 @@ void KerberosArtifactSynchronizer::SetupKerberos(
   DCHECK(!setup_called_);
   setup_called_ = true;
 
-  GetFiles(std::move(callback));
+  GetFiles(base::BindOnce(
+      &KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal,
+      base::Unretained(this), std::move(callback)));
 }
 
 void KerberosArtifactSynchronizer::GetFiles(SetupKerberosCallback callback) {
+  DCHECK(callback);
   client_->GetUserKerberosFiles(
       object_guid_,
       base::BindOnce(&KerberosArtifactSynchronizer::OnGetFilesResponse,
@@ -44,9 +47,7 @@ void KerberosArtifactSynchronizer::OnGetFilesResponse(
     const authpolicy::KerberosFiles& kerberos_files) {
   if (error != authpolicy::ERROR_NONE) {
     LOG(ERROR) << "KerberosArtifactSynchronizer failed to get Kerberos files";
-    if (callback) {
-      std::move(callback).Run(false /* setup_success */);
-    }
+    std::move(callback).Run(false /* setup_success */);
     return;
   }
 
@@ -56,32 +57,23 @@ void KerberosArtifactSynchronizer::OnGetFilesResponse(
 void KerberosArtifactSynchronizer::WriteFiles(
     const authpolicy::KerberosFiles& kerberos_files,
     SetupKerberosCallback callback) {
+  DCHECK(callback);
   bool success = kerberos_files.has_krb5cc() && kerberos_files.has_krb5conf() &&
                  WriteFile(krb5_conf_path_, kerberos_files.krb5conf()) &&
                  WriteFile(krb5_ccache_path_, kerberos_files.krb5cc());
 
-  if (!callback) {
-    // If no callback was passed, this process was initiated by a
-    // KerberosFilesChanged signal. No need to re-connect to the signal.
-    LOG_IF(ERROR, !success) << "KerberosArtifactSynchronizer: failed to write "
-                            << "updated Keberos Files";
-    return;
-  }
+  LOG_IF(ERROR, !success)
+      << "KerberosArtifactSynchronizer: failed to write Kerberos Files";
+  std::move(callback).Run(success);
+}
 
+void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
+    SetupKerberosCallback callback, bool success) {
   if (!success) {
-    // Failed to write the Kerberos files so return error to caller.
-    LOG(ERROR) << "KerberosArtifactSynchronizer: failed to write initial "
-                  "Keberos Files";
-    DCHECK(callback);
     std::move(callback).Run(false /* setup_success */);
     return;
   }
 
-  ConnectToKerberosFilesChangedSignal(std::move(callback));
-}
-
-void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
-    SetupKerberosCallback callback) {
   // TODO(crbug.com/993857): Switch to BindOnce when libchrome is updated.
   client_->ConnectToKerberosFilesChangedSignal(
       base::Bind(&KerberosArtifactSynchronizer::OnKerberosFilesChanged,
@@ -97,7 +89,9 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
   DCHECK_EQ(signal->GetInterface(), authpolicy::kAuthPolicyInterface);
   DCHECK_EQ(signal->GetMember(), authpolicy::kUserKerberosFilesChangedSignal);
 
-  GetFiles({});
+  // TODO(crbug.com/993857): Switch to base::DoNothing() when libchrome is
+  // updated.
+  GetFiles(base::BindOnce([](bool success) {}));
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(
