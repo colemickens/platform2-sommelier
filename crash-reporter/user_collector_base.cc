@@ -126,6 +126,8 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
   std::string reason;
   bool dump = ShouldDump(pid, supplied_ruid, exec, &reason);
 
+  // anomaly_detector's CrashReporterParser looks for this message; don't change
+  // it without updating the regex.
   const auto message = StringPrintf(
       "Received crash notification for %s[%d] sig %d, user %u group %u",
       exec.c_str(), pid, signal, supplied_ruid, supplied_rgid);

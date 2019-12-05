@@ -67,6 +67,8 @@ bool ChromeCollector::HandleCrashWithDumpData(const std::string& data,
   if (!is_feedback_allowed_function_())
     return true;
 
+  // anomaly_detector's CrashReporterParser looks for this message; don't change
+  // it without updating the regex.
   LOG(WARNING) << "Received crash notification for " << exe_name << "[" << pid
                << "] user " << uid << " (called directly)";
 

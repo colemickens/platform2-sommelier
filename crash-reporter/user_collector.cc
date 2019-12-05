@@ -332,6 +332,8 @@ bool UserCollector::ShouldDump(pid_t pid,
   // crashes towards user crashes, so user crashes really mean non-Chrome
   // user-space crashes.
   if (!handle_chrome_crashes && IsChromeExecName(exec)) {
+    // anomaly_detector's CrashReporterParser looks for this message; don't
+    // change it without updating the regex.
     *reason =
         "ignoring call by kernel - chrome crash; "
         "waiting for chrome to call us directly";
