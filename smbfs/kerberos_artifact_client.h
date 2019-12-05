@@ -10,7 +10,7 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <brillo/dbus/dbus_object.h>
+#include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
 #include "smbfs/kerberos_artifact_client_interface.h"
@@ -21,7 +21,7 @@ namespace smbfs {
 // org.chromium.AuthPolicy service.
 class KerberosArtifactClient : public KerberosArtifactClientInterface {
  public:
-  explicit KerberosArtifactClient(brillo::dbus_utils::DBusObject* dbus_object);
+  explicit KerberosArtifactClient(scoped_refptr<dbus::Bus> bus);
 
   // KerberosArtifactClientInterface overrides.
   void GetUserKerberosFiles(const std::string& object_guid,
