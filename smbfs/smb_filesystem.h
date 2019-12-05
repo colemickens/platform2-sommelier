@@ -19,6 +19,7 @@
 
 #include "smbfs/filesystem.h"
 #include "smbfs/inode_map.h"
+#include "smbfs/smb_credential.h"
 
 namespace smbfs {
 
@@ -32,7 +33,10 @@ class SmbFilesystem : public Filesystem {
     kUnknownError,
   };
 
-  SmbFilesystem(const std::string& share_path, uid_t uid, gid_t gid);
+  SmbFilesystem(const std::string& share_path,
+                uid_t uid,
+                gid_t gid,
+                std::unique_ptr<SmbCredential> credentials);
   ~SmbFilesystem() override;
 
   // Ensures that the SMB share can be connected to. Must NOT be called after
@@ -138,9 +142,22 @@ class SmbFilesystem : public Filesystem {
   // number.
   std::string ShareFilePathFromInode(ino_t inode) const;
 
+  // Callback function for obtaining authentication credentials. Set by calling
+  // smbc_setFunctionAuthDataWithContext() and called from libsmbclient.
+  static void GetUserAuth(SMBCCTX* context,
+                          const char* server,
+                          const char* share,
+                          char* workgroup,
+                          int workgroup_len,
+                          char* username,
+                          int username_len,
+                          char* password,
+                          int password_len);
+
   const std::string share_path_;
   const uid_t uid_;
   const gid_t gid_;
+  const std::unique_ptr<SmbCredential> credentials_;
   base::Thread samba_thread_;
   InodeMap inode_map_{FUSE_ROOT_ID};
   IDMap<SMBCFILE*, uint64_t> open_files_;

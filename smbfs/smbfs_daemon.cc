@@ -19,9 +19,11 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "smbfs/dbus-proxies.h"
 #include "smbfs/fuse_session.h"
+#include "smbfs/smb_credential.h"
 #include "smbfs/smb_filesystem.h"
 #include "smbfs/smbfs.h"
 #include "smbfs/test_filesystem.h"
@@ -65,9 +67,12 @@ mojom::MountError ConnectErrorToMountError(SmbFilesystem::ConnectError error) {
   }
 }
 
-}  // namespace
-
-namespace {
+std::unique_ptr<password_provider::Password> MakePasswordFromMojoHandle(
+    mojo::ScopedHandle handle, int32_t length) {
+  base::ScopedFD fd = mojo::UnwrapPlatformHandle(std::move(handle)).TakeFD();
+  return password_provider::Password::CreateFromFileDescriptor(fd.get(),
+                                                               length);
+}
 
 // Temporary dummy implementation of the SmbFs Mojo interface.
 class SmbFsImpl : public mojom::SmbFs {
@@ -103,7 +108,7 @@ int SmbFsDaemon::OnInit() {
   }
 
   if (!share_path_.empty()) {
-    auto fs = std::make_unique<SmbFilesystem>(share_path_, uid_, gid_);
+    auto fs = std::make_unique<SmbFilesystem>(share_path_, uid_, gid_, nullptr);
     SmbFilesystem::ConnectError error = fs->EnsureConnected();
     if (error != SmbFilesystem::ConnectError::kOk) {
       LOG(ERROR) << "Unable to connect to SMB filesystem: " << error;
@@ -203,7 +208,14 @@ void SmbFsDaemon::MountShare(mojom::MountOptionsPtr options,
     return;
   }
 
-  auto fs = std::make_unique<SmbFilesystem>(options->share_path, uid_, gid_);
+  credential_ = std::make_unique<SmbCredential>(options->workgroup,
+                                                options->username, nullptr);
+  if (options->password) {
+    credential_->password = MakePasswordFromMojoHandle(
+        std::move(options->password->fd), options->password->length);
+  }
+  auto fs = std::make_unique<SmbFilesystem>(options->share_path, uid_, gid_,
+                                            std::move(credential_));
   SmbFilesystem::ConnectError error = fs->EnsureConnected();
   if (error != SmbFilesystem::ConnectError::kOk) {
     LOG(ERROR) << "Unable to connect to SMB share " << options->share_path

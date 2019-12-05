@@ -11,6 +11,7 @@
 #include <base/callback_helpers.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
+#include <base/strings/string_util.h>
 
 namespace smbfs {
 
@@ -30,14 +31,34 @@ bool IsAllowedFileMode(mode_t mode) {
   return mode & kAllowedFileTypes;
 }
 
+void CopyCredential(const std::string& cred, char* out, int out_len) {
+  DCHECK_GT(out_len, 0);
+  if (cred.size() > out_len - 1) {
+    LOG(ERROR) << "Credential string longer than buffer provided";
+  }
+  base::strlcpy(out, cred.c_str(), out_len);
+}
+
+void CopyPassword(const password_provider::Password& password,
+                  char* out,
+                  int out_len) {
+  DCHECK_GT(out_len, 0);
+  if (password.size() > out_len - 1) {
+    LOG(ERROR) << "Password string longer than buffer provided";
+  }
+  base::strlcpy(out, password.GetRaw(), out_len);
+}
+
 }  // namespace
 
 SmbFilesystem::SmbFilesystem(const std::string& share_path,
                              uid_t uid,
-                             gid_t gid)
+                             gid_t gid,
+                             std::unique_ptr<SmbCredential> credentials)
     : share_path_(share_path),
       uid_(uid),
       gid_(gid),
+      credentials_(std::move(credentials)),
       samba_thread_(kSambaThreadName) {
   // Ensure files are not owned by root.
   CHECK_GT(uid_, 0);
@@ -52,6 +73,9 @@ SmbFilesystem::SmbFilesystem(const std::string& share_path,
 
   smbc_setOptionUserData(context_, this);
   smbc_setOptionFallbackAfterKerberos(context_, 1);
+  if (credentials_) {
+    smbc_setFunctionAuthDataWithContext(context_, &SmbFilesystem::GetUserAuth);
+  }
 
   smbc_setLogCallback(context_, nullptr, &SambaLog);
   int vlog_level = logging::GetVlogVerbosity();
@@ -146,6 +170,29 @@ std::string SmbFilesystem::ShareFilePathFromInode(ino_t inode) const {
   const base::FilePath file_path = inode_map_.GetPath(inode);
   CHECK(!file_path.empty()) << "Path lookup for invalid inode: " << inode;
   return MakeShareFilePath(file_path);
+}
+
+// static
+void SmbFilesystem::GetUserAuth(SMBCCTX* context,
+                                const char* server,
+                                const char* share,
+                                char* workgroup,
+                                int workgroup_len,
+                                char* username,
+                                int username_len,
+                                char* password,
+                                int password_len) {
+  SmbFilesystem* fs =
+      static_cast<SmbFilesystem*>(smbc_getOptionUserData(context));
+  DCHECK(fs);
+  DCHECK(fs->credentials_);
+
+  CopyCredential(fs->credentials_->workgroup, workgroup, workgroup_len);
+  CopyCredential(fs->credentials_->username, username, username_len);
+  password[0] = 0;
+  if (fs->credentials_->password) {
+    CopyPassword(*fs->credentials_->password, password, password_len);
+  }
 }
 
 void SmbFilesystem::Lookup(std::unique_ptr<EntryRequest> request,

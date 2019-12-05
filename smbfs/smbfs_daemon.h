@@ -25,6 +25,7 @@ namespace smbfs {
 class Filesystem;
 class FuseSession;
 struct Options;
+struct SmbCredential;
 
 class SmbFsDaemon : public brillo::DBusDaemon, public mojom::SmbFsBootstrap {
  public:
@@ -72,6 +73,8 @@ class SmbFsDaemon : public brillo::DBusDaemon, public mojom::SmbFsBootstrap {
   mojo::Binding<mojom::SmbFsBootstrap> bootstrap_binding_{this};
   std::unique_ptr<mojo::Binding<mojom::SmbFs>> smbfs_binding_;
   mojom::SmbFsDelegatePtr delegate_;
+
+  std::unique_ptr<SmbCredential> credential_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbFsDaemon);
 };

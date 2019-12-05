@@ -22,6 +22,7 @@ pkg_config("target_defaults") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
+    "libpasswordprovider",
     "fuse",
     "smbclient",
 
