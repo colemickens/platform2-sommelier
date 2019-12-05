@@ -22,7 +22,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
 
-#define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
+#define PATTERN(i) ((i & 1) ? 0x55555555 : 0xAAAAAAAA)
 #define SIZE_2_7_GB (2700LL * 1024LL * 1024LL)
 
 using base::FilePath;
