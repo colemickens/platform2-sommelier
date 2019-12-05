@@ -293,7 +293,7 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
         return false;
       auto key = reinterpret_cast<const vb21_packed_key*>(image_ptr +
                                                           fmaparea->offset);
-      if (fmaparea->size != sizeof(struct vb21_packed_key)) {
+      if (fmaparea->size < sizeof(struct vb21_packed_key)) {
         LOG(ERROR) << "Invalid vb21_packed_key size\n";
         return false;
       }
