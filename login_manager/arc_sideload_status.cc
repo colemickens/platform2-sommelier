@@ -135,18 +135,27 @@ ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
   }
 
   if (base_reply.has_error()) {
-    // When the attribute is unset, defaults to no sideloading.
-    if (base_reply.error() == cryptohome::BOOTLOCKBOX_ERROR_MISSING_KEY) {
-      return ArcSideloadStatusInterface::Status::DISABLED;
-    } else if (base_reply.error() ==
-               cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED) {
-      return ArcSideloadStatusInterface::Status::NEED_POWERWASH;
-    }
+    switch (base_reply.error()) {
+      // When the attribute is unset, defaults to no sideloading.
+      case cryptohome::BOOTLOCKBOX_ERROR_MISSING_KEY:
+        return ArcSideloadStatusInterface::Status::DISABLED;
 
-    LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
-               << cryptohome::kBootLockboxReadBootLockbox
-               << " returned error: " << base_reply.error();
-    return ArcSideloadStatusInterface::Status::DISABLED;
+      // When boot lockbox is still uninitialized, which is normal after
+      // powerwash.
+      case cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNINITIALIZED:
+        return ArcSideloadStatusInterface::Status::DISABLED;
+
+      // When boot lockbox is not yet defined. This can happen to device
+      // launched before boot lockbox was first introduced.
+      case cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED:
+        return ArcSideloadStatusInterface::Status::NEED_POWERWASH;
+
+      default:
+        LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
+                   << cryptohome::kBootLockboxReadBootLockbox
+                   << " returned error: " << base_reply.error();
+        return ArcSideloadStatusInterface::Status::DISABLED;
+    }
   }
 
   if (!base_reply.HasExtension(cryptohome::ReadBootLockboxReply::reply)) {
