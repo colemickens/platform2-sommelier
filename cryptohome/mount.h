@@ -37,6 +37,7 @@
 #include "cryptohome/migration_type.h"
 #include "cryptohome/mount_constants.h"
 #include "cryptohome/mount_helper.h"
+#include "cryptohome/out_of_process_mount_helper.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/user_session.h"
@@ -294,6 +295,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   }
 
  protected:
+  // Only used in tests.
+  void set_mount_guest_session_out_of_process(bool oop) {
+    mount_guest_session_out_of_process_ = oop;
+  }
+
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
   friend class MountTest;
@@ -516,10 +522,14 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   username - Username for the user
+  //   ephemeral_mounter - Mounter class to use. Allows mounting Guest sessions
+  //                       out of process
   //   cleanup - Closure to use in UnmountCryptohome(), and to clean up in case
   //             of failure
-  bool MountEphemeralCryptohome(const std::string& username,
-                                base::Closure cleanup);
+  bool MountEphemeralCryptohome(
+      const std::string& username,
+      EphemeralMountHelperInterface* ephemeral_mounter,
+      base::Closure cleanup);
 
   // Returns the user's salt
   //
@@ -657,7 +667,16 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::Lock active_dircrypto_migrator_lock_;
   base::ConditionVariable dircrypto_migration_stopped_condition_;
 
+  // |mounter_| encapsulates mount(2)/umount(2) operations required to perform
+  // and tear down cryptohome mounts. It performs these operations in-process.
   std::unique_ptr<MountHelper> mounter_;
+
+  // |out_of_process_mounter_| also encapsulates mount(2) and umount(2)
+  // operations, but will perform these operations out-of-process.
+  // This is currently only used for Guest sessions.
+  bool mount_guest_session_out_of_process_;
+  std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
+
   // This closure will be run in UnmountCryptohome().
   base::Closure mount_cleanup_;
 
@@ -682,6 +701,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads);
   FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloads);
   FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists);
+  FRIEND_TEST(EphemeralNoUserSystemTest, MountGuestUserDir);
+  FRIEND_TEST(EphemeralNoUserSystemTest, MountGuestUserFailSetUserType);
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

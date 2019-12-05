@@ -75,7 +75,9 @@ int main(int argc, char** argv) {
     return EX_NOINPUT;
   }
 
-  brillo::SecureBlob system_salt(request.system_salt());
+  brillo::SecureBlob system_salt;
+  brillo::SecureBlob::HexStringToSecureBlob(request.system_salt(),
+                                            &system_salt);
 
   cryptohome::Platform platform;
   cryptohome::MountHelper mounter(

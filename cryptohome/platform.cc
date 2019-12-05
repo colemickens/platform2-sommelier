@@ -1275,6 +1275,9 @@ bool Platform::FormatExt4(const base::FilePath& file,
   // Close unused file descriptors in child process.
   format_process.SetCloseUnusedFileDescriptors(true);
 
+  // Avoid polluting the parent process' stdout.
+  format_process.RedirectOutput("/dev/null");
+
   int rc = format_process.Run();
   if (rc != 0) {
     LOG(ERROR) << "Can't format '" << file.value()
@@ -1294,6 +1297,9 @@ bool Platform::FormatExt4(const base::FilePath& file,
 
   // Close unused file descriptors in child process.
   tune_process.SetCloseUnusedFileDescriptors(true);
+
+  // Avoid polluting the parent process' stdout.
+  tune_process.RedirectOutput("/dev/null");
 
   rc = tune_process.Run();
   if (rc != 0) {

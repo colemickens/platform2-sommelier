@@ -127,7 +127,7 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
 
   OutOfProcessMountRequest request;
   request.set_username(username);
-  request.set_system_salt(system_salt_.to_string());
+  request.set_system_salt(SecureBlobToSecureHex(system_salt_).to_string());
   request.set_legacy_home(legacy_home_);
 
   if (!WriteProtobuf(write_to_helper_, request)) {

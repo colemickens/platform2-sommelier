@@ -3883,6 +3883,8 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
       .WillOnce(Return(true));
 
+  // Perform the mount in-process.
+  mount_->set_mount_guest_session_out_of_process(false);
   ASSERT_TRUE(mount_->MountGuestCryptohome());
 
   // Unmount succeeds.
@@ -3959,6 +3961,8 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserFailSetUserType) {
   // Detach succeeds.
   ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
 
+  // Perform the mount in-process.
+  mount_->set_mount_guest_session_out_of_process(false);
   ASSERT_FALSE(mount_->MountGuestCryptohome());
 }
 

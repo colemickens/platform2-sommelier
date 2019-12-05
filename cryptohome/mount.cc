@@ -116,8 +116,8 @@ Mount::Mount()
       default_chaps_client_factory_(new ChapsClientFactory()),
       chaps_client_factory_(default_chaps_client_factory_.get()),
       boot_lockbox_(NULL),
-      dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_) {
-}
+      dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_),
+      mount_guest_session_out_of_process_(false) {}
 
 Mount::~Mount() {
   if (IsMounted())
@@ -193,6 +193,11 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
   mounter_.reset(new MountHelper(
       default_user_, default_group_, default_access_group_, shadow_root_,
       skel_source_, system_salt_, legacy_mount_, platform_));
+
+  if (mount_guest_session_out_of_process_) {
+    out_of_process_mounter_.reset(
+        new OutOfProcessMountHelper(system_salt_, legacy_mount_, platform_));
+  }
 
   return result;
 }
@@ -375,7 +380,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
         },
         base::Unretained(this));
 
-    if (!MountEphemeralCryptohome(credentials.username(), std::move(cleanup))) {
+    // Ephemeral cryptohomes for regular users are mounted in-process.
+    if (!MountEphemeralCryptohome(credentials.username(), mounter_.get(),
+                                  std::move(cleanup))) {
       homedirs_->Remove(credentials.username());
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
@@ -646,15 +653,17 @@ void Mount::CleanUpEphemeral() {
   }
 }
 
-bool Mount::MountEphemeralCryptohome(const std::string& username,
-                                     base::Closure cleanup) {
+bool Mount::MountEphemeralCryptohome(
+    const std::string& username,
+    EphemeralMountHelperInterface* ephemeral_mounter,
+    base::Closure cleanup) {
   // Ephemeral cryptohome can't be mounted twice.
-  CHECK(mounter_->CanPerformEphemeralMount());
+  CHECK(ephemeral_mounter->CanPerformEphemeralMount());
 
   base::ScopedClosureRunner cleanup_runner(cleanup);
 
-  if (!mounter_->PerformEphemeralMount(username)) {
-    LOG(ERROR) << "PerformEphemeralMount failed, aborting ephemeral mount";
+  if (!ephemeral_mounter->PerformEphemeralMount(username)) {
+    LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
     return false;
   }
 
@@ -708,7 +717,8 @@ bool Mount::UnmountCryptohome() {
 }
 
 bool Mount::IsMounted() const {
-  return mounter_ && mounter_->MountPerformed();
+  return (mounter_ && mounter_->MountPerformed()) ||
+         (out_of_process_mounter_ && out_of_process_mounter_->MountPerformed());
 }
 
 bool Mount::IsNonEphemeralMounted() const {
@@ -716,7 +726,8 @@ bool Mount::IsNonEphemeralMounted() const {
 }
 
 bool Mount::OwnsMountPoint(const FilePath& path) const {
-  return mounter_ && mounter_->IsPathMounted(path);
+  return (mounter_ && mounter_->IsPathMounted(path)) ||
+         (out_of_process_mounter_ && mounter_->IsPathMounted(path));
 }
 
 bool Mount::CreateCryptohome(const Credentials& credentials) const {
@@ -1038,15 +1049,29 @@ bool Mount::MountGuestCryptohome() {
 
   current_user_->Reset();
 
-  // This callback will be executed in the destructor at the latest so
-  // |this| will always be valid.
-  base::Closure cleanup = base::Bind(
-      [](Mount* m) {
-        m->UnmountAndDropKeys();
-        m->CleanUpEphemeral();
-      },
-      base::Unretained(this));
-  return MountEphemeralCryptohome(kGuestUserName, std::move(cleanup));
+  EphemeralMountHelperInterface* ephemeral_mounter = nullptr;
+  base::Closure cleanup;
+
+  if (mount_guest_session_out_of_process_) {
+    // Ephemeral cryptohomes for Guest sessions are mounted out-of-process.
+    ephemeral_mounter = out_of_process_mounter_.get();
+    // This callback will be executed in the destructor at the latest so
+    // |out_of_process_mounter_| will always be valid.
+    cleanup = base::Bind(&OutOfProcessMountHelper::TearDownEphemeralMount,
+                         base::Unretained(out_of_process_mounter_.get()));
+  } else {
+    ephemeral_mounter = mounter_.get();
+    // This callback will be executed in the destructor at the latest so
+    // |this| will always be valid.
+    cleanup = base::Bind(
+        [](Mount* m) {
+          m->UnmountAndDropKeys();
+          m->CleanUpEphemeral();
+        },
+        base::Unretained(this));
+  }
+  return MountEphemeralCryptohome(kGuestUserName, ephemeral_mounter,
+                                  std::move(cleanup));
 }
 
 FilePath Mount::GetUserDirectory(
