@@ -420,11 +420,6 @@ class Service final {
                                       std::string* owner_id_out,
                                       std::string* name_out);
 
-  // Sets up the SSH config for connecting to the default VM/container.
-  void SetUpSshConfig(const std::string& owner_id,
-                      const std::string& ip,
-                      const std::string& username);
-
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,
                            const std::string& vm_name,

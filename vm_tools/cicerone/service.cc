@@ -65,18 +65,6 @@ constexpr char kUrlSchemeDelimiter[] = "://";
 // be opened by the host.
 const char* const kLocalhostReplaceNames[] = {"localhost", "127.0.0.1"};
 
-// Directory for runtime files.
-constexpr char kRuntimeDir[] = "/run/vm_cicerone";
-
-// SSH port for containers.
-constexpr char kContainerSshPort[] = "2222";
-
-// SSH identity file name.
-constexpr char kSshIdentityFilename[] = "private_key";
-
-// SSH known_hosts file name.
-constexpr char kSshKnownHostsFilename[] = "known_hosts";
-
 // Path of system timezone file.
 constexpr char kLocaltimePath[] = "/etc/localtime";
 
@@ -723,10 +711,6 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
           VirtualMachine::GetLxdContainerUsernameStatus::SUCCESS) {
         LOG(ERROR) << "Failed to get container " << container_name
                    << " username for SSH forwarding: " << error_msg;
-      } else {
-        // TODO(crbug.com/990215): Remove SSH config setup once chunnel is
-        // stable.
-        SetUpSshConfig(owner_id, string_ip, username);
       }
     }
   }
@@ -2994,59 +2978,6 @@ bool Service::GetVirtualMachineForCidOrToken(const uint32_t cid,
       return true;
     }
     return false;
-  }
-}
-
-void Service::SetUpSshConfig(const std::string& owner_id,
-                             const std::string& ip,
-                             const std::string& username) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-
-  std::string host_private_key, container_public_key, hostname;
-  std::string error_msg;
-
-  if (!GetContainerSshKeys(owner_id, kDefaultVmName, kDefaultContainerName,
-                           nullptr,  // host public key
-                           &host_private_key, &container_public_key,
-                           nullptr,  // container private key
-                           nullptr,  // hostname
-                           &error_msg)) {
-    LOG(ERROR) << "Failed to get keys for SSH forwarding: " << error_msg;
-    return;
-  }
-
-  // Set up a known_hosts file and an identity file.
-  base::FilePath ssh_dir(kRuntimeDir);
-  base::File::Error dir_error;
-  if (!base::DirectoryExists(ssh_dir) &&
-      !base::CreateDirectoryAndGetError(ssh_dir, &dir_error)) {
-    LOG(ERROR) << "Failed to create directory for cicerone SSH: "
-               << base::File::ErrorToString(dir_error);
-    return;
-  }
-
-  std::string known_hosts =
-      base::StringPrintf("[%s]:%s %s", ip.c_str(), kContainerSshPort,
-                         container_public_key.c_str());
-  base::FilePath known_hosts_path =
-      base::FilePath(kRuntimeDir).Append(kSshKnownHostsFilename);
-  if (!base::WriteFile(known_hosts_path, known_hosts.c_str(),
-                       known_hosts.length())) {
-    LOG(ERROR) << "Failed to write to container SSH pubkey file";
-    return;
-  }
-
-  base::FilePath identity_path = ssh_dir.Append(kSshIdentityFilename);
-  if (!base::WriteFile(identity_path, host_private_key.c_str(),
-                       host_private_key.length())) {
-    LOG(ERROR) << "Failed to write to SSH identity file";
-    return;
-  }
-  if (!base::SetPosixFilePermissions(identity_path,
-                                     base::FILE_PERMISSION_READ_BY_USER |
-                                         base::FILE_PERMISSION_WRITE_BY_USER)) {
-    LOG(ERROR) << "Failed to set permissions on SSH identity file";
-    return;
   }
 }
 
