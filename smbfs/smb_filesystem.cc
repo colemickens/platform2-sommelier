@@ -72,6 +72,7 @@ SmbFilesystem::SmbFilesystem(const std::string& share_path,
   CHECK(smbc_init_context(context_));
 
   smbc_setOptionUserData(context_, this);
+  smbc_setOptionUseKerberos(context_, 1);
   smbc_setOptionFallbackAfterKerberos(context_, 1);
   if (credentials_) {
     smbc_setFunctionAuthDataWithContext(context_, &SmbFilesystem::GetUserAuth);

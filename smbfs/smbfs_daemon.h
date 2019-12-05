@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
@@ -24,6 +25,7 @@ namespace smbfs {
 
 class Filesystem;
 class FuseSession;
+class KerberosArtifactSynchronizer;
 struct Options;
 struct SmbCredential;
 
@@ -59,6 +61,18 @@ class SmbFsDaemon : public brillo::DBusDaemon, public mojom::SmbFsBootstrap {
   // Mojo connection error handler.
   void OnConnectionError();
 
+  // Sets up Kerberos authentication.
+  void SetupKerberos(mojom::KerberosConfigPtr kerberos_config,
+                     base::OnceCallback<void(bool success)> callback);
+
+  // Callback to continue MountShare after setting up credentials
+  // (username/password, or kerberos).
+  void OnCredentialsSetup(mojom::MountOptionsPtr options,
+                          mojom::SmbFsDelegatePtr delegate,
+                          const MountShareCallback& callback,
+                          std::unique_ptr<SmbCredential> credential,
+                          bool setup_success);
+
   fuse_chan* chan_;
   const bool use_test_fs_;
   const std::string share_path_;
@@ -68,13 +82,12 @@ class SmbFsDaemon : public brillo::DBusDaemon, public mojom::SmbFsBootstrap {
   std::unique_ptr<FuseSession> session_;
   std::unique_ptr<Filesystem> fs_;
   base::ScopedTempDir temp_dir_;
+  std::unique_ptr<KerberosArtifactSynchronizer> kerberos_sync_;
 
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   mojo::Binding<mojom::SmbFsBootstrap> bootstrap_binding_{this};
   std::unique_ptr<mojo::Binding<mojom::SmbFs>> smbfs_binding_;
   mojom::SmbFsDelegatePtr delegate_;
-
-  std::unique_ptr<SmbCredential> credential_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbFsDaemon);
 };

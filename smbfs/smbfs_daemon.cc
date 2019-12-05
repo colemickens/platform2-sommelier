@@ -23,6 +23,8 @@
 
 #include "smbfs/dbus-proxies.h"
 #include "smbfs/fuse_session.h"
+#include "smbfs/kerberos_artifact_client.h"
+#include "smbfs/kerberos_artifact_synchronizer.h"
 #include "smbfs/smb_credential.h"
 #include "smbfs/smb_filesystem.h"
 #include "smbfs/smbfs.h"
@@ -208,14 +210,38 @@ void SmbFsDaemon::MountShare(mojom::MountOptionsPtr options,
     return;
   }
 
-  credential_ = std::make_unique<SmbCredential>(options->workgroup,
-                                                options->username, nullptr);
+  std::unique_ptr<SmbCredential> credential = std::make_unique<SmbCredential>(
+      options->workgroup, options->username, nullptr);
+  if (options->kerberos_config) {
+    SetupKerberos(
+        std::move(options->kerberos_config),
+        base::BindOnce(&SmbFsDaemon::OnCredentialsSetup, base::Unretained(this),
+                       std::move(options), std::move(delegate), callback,
+                       std::move(credential)));
+    return;
+  }
+
   if (options->password) {
-    credential_->password = MakePasswordFromMojoHandle(
+    credential->password = MakePasswordFromMojoHandle(
         std::move(options->password->fd), options->password->length);
   }
+
+  OnCredentialsSetup(std::move(options), std::move(delegate), callback,
+                     std::move(credential), true /* setup_success */);
+}
+
+void SmbFsDaemon::OnCredentialsSetup(mojom::MountOptionsPtr options,
+                                     mojom::SmbFsDelegatePtr delegate,
+                                     const MountShareCallback& callback,
+                                     std::unique_ptr<SmbCredential> credential,
+                                     bool setup_success) {
+  if (!setup_success) {
+    callback.Run(mojom::MountError::kUnknown, nullptr);
+    return;
+  }
+
   auto fs = std::make_unique<SmbFilesystem>(options->share_path, uid_, gid_,
-                                            std::move(credential_));
+                                            std::move(credential));
   SmbFilesystem::ConnectError error = fs->EnsureConnected();
   if (error != SmbFilesystem::ConnectError::kOk) {
     LOG(ERROR) << "Unable to connect to SMB share " << options->share_path
@@ -277,6 +303,24 @@ void SmbFsDaemon::OnConnectionError() {
 
   LOG(ERROR) << "Connection error during Mojo bootstrap. Exiting.";
   QuitWithExitCode(EX_SOFTWARE);
+}
+
+void SmbFsDaemon::SetupKerberos(
+    mojom::KerberosConfigPtr kerberos_config,
+    base::OnceCallback<void(bool success)> callback) {
+  DCHECK(!kerberos_sync_);
+  DCHECK(kerberos_config);
+
+  switch (kerberos_config->source) {
+    case mojom::KerberosConfig::Source::kActiveDirectory:
+      kerberos_sync_ = std::make_unique<KerberosArtifactSynchronizer>(
+          KerberosConfFilePath(kKrb5ConfFile),
+          KerberosConfFilePath(kCCacheFile), kerberos_config->identity,
+          std::make_unique<KerberosArtifactClient>(bus_));
+      break;
+  }
+
+  kerberos_sync_->SetupKerberos(std::move(callback));
 }
 
 }  // namespace smbfs
