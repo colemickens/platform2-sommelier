@@ -611,14 +611,12 @@ Suspender::State Suspender::HandleNormalResume(Delegate::SuspendResult result) {
                       : SuspendDone_WakeupType_OTHER;
   }
 
-  // If an external wakeup count was provided and the suspend attempt
-  // failed due to a wakeup count mismatch, this indicates that a test
-  // probably triggered this suspend attempt after setting a wake alarm,
-  // and if we retry later, it's likely that the alarm will have already
-  // fired and the system will never wake up.
+  // If an external wakeup count was provided, the caller doesn't want us to
+  // just keep trying until it works. Finish out the suspend and report failure
+  // to what is likely a test. For example, EC-reported S0ix failures found in
+  // UndoPrepareForSuspend() should result in failure.
   if ((result == Delegate::SuspendResult::SUCCESS) ||
-      (result == Delegate::SuspendResult::CANCELED &&
-       suspend_request_supplied_wakeup_count_)) {
+      suspend_request_supplied_wakeup_count_) {
     FinishRequest(result == Delegate::SuspendResult::SUCCESS, wakeup_type);
     return State::IDLE;
   }

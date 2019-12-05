@@ -677,12 +677,18 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
   AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, nullptr), delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
 
-  // Let the retry succeed and check that another retry isn't scheduled.
+  // A retry at this point shouldn't attempt suspend again.
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+
+  // Now do a successful suspend and check that another retry isn't scheduled.
+  suspender_.RequestSuspendWithExternalWakeupCount(
+      SuspendImminent_Reason_OTHER, kWakeupCount, base::TimeDelta());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::SUCCESS);
-  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, nullptr), delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
@@ -1200,8 +1206,7 @@ TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
   delegate_.set_wakeup_count(kWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
   const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(7);
-  suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
-                                                   kWakeupCount, kDuration);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kDuration);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
 
