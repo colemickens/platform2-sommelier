@@ -180,8 +180,10 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
 
   brillo::SyncFileOrDirectory(boot_lockbox_filepath_,
                               false /* is directory */, true /* data sync */);
+  // Update in memory information.
   key_value_store_ = keyvals;
   root_digest_ = digest;
+  nvspace_state_ = NVSpaceState::kNVSpaceNormal;
   return true;
 }
 

@@ -88,6 +88,7 @@ class NVRamBootLockbox {
 
   FRIEND_TEST(NVRamBootLockboxTest, LoadFailDigestMisMatch);
   FRIEND_TEST(NVRamBootLockboxTest, StoreLoadReadSuccess);
+  FRIEND_TEST(NVRamBootLockboxTest, FirstStoreReadSuccess);
 };
 
 }  // namespace cryptohome

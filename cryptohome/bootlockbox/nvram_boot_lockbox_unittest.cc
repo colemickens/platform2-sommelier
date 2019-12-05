@@ -83,6 +83,24 @@ TEST_F(NVRamBootLockboxTest, StoreLoadReadSuccess) {
   EXPECT_EQ(value, stored_value);
   EXPECT_FALSE(nvram_boot_lockbox_->Read("non-exist-key",
                                          &stored_value, &error));
+  EXPECT_EQ(error, BootLockboxErrorCode::BOOTLOCKBOX_ERROR_MISSING_KEY);
+}
+
+// This test simulates the situation that the device is powerwashed.
+TEST_F(NVRamBootLockboxTest, FirstStoreReadSuccess) {
+  std::string key = "test_key";
+  std::string value = "test_value_digest";
+  BootLockboxErrorCode error;
+  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceUninitialized);
+  EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value, &error));
+  EXPECT_EQ(error, BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NOT_SET);
+  std::string stored_value;
+  EXPECT_TRUE(nvram_boot_lockbox_->Read(key, &stored_value, &error));
+  EXPECT_EQ(error, BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NOT_SET);
+  EXPECT_EQ(value, stored_value);
+  EXPECT_FALSE(nvram_boot_lockbox_->Read("non-exist-key",
+                                         &stored_value, &error));
+  EXPECT_EQ(error, BootLockboxErrorCode::BOOTLOCKBOX_ERROR_MISSING_KEY);
 }
 
 }  // namespace cryptohome
