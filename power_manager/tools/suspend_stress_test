@@ -268,7 +268,7 @@ while true; do
     fi
   elif [ "${check_s0ix_errors}" = 1 ] && \
        [ "${cur_s0ix_count}" = "${last_s0ix_count}" ]; then
-    echo "Suspend failed, s0ix count did not increment from ${last_s0ix_count})"
+    echo "Suspend failed, s0ix count did not increment from ${last_s0ix_count}"
     : $(( s0ix_errors += 1 ))
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       exit_loop=1
