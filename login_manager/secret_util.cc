@@ -66,12 +66,10 @@ base::ScopedFD SharedMemoryUtil::WriteDataToSharedMemory(
   if (!shared_memory.Create(options) || !shared_memory.Map(data.size()))
     return base::ScopedFD();
   memcpy(shared_memory.memory(), data.data(), data.size());
-  base::SharedMemoryHandle read_only_handle;
-  if (!shared_memory.GiveReadOnlyToProcess(base::GetCurrentProcessHandle(),
-                                           &read_only_handle)) {
+  base::SharedMemoryHandle read_only_handle = shared_memory.GetReadOnlyHandle();
+  if (read_only_handle.IsValid())
     return base::ScopedFD();
-  }
-  return base::ScopedFD(read_only_handle.fd);
+  return base::ScopedFD(read_only_handle.Release());
 }
 
 bool SharedMemoryUtil::ReadDataFromSharedMemory(
@@ -82,7 +80,7 @@ bool SharedMemoryUtil::ReadDataFromSharedMemory(
   // otherwise the file descriptor will be closed twice (once here and once by
   // session manager).
   base::SharedMemory shared_memory(
-      base::SharedMemoryHandle(in_data_fd.get(), /*iauto_close=*/false),
+      base::SharedMemoryHandle::ImportHandle(in_data_fd.get(), data_size),
       /*read_only=*/true);
   if (!shared_memory.Map(data_size)) {
     shared_memory.TakeHandle();
