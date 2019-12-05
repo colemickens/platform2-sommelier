@@ -20,8 +20,8 @@
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
-#include <mojo/edk/embedder/platform_handle_vector.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
+#include <mojo/public/cpp/platform/socket_utils_posix.h>
 
 #include "hal/usb_v1/arc_camera_service.h"
 #include "hal/usb_v1/v4l2_camera_device.h"
@@ -57,16 +57,14 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
     LOG(ERROR) << "Invalid socket fd: " << socket_fd.get();
     return false;
   }
-  mojo::edk::ScopedPlatformHandle handle(
-      mojo::edk::PlatformHandle(socket_fd.release()));
 
   // Make socket blocking.
-  int flags = HANDLE_EINTR(fcntl(handle.get().handle, F_GETFL));
+  int flags = HANDLE_EINTR(fcntl(socket_fd.get(), F_GETFL));
   if (flags == -1) {
     PLOG(ERROR) << "fcntl(F_GETFL)";
     return false;
   }
-  if (HANDLE_EINTR(fcntl(handle.get().handle, F_SETFL, flags & ~O_NONBLOCK)) ==
+  if (HANDLE_EINTR(fcntl(socket_fd.get(), F_SETFL, flags & ~O_NONBLOCK)) ==
       -1) {
     PLOG(ERROR) << "fcntl(F_SETFL) failed to disable O_NONBLOCK";
     return false;
@@ -80,10 +78,10 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
   constexpr size_t kMojoTokenLength = 32;
   uint8_t buf[kMojoTokenLength] = {};
 
-  std::deque<mojo::edk::PlatformHandle> platform_handles;
+  std::vector<base::ScopedFD> platform_handles;
   // First, receive a single byte to see what handshake we will receive.
-  ssize_t message_length = mojo::edk::PlatformChannelRecvmsg(
-      handle.get(), buf, 1, &platform_handles, true);
+  ssize_t message_length =
+      mojo::SocketRecvmsg(socket_fd.get(), buf, 1, &platform_handles, true);
 
   if (platform_handles.size() != 1) {
     LOG(ERROR) << "Unexpected number of handles received, expected 1: "
@@ -91,7 +89,8 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
     return false;
   }
 
-  mojo::edk::ScopedPlatformHandle parent_pipe(platform_handles.back());
+  mojo::edk::ScopedPlatformHandle parent_pipe(mojo::edk::ScopedPlatformHandle(
+      mojo::edk::PlatformHandle(platform_handles.back().release())));
   platform_handles.pop_back();
   if (!parent_pipe.is_valid()) {
     LOG(ERROR) << "Invalid parent pipe";
@@ -101,7 +100,7 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
 
   mojo::ScopedMessagePipeHandle message_pipe;
   if (buf[0] == kMojoTokenLength) {
-    message_length = HANDLE_EINTR(read(handle.get().handle, buf, sizeof(buf)));
+    message_length = HANDLE_EINTR(read(socket_fd.get(), buf, sizeof(buf)));
     if (message_length == -1) {
       PLOG(ERROR) << "Failed to receive token";
       return false;
@@ -114,6 +113,8 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
     message_pipe = mojo::edk::CreateChildMessagePipe(
         std::string(reinterpret_cast<const char*>(buf), message_length));
   } else {
+    mojo::edk::ScopedPlatformHandle handle(
+        mojo::edk::PlatformHandle(socket_fd.release()));
     message_pipe = mojo::edk::ConnectToPeerProcess(std::move(handle));
   }
 
