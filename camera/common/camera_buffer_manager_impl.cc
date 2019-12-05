@@ -49,6 +49,9 @@ uint32_t GrallocUsageToGbmFlags(uint32_t usage) {
   if (usage & GRALLOC_USAGE_HW_COMPOSER) {
     flags |= GBM_BO_USE_SCANOUT | GBM_BO_USE_TEXTURING;
   }
+  if (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
+    flags |= GBM_BO_USE_HW_VIDEO_ENCODER;
+  }
   return flags;
 }
 
