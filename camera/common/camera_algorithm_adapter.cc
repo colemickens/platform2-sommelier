@@ -14,8 +14,8 @@
 
 #include <base/bind.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "cros-camera/camera_algorithm.h"
 #include "cros-camera/common.h"
@@ -54,10 +54,10 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       ipc_thread_.task_runner(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
-  mojo::edk::SetParentPipeHandle(std::move(mojo::edk::ScopedPlatformHandle(
-      mojo::edk::PlatformHandle(channel.release()))));
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(channel))));
   mojo::ScopedMessagePipeHandle child_pipe =
-      mojo::edk::CreateChildMessagePipe(mojo_token);
+      invitation.ExtractMessagePipe(mojo_token);
   mojom::CameraAlgorithmOpsRequest request;
   request.Bind(std::move(child_pipe));
 

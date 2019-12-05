@@ -27,10 +27,6 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
-#include <mojo/edk/embedder/platform_handle_vector.h>
 
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -50,7 +46,6 @@ CameraHalServerImpl::CameraHalServerImpl()
 
 CameraHalServerImpl::~CameraHalServerImpl() {
   VLOGF_ENTER();
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
 }
 
 bool CameraHalServerImpl::Start() {

@@ -21,6 +21,7 @@
 #include <mojo/edk/embedder/platform_handle_vector.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <mojo/public/cpp/platform/socket_utils_posix.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "cros-camera/common.h"
 
@@ -203,17 +204,12 @@ MojoResult CreateMojoChannelToParentByUnixDomainSocket(
     LOGF(ERROR) << "Unexpected read size: " << result;
     return MOJO_RESULT_INTERNAL;
   }
-  mojo::edk::ScopedPlatformHandle parent_pipe(
-      mojo::edk::PlatformHandle(platformHandles.back().release()));
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(platformHandles.back()))));
   platformHandles.pop_back();
-  if (!parent_pipe.is_valid()) {
-    LOGF(ERROR) << "Invalid parent pipe";
-    return MOJO_RESULT_INTERNAL;
-  }
-  mojo::edk::SetParentPipeHandle(std::move(parent_pipe));
 
-  *child_pipe =
-      mojo::edk::CreateChildMessagePipe(std::string(token, kTokenSize));
+  *child_pipe = invitation.ExtractMessagePipe(std::string(token, kTokenSize));
 
   return MOJO_RESULT_OK;
 }

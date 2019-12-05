@@ -17,11 +17,9 @@
 #include <base/logging.h>
 #include <base/task_runner_util.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <mojo/public/cpp/platform/socket_utils_posix.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "hal/usb_v1/arc_camera_service.h"
 #include "hal/usb_v1/v4l2_camera_device.h"
@@ -89,14 +87,10 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
     return false;
   }
 
-  mojo::edk::ScopedPlatformHandle parent_pipe(mojo::edk::ScopedPlatformHandle(
-      mojo::edk::PlatformHandle(platform_handles.back().release())));
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(platform_handles.back()))));
   platform_handles.pop_back();
-  if (!parent_pipe.is_valid()) {
-    LOG(ERROR) << "Invalid parent pipe";
-    return false;
-  }
-  mojo::edk::SetParentPipeHandle(std::move(parent_pipe));
 
   mojo::ScopedMessagePipeHandle message_pipe;
   if (buf[0] == kMojoTokenLength) {
@@ -110,7 +104,7 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
                  << message_length << " bytes";
       return false;
     }
-    message_pipe = mojo::edk::CreateChildMessagePipe(
+    message_pipe = invitation.ExtractMessagePipe(
         std::string(reinterpret_cast<const char*>(buf), message_length));
   } else {
     mojo::edk::ScopedPlatformHandle handle(
@@ -132,11 +126,11 @@ bool ArcCameraServiceImpl::StartWithTokenAndFD(const std::string& token,
     LOG(ERROR) << "Invalid fd: " << fd.get();
     return false;
   }
-  mojo::edk::SetParentPipeHandle(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
 
   // This thread that calls Bind() will receive IPC functions.
-  binding_.Bind(mojo::edk::CreateChildMessagePipe(token));
+  binding_.Bind(invitation.ExtractMessagePipe(token));
   binding_.set_connection_error_handler(
       base::Bind(&ArcCameraServiceImpl::OnChannelClosed, base::Unretained(this),
                  "Triggered from binding"));

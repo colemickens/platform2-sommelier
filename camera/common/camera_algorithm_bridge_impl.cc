@@ -19,7 +19,6 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/common.h"

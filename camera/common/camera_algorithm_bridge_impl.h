@@ -13,7 +13,6 @@
 
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
 
 #include "common/camera_algorithm_callback_ops_impl.h"
 #include "common/camera_algorithm_ops_impl.h"
