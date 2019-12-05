@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/files/file_enumerator.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
@@ -55,7 +56,9 @@ std::vector<base::FilePath> GetNonRemovableBlockDevices(
 
     // Only return non-removable devices
     int64_t removable = 0;
-    if (!ReadInt64(storage_path, "removable", &removable) || removable) {
+    if (!ReadInteger(storage_path, "removable", &base::StringToInt64,
+                     &removable) ||
+        removable) {
       VLOG(1) << "Storage device " << storage_path.value()
               << " does not specify the removable property or is removable.";
       continue;
@@ -188,10 +191,10 @@ bool FetchNonRemovableBlockDeviceInfo(
   }
 
   // Not all devices in sysfs have a serial, so ignore the return code.
-  ReadHexUint32(device_path, "serial", &info.serial);
+  ReadInteger(device_path, "serial", &base::HexStringToUInt, &info.serial);
 
   uint64_t manfid = 0;
-  if (ReadHexUInt64(device_path, "manfid", &manfid)) {
+  if (ReadInteger(device_path, "manfid", &base::HexStringToUInt64, &manfid)) {
     DCHECK_EQ(manfid & 0xFF, manfid);
     info.manufacturer_id = manfid;
   }

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/strings/string_piece.h>
 
 namespace diagnostics {
 
@@ -17,23 +18,19 @@ bool ReadAndTrimString(const base::FilePath& directory,
                        const std::string& filename,
                        std::string* out);
 
-// Reads a 32-bit hex-encoded unsigned integer value from a file and returns
-// true on success.
-bool ReadHexUint32(const base::FilePath& directory,
-                   const std::string& filename,
-                   uint32_t* out);
+// Reads an integer value from a file and converts it using the provided
+// function. Returns true on success.
+template <typename T>
+bool ReadInteger(const base::FilePath& directory,
+                 const std::string& filename,
+                 bool (*StringToInteger)(const base::StringPiece&, T*),
+                 T* out) {
+  std::string buffer;
+  if (!ReadAndTrimString(directory, filename, &buffer))
+    return false;
 
-// Reads a 64-bit hex-encoded unsigned integer value from a text file and
-// returns true on success.
-bool ReadHexUInt64(const base::FilePath& directory,
-                   const std::string& filename,
-                   uint64_t* out);
-
-// Reads a 64-bit decimal-encoded integer value from a text file and returns
-// true on success.
-bool ReadInt64(const base::FilePath& directory,
-               const std::string& filename,
-               int64_t* out);
+  return StringToInteger(buffer, out);
+}
 
 }  // namespace diagnostics
 
