@@ -368,6 +368,7 @@ grpc::Status TremplinListenerImpl::UpgradeContainerStatus(
   progress_signal.set_status(
       static_cast<UpgradeContainerProgressSignal::Status>(request->status()));
   progress_signal.set_container_name(request->container_name());
+  progress_signal.set_failure_reason(request->failure_reason());
   progress_signal.mutable_progress_messages()->CopyFrom(
       request->progress_messages());
 

@@ -706,6 +706,9 @@ message UpgradeContainerProgress {
 
   // Human-readable messages detailing progress.
   repeated string progress_messages = 3;
+
+  // Human-readable failure reason if upgrade failed.
+  string failure_reason = 4;
 }
 
 // Request to cancel an in-progress upgrade.
