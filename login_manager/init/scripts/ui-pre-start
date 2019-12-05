@@ -6,6 +6,22 @@
 
 set -e
 
+# Setup drm log tracing if available. This will allow us to access more verbose
+# logs to debug display connectivity issues when they arise. The traces are
+# accessible via chrome://system and included in feedback/crash reports.
+#
+# As configured, we won't have a lot of volume in these traces, they will only
+# be written in cases where the display configuration changes, or an error
+# occurs. As such, there is no performance impact during steady-state operation.
+DRM_TRACE_DIR="/sys/kernel/debug/dri"
+DRM_TRACE_MASK="${DRM_TRACE_DIR}/trace_mask"
+if [ -w $DRM_TRACE_MASK ]; then
+  # 64kB per-cpu of drm logs.
+  echo 64 > "${DRM_TRACE_DIR}/trace_size_kb"
+  # 0x106 corresponds to (DRM_UT_DRIVER | DRM_UT_KMS | DRM_UT_DP).
+  echo 0x106 > "${DRM_TRACE_MASK}"
+fi
+
 mkdir -p $UI_LOG_DIR
 ln -sf ui.$(date +%Y%m%d-%H%M%S) $UI_LOG_DIR/$UI_LOG_FILE
 
