@@ -270,6 +270,9 @@ properties:
                   enum:
                   - monotonic
                   - boottime
+                legacy-usb:
+                  type: boolean
+                  description: Indicates if the device has legacy usb cameras.
               additionalProperties: false
             fingerprint:
               type: object

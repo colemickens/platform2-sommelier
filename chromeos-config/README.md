@@ -389,6 +389,7 @@ In the tables below,
 | clock | string |  | False |  | False | Specified the camera clock on the model. |
 | config-path | string |  | False |  | False | Specified the camera configuration file path on the model. |
 | count | integer |  | False |  | False | Specified the number of cameras on the model. |
+| legacy-usb | boolean |  | False |  | False | Indicates if the device has legacy usb cameras. |
 
 ### detachable-base
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
