@@ -4,12 +4,14 @@
 
 #include "smbfs/smbfs_daemon.h"
 
+#include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/daemons/dbus_daemon.h>
 
@@ -19,6 +21,32 @@
 #include "smbfs/test_filesystem.h"
 
 namespace smbfs {
+namespace {
+
+constexpr char kSmbConfDir[] = ".smb";
+constexpr char kSmbConfFile[] = "smb.conf";
+constexpr char kKerberosConfDir[] = ".krb";
+constexpr char kKrb5ConfFile[] = "krb5.conf";
+constexpr char kCCacheFile[] = "ccache";
+constexpr char kKrbTraceFile[] = "krb_trace.txt";
+
+constexpr char kSmbConfData[] = R"(
+[global]
+  client min protocol = SMB2
+  client max protocol = SMB3
+  security = user
+)";
+
+bool CreateDirectoryAndLog(const base::FilePath& path) {
+  CHECK(path.IsAbsolute());
+  base::File::Error error;
+  bool success = base::CreateDirectoryAndGetError(path, &error);
+  LOG_IF(ERROR, !success) << "Failed to create directory " << path.value()
+                          << ": " << base::File::ErrorToString(error);
+  return success;
+}
+
+}  // namespace
 
 SmbFsDaemon::SmbFsDaemon(fuse_chan* chan, const Options& options)
     : chan_(chan),
@@ -36,6 +64,10 @@ int SmbFsDaemon::OnInit() {
   int ret = brillo::DBusDaemon::OnInit();
   if (ret != EX_OK) {
     return ret;
+  }
+
+  if (!SetupSmbConf()) {
+    return EX_SOFTWARE;
   }
 
   if (!share_path_.empty()) {
@@ -74,6 +106,42 @@ int SmbFsDaemon::OnEventLoopStarted() {
   }
 
   return EX_OK;
+}
+
+base::FilePath SmbFsDaemon::KerberosConfFilePath(const std::string& file_name) {
+  DCHECK(temp_dir_.IsValid());
+  return temp_dir_.GetPath().Append(kKerberosConfDir).Append(file_name);
+}
+
+bool SmbFsDaemon::SetupSmbConf() {
+  // Create a temporary "home" directory where configuration files used by
+  // libsmbclient will be placed.
+  CHECK(temp_dir_.CreateUniqueTempDir());
+  PCHECK(setenv("HOME", temp_dir_.GetPath().value().c_str(),
+                1 /* overwrite */) == 0);
+  PCHECK(setenv("KRB5_CONFIG",
+                KerberosConfFilePath(kKrb5ConfFile).value().c_str(),
+                1 /* overwrite */) == 0);
+  PCHECK(setenv("KRB5CCNAME", KerberosConfFilePath(kCCacheFile).value().c_str(),
+                1 /* overwrite */) == 0);
+  PCHECK(setenv("KRB5_TRACE",
+                KerberosConfFilePath(kKrbTraceFile).value().c_str(),
+                1 /* overwrite */) == 0);
+  LOG(INFO) << "Storing SMB configuration files in: "
+            << temp_dir_.GetPath().value();
+
+  bool success =
+      CreateDirectoryAndLog(temp_dir_.GetPath().Append(kSmbConfDir)) &&
+      CreateDirectoryAndLog(temp_dir_.GetPath().Append(kKerberosConfDir));
+  if (!success) {
+    return false;
+  }
+
+  // TODO(amistry): Replace with smbc_setOptionProtocols() when Samba is
+  // updated.
+  return base::WriteFile(
+             temp_dir_.GetPath().Append(kSmbConfDir).Append(kSmbConfFile),
+             kSmbConfData, sizeof(kSmbConfData)) == sizeof(kSmbConfData);
 }
 
 }  // namespace smbfs

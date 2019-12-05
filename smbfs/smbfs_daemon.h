@@ -11,6 +11,8 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 
@@ -31,6 +33,12 @@ class SmbFsDaemon : public brillo::DBusDaemon {
   int OnEventLoopStarted() override;
 
  private:
+  // Set up libsmbclient configuration files.
+  bool SetupSmbConf();
+
+  // Returns the full path to the given kerberos configuration file.
+  base::FilePath KerberosConfFilePath(const std::string& file_name);
+
   fuse_chan* chan_;
   const bool use_test_fs_;
   const std::string share_path_;
@@ -39,6 +47,8 @@ class SmbFsDaemon : public brillo::DBusDaemon {
   const std::string mojo_id_;
   std::unique_ptr<FuseSession> session_;
   std::unique_ptr<Filesystem> fs_;
+
+  base::ScopedTempDir temp_dir_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbFsDaemon);
 };
