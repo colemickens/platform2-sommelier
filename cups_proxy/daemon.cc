@@ -14,7 +14,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -22,11 +22,6 @@
 namespace cups_proxy {
 
 namespace {
-
-void InitMojo() {
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
-}
 
 constexpr char kCupsProxySocketPath[] = "/run/cups_proxy/cups.sock";
 
@@ -88,7 +83,11 @@ int Daemon::OnInit() {
   if (exit_code != EX_OK)
     return exit_code;
 
-  InitMojo();
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+
   CHECK(mojo_handler_.StartThread());
 
   InitDBus();

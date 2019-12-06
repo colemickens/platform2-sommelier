@@ -5,9 +5,12 @@
 #ifndef CUPS_PROXY_DAEMON_H_
 #define CUPS_PROXY_DAEMON_H_
 
+#include <memory>
+
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "cups_proxy/mhd_util.h"
 #include "cups_proxy/mojo_handler.h"
@@ -45,6 +48,8 @@ class Daemon : public brillo::DBusDaemon {
   MojoHandler mojo_handler_;
 
   ScopedMHDDaemon mhd_daemon_;
+
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
