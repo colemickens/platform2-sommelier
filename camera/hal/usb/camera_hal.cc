@@ -26,17 +26,17 @@ namespace cros {
 
 namespace {
 
-ScopedCameraMetadata GetStaticInfoFromDeviceInfo(
-    const DeviceInfo& device_info) {
-  android::CameraMetadata metadata;
-
-  if (MetadataHandler::FillDefaultMetadata(&metadata) != 0) {
-    return nullptr;
+bool FillMetadata(const DeviceInfo& device_info,
+                  android::CameraMetadata* static_metadata,
+                  android::CameraMetadata* request_metadata) {
+  if (MetadataHandler::FillDefaultMetadata(static_metadata, request_metadata) !=
+      0) {
+    return false;
   }
 
-  if (MetadataHandler::FillMetadataFromDeviceInfo(device_info, &metadata) !=
-      0) {
-    return nullptr;
+  if (MetadataHandler::FillMetadataFromDeviceInfo(device_info, static_metadata,
+                                                  request_metadata) != 0) {
+    return false;
   }
 
   SupportedFormats supported_formats =
@@ -44,21 +44,22 @@ ScopedCameraMetadata GetStaticInfoFromDeviceInfo(
   SupportedFormats qualified_formats =
       GetQualifiedFormats(supported_formats, device_info.quirks);
   if (MetadataHandler::FillMetadataFromSupportedFormats(
-          qualified_formats, device_info, &metadata) != 0) {
-    return nullptr;
+          qualified_formats, device_info, static_metadata, request_metadata) !=
+      0) {
+    return false;
   }
 
   if (!device_info.usb_vid.empty()) {
-    metadata.update(kVendorTagVendorId, device_info.usb_vid);
+    static_metadata->update(kVendorTagVendorId, device_info.usb_vid);
   }
   if (!device_info.usb_pid.empty()) {
-    metadata.update(kVendorTagProductId, device_info.usb_pid);
+    static_metadata->update(kVendorTagProductId, device_info.usb_pid);
   }
-  metadata.update(kVendorTagDevicePath, device_info.device_path);
-  metadata.update(kVendorTagModelName,
-                  V4L2CameraDevice::GetModelName(device_info.device_path));
+  static_metadata->update(kVendorTagDevicePath, device_info.device_path);
+  static_metadata->update(kVendorTagModelName, V4L2CameraDevice::GetModelName(
+                                                   device_info.device_path));
 
-  return ScopedCameraMetadata(metadata.release());
+  return true;
 }
 
 bool IsVivid(udev_device* dev) {
@@ -137,8 +138,9 @@ int CameraHal::OpenDevice(int id,
     LOGF(ERROR) << "Camera " << id << " is already opened";
     return -EBUSY;
   }
-  cameras_[id].reset(new CameraClient(
-      id, device_infos_[id], *static_infos_[id].get(), module, hw_device));
+  cameras_[id].reset(
+      new CameraClient(id, device_infos_[id], *static_metadata_[id].get(),
+                       *request_template_[id].get(), module, hw_device));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -177,7 +179,7 @@ int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
   }
   info->orientation = device_infos_[id].sensor_orientation;
   info->device_version = CAMERA_DEVICE_API_VERSION_3_3;
-  info->static_camera_characteristics = static_infos_[id].get();
+  info->static_camera_characteristics = static_metadata_[id].get();
   info->resource_cost = 0;
   info->conflicting_devices = nullptr;
   info->conflicting_devices_length = 0;
@@ -235,10 +237,15 @@ int CameraHal::Init() {
     DCHECK_EQ(path_to_id_.begin()->second, 1);
     path_to_id_.begin()->second = 0;
 
-    DCHECK_EQ(static_infos_.size(), 1);
-    DCHECK_EQ(static_infos_.begin()->first, 1);
-    static_infos_.emplace(0, std::move(static_infos_[1]));
-    static_infos_.erase(1);
+    DCHECK_EQ(static_metadata_.size(), 1);
+    DCHECK_EQ(static_metadata_.begin()->first, 1);
+    static_metadata_.emplace(0, std::move(static_metadata_[1]));
+    static_metadata_.erase(1);
+
+    DCHECK_EQ(request_template_.size(), 1);
+    DCHECK_EQ(request_template_.begin()->first, 1);
+    request_template_.emplace(0, std::move(request_template_[1]));
+    request_template_.erase(1);
 
     num_builtin_cameras_ = 1;
   }
@@ -398,21 +405,24 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     }
   }
 
-  ScopedCameraMetadata static_info = GetStaticInfoFromDeviceInfo(info);
-  if (!static_info) {
+  android::CameraMetadata static_metadata, request_template;
+  if (!FillMetadata(info, &static_metadata, &request_template)) {
     if (info.lens_facing == ANDROID_LENS_FACING_EXTERNAL) {
-      LOGF(ERROR) << "GetStaticInfoFromDeviceInfo failed, the new external "
+      LOGF(ERROR) << "FillMetadata failed, the new external "
                      "camera would be ignored";
       return;
     } else {
-      LOGF(FATAL) << "GetStaticInfoFromDeviceInfo failed for a built-in "
+      LOGF(FATAL) << "FillMetadata failed for a built-in "
                      "camera, please check your camera config";
     }
   }
 
   path_to_id_[info.device_path] = info.camera_id;
   device_infos_[info.camera_id] = info;
-  static_infos_[info.camera_id] = std::move(static_info);
+  static_metadata_[info.camera_id] =
+      ScopedCameraMetadata(static_metadata.release());
+  request_template_[info.camera_id] =
+      ScopedCameraMetadata(request_template.release());
 
   if (info.lens_facing == ANDROID_LENS_FACING_EXTERNAL) {
     callbacks_->camera_device_status_change(callbacks_, info.camera_id,
@@ -451,7 +461,8 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
 
   path_to_id_.erase(it);
   device_infos_.erase(id);
-  static_infos_.erase(id);
+  static_metadata_.erase(id);
+  request_template_.erase(id);
 
   if (callbacks_) {
     callbacks_->camera_device_status_change(callbacks_, id,

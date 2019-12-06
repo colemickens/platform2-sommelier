@@ -31,21 +31,26 @@ typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
 // CameraDevice.
 class MetadataHandler {
  public:
-  MetadataHandler(const camera_metadata_t& metadata,
+  MetadataHandler(const camera_metadata_t& static_metadata,
+                  const camera_metadata_t& request_template,
                   const DeviceInfo& device_info,
                   V4L2CameraDevice* device,
                   const SupportedFormats& supported_formats);
   ~MetadataHandler();
 
-  static int FillDefaultMetadata(android::CameraMetadata* metadata);
+  static int FillDefaultMetadata(android::CameraMetadata* static_metadata,
+                                 android::CameraMetadata* request_metadata);
 
   static int FillMetadataFromSupportedFormats(
       const SupportedFormats& supported_formats,
       const DeviceInfo& device_info,
-      android::CameraMetadata* metadata);
+      android::CameraMetadata* static_metadata,
+      android::CameraMetadata* request_metadata);
 
-  static int FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
-                                        android::CameraMetadata* metadata);
+  static int FillMetadataFromDeviceInfo(
+      const DeviceInfo& device_info,
+      android::CameraMetadata* static_metadata,
+      android::CameraMetadata* request_metadata);
 
   // Get default settings according to the |template_type|. Can be called on
   // any thread.
@@ -79,7 +84,9 @@ class MetadataHandler {
   int FillDefaultManualSettings(android::CameraMetadata* metadata);
 
   // Metadata containing persistent camera characteristics.
-  android::CameraMetadata metadata_;
+  android::CameraMetadata static_metadata_;
+  // The base template for constructing request settings.
+  android::CameraMetadata request_template_;
 
   // Static array of standard camera settings templates. These are owned by
   // CameraClient.

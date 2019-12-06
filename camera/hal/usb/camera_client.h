@@ -58,7 +58,8 @@ class CameraClient {
   // id is used to distinguish cameras. 0 <= id < number of cameras.
   CameraClient(int id,
                const DeviceInfo& device_info,
-               const camera_metadata_t& static_info,
+               const camera_metadata_t& static_metadata,
+               const camera_metadata_t& request_template,
                const hw_module_t* module,
                hw_device_t** hw_device);
   ~CameraClient();
@@ -123,6 +124,9 @@ class CameraClient {
   // Camera device information.
   const DeviceInfo device_info_;
 
+  // Camera static characteristics.
+  const android::CameraMetadata static_metadata_;
+
   // Delegate to communicate with camera device.
   std::unique_ptr<V4L2CameraDevice> device_;
 
@@ -156,6 +160,7 @@ class CameraClient {
     RequestHandler(
         const int device_id,
         const DeviceInfo& device_info,
+        const android::CameraMetadata& static_metadata,
         V4L2CameraDevice* device,
         const camera3_callback_ops_t* callback_ops,
         const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
@@ -242,6 +247,8 @@ class CameraClient {
     const int device_id_;
 
     const DeviceInfo device_info_;
+
+    const android::CameraMetadata static_metadata_;
 
     // Delegate to communicate with camera device. Caller owns the ownership.
     V4L2CameraDevice* device_;

@@ -22,7 +22,8 @@ namespace cros {
 // How precise the float-to-rational conversion for EXIF tags would be.
 static const int kRationalPrecision = 10000;
 
-static bool SetExifTags(const android::CameraMetadata& metadata,
+static bool SetExifTags(const android::CameraMetadata& static_metadata,
+                        const android::CameraMetadata& request_metadata,
                         const FrameBuffer& in_frame,
                         ExifUtils* utils);
 
@@ -113,7 +114,8 @@ CachedFrame::CachedFrame()
 }
 
 int CachedFrame::Convert(
-    const android::CameraMetadata& metadata,
+    const android::CameraMetadata& static_metadata,
+    const android::CameraMetadata& request_metadata,
     int rotate_degree,
     const FrameBuffer& in_frame,
     const std::vector<std::unique_ptr<FrameBuffer>>& out_frames,
@@ -238,15 +240,17 @@ int CachedFrame::Convert(
       (*out_frame_status)[i] = -EINVAL;
       continue;
     }
-    (*out_frame_status)[i] =
-        ConvertFromNV12(metadata, *nv12_frame, out_frames[i].get());
+    (*out_frame_status)[i] = ConvertFromNV12(static_metadata, request_metadata,
+                                             *nv12_frame, out_frames[i].get());
   }
   return 0;
 }
 
-int CachedFrame::ConvertFromNV12(const android::CameraMetadata& metadata,
-                                 const FrameBuffer& in_frame,
-                                 FrameBuffer* out_frame) {
+int CachedFrame::ConvertFromNV12(
+    const android::CameraMetadata& static_metadata,
+    const android::CameraMetadata& request_metadata,
+    const FrameBuffer& in_frame,
+    FrameBuffer* out_frame) {
   const Size in_size(in_frame.GetWidth(), in_frame.GetHeight());
   const Size out_size(out_frame->GetWidth(), out_frame->GetHeight());
   const Size crop_size = CalculateCropSize(in_size, out_size);
@@ -293,7 +297,8 @@ int CachedFrame::ConvertFromNV12(const android::CameraMetadata& metadata,
         return ret;
       src_frame = temp_nv12_frame2_.get();
     }
-    return CompressNV12(metadata, *src_frame, out_frame);
+    return CompressNV12(static_metadata, request_metadata, *src_frame,
+                        out_frame);
   }
   // Output other formats.
   return image_processor_->ConvertFormat(*src_frame, out_frame);
@@ -439,7 +444,8 @@ int CachedFrame::CropRotateScale(int rotate_degree, FrameBuffer* frame) {
   return image_processor_->ConvertFormat(*temp_i420_frame_, frame);
 }
 
-int CachedFrame::CompressNV12(const android::CameraMetadata& metadata,
+int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
+                              const android::CameraMetadata& request_metadata,
                               const FrameBuffer& in_frame,
                               FrameBuffer* out_frame) {
   ExifUtils utils;
@@ -448,21 +454,21 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& metadata,
     return -ENODEV;
   }
 
-  if (!SetExifTags(metadata, in_frame, &utils)) {
+  if (!SetExifTags(static_metadata, request_metadata, in_frame, &utils)) {
     LOGF(ERROR) << "Setting Exif tags failed.";
     return -EINVAL;
   }
 
   int jpeg_quality, thumbnail_jpeg_quality;
-  camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_QUALITY);
+  camera_metadata_ro_entry entry = request_metadata.find(ANDROID_JPEG_QUALITY);
   if (entry.count) {
     jpeg_quality = entry.data.u8[0];
   } else {
     LOGF(ERROR) << "Cannot find jpeg quality in metadata.";
     return -EINVAL;
   }
-  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_QUALITY)) {
-    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_QUALITY);
+  if (request_metadata.exists(ANDROID_JPEG_THUMBNAIL_QUALITY)) {
+    entry = request_metadata.find(ANDROID_JPEG_THUMBNAIL_QUALITY);
     thumbnail_jpeg_quality = entry.data.u8[0];
   } else {
     thumbnail_jpeg_quality = jpeg_quality;
@@ -470,8 +476,8 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& metadata,
 
   // Generate thumbnail
   std::vector<uint8_t> thumbnail;
-  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
-    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_SIZE);
+  if (request_metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
+    entry = request_metadata.find(ANDROID_JPEG_THUMBNAIL_SIZE);
     if (entry.count < 2) {
       LOGF(ERROR) << "Thumbnail size in metadata is not complete.";
       return -EINVAL;
@@ -541,7 +547,8 @@ static void InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size) {
          &blob, sizeof(blob));
 }
 
-static bool SetExifTags(const android::CameraMetadata& metadata,
+static bool SetExifTags(const android::CameraMetadata& static_metadata,
+                        const android::CameraMetadata& request_metadata,
                         const FrameBuffer& in_frame,
                         ExifUtils* utils) {
   if (!utils->SetImageWidth(in_frame.GetWidth()) ||
@@ -560,8 +567,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     return false;
   }
 
-  if (metadata.exists(ANDROID_LENS_FOCAL_LENGTH)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FOCAL_LENGTH);
+  if (request_metadata.exists(ANDROID_LENS_FOCAL_LENGTH)) {
+    camera_metadata_ro_entry entry =
+        request_metadata.find(ANDROID_LENS_FOCAL_LENGTH);
     float focal_length = entry.data.f[0];
     if (!utils->SetFocalLength(
             static_cast<uint32_t>(focal_length * kRationalPrecision),
@@ -570,8 +578,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
       return false;
     }
   } else {
-    if (metadata.exists(ANDROID_LENS_FACING)) {
-      camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FACING);
+    if (static_metadata.exists(ANDROID_LENS_FACING)) {
+      camera_metadata_ro_entry entry =
+          static_metadata.find(ANDROID_LENS_FACING);
       if (entry.data.u8[0] != ANDROID_LENS_FACING_EXTERNAL) {
         LOGF(ERROR)
             << "Cannot find focal length in metadata from a built-in camera.";
@@ -582,9 +591,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_JPEG_GPS_COORDINATES)) {
+  if (request_metadata.exists(ANDROID_JPEG_GPS_COORDINATES)) {
     camera_metadata_ro_entry entry =
-        metadata.find(ANDROID_JPEG_GPS_COORDINATES);
+        request_metadata.find(ANDROID_JPEG_GPS_COORDINATES);
     if (entry.count < 3) {
       LOGF(ERROR) << "Gps coordinates in metadata is not complete.";
       return false;
@@ -603,9 +612,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_JPEG_GPS_PROCESSING_METHOD)) {
+  if (request_metadata.exists(ANDROID_JPEG_GPS_PROCESSING_METHOD)) {
     camera_metadata_ro_entry entry =
-        metadata.find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
+        request_metadata.find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
     std::string method_str(reinterpret_cast<const char*>(entry.data.u8));
     if (!utils->SetGpsProcessingMethod(method_str)) {
       LOGF(ERROR) << "Setting gps processing method failed.";
@@ -613,8 +622,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (time_available && metadata.exists(ANDROID_JPEG_GPS_TIMESTAMP)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_GPS_TIMESTAMP);
+  if (time_available && request_metadata.exists(ANDROID_JPEG_GPS_TIMESTAMP)) {
+    camera_metadata_ro_entry entry =
+        request_metadata.find(ANDROID_JPEG_GPS_TIMESTAMP);
     time_t timestamp = static_cast<time_t>(entry.data.i64[0]);
     if (gmtime_r(&timestamp, &time_info)) {
       if (!utils->SetGpsTimestamp(time_info)) {
@@ -627,17 +637,19 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_JPEG_ORIENTATION)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_ORIENTATION);
+  if (request_metadata.exists(ANDROID_JPEG_ORIENTATION)) {
+    camera_metadata_ro_entry entry =
+        request_metadata.find(ANDROID_JPEG_ORIENTATION);
     if (!utils->SetOrientation(entry.data.i32[0])) {
       LOGF(ERROR) << "Setting orientation failed.";
       return false;
     }
   }
 
-  if (metadata.exists(ANDROID_LENS_APERTURE)) {
+  if (request_metadata.exists(ANDROID_LENS_APERTURE)) {
     const int kAperturePrecision = 10000;
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_APERTURE);
+    camera_metadata_ro_entry entry =
+        request_metadata.find(ANDROID_LENS_APERTURE);
     if (!utils->SetFNumber(entry.data.f[0] * kAperturePrecision,
                            kAperturePrecision)) {
       LOGF(ERROR) << "Setting F number failed.";
@@ -645,9 +657,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_FLASH_INFO_AVAILABLE)) {
+  if (static_metadata.exists(ANDROID_FLASH_INFO_AVAILABLE)) {
     camera_metadata_ro_entry entry =
-        metadata.find(ANDROID_FLASH_INFO_AVAILABLE);
+        static_metadata.find(ANDROID_FLASH_INFO_AVAILABLE);
     if (entry.data.u8[0] == ANDROID_FLASH_INFO_AVAILABLE_FALSE) {
       const uint32_t kNoFlashFunction = 0x20;
       if (!utils->SetFlash(kNoFlashFunction)) {
@@ -660,8 +672,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_CONTROL_AWB_MODE)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AWB_MODE);
+  if (request_metadata.exists(ANDROID_CONTROL_AWB_MODE)) {
+    camera_metadata_ro_entry entry =
+        request_metadata.find(ANDROID_CONTROL_AWB_MODE);
     if (entry.data.u8[0] == ANDROID_CONTROL_AWB_MODE_AUTO) {
       const uint16_t kAutoWhiteBalance = 0;
       if (!utils->SetWhiteBalance(kAutoWhiteBalance)) {
@@ -674,8 +687,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_CONTROL_AE_MODE)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AE_MODE);
+  if (request_metadata.exists(ANDROID_CONTROL_AE_MODE)) {
+    camera_metadata_ro_entry entry =
+        request_metadata.find(ANDROID_CONTROL_AE_MODE);
     const uint16_t kExposureMode =
         (entry.data.u8[0] == ANDROID_CONTROL_AE_MODE_OFF) ? 1 : 0;
     if (!utils->SetExposureMode(kExposureMode)) {
@@ -684,9 +698,9 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_SENSOR_EXPOSURE_TIME)) {
+  if (request_metadata.exists(ANDROID_SENSOR_EXPOSURE_TIME)) {
     camera_metadata_ro_entry entry =
-        metadata.find(ANDROID_SENSOR_EXPOSURE_TIME);
+        request_metadata.find(ANDROID_SENSOR_EXPOSURE_TIME);
     if (!utils->SetExposureTime(entry.data.i64[0], 1'000'000'000)) {
       LOGF(ERROR) << "Setting exposure time failed.";
       return false;

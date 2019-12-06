@@ -32,14 +32,16 @@ class CachedFrame {
   //
   // The |out_frames| don't need to be mapped before calling this function. They
   // will be mapped at a proper time for hardware and software access.
-  int Convert(const android::CameraMetadata& metadata,
+  int Convert(const android::CameraMetadata& static_metadata,
+              const android::CameraMetadata& request_metadata,
               int rotate_degree,
               const FrameBuffer& in_frame,
               const std::vector<std::unique_ptr<FrameBuffer>>& out_frames,
               std::vector<int>* out_frame_status);
 
  private:
-  int ConvertFromNV12(const android::CameraMetadata& metadata,
+  int ConvertFromNV12(const android::CameraMetadata& static_metadata,
+                      const android::CameraMetadata& request_metadata,
                       const FrameBuffer& in_frame,
                       FrameBuffer* out_frame);
 
@@ -47,7 +49,8 @@ class CachedFrame {
 
   int DecodeByJDA(const FrameBuffer& in_frame, FrameBuffer* out_frame);
 
-  int CompressNV12(const android::CameraMetadata& metadata,
+  int CompressNV12(const android::CameraMetadata& static_metadata,
+                   const android::CameraMetadata& request_metadata,
                    const FrameBuffer& in_frame,
                    FrameBuffer* out_frame);
 

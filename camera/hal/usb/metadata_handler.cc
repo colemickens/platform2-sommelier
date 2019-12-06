@@ -19,24 +19,65 @@
 #include "hal/usb/vendor_tag.h"
 #include "mojo/cros_camera_enum.mojom.h"
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
-#define UPDATE(tag, data, size)                      \
-  do {                                               \
-    if (metadata->update((tag), (data), (size))) {   \
-      LOGF(ERROR) << "Update " << #tag << " failed"; \
-      return -EINVAL;                                \
-    }                                                \
-  } while (0)
+namespace {
+
+class MetadataUpdater {
+ public:
+  explicit MetadataUpdater(android::CameraMetadata* metadata)
+      : metadata_(metadata), ok_(true) {}
+
+  bool ok() { return ok_; }
+
+  template <typename T>
+  void operator()(int tag, const std::vector<T>& data) {
+    if (!ok_) {
+      return;
+    }
+    if (metadata_->update(tag, data) != 0) {
+      ok_ = false;
+      LOGF(ERROR) << "Update metadata with tag " << tag << " failed";
+    }
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_enum<T>::value> operator()(int tag, const T& data) {
+    static const std::set<int> kInt32EnumTags = {
+        ANDROID_DEPTH_AVAILABLE_DEPTH_STREAM_CONFIGURATIONS,
+        ANDROID_SCALER_AVAILABLE_FORMATS,
+        ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+        ANDROID_SENSOR_TEST_PATTERN_MODE,
+        ANDROID_SYNC_MAX_LATENCY,
+    };
+    if (kInt32EnumTags.find(tag) != kInt32EnumTags.end()) {
+      operator()(tag, std::vector<int32_t>{static_cast<int32_t>(data)});
+    } else {
+      operator()(tag, std::vector<uint8_t>{base::checked_cast<uint8_t>(data)});
+    }
+  }
+
+  template <typename T>
+  std::enable_if_t<!std::is_enum<T>::value> operator()(int tag, const T& data) {
+    operator()(tag, std::vector<T>{data});
+  }
+
+ private:
+  android::CameraMetadata* metadata_;
+  bool ok_;
+};
+
+}  // namespace
 
 namespace cros {
 
-MetadataHandler::MetadataHandler(const camera_metadata_t& metadata,
+MetadataHandler::MetadataHandler(const camera_metadata_t& static_metadata,
+                                 const camera_metadata_t& request_template,
                                  const DeviceInfo& device_info,
                                  V4L2CameraDevice* device,
                                  const SupportedFormats& supported_formats)
     : device_info_(device_info), device_(device), af_trigger_(false) {
   // MetadataBase::operator= will make a copy of camera_metadata_t.
-  metadata_ = &metadata;
+  static_metadata_ = &static_metadata;
+  request_template_ = &request_template;
 
   // camera3_request_template_t starts at 1.
   for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
@@ -50,158 +91,128 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& metadata,
 
 MetadataHandler::~MetadataHandler() {}
 
-int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
+int MetadataHandler::FillDefaultMetadata(
+    android::CameraMetadata* static_metadata,
+    android::CameraMetadata* request_metadata) {
+  MetadataUpdater update_static(static_metadata);
+  MetadataUpdater update_request(request_metadata);
+
   // android.colorCorrection
-  const uint8_t available_aberration_modes[] = {
-      ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST,
-      ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY};
-  UPDATE(ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES,
-         available_aberration_modes, ARRAY_SIZE(available_aberration_modes));
-  UPDATE(ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
-         &available_aberration_modes[0], 1);
+  update_static(ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES,
+                std::vector<uint8_t>{
+                    ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST,
+                    ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY});
+  update_request(ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
+                 ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST);
 
   // android.control
   // We don't support AE compensation.
-  const int32_t control_ae_compensation_range[] = {0, 0};
-  UPDATE(ANDROID_CONTROL_AE_COMPENSATION_RANGE, control_ae_compensation_range,
-         ARRAY_SIZE(control_ae_compensation_range));
+  update_static(ANDROID_CONTROL_AE_COMPENSATION_RANGE,
+                std::vector<int32_t>{0, 0});
 
-  const camera_metadata_rational_t control_ae_compensation_step[] = {{0, 1}};
-  UPDATE(ANDROID_CONTROL_AE_COMPENSATION_STEP, control_ae_compensation_step,
-         ARRAY_SIZE(control_ae_compensation_step));
+  update_static(ANDROID_CONTROL_AE_COMPENSATION_STEP,
+                camera_metadata_rational_t{0, 1});
 
-  const int32_t control_max_regions[] = {/*AE*/ 0, /*AWB*/ 0, /*AF*/ 0};
-  UPDATE(ANDROID_CONTROL_MAX_REGIONS, control_max_regions,
-         ARRAY_SIZE(control_max_regions));
+  update_static(ANDROID_CONTROL_MAX_REGIONS,
+                std::vector<int32_t>{/*AE*/ 0, /*AWB*/ 0, /*AF*/ 0});
 
-  const uint8_t video_stabilization_mode =
-      ANDROID_CONTROL_VIDEO_STABILIZATION_MODE_OFF;
-  UPDATE(ANDROID_CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES,
-         &video_stabilization_mode, 1);
-  UPDATE(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE, &video_stabilization_mode,
-         1);
+  update_static(ANDROID_CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES,
+                ANDROID_CONTROL_VIDEO_STABILIZATION_MODE_OFF);
+  update_request(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
+                 ANDROID_CONTROL_VIDEO_STABILIZATION_MODE_OFF);
 
-  const uint8_t awb_available_mode = ANDROID_CONTROL_AWB_MODE_AUTO;
-  UPDATE(ANDROID_CONTROL_AWB_AVAILABLE_MODES, &awb_available_mode, 1);
-  UPDATE(ANDROID_CONTROL_AWB_MODE, &awb_available_mode, 1);
+  update_static(ANDROID_CONTROL_AWB_AVAILABLE_MODES,
+                ANDROID_CONTROL_AWB_MODE_AUTO);
+  update_request(ANDROID_CONTROL_AWB_MODE, ANDROID_CONTROL_AWB_MODE_AUTO);
 
-  const uint8_t ae_available_mode = ANDROID_CONTROL_AE_MODE_ON;
-  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_MODES, &ae_available_mode, 1);
+  update_static(ANDROID_CONTROL_AE_AVAILABLE_MODES, ANDROID_CONTROL_AE_MODE_ON);
   // ON means auto-exposure is active with no flash control.
-  UPDATE(ANDROID_CONTROL_AE_MODE, &ae_available_mode, 1);
+  update_request(ANDROID_CONTROL_AE_MODE, ANDROID_CONTROL_AE_MODE_ON);
 
-  const int32_t ae_exposure_compensation = 0;
-  UPDATE(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, &ae_exposure_compensation,
-         1);
+  update_request(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, int32_t{0});
 
-  const uint8_t ae_precapture_trigger =
-      ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE;
-  UPDATE(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, &ae_precapture_trigger, 1);
+  update_request(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
+                 ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
 
-  const uint8_t af_trigger = ANDROID_CONTROL_AF_TRIGGER_IDLE;
-  UPDATE(ANDROID_CONTROL_AF_TRIGGER, &af_trigger, 1);
+  update_request(ANDROID_CONTROL_AF_TRIGGER, ANDROID_CONTROL_AF_TRIGGER_IDLE);
 
-  const uint8_t available_scene_mode = ANDROID_CONTROL_SCENE_MODE_DISABLED;
-  UPDATE(ANDROID_CONTROL_AVAILABLE_SCENE_MODES, &available_scene_mode, 1);
-  UPDATE(ANDROID_CONTROL_SCENE_MODE, &available_scene_mode, 1);
+  update_static(ANDROID_CONTROL_AVAILABLE_SCENE_MODES,
+                ANDROID_CONTROL_SCENE_MODE_DISABLED);
+  update_request(ANDROID_CONTROL_SCENE_MODE,
+                 ANDROID_CONTROL_SCENE_MODE_DISABLED);
 
-  const uint8_t available_effect = ANDROID_CONTROL_EFFECT_MODE_OFF;
-  UPDATE(ANDROID_CONTROL_AVAILABLE_EFFECTS, &available_effect, 1);
-  UPDATE(ANDROID_CONTROL_EFFECT_MODE, &available_effect, 1);
+  update_static(ANDROID_CONTROL_AVAILABLE_EFFECTS,
+                ANDROID_CONTROL_EFFECT_MODE_OFF);
+  update_request(ANDROID_CONTROL_EFFECT_MODE, ANDROID_CONTROL_EFFECT_MODE_OFF);
 
-  const uint8_t ae_lock_available = ANDROID_CONTROL_AE_LOCK_AVAILABLE_FALSE;
-  UPDATE(ANDROID_CONTROL_AE_LOCK_AVAILABLE, &ae_lock_available, 1);
+  update_static(ANDROID_CONTROL_AE_LOCK_AVAILABLE,
+                ANDROID_CONTROL_AE_LOCK_AVAILABLE_FALSE);
 
-  const uint8_t awb_lock_available = ANDROID_CONTROL_AWB_LOCK_AVAILABLE_FALSE;
-  UPDATE(ANDROID_CONTROL_AWB_LOCK_AVAILABLE, &awb_lock_available, 1);
+  update_static(ANDROID_CONTROL_AWB_LOCK_AVAILABLE,
+                ANDROID_CONTROL_AWB_LOCK_AVAILABLE_FALSE);
 
-  const uint8_t control_available_modes[] = {ANDROID_CONTROL_MODE_OFF,
-                                             ANDROID_CONTROL_MODE_AUTO};
-  UPDATE(ANDROID_CONTROL_AVAILABLE_MODES, control_available_modes,
-         ARRAY_SIZE(control_available_modes));
+  update_static(ANDROID_CONTROL_AVAILABLE_MODES,
+                std::vector<uint8_t>{ANDROID_CONTROL_MODE_OFF,
+                                     ANDROID_CONTROL_MODE_AUTO});
 
   // android.flash
-  const uint8_t flash_info = ANDROID_FLASH_INFO_AVAILABLE_FALSE;
-  UPDATE(ANDROID_FLASH_INFO_AVAILABLE, &flash_info, 1);
-
-  const uint8_t flash_state = ANDROID_FLASH_STATE_UNAVAILABLE;
-  UPDATE(ANDROID_FLASH_STATE, &flash_state, 1);
-
-  const uint8_t flash_mode = ANDROID_FLASH_MODE_OFF;
-  UPDATE(ANDROID_FLASH_MODE, &flash_mode, 1);
+  update_static(ANDROID_FLASH_INFO_AVAILABLE,
+                ANDROID_FLASH_INFO_AVAILABLE_FALSE);
+  update_request(ANDROID_FLASH_STATE, ANDROID_FLASH_STATE_UNAVAILABLE);
+  update_request(ANDROID_FLASH_MODE, ANDROID_FLASH_MODE_OFF);
 
   // android.jpeg
-  const int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
-  UPDATE(ANDROID_JPEG_MAX_SIZE, jpeg_max_size, ARRAY_SIZE(jpeg_max_size));
-
-  const uint8_t jpeg_quality = 90;
-  UPDATE(ANDROID_JPEG_QUALITY, &jpeg_quality, 1);
-  UPDATE(ANDROID_JPEG_THUMBNAIL_QUALITY, &jpeg_quality, 1);
-
-  const int32_t jpeg_orientation = 0;
-  UPDATE(ANDROID_JPEG_ORIENTATION, &jpeg_orientation, 1);
+  update_static(ANDROID_JPEG_MAX_SIZE, int32_t{13 << 20});
+  update_request(ANDROID_JPEG_QUALITY, uint8_t{90});
+  update_request(ANDROID_JPEG_THUMBNAIL_QUALITY, uint8_t{90});
+  update_request(ANDROID_JPEG_ORIENTATION, int32_t{0});
 
   // android.lens
   // This should not be needed.
-  const float hyper_focal_distance = 0.0f;
-  UPDATE(ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE, &hyper_focal_distance, 1);
-
-  const uint8_t optical_stabilization_mode =
-      ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF;
-  UPDATE(ANDROID_LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
-         &optical_stabilization_mode, 1);
-  UPDATE(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, &optical_stabilization_mode,
-         1);
+  update_static(ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE, 0.0f);
+  update_static(ANDROID_LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
+                ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF);
+  update_request(ANDROID_LENS_OPTICAL_STABILIZATION_MODE,
+                 ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF);
 
   // android.noiseReduction
-  const uint8_t noise_reduction_mode = ANDROID_NOISE_REDUCTION_MODE_OFF;
-  UPDATE(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
-         &noise_reduction_mode, 1);
-  UPDATE(ANDROID_NOISE_REDUCTION_MODE, &noise_reduction_mode, 1);
+  update_static(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
+                ANDROID_NOISE_REDUCTION_MODE_OFF);
+  update_request(ANDROID_NOISE_REDUCTION_MODE,
+                 ANDROID_NOISE_REDUCTION_MODE_OFF);
 
   // android.request
-  const uint8_t available_capabilities[] = {
-      ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE};
-  UPDATE(ANDROID_REQUEST_AVAILABLE_CAPABILITIES, available_capabilities,
-         ARRAY_SIZE(available_capabilities));
-
-  const int32_t partial_result_count = 1;
-  UPDATE(ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &partial_result_count, 1);
+  update_static(ANDROID_REQUEST_AVAILABLE_CAPABILITIES,
+                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE);
+  update_static(ANDROID_REQUEST_PARTIAL_RESULT_COUNT, int32_t{1});
 
   // This means pipeline latency of X frame intervals. The maximum number is 4.
-  const uint8_t request_pipeline_max_depth = 4;
-  UPDATE(ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &request_pipeline_max_depth, 1);
-  UPDATE(ANDROID_REQUEST_PIPELINE_DEPTH, &request_pipeline_max_depth, 1);
+  update_static(ANDROID_REQUEST_PIPELINE_MAX_DEPTH, uint8_t{4});
+  update_request(ANDROID_REQUEST_PIPELINE_DEPTH, uint8_t{4});
 
   // Three numbers represent the maximum numbers of different types of output
   // streams simultaneously. The types are raw sensor, processed (but not
   // stalling), and processed (but stalling). For usb limited mode, raw sensor
   // is not supported. Stalling stream is JPEG. Non-stalling streams are
   // YUV_420_888, NV21, or YV12.
-  const int32_t request_max_num_output_streams[] = {0, 2, 1};
-  UPDATE(ANDROID_REQUEST_MAX_NUM_OUTPUT_STREAMS, request_max_num_output_streams,
-         ARRAY_SIZE(request_max_num_output_streams));
+  update_static(ANDROID_REQUEST_MAX_NUM_OUTPUT_STREAMS,
+                std::vector<int32_t>{0, 2, 1});
 
   // Limited mode doesn't support reprocessing.
-  const int32_t request_max_num_input_streams = 0;
-  UPDATE(ANDROID_REQUEST_MAX_NUM_INPUT_STREAMS, &request_max_num_input_streams,
-         1);
+  update_static(ANDROID_REQUEST_MAX_NUM_INPUT_STREAMS, int32_t{0});
 
   // android.scaler
-  const float scaler_available_max_digital_zoom[] = {1};
-  UPDATE(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM,
-         scaler_available_max_digital_zoom,
-         ARRAY_SIZE(scaler_available_max_digital_zoom));
+  update_static(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM, 1.0f);
 
-  const uint8_t cropping_type = ANDROID_SCALER_CROPPING_TYPE_CENTER_ONLY;
-  UPDATE(ANDROID_SCALER_CROPPING_TYPE, &cropping_type, 1);
+  update_static(ANDROID_SCALER_CROPPING_TYPE,
+                ANDROID_SCALER_CROPPING_TYPE_CENTER_ONLY);
 
-  const int32_t test_pattern_modes[] = {
-      ANDROID_SENSOR_TEST_PATTERN_MODE_OFF,
-      ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY};
-  UPDATE(ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES, test_pattern_modes,
-         ARRAY_SIZE(test_pattern_modes));
-  UPDATE(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern_modes[0], 1);
+  update_static(ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES,
+                std::vector<int32_t>{
+                    ANDROID_SENSOR_TEST_PATTERN_MODE_OFF,
+                    ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY});
+  update_request(ANDROID_SENSOR_TEST_PATTERN_MODE,
+                 ANDROID_SENSOR_TEST_PATTERN_MODE_OFF);
 
   uint8_t timestamp_source;
   if (V4L2CameraDevice::GetUvcClock() == CLOCK_BOOTTIME) {
@@ -209,42 +220,38 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   } else {
     timestamp_source = ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN;
   }
-  UPDATE(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE, &timestamp_source, 1);
+  update_static(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE, timestamp_source);
 
   // android.shading
-  const uint8_t availabe_mode = ANDROID_SHADING_MODE_FAST;
-  UPDATE(ANDROID_SHADING_AVAILABLE_MODES, &availabe_mode, 1);
+  update_static(ANDROID_SHADING_AVAILABLE_MODES, ANDROID_SHADING_MODE_FAST);
 
   // android.statistics
-  const uint8_t face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
-  UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES, &face_detect_mode,
-         1);
-  UPDATE(ANDROID_STATISTICS_FACE_DETECT_MODE, &face_detect_mode, 1);
+  update_static(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
+                ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
+  update_request(ANDROID_STATISTICS_FACE_DETECT_MODE,
+                 ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
 
-  const int32_t max_face_count = 0;
-  UPDATE(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, &max_face_count, 1);
+  update_static(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, int32_t{0});
 
-  const uint8_t available_hotpixel_mode =
-      ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE_OFF;
-  UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES,
-         &available_hotpixel_mode, 1);
-  UPDATE(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE, &available_hotpixel_mode, 1);
+  update_static(ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES,
+                ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE_OFF);
+  update_request(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
+                 ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE_OFF);
 
-  const uint8_t lens_shading_map_mode =
-      ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF;
-  UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES,
-         &lens_shading_map_mode, 1);
+  update_static(ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES,
+                ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF);
 
   // android.sync
-  const int32_t max_latency = ANDROID_SYNC_MAX_LATENCY_UNKNOWN;
-  UPDATE(ANDROID_SYNC_MAX_LATENCY, &max_latency, 1);
-  return 0;
+  update_static(ANDROID_SYNC_MAX_LATENCY, ANDROID_SYNC_MAX_LATENCY_UNKNOWN);
+
+  return update_static.ok() || update_request.ok() ? 0 : -EINVAL;
 }
 
 int MetadataHandler::FillMetadataFromSupportedFormats(
     const SupportedFormats& supported_formats,
     const DeviceInfo& device_info,
-    android::CameraMetadata* metadata) {
+    android::CameraMetadata* static_metadata,
+    android::CameraMetadata* request_metadata) {
   bool is_external = device_info.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
 
   if (supported_formats.empty()) {
@@ -358,6 +365,14 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     }
   }
 
+  SupportedFormat maximum_format = GetMaximumFormat(supported_formats);
+  std::vector<int32_t> active_array_size = {
+      0, 0, static_cast<int32_t>(maximum_format.width),
+      static_cast<int32_t>(maximum_format.height)};
+
+  MetadataUpdater update_static(static_metadata);
+  MetadataUpdater update_request(request_metadata);
+
   // The document in aeAvailableTargetFpsRanges section says the min_fps should
   // not be larger than 15.
   // We enumerate all possible fps and put (min, fps) as available fps range. If
@@ -389,39 +404,28 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     available_fps_ranges.push_back(max_fps);
     available_fps_ranges.push_back(max_fps);
   }
-  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
-         available_fps_ranges.data(), available_fps_ranges.size());
+  update_static(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
+                available_fps_ranges);
+  update_request(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
+                 std::vector<int32_t>{max_fps, max_fps});
 
-  int32_t target_fps_range[] = {max_fps, max_fps};
-  UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, target_fps_range, 2);
-
-  UPDATE(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
-         stream_configurations.data(), stream_configurations.size());
-
-  UPDATE(ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
-         min_frame_durations.data(), min_frame_durations.size());
-
-  UPDATE(ANDROID_SCALER_AVAILABLE_STALL_DURATIONS, stall_durations.data(),
-         stall_durations.size());
+  update_static(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+                stream_configurations);
+  update_static(ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
+                min_frame_durations);
+  update_static(ANDROID_SCALER_AVAILABLE_STALL_DURATIONS, stall_durations);
 
   std::vector<int32_t> jpeg_available_thumbnail_sizes =
       GetJpegAvailableThumbnailSizes(supported_formats);
-  UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
-         jpeg_available_thumbnail_sizes.data(),
-         jpeg_available_thumbnail_sizes.size());
-  UPDATE(ANDROID_JPEG_THUMBNAIL_SIZE,
-         &jpeg_available_thumbnail_sizes.back() - 1, 2);
-
-  UPDATE(ANDROID_SENSOR_INFO_MAX_FRAME_DURATION, &max_frame_duration, 1);
-
-  SupportedFormat maximum_format = GetMaximumFormat(supported_formats);
-  int32_t active_array_size[] = {0, 0,
-                                 static_cast<int32_t>(maximum_format.width),
-                                 static_cast<int32_t>(maximum_format.height)};
-  UPDATE(ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE,
-         active_array_size, ARRAY_SIZE(active_array_size));
-  UPDATE(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, active_array_size,
-         ARRAY_SIZE(active_array_size));
+  update_static(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
+                jpeg_available_thumbnail_sizes);
+  update_request(ANDROID_JPEG_THUMBNAIL_SIZE,
+                 std::vector<int32_t>(jpeg_available_thumbnail_sizes.end() - 2,
+                                      jpeg_available_thumbnail_sizes.end()));
+  update_static(ANDROID_SENSOR_INFO_MAX_FRAME_DURATION, max_frame_duration);
+  update_static(ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE,
+                active_array_size);
+  update_static(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, active_array_size);
 
   if (is_external) {
     // It's a sensible value for external camera, since it's required on all
@@ -432,17 +436,23 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     //   https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics.html#SENSOR_INFO_PIXEL_ARRAY_SIZE
     // * The implementation of external camera in Android P
     //   https://googleplex-android.git.corp.google.com/platform/hardware/interfaces/+/6ad8708bf8b631561fa11eb1f4889907d1772d78/camera/device/3.4/default/ExternalCameraDevice.cpp#687
-    int32_t pixel_array_size[] = {static_cast<int32_t>(maximum_format.width),
-                                  static_cast<int32_t>(maximum_format.height)};
-    UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
-           ARRAY_SIZE(pixel_array_size));
+    update_static(
+        ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE,
+        std::vector<int32_t>{static_cast<int32_t>(maximum_format.width),
+                             static_cast<int32_t>(maximum_format.height)});
   }
 
-  return 0;
+  return update_static.ok() && update_request.ok() ? 0 : -EINVAL;
 }
 
+// static
 int MetadataHandler::FillMetadataFromDeviceInfo(
-    const DeviceInfo& device_info, android::CameraMetadata* metadata) {
+    const DeviceInfo& device_info,
+    android::CameraMetadata* static_metadata,
+    android::CameraMetadata* request_metadata) {
+  MetadataUpdater update_static(static_metadata);
+  MetadataUpdater update_request(request_metadata);
+
   bool is_external = device_info.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
   bool is_builtin = !is_external;
 
@@ -483,8 +493,7 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
                                       ANDROID_LENS_FOCUS_DISTANCE,
                                   });
   }
-  UPDATE(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, available_request_keys.data(),
-         available_request_keys.size());
+  update_static(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, available_request_keys);
 
   // TODO(shik): All properties listed for capture requests can also be queried
   // on the capture result, to determine the final values used for capture. We
@@ -538,8 +547,7 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
                                      ANDROID_LENS_FOCUS_DISTANCE,
                                  });
   }
-  UPDATE(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, available_result_keys.data(),
-         available_result_keys.size());
+  update_static(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, available_result_keys);
 
   // TODO(shik): The HAL must not have any tags in its static info that are not
   // listed either here or in the vendor tag list.  Some request/result metadata
@@ -603,87 +611,79 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
             ANDROID_SENSOR_INFO_PHYSICAL_SIZE,
         });
   }
-  UPDATE(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
-         available_characteristics_keys.data(),
-         available_characteristics_keys.size());
+  update_static(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
+                available_characteristics_keys);
 
-  UPDATE(ANDROID_SENSOR_ORIENTATION, &device_info.sensor_orientation, 1);
-
-  uint8_t lens_facing = device_info.lens_facing;
-  UPDATE(ANDROID_LENS_FACING, &lens_facing, 1);
+  update_static(ANDROID_SENSOR_ORIENTATION, device_info.sensor_orientation);
+  update_static(ANDROID_LENS_FACING,
+                static_cast<uint8_t>(device_info.lens_facing));
 
   if (is_builtin) {
-    uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
-    UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
+    update_static(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
+                  ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED);
 
-    UPDATE(ANDROID_LENS_INFO_AVAILABLE_APERTURES,
-           device_info.lens_info_available_apertures.data(),
-           device_info.lens_info_available_apertures.size());
+    update_static(ANDROID_LENS_INFO_AVAILABLE_APERTURES,
+                  device_info.lens_info_available_apertures);
 
-    UPDATE(ANDROID_LENS_APERTURE,
-           &device_info.lens_info_available_apertures.data()[0], 1);
+    update_request(ANDROID_LENS_APERTURE,
+                   device_info.lens_info_available_apertures[0]);
 
-    UPDATE(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
-           device_info.lens_info_available_focal_lengths.data(),
-           device_info.lens_info_available_focal_lengths.size());
+    update_static(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
+                  device_info.lens_info_available_focal_lengths);
 
-    UPDATE(ANDROID_LENS_FOCAL_LENGTH,
-           &device_info.lens_info_available_focal_lengths.data()[0], 1);
+    update_request(ANDROID_LENS_FOCAL_LENGTH,
+                   device_info.lens_info_available_focal_lengths[0]);
 
-    UPDATE(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE,
-           &device_info.lens_info_minimum_focus_distance, 1);
+    update_static(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE,
+                  device_info.lens_info_minimum_focus_distance);
 
-    UPDATE(ANDROID_LENS_FOCUS_DISTANCE,
-           &device_info.lens_info_optimal_focus_distance, 1);
+    update_request(ANDROID_LENS_FOCUS_DISTANCE,
+                   device_info.lens_info_optimal_focus_distance);
 
-    float physical_size[] = {device_info.sensor_info_physical_size_width,
-                             device_info.sensor_info_physical_size_height};
-    UPDATE(ANDROID_SENSOR_INFO_PHYSICAL_SIZE, physical_size,
-           ARRAY_SIZE(physical_size));
+    update_static(
+        ANDROID_SENSOR_INFO_PHYSICAL_SIZE,
+        std::vector<float>{device_info.sensor_info_physical_size_width,
+                           device_info.sensor_info_physical_size_height});
 
-    int32_t pixel_array_size[] = {
-        device_info.sensor_info_pixel_array_size_width,
-        device_info.sensor_info_pixel_array_size_height};
-    UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
-           ARRAY_SIZE(pixel_array_size));
+    update_static(
+        ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE,
+        std::vector<int32_t>{device_info.sensor_info_pixel_array_size_width,
+                             device_info.sensor_info_pixel_array_size_height});
   } else {
-    uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL;
-    UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
+    update_static(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
+                  ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL);
   }
 
-  uint8_t focus_distance_calibration =
-      ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED;
-  UPDATE(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION,
-         &focus_distance_calibration, 1);
+  update_static(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION,
+                ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED);
 
-  uint8_t ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
-  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES, &ae_antibanding_mode,
-         1);
-  UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
+  update_static(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES,
+                ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO);
+  update_request(ANDROID_CONTROL_AE_ANTIBANDING_MODE,
+                 ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO);
 
   bool support_af =
       V4L2CameraDevice::IsAutoFocusSupported(device_info.device_path);
-  const uint8_t af_available_modes[] = {ANDROID_CONTROL_AF_MODE_OFF,
-                                        ANDROID_CONTROL_AF_MODE_AUTO};
   if (support_af) {
-    UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, af_available_modes,
-           ARRAY_SIZE(af_available_modes));
-    UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_modes[1], 1);
+    update_static(ANDROID_CONTROL_AF_AVAILABLE_MODES,
+                  std::vector<uint8_t>{ANDROID_CONTROL_AF_MODE_OFF,
+                                       ANDROID_CONTROL_AF_MODE_AUTO});
+    update_request(ANDROID_CONTROL_AF_MODE, ANDROID_CONTROL_AF_MODE_AUTO);
   } else {
-    UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, af_available_modes, 1);
-    UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_modes[0], 1);
+    update_static(ANDROID_CONTROL_AF_AVAILABLE_MODES,
+                  ANDROID_CONTROL_AF_MODE_OFF);
+    update_request(ANDROID_CONTROL_AF_MODE, ANDROID_CONTROL_AF_MODE_OFF);
     // If auto focus is not supported, the minimum focus distance should be 0.
     // Overwrite the value here since there are many camera modules have wrong
     // config.
-    float min_distance = 0.0f;
-    UPDATE(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE, &min_distance, 1);
+    update_static(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE, 0.0f);
   }
 
   // Set vendor tags for specified boards.
   if (device_info.quirks & kQuirkMonocle) {
     int32_t timestamp_sync =
         static_cast<int32_t>(mojom::CameraSensorSyncTimestamp::NEAREST);
-    UPDATE(kVendorTagTimestampSync, &timestamp_sync, 1);
+    update_static(kVendorTagTimestampSync, timestamp_sync);
   }
 
   return 0;
@@ -702,6 +702,8 @@ int MetadataHandler::PreHandleRequest(int frame_number,
                                       const Size& resolution,
                                       android::CameraMetadata* metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
+  MetadataUpdater update_request(metadata);
+
   if (metadata->exists(ANDROID_CONTROL_AF_TRIGGER)) {
     camera_metadata_entry entry = metadata->find(ANDROID_CONTROL_AF_TRIGGER);
     if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_START) {
@@ -722,10 +724,10 @@ int MetadataHandler::PreHandleRequest(int frame_number,
 
   const int64_t rolling_shutter_skew =
       sensor_handler_->GetRollingShutterSkew(resolution);
-  UPDATE(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, &rolling_shutter_skew, 1);
+  update_request(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, rolling_shutter_skew);
 
   const int64_t exposure_time = sensor_handler_->GetExposureTime(resolution);
-  UPDATE(ANDROID_SENSOR_EXPOSURE_TIME, &exposure_time, 1);
+  update_request(ANDROID_SENSOR_EXPOSURE_TIME, exposure_time);
 
   current_frame_number_ = frame_number;
   return 0;
@@ -741,15 +743,13 @@ int MetadataHandler::PostHandleRequest(int frame_number,
     return -EINVAL;
   }
 
+  MetadataUpdater update_request(metadata);
   // android.control
   // For USB camera, we don't know the AE state. Set the state to converged to
   // indicate the frame should be good to use. Then apps don't have to wait the
   // AE state.
-  const uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
-  UPDATE(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
-
-  const uint8_t ae_lock = ANDROID_CONTROL_AE_LOCK_OFF;
-  UPDATE(ANDROID_CONTROL_AE_LOCK, &ae_lock, 1);
+  update_request(ANDROID_CONTROL_AE_STATE, ANDROID_CONTROL_AE_STATE_CONVERGED);
+  update_request(ANDROID_CONTROL_AE_LOCK, ANDROID_CONTROL_AE_LOCK_OFF);
 
   // For USB camera, the USB camera handles everything and we don't have control
   // over AF. We only simply fake the AF metadata based on the request
@@ -760,17 +760,16 @@ int MetadataHandler::PostHandleRequest(int frame_number,
   } else {
     af_state = ANDROID_CONTROL_AF_STATE_INACTIVE;
   }
-  UPDATE(ANDROID_CONTROL_AF_STATE, &af_state, 1);
+  update_request(ANDROID_CONTROL_AF_STATE, af_state);
 
   // Set AWB state to converged to indicate the frame should be good to use.
-  const uint8_t awb_state = ANDROID_CONTROL_AWB_STATE_CONVERGED;
-  UPDATE(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
+  update_request(ANDROID_CONTROL_AWB_STATE,
+                 ANDROID_CONTROL_AWB_STATE_CONVERGED);
 
-  const uint8_t awb_lock = ANDROID_CONTROL_AWB_LOCK_OFF;
-  UPDATE(ANDROID_CONTROL_AWB_LOCK, &awb_lock, 1);
+  update_request(ANDROID_CONTROL_AWB_LOCK, ANDROID_CONTROL_AWB_LOCK_OFF);
 
   camera_metadata_entry active_array_size =
-      metadata->find(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+      static_metadata_.find(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
 
   if (active_array_size.count == 0) {
     LOGF(ERROR) << "Active array size is not found.";
@@ -781,28 +780,25 @@ int MetadataHandler::PostHandleRequest(int frame_number,
   // Since android.lens.focalLength, android.lens.focusDistance and
   // android.lens.aperture are all fixed. And we don't support
   // android.lens.filterDensity so we can set the state to stationary.
-  const uint8_t lens_state = ANDROID_LENS_STATE_STATIONARY;
-  UPDATE(ANDROID_LENS_STATE, &lens_state, 1);
+  update_request(ANDROID_LENS_STATE, ANDROID_LENS_STATE_STATIONARY);
 
   // android.scaler
-  const int32_t crop_region[] = {
-      active_array_size.data.i32[0],
-      active_array_size.data.i32[1],
-      active_array_size.data.i32[2],
-      active_array_size.data.i32[3],
-  };
-  UPDATE(ANDROID_SCALER_CROP_REGION, crop_region, ARRAY_SIZE(crop_region));
+  update_request(ANDROID_SCALER_CROP_REGION, std::vector<int32_t>{
+                                                 active_array_size.data.i32[0],
+                                                 active_array_size.data.i32[1],
+                                                 active_array_size.data.i32[2],
+                                                 active_array_size.data.i32[3],
+                                             });
 
   // android.sensor
-  UPDATE(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
+  update_request(ANDROID_SENSOR_TIMESTAMP, timestamp);
 
   // android.statistics
-  const uint8_t lens_shading_map_mode =
-      ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF;
-  UPDATE(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE, &lens_shading_map_mode, 1);
+  update_request(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE,
+                 ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF);
 
-  const uint8_t scene_flicker = ANDROID_STATISTICS_SCENE_FLICKER_NONE;
-  UPDATE(ANDROID_STATISTICS_SCENE_FLICKER, &scene_flicker, 1);
+  update_request(ANDROID_STATISTICS_SCENE_FLICKER,
+                 ANDROID_STATISTICS_SCENE_FLICKER_NONE);
   return 0;
 }
 
@@ -812,7 +808,7 @@ bool MetadataHandler::IsValidTemplateType(int template_type) {
 
 ScopedCameraMetadata MetadataHandler::CreateDefaultRequestSettings(
     int template_type) {
-  android::CameraMetadata data(metadata_);
+  android::CameraMetadata data(request_template_);
 
   int ret;
   switch (template_type) {
@@ -847,50 +843,53 @@ ScopedCameraMetadata MetadataHandler::CreateDefaultRequestSettings(
 
 int MetadataHandler::FillDefaultPreviewSettings(
     android::CameraMetadata* metadata) {
-  // android.control
-  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
-  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  MetadataUpdater update_request(metadata);
 
-  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
-  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
+  // android.control
+  update_request(ANDROID_CONTROL_CAPTURE_INTENT,
+                 ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW);
+
+  update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;
 }
 
 int MetadataHandler::FillDefaultStillCaptureSettings(
     android::CameraMetadata* metadata) {
+  MetadataUpdater update_request(metadata);
+
   // android.colorCorrection
-  const uint8_t color_aberration_mode =
-      ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY;
-  UPDATE(ANDROID_COLOR_CORRECTION_ABERRATION_MODE, &color_aberration_mode, 1);
+  update_request(ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
+                 ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY);
 
   // android.control
-  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
-  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  update_request(ANDROID_CONTROL_CAPTURE_INTENT,
+                 ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE);
 
-  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
-  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
+  update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;
 }
 
 int MetadataHandler::FillDefaultVideoRecordSettings(
     android::CameraMetadata* metadata) {
-  // android.control
-  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
-  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  MetadataUpdater update_request(metadata);
 
-  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
-  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
+  // android.control
+  update_request(ANDROID_CONTROL_CAPTURE_INTENT,
+                 ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
+
+  update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;
 }
 
 int MetadataHandler::FillDefaultVideoSnapshotSettings(
     android::CameraMetadata* metadata) {
-  // android.control
-  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT;
-  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  MetadataUpdater update_request(metadata);
 
-  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
-  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
+  // android.control
+  update_request(ANDROID_CONTROL_CAPTURE_INTENT,
+                 ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT);
+
+  update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;
 }
 

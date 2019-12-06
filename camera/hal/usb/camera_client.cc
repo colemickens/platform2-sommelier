@@ -34,11 +34,13 @@ const float kAspectRatioMargin = 0.04;
 
 CameraClient::CameraClient(int id,
                            const DeviceInfo& device_info,
-                           const camera_metadata_t& static_info,
+                           const camera_metadata_t& static_metadata,
+                           const camera_metadata_t& request_template,
                            const hw_module_t* module,
                            hw_device_t** hw_device)
     : id_(id),
       device_info_(device_info),
+      static_metadata_(clone_camera_metadata(&static_metadata)),
       device_(new V4L2CameraDevice(device_info)),
       callback_ops_(nullptr),
       request_thread_("Capture request thread") {
@@ -59,7 +61,8 @@ CameraClient::CameraClient(int id,
       GetQualifiedFormats(supported_formats, device_info_.quirks);
 
   metadata_handler_ = std::make_unique<MetadataHandler>(
-      static_info, device_info, device_.get(), qualified_formats_);
+      static_metadata, request_template, device_info, device_.get(),
+      qualified_formats_);
 }
 
 CameraClient::~CameraClient() {}
@@ -358,9 +361,9 @@ int CameraClient::StreamOn(Size stream_on_resolution,
     }
     request_task_runner_ = request_thread_.task_runner();
 
-    request_handler_.reset(
-        new RequestHandler(id_, device_info_, device_.get(), callback_ops_,
-                           request_task_runner_, metadata_handler_.get()));
+    request_handler_.reset(new RequestHandler(
+        id_, device_info_, static_metadata_, device_.get(), callback_ops_,
+        request_task_runner_, metadata_handler_.get()));
   }
 
   auto future = cros::Future<int>::Create(nullptr);
@@ -508,12 +511,14 @@ bool CameraClient::ShouldUseNativeSensorRatio(
 CameraClient::RequestHandler::RequestHandler(
     const int device_id,
     const DeviceInfo& device_info,
+    const android::CameraMetadata& static_metadata,
     V4L2CameraDevice* device,
     const camera3_callback_ops_t* callback_ops,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
     MetadataHandler* metadata_handler)
     : device_id_(device_id),
       device_info_(device_info),
+      static_metadata_(static_metadata),
       device_(device),
       callback_ops_(callback_ops),
       task_runner_(task_runner),
@@ -917,7 +922,7 @@ bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
 }
 
 int CameraClient::RequestHandler::WriteStreamBuffers(
-    const android::CameraMetadata& metadata,
+    const android::CameraMetadata& request_metadata,
     camera3_capture_result_t* capture_result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
@@ -939,9 +944,9 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
           : input_buffers_[current_v4l2_buffer_id_].get();
 
   std::vector<int> output_frame_status;
-  int ret =
-      cached_frame_.Convert(metadata, crop_rotate_scale_degrees_, *input_frame,
-                            output_frames, &output_frame_status);
+  int ret = cached_frame_.Convert(static_metadata_, request_metadata,
+                                  crop_rotate_scale_degrees_, *input_frame,
+                                  output_frames, &output_frame_status);
   if (ret) {
     EnqueueV4L2Buffer();
     return ret;
