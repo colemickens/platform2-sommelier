@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include <mojo/core/embedder/embedder.h>
+
 #include "media_perception/serialized_proto.h"
 
 namespace mri {
@@ -62,13 +64,15 @@ constexpr char kConnectorPipe[] = "mpp-connector-pipe";
 }  // namespace
 
 MojoConnector::MojoConnector(): ipc_thread_("IpcThread") {
-  mojo::edk::Init();
+  mojo::core::Init();
   LOG(INFO) << "Starting IPC thread.";
   if (!ipc_thread_.StartWithOptions(
           base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
     LOG(ERROR) << "Failed to start IPC Thread";
   }
-  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      ipc_thread_.task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
   unique_device_counter_ = 1;
 }

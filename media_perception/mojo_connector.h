@@ -13,7 +13,7 @@
 #include <base/bind.h>
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "media_perception/chrome_audio_service_client.h"
@@ -176,6 +176,8 @@ class MojoConnector {
   std::map<
       std::string /* obfuscated device_id */,
       std::string /* device_id */> obfuscated_device_id_map_;
+
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   std::mutex vcs_connection_state_mutex_;
   bool is_connected_to_vcs_ = false;
