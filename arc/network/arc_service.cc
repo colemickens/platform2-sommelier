@@ -21,13 +21,17 @@
 #include <shill/net/rtnl_message.h>
 
 #include "arc/network/datapath.h"
-#include "arc/network/ipc.pb.h"
 #include "arc/network/mac_address_generator.h"
 #include "arc/network/minijailed_process_runner.h"
 #include "arc/network/net_util.h"
 #include "arc/network/scoped_ns.h"
 
 namespace arc_networkd {
+
+namespace test {
+GuestMessage::GuestType guest = GuestMessage::UNKNOWN_GUEST;
+}  // namespace test
+
 namespace {
 constexpr pid_t kInvalidPID = -1;
 constexpr pid_t kTestPID = -2;
@@ -161,10 +165,9 @@ bool IsArcVm() {
   return contents == "1";
 }
 
-GuestMessage::GuestType ArcGuest(bool* is_legacy_override_for_testing) {
-  if (is_legacy_override_for_testing)
-    return *is_legacy_override_for_testing ? GuestMessage::ARC_LEGACY
-                                           : GuestMessage::ARC;
+GuestMessage::GuestType ArcGuest() {
+  if (test::guest != GuestMessage::UNKNOWN_GUEST)
+    return test::guest;
 
   return IsArcVm() ? GuestMessage::ARC_VM
                    : ShouldEnableMultinet() ? GuestMessage::ARC
@@ -173,28 +176,46 @@ GuestMessage::GuestType ArcGuest(bool* is_legacy_override_for_testing) {
 
 }  // namespace
 
-ArcService::ArcService(DeviceManagerBase* dev_mgr,
-                       Datapath* datapath,
-                       bool* is_legacy)
-    : GuestService(ArcGuest(is_legacy), dev_mgr), datapath_(datapath) {
+ArcService::ArcService(DeviceManagerBase* dev_mgr, Datapath* datapath)
+    : dev_mgr_(dev_mgr), datapath_(datapath) {
+  DCHECK(dev_mgr_);
   DCHECK(datapath_);
 
-  if (guest_ == GuestMessage::ARC_VM)
-    impl_ = std::make_unique<VmImpl>(dev_mgr, datapath);
-  else
-    impl_ = std::make_unique<ContainerImpl>(dev_mgr, datapath, guest_);
+  dev_mgr_->RegisterDeviceAddedHandler(
+      GuestMessage::ARC,
+      base::Bind(&ArcService::OnDeviceAdded, base::Unretained(this)));
+  dev_mgr_->RegisterDeviceRemovedHandler(
+      GuestMessage::ARC,
+      base::Bind(&ArcService::OnDeviceRemoved, base::Unretained(this)));
+  dev_mgr_->RegisterDefaultInterfaceChangedHandler(
+      GuestMessage::ARC, base::Bind(&ArcService::OnDefaultInterfaceChanged,
+                                    base::Unretained(this)));
+}
+
+ArcService::~ArcService() {
+  dev_mgr_->UnregisterAllGuestHandlers(GuestMessage::ARC);
 }
 
 bool ArcService::Start(int32_t id) {
-  int32_t prev_id;
-  if (impl_->IsStarted(&prev_id)) {
-    LOG(WARNING) << "Already running - did something crash?"
-                 << " Stopping and restarting...";
-    Stop(prev_id);
+  if (impl_) {
+    int32_t prev_id;
+    if (impl_->IsStarted(&prev_id)) {
+      LOG(WARNING) << "Already running - did something crash?"
+                   << " Stopping and restarting...";
+      Stop(prev_id);
+    }
   }
 
-  if (!impl_->Start(id))
+  const auto guest = ArcGuest();
+  if (guest == GuestMessage::ARC_VM)
+    impl_ = std::make_unique<VmImpl>(dev_mgr_, datapath_);
+  else
+    impl_ = std::make_unique<ContainerImpl>(dev_mgr_, datapath_, guest);
+
+  if (!impl_->Start(id)) {
+    impl_.reset();
     return false;
+  }
 
   // Start known host devices, any new ones will be setup in the process.
   dev_mgr_->ProcessDevices(
@@ -206,7 +227,7 @@ bool ArcService::Start(int32_t id) {
   // second time). Do this after processing the existing devices so it doesn't
   // get started twice.
   std::string arc;
-  switch (const auto guest = impl_->guest()) {
+  switch (guest) {
     case GuestMessage::ARC:
       arc = kAndroidDevice;
       break;
@@ -221,14 +242,15 @@ bool ArcService::Start(int32_t id) {
       return false;
   }
   dev_mgr_->Add(arc);
-
-  // Finally, call the base implementation.
-  return GuestService::Start(id);
+  dev_mgr_->OnGuestStart(guest);
+  return true;
 }
 
 void ArcService::Stop(int32_t id) {
-  // Call the base implementation.
-  GuestService::Stop(id);
+  if (!impl_)
+    return;
+
+  dev_mgr_->OnGuestStop(impl_->guest());
 
   // Stop known host devices. Note that this does not teardown any existing
   // devices.
@@ -236,6 +258,7 @@ void ArcService::Stop(int32_t id) {
       base::Bind(&ArcService::StopDevice, weak_factory_.GetWeakPtr()));
 
   impl_->Stop(id);
+  impl_.reset();
 }
 
 bool ArcService::AllowDevice(Device* device) const {
@@ -243,7 +266,8 @@ bool ArcService::AllowDevice(Device* device) const {
     return false;
 
   // ARC P+ is multi-network enabled and should process all devices.
-  if (guest_ == GuestMessage::ARC)
+  if ((impl_ && impl_->guest() == GuestMessage::ARC) ||
+      (!impl_ && ArcGuest() == GuestMessage::ARC))
     return true;
 
   // ARC N and ARCVM (for now) are both single-network - meaning they only use
@@ -296,7 +320,7 @@ void ArcService::StartDevice(Device* device) {
     return;
 
   // This can happen if OnDeviceAdded is invoked when the container is down.
-  if (!impl_->IsStarted())
+  if (!impl_ || !impl_->IsStarted())
     return;
 
   // If there is no context, then this is a new device and it needs to run
@@ -352,7 +376,7 @@ void ArcService::StopDevice(Device* device) {
 
   // This can happen if the device if OnDeviceRemoved is invoked when the
   // container is down.
-  if (!impl_->IsStarted())
+  if (!impl_ || !impl_->IsStarted())
     return;
 
   Context* ctx = dynamic_cast<Context*>(device->context());
@@ -372,7 +396,8 @@ void ArcService::StopDevice(Device* device) {
 }
 
 void ArcService::OnDefaultInterfaceChanged(const std::string& ifname) {
-  impl_->OnDefaultInterfaceChanged(ifname);
+  if (impl_)
+    impl_->OnDefaultInterfaceChanged(ifname);
 }
 
 // Context
@@ -896,7 +921,7 @@ void ArcService::VmImpl::OnDefaultInterfaceChanged(const std::string& ifname) {
   // TODO(garrick): Remove this once ARCVM supports ad hoc interface
   // configurations; but for now ARCVM needs to be treated like ARC++ N.
   datapath_->RemoveLegacyIPv4InboundDNAT();
-  auto* device = dev_mgr_->FindByGuestInterface("arc0");
+  auto* device = dev_mgr_->FindByGuestInterface("arc1");
   if (!device) {
     LOG(DFATAL) << "Expected Android device missing";
     return;

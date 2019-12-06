@@ -131,17 +131,27 @@ void DeviceManager::RegisterDeviceAddedHandler(GuestMessage::GuestType guest,
                                                const DeviceHandler& handler) {
   add_handlers_[guest] = handler;
 }
+
 void DeviceManager::RegisterDeviceRemovedHandler(GuestMessage::GuestType guest,
                                                  const DeviceHandler& handler) {
   rm_handlers_[guest] = handler;
 }
+
 void DeviceManager::RegisterDeviceIPv6AddressFoundHandler(
     GuestMessage::GuestType guest, const DeviceHandler& handler) {
   ipv6_handlers_[guest] = handler;
 }
+
 void DeviceManager::RegisterDefaultInterfaceChangedHandler(
     GuestMessage::GuestType guest, const NameHandler& handler) {
   default_iface_handlers_[guest] = handler;
+}
+
+void DeviceManager::UnregisterAllGuestHandlers(GuestMessage::GuestType guest) {
+  add_handlers_.erase(guest);
+  rm_handlers_.erase(guest);
+  ipv6_handlers_.erase(guest);
+  default_iface_handlers_.erase(guest);
 }
 
 void DeviceManager::ProcessDevices(const DeviceHandler& handler) {
@@ -302,11 +312,23 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   std::unique_ptr<Subnet> lxd_subnet;
 
   if (name == kAndroidLegacyDevice || name == kAndroidVmDevice) {
-    if (name == kAndroidVmDevice)
-      guest = AddressManager::Guest::VM_ARC;
-
     host_ifname = "arcbr0";
     guest_ifname = "arc0";
+
+    if (name == kAndroidVmDevice) {
+      guest = AddressManager::Guest::VM_ARC;
+      // (b/145644889) There are a couple things driving this device name:
+      // 1. Until ArcNetworkService is running in ARCVM, arcbr0 cannot be resued
+      // since the IPv4 addresses are different.
+      // 2. Because of crbug/1008686, arcbr0 cannot be destroyed and recreated.
+      // 3. Because shill only treats arcbr0 and devices prefixed with arc_ as
+      // special, arc_br1 has to be used instead of arcbr1.
+      // TODO(garrick): When either b/123431422 or the above crbug is fixed,
+      // this can be removed.
+      host_ifname = "arc_br1";
+      guest_ifname = "arc1";
+    }
+
     opts.ipv6_enabled = true;
     opts.fwd_multicast = true;
     opts.use_default_interface = true;

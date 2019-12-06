@@ -11,13 +11,14 @@
 #include <base/memory/weak_ptr.h>
 
 #include "arc/network/datapath.h"
-#include "arc/network/guest_service.h"
+#include "arc/network/device.h"
+#include "arc/network/device_manager.h"
 
 namespace arc_networkd {
 
 // Crostini networking service hanlding address allocation and TAP device
 // management for Termina VMs.
-class CrostiniService : public GuestService {
+class CrostiniService {
  public:
   class Context : public Device::Context {
    public:
@@ -40,15 +41,16 @@ class CrostiniService : public GuestService {
 
   // |dev_mgr| and |datapath| cannot be null.
   CrostiniService(DeviceManagerBase* dev_mgr, Datapath* datapath);
-  ~CrostiniService() = default;
+  ~CrostiniService();
 
-  bool Start(int32_t cid) override;
-  void Stop(int32_t cid) override;
+  bool Start(int32_t cid);
+  void Stop(int32_t cid);
 
-  void OnDeviceAdded(Device* device) override;
-  void OnDeviceRemoved(Device* device) override;
+  void OnDeviceAdded(Device* device);
+  void OnDeviceRemoved(Device* device);
 
  private:
+  DeviceManagerBase* dev_mgr_;
   Datapath* datapath_;
   std::set<int32_t> cids_;
 

@@ -13,11 +13,13 @@
 #include <shill/net/rtnl_listener.h>
 
 #include "arc/network/datapath.h"
-#include "arc/network/guest_service.h"
+#include "arc/network/device.h"
+#include "arc/network/device_manager.h"
+#include "arc/network/ipc.pb.h"
 
 namespace arc_networkd {
 
-class ArcService : public GuestService {
+class ArcService {
  public:
   class Context : public Device::Context {
    public:
@@ -140,17 +142,15 @@ class ArcService : public GuestService {
 
   // |dev_mgr| and |datapath| cannot be null.
   // |is_legacy| is temporary and intended to be used for testing only.
-  ArcService(DeviceManagerBase* dev_mgr,
-             Datapath* datapath,
-             bool* is_legacy = nullptr);
-  ~ArcService() = default;
+  ArcService(DeviceManagerBase* dev_mgr, Datapath* datapath);
+  ~ArcService();
 
-  bool Start(int32_t id) override;
-  void Stop(int32_t id) override;
+  bool Start(int32_t id);
+  void Stop(int32_t id);
 
-  void OnDeviceAdded(Device* device) override;
-  void OnDeviceRemoved(Device* device) override;
-  void OnDefaultInterfaceChanged(const std::string& ifname) override;
+  void OnDeviceAdded(Device* device);
+  void OnDeviceRemoved(Device* device);
+  void OnDefaultInterfaceChanged(const std::string& ifname);
 
  private:
   void StartDevice(Device* device);
@@ -159,12 +159,17 @@ class ArcService : public GuestService {
   // Returns true if the device should be processed by the service.
   bool AllowDevice(Device* device) const;
 
+  DeviceManagerBase* dev_mgr_;
   Datapath* datapath_;
   std::unique_ptr<Impl> impl_;
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ArcService);
 };
+
+namespace test {
+extern GuestMessage::GuestType guest;
+}  // namespace test
 
 }  // namespace arc_networkd
 

@@ -20,7 +20,21 @@ constexpr int32_t kInvalidCID = -1;
 }  // namespace
 
 CrostiniService::CrostiniService(DeviceManagerBase* dev_mgr, Datapath* datapath)
-    : GuestService(GuestMessage::TERMINA_VM, dev_mgr), datapath_(datapath) {}
+    : dev_mgr_(dev_mgr), datapath_(datapath) {
+  DCHECK(dev_mgr_);
+  DCHECK(datapath_);
+
+  dev_mgr_->RegisterDeviceAddedHandler(
+      GuestMessage::TERMINA_VM,
+      base::Bind(&CrostiniService::OnDeviceAdded, base::Unretained(this)));
+  dev_mgr_->RegisterDeviceRemovedHandler(
+      GuestMessage::TERMINA_VM,
+      base::Bind(&CrostiniService::OnDeviceRemoved, base::Unretained(this)));
+}
+
+CrostiniService::~CrostiniService() {
+  dev_mgr_->UnregisterAllGuestHandlers(GuestMessage::TERMINA_VM);
+}
 
 bool CrostiniService::Start(int32_t cid) {
   if (cid <= kInvalidCID) {

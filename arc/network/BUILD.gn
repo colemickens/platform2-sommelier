@@ -64,12 +64,6 @@ shared_library("libarcnetwork-util") {
   configs += [ ":target_defaults" ]
 }
 
-guest_sources = [
-  "arc_service.cc",
-  "crostini_service.cc",
-  "guest_service.cc",
-]
-
 static_library("libarcnetwork") {
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [
@@ -78,6 +72,8 @@ static_library("libarcnetwork") {
   ]
   sources = [
     "adb_proxy.cc",
+    "arc_service.cc",
+    "crostini_service.cc",
     "datapath.cc",
     "device.cc",
     "device_manager.cc",
@@ -97,7 +93,6 @@ static_library("libarcnetwork") {
     "shill_client.cc",
     "socket_forwarder.cc",
   ]
-  sources += guest_sources
   sources += util_sources
   deps = [
     ":protos",

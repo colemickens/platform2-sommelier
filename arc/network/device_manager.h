@@ -40,6 +40,7 @@ class DeviceManagerBase {
       GuestMessage::GuestType guest, const NameHandler& handler) = 0;
   virtual void RegisterDeviceIPv6AddressFoundHandler(
       GuestMessage::GuestType guest, const DeviceHandler& handler) = 0;
+  virtual void UnregisterAllGuestHandlers(GuestMessage::GuestType guest) = 0;
 
   // Invoked when a guest starts or stops.
   virtual void OnGuestStart(GuestMessage::GuestType guest) = 0;
@@ -88,6 +89,7 @@ class DeviceManager : public DeviceManagerBase {
       GuestMessage::GuestType guest, const NameHandler& handler) override;
   void RegisterDeviceIPv6AddressFoundHandler(
       GuestMessage::GuestType guest, const DeviceHandler& handler) override;
+  void UnregisterAllGuestHandlers(GuestMessage::GuestType guest) override;
 
   // Invoked when a guest starts or stops.
   void OnGuestStart(GuestMessage::GuestType guest) override;
