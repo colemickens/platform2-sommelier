@@ -27,8 +27,8 @@
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <sys/eventfd.h>
 
@@ -157,12 +157,10 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
   }
 
   // Setup the mojo pipe.
-  mojo::edk::SetParentPipeHandle(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
-  mojo::ScopedMessagePipeHandle scoped_message_pipe_handle =
-      mojo::edk::CreateChildMessagePipe(pipe_name);
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
   mojo::InterfacePtrInfo<arc::mojom::VideoAcceleratorFactory>
-      interface_ptr_info(std::move(scoped_message_pipe_handle),
+      interface_ptr_info(invitation.ExtractMessagePipe(pipe_name),
                          kRequiredVideoAcceleratorFactoryMojoVersion);
   factory_ptr_ = mojo::MakeProxy(std::move(interface_ptr_info));
   factory_ptr_.set_connection_error_with_reason_handler(base::BindRepeating(

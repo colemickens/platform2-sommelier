@@ -22,7 +22,6 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <sys/eventfd.h>

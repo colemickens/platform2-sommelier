@@ -13,8 +13,8 @@
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/strong_binding.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "arc/keymaster/keymaster_server.h"
 
@@ -87,10 +87,10 @@ void Daemon::BootstrapMojoConnection(
 }
 
 void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
-  mojo::edk::SetParentPipeHandle(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
   mojo::ScopedMessagePipeHandle child_pipe =
-      mojo::edk::CreateChildMessagePipe("arc-keymaster-pipe");
+      invitation.ExtractMessagePipe("arc-keymaster-pipe");
   mojo::MakeStrongBinding(
       std::make_unique<KeymasterServer>(),
       mojo::MakeRequest<arc::mojom::KeymasterServer>(std::move(child_pipe)));
