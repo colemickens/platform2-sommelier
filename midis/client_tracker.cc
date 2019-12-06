@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/location.h>
 #include <brillo/message_loops/message_loop.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
@@ -89,14 +90,16 @@ ClientTracker::~ClientTracker() {
     device_tracker_->RemoveClientFromDevices(client.first);
   }
   clients_.clear();
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
+  ipc_support_ = nullptr;
 }
 
 void ClientTracker::InitClientTracker() {
   VLOG(1) << "Start client Mojo server.";
 
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 }
 
 void ClientTracker::RemoveClient(uint32_t client_id) {

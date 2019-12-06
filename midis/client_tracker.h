@@ -12,6 +12,7 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "midis/client.h"
 #include "midis/device_tracker.h"
@@ -57,6 +58,7 @@ class ClientTracker {
   DeviceTracker* device_tracker_;
   base::FilePath basedir_;
   base::SequenceChecker sequence_checker_;
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   std::unique_ptr<arc::mojom::MidisHost> midis_host_;
 
   base::WeakPtrFactory<ClientTracker> weak_factory_;
