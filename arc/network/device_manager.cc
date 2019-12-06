@@ -187,27 +187,10 @@ bool DeviceManager::AddWithContext(const std::string& name,
   auto* device = dev.get();
   devices_.emplace(name, std::move(dev));
 
-  if (device->options().ipv6_enabled) {
-    if (device->options().find_ipv6_routes_legacy) {
-      device->RegisterIPv6SetupHandler(base::Bind(
-          &DeviceManager::OnIPv6AddressFound, weak_factory_.GetWeakPtr()));
-    } else {
-      if (!datapath_->AddIPv6Forwarding(device->ifname(),
-                                        device->config().host_ifname())) {
-        LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
-                   << device->ifname() << " to "
-                   << device->config().host_ifname();
-      }
-      if (!datapath_->SetInterfaceFlag(device->ifname(), IFF_ALLMULTI)) {
-        LOG(WARNING) << "Failed to setup all multicast mode for interface "
-                     << device->ifname();
-      }
-      if (!datapath_->SetInterfaceFlag(device->config().host_ifname(),
-                                       IFF_ALLMULTI)) {
-        LOG(WARNING) << "Failed to setup all multicast mode for interface "
-                     << device->config().host_ifname();
-      }
-    }
+  if (device->options().ipv6_enabled &&
+      device->options().find_ipv6_routes_legacy) {
+    device->RegisterIPv6SetupHandler(base::Bind(
+        &DeviceManager::OnIPv6AddressFound, weak_factory_.GetWeakPtr()));
   }
 
   for (auto& h : add_handlers_) {
@@ -224,26 +207,7 @@ bool DeviceManager::Remove(const std::string& name) {
 
   LOG(INFO) << "Removing device " << name;
 
-  if (it->second->options().ipv6_enabled &&
-      !it->second->options().find_ipv6_routes_legacy) {
-    datapath_->RemoveIPv6Forwarding(it->second->ifname(),
-                                    it->second->config().host_ifname());
-  }
-
-  if ((nd_proxy_ && it->second->options().ipv6_enabled &&
-       !it->second->options().find_ipv6_routes_legacy) ||
-      it->second->options().fwd_multicast) {
-    DeviceMessage msg;
-    msg.set_dev_ifname(it->second->ifname());
-    msg.set_teardown(true);
-    IpHelperMessage ipm;
-    *ipm.mutable_device_message() = msg;
-    if (nd_proxy_ && it->second->options().ipv6_enabled &&
-        !it->second->options().find_ipv6_routes_legacy)
-      nd_proxy_->SendMessage(ipm);
-    if (it->second->options().fwd_multicast)
-      mcast_proxy_->SendMessage(ipm);
-  }
+  StopForwarding(*it->second);
 
   for (auto& h : rm_handlers_) {
     h.second.Run(it->second.get());
@@ -302,25 +266,6 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (!link_up) {
     LOG(INFO) << ifname << " is now down";
     device->Disable();
-
-    if ((nd_proxy_ && device->options().ipv6_enabled &&
-         !device->options().find_ipv6_routes_legacy) ||
-        device->options().fwd_multicast) {
-      DeviceMessage msg;
-      if (device->UsesDefaultInterface())
-        msg.set_dev_ifname(default_ifname_);
-      else
-        msg.set_dev_ifname(device->ifname());
-      msg.set_br_ifname(device->config().host_ifname());
-      msg.set_teardown(true);
-      IpHelperMessage ipm;
-      *ipm.mutable_device_message() = msg;
-      if (nd_proxy_ && device->options().ipv6_enabled &&
-          !device->options().find_ipv6_routes_legacy)
-        nd_proxy_->SendMessage(ipm);
-      if (device->options().fwd_multicast)
-        mcast_proxy_->SendMessage(ipm);
-    }
     return;
   }
 
@@ -332,24 +277,7 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   else if (!device->IsAndroid())
     device->Enable(device->config().guest_ifname());
 
-  if ((nd_proxy_ != nullptr && device->options().ipv6_enabled &&
-       !device->options().find_ipv6_routes_legacy) ||
-      device->options().fwd_multicast) {
-    DeviceMessage msg;
-    if (device->UsesDefaultInterface())
-      msg.set_dev_ifname(default_ifname_);
-    else
-      msg.set_dev_ifname(device->ifname());
-    msg.set_guest_ip4addr(device->config().guest_ipv4_addr());
-    msg.set_br_ifname(device->config().host_ifname());
-    IpHelperMessage ipm;
-    *ipm.mutable_device_message() = msg;
-    if (nd_proxy_ != nullptr && device->options().ipv6_enabled &&
-        !device->options().find_ipv6_routes_legacy)
-      nd_proxy_->SendMessage(ipm);
-    if (device->options().fwd_multicast)
-      mcast_proxy_->SendMessage(ipm);
-  }
+  StartForwarding(*device);
 }
 
 std::unique_ptr<Device> DeviceManager::MakeDevice(
@@ -442,40 +370,83 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
   LOG(INFO) << "Default interface changed from [" << default_ifname_ << "] to ["
             << ifname << "]";
 
-  // On ARC N, we only forward multicast packets between default interface and
-  // the bridge interface "arcbr0".
-  // ND proxy will not be started here as it will not be shipped to ARC N.
-  Device* device = FindByHostInterface("arcbr0");
-  if (device && device->UsesDefaultInterface() && device->IsFullyUp()) {
-    IpHelperMessage ipm;
-
-    // Stop multicast forwarder on the old default interface.
-    if (default_ifname_ != "") {
-      // TODO(jasongustaman): When more guests are introduced, teardown the
-      // bridge instead.
-      DeviceMessage stop_msg;
-      stop_msg.set_dev_ifname(default_ifname_);
-      stop_msg.set_teardown(true);
-      *ipm.mutable_device_message() = stop_msg;
-      mcast_proxy_->SendMessage(ipm);
-      mcast_proxy_->SendMessage(ipm);
-    }
-
-    // Start multicast forwarder on the new default interface.
-    if (ifname != "") {
-      DeviceMessage start_msg;
-      start_msg.set_dev_ifname(ifname);
-      start_msg.set_guest_ip4addr(device->config().guest_ipv4_addr());
-      start_msg.set_br_ifname(device->config().host_ifname());
-      *ipm.mutable_device_message() = start_msg;
-      mcast_proxy_->SendMessage(ipm);
-    }
+  for (const auto& d : devices_) {
+    if (d.second->UsesDefaultInterface() && d.second->IsFullyUp())
+      StopForwarding(*d.second);
   }
 
   default_ifname_ = ifname;
+
+  for (const auto& d : devices_) {
+    if (d.second->UsesDefaultInterface() && d.second->IsFullyUp())
+      StartForwarding(*d.second);
+  }
+
   for (const auto& h : default_iface_handlers_) {
     h.second.Run(default_ifname_);
   }
+}
+
+void DeviceManager::StartForwarding(const Device& device) {
+  const std::string& ifname_physical =
+      device.UsesDefaultInterface() ? default_ifname_ : device.ifname();
+  if (ifname_physical.empty())
+    return;
+  const std::string& ifname_virtual = device.config().host_ifname();
+
+  LOG(INFO) << "Start forwarding from " << ifname_physical << " to "
+            << ifname_virtual;
+
+  DeviceMessage msg;
+  msg.set_dev_ifname(ifname_physical);
+  msg.set_guest_ip4addr(device.config().guest_ipv4_addr());
+  msg.set_br_ifname(ifname_virtual);
+
+  IpHelperMessage ipm;
+  *ipm.mutable_device_message() = msg;
+
+  if (nd_proxy_ && device.options().ipv6_enabled) {
+    if (!datapath_->AddIPv6Forwarding(ifname_physical, ifname_virtual)) {
+      LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
+                 << ifname_physical << " to " << ifname_virtual;
+    }
+    if (!datapath_->SetInterfaceFlag(ifname_physical, IFF_ALLMULTI)) {
+      LOG(WARNING) << "Failed to setup all multicast mode for interface "
+                   << ifname_physical;
+    }
+    if (!datapath_->SetInterfaceFlag(ifname_virtual, IFF_ALLMULTI)) {
+      LOG(WARNING) << "Failed to setup all multicast mode for interface "
+                   << ifname_virtual;
+    }
+    nd_proxy_->SendMessage(ipm);
+  }
+  if (device.options().fwd_multicast)
+    mcast_proxy_->SendMessage(ipm);
+}
+
+void DeviceManager::StopForwarding(const Device& device) {
+  const std::string& ifname_physical =
+      device.UsesDefaultInterface() ? default_ifname_ : device.ifname();
+  if (ifname_physical.empty())
+    return;
+  const std::string& ifname_virtual = device.config().host_ifname();
+
+  LOG(INFO) << "Stop forwarding from " << ifname_physical << " to "
+            << ifname_virtual;
+
+  DeviceMessage msg;
+  msg.set_dev_ifname(ifname_physical);
+  msg.set_teardown(true);
+
+  IpHelperMessage ipm;
+  *ipm.mutable_device_message() = msg;
+
+  if (nd_proxy_ && device.options().ipv6_enabled) {
+    datapath_->RemoveIPv6Forwarding(ifname_physical, ifname_virtual);
+    nd_proxy_->SendMessage(ipm);
+  }
+  if (device.options().fwd_multicast)
+    mcast_proxy_->SendMessage(ipm);
 }
 
 void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
@@ -498,5 +469,4 @@ void DeviceManager::OnIPv6AddressFound(Device* device) {
     h.second.Run(device);
   }
 }
-
 }  // namespace arc_networkd

@@ -245,10 +245,27 @@ TEST(DatapathTest, AddIPv6Forwarding) {
   FakeProcessRunner runner;
   runner.Capture(true);
   Datapath datapath(&runner);
+  // Return 1 on iptables -C to simulate rule not existing case
+  auto fake_iptables_run = [](const std::vector<std::string>& argv) {
+    return std::find(argv.begin(), argv.end(), "-C") == argv.end() ? 0 : 1;
+  };
+  runner.SetRunOverride(base::Bind(fake_iptables_run));
   datapath.AddIPv6Forwarding("eth0", "arc_eth0");
   runner.VerifyRuns(
-      {"/sbin/ip6tables -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
+      {"/sbin/ip6tables -C FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
+       "/sbin/ip6tables -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
+       "/sbin/ip6tables -C FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w",
        "/sbin/ip6tables -A FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
+}
+
+TEST(DatapathTest, AddIPv6ForwardingRuleExists) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.AddIPv6Forwarding("eth0", "arc_eth0");
+  runner.VerifyRuns(
+      {"/sbin/ip6tables -C FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
+       "/sbin/ip6tables -C FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
 }
 
 TEST(DatapathTest, RemoveIPv6Forwarding) {

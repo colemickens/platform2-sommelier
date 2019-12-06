@@ -26,6 +26,8 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   int Run(const std::vector<std::string>& argv, bool log_failures) override {
     if (capture_)
       runs_->emplace_back(base::JoinString(argv, " "));
+    if (run_override_)
+      return run_override_.Run(argv);
     return 0;
   }
 
@@ -95,8 +97,14 @@ class FakeProcessRunner : public MinijailedProcessRunner {
     return 0;
   }
 
+  void SetRunOverride(
+      base::Callback<int(const std::vector<std::string>&)> callback) {
+    run_override_ = callback;
+  }
+
  private:
   bool capture_ = false;
+  base::Callback<int(const std::vector<std::string>&)> run_override_;
   std::vector<std::string>* runs_;
   std::vector<std::string> runs_vec_;
   std::string add_host_ifname_;

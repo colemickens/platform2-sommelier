@@ -135,6 +135,9 @@ class DeviceManager : public DeviceManagerBase {
   // run state.
   void LinkMsgHandler(const shill::RTNLMessage& msg);
 
+  void StartForwarding(const Device& device);
+  void StopForwarding(const Device& device);
+
   // Listens for RTMGRP_LINK messages and invokes LinkMsgHandler.
   std::unique_ptr<shill::RTNLListener> link_listener_;
 

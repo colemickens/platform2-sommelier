@@ -451,12 +451,18 @@ void Datapath::RemoveIPv6Neighbor(const std::string& ifname,
 
 bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
                                  const std::string& ifname2) {
-  if (process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname1,
+  if (process_runner_->Run({kIp6TablesPath, "-C", "FORWARD", "-i", ifname1,
+                            "-o", ifname2, "-j", "ACCEPT", "-w"},
+                           false) != 0 &&
+      process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname1,
                             "-o", ifname2, "-j", "ACCEPT", "-w"}) != 0) {
     return false;
   }
 
-  if (process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname2,
+  if (process_runner_->Run({kIp6TablesPath, "-C", "FORWARD", "-i", ifname2,
+                            "-o", ifname1, "-j", "ACCEPT", "-w"},
+                           false) != 0 &&
+      process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname2,
                             "-o", ifname1, "-j", "ACCEPT", "-w"}) != 0) {
     RemoveIPv6Forwarding(ifname1, ifname2);
     return false;
