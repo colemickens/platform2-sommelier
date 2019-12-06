@@ -122,10 +122,10 @@ int main(int argc, char** argv) {
       SIGTERM, base::Bind(&TearDownFromSignal, base::Unretained(&mounter)));
 
   // Wait for poke from cryptohome, then clean up mounts.
-  message_loop.WatchFileDescriptor(
-      FROM_HERE, STDIN_FILENO, brillo::MessageLoop::WatchMode::kWatchRead,
-      false /* persistent */,
-      base::Bind(&TearDownFromPoke, base::Unretained(&mounter)));
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher =
+      base::FileDescriptorWatcher::WatchReadable(
+          STDIN_FILENO,
+          base::Bind(&TearDownFromPoke, base::Unretained(&mounter)));
 
   message_loop.RunOnce(true /* may_block */);
 
