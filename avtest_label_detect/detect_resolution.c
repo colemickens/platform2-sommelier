@@ -4,20 +4,26 @@
 //
 // resolution detectors
 
+#if defined(USE_V4L2_CODEC)
 #include <linux/videodev2.h>
-#ifdef HAS_VAAPI
+#endif // defined(USE_V4L2_CODEC)
+
+#if defined(USE_VAAPI)
 #include <va/va.h>
-#endif
+#endif // defined(USE_VAAPI)
 
 #include "label_detect.h"
 
-static const char kVideoDevicePattern[] = "/dev/video*";
-static const char kDRMDevicePattern[] = "/dev/dri/renderD*";
+#if defined(USE_VAAPI) || defined(USE_V4L2_CODEC)
 static const int32_t width_4k = 3840;
 static const int32_t height_4k = 2160;
+#endif
 
-#ifdef HAS_VAAPI
+#if defined(USE_VAAPI)
 #if VA_CHECK_VERSION(0, 35, 0)
+
+static const char kDRMDevicePattern[] = "/dev/dri/renderD*";
+
 static const VAProfile va_profiles_h264[] = {
   VAProfileH264Baseline,
   VAProfileH264Main,
@@ -53,74 +59,42 @@ static bool is_vaapi_4k_device(int fd, const VAProfile* va_profiles,
   }
   return false;
 }
-#endif
-#endif
 
 // Determines if is_vaapi_4k_device() for H264 decoding.
 static bool is_vaapi_4k_device_dec_h264(int fd) {
-#ifdef HAS_VAAPI
-#if VA_CHECK_VERSION(0, 35, 0)
-  if (is_vaapi_4k_device(fd, va_profiles_h264, VAEntrypointVLD))
-    return true;
-#endif
-#endif
-  return false;
+  return is_vaapi_4k_device(fd, va_profiles_h264, VAEntrypointVLD);
 }
 
 // Determines if is_vaapi_4k_device() for H264 encoding.
 static bool is_vaapi_4k_device_enc_h264(int fd) {
-#ifdef HAS_VAAPI
-#if VA_CHECK_VERSION(0, 35, 0)
-  if (is_vaapi_4k_device(fd, va_profiles_h264, VAEntrypointEncSlice))
-    return true;
-#endif
-#endif
-  return false;
+  return is_vaapi_4k_device(fd, va_profiles_h264, VAEntrypointEncSlice);
 }
 
 // Determines if is_vaapi_4k_device() for VP8 decoding.
 static bool is_vaapi_4k_device_dec_vp8(int fd) {
-#ifdef HAS_VAAPI
-#if VA_CHECK_VERSION(0, 35, 0)
-  if (is_vaapi_4k_device(fd, va_profiles_vp8, VAEntrypointVLD))
-    return true;
-#endif
-#endif
-  return false;
+  return is_vaapi_4k_device(fd, va_profiles_vp8, VAEntrypointVLD);
 }
 
 // Determines if is_vaapi_4k_device() for VP8 encoding.
 static bool is_vaapi_4k_device_enc_vp8(int fd) {
-#ifdef HAS_VAAPI
-#if VA_CHECK_VERSION(0, 35, 0)
-  if (is_vaapi_4k_device(fd, va_profiles_vp8, VAEntrypointEncSlice))
-    return true;
-#endif
-#endif
-  return false;
+  return is_vaapi_4k_device(fd, va_profiles_vp8, VAEntrypointEncSlice);
 }
 
 // Determines if is_vaapi_4k_device() for VP9 decoding.
 static bool is_vaapi_4k_device_dec_vp9(int fd) {
-#ifdef HAS_VAAPI
-#if VA_CHECK_VERSION(0, 35, 0)
-  if (is_vaapi_4k_device(fd, va_profiles_vp9, VAEntrypointVLD))
-    return true;
-#endif
-#endif
-  return false;
+  return is_vaapi_4k_device(fd, va_profiles_vp9, VAEntrypointVLD);
 }
 
 // Determines if is_vaapi_4k_device() for VP9 encoding.
 static bool is_vaapi_4k_device_enc_vp9(int fd) {
-#ifdef HAS_VAAPI
-#if VA_CHECK_VERSION(0, 35, 0)
-  if (is_vaapi_4k_device(fd, va_profiles_vp9, VAEntrypointEncSlice))
-    return true;
-#endif
-#endif
-  return false;
+  return is_vaapi_4k_device(fd, va_profiles_vp9, VAEntrypointEncSlice);
 }
+#endif // VA_CHECK_VERSION(0, 38, 1)
+#endif // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+
+static const char kVideoDevicePattern[] = "/dev/video*";
 
 /* Determined if a V4L2 device associated with given |fd| supports |pix_fmt|
  * for |buf_type|, and its maximum resolution is larger than 3840x2160.
@@ -183,14 +157,25 @@ static bool is_v4l2_4k_device_enc_vp9(int fd) {
                            V4L2_PIX_FMT_VP9);
 }
 
+#endif // defined(USE_V4L2_CODEC)
+
 /* Determines "4k_video_h264". Return true, if either the VAAPI device
  * supports 4k resolution H264 decoding, has decoding entry point,
  * and input YUV420 formats. Or there is a
  * /dev/video* device supporting 4k resolution H264 decoding.
  */
 bool detect_4k_device_h264(void) {
-  return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_h264) ||
-          is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_h264));
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_h264))
+    return true;
+#endif // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_h264))
+    return true;
+#endif // defined(USE_V4L2_CODEC)
+
+  return false;
 }
 
 /* Determines "4k_video_vp8". Return true, if either the VAAPI device
@@ -199,8 +184,17 @@ bool detect_4k_device_h264(void) {
  * /dev/video* device supporting 4k resolution VP8 decoding.
  */
 bool detect_4k_device_vp8(void) {
-  return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_vp8) ||
-          is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp8));
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_vp8))
+    return true;
+#endif // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp8))
+    return true;
+#endif // defined(USE_V4L2_CODEC)
+
+  return false;
 }
 
 /* Determines "4k_video_vp9". Return true, if either the VAAPI device
@@ -209,8 +203,17 @@ bool detect_4k_device_vp8(void) {
  * /dev/video* device supporting 4k resolution VP9 decoding.
  */
 bool detect_4k_device_vp9(void) {
-  return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_vp9) ||
-          is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9));
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_vp9))
+    return true;
+#endif // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9))
+    return true;
+#endif // defined(USE_V4L2_CODEC)
+
+  return false;
 }
 
 /* Determines "4k_video_enc_h264". Return true, if either the VAAPI device
@@ -219,8 +222,17 @@ bool detect_4k_device_vp9(void) {
  * /dev/video* device supporting 4k resolution H264 encoding.
  */
 bool detect_4k_device_enc_h264(void) {
-  return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_enc_h264) ||
-          is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_h264));
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_enc_h264))
+    return true;
+#endif // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_h264))
+    return true;
+#endif // defined(USE_V4L2_CODEC)
+
+  return false;
 }
 
 /* Determines "4k_video_enc_vp8". Return true, if either the VAAPI device
@@ -229,8 +241,17 @@ bool detect_4k_device_enc_h264(void) {
  * /dev/video* device supporting 4k resolution VP8 encoding.
  */
 bool detect_4k_device_enc_vp8(void) {
-  return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_enc_vp8) ||
-          is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp8));
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_enc_vp8))
+    return true;
+#endif // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp8))
+    return true;
+#endif // defined(USE_V4L2_CODEC)
+
+  return false;
 }
 
 /* Determines "4k_video_enc_vp9". Return true, if either the VAAPI device
@@ -239,6 +260,15 @@ bool detect_4k_device_enc_vp8(void) {
  * /dev/video* device supporting 4k resolution VP9 encoding.
  */
 bool detect_4k_device_enc_vp9(void) {
-  return (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_enc_vp9) ||
-          is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp9));
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_enc_vp9))
+    return true;
+#endif // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp9))
+    return true;
+#endif // defined(USE_V4L2_CODEC)
+
+  return false;
 }

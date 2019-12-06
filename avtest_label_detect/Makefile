@@ -6,11 +6,15 @@ include common.mk
 
 PC_DEPS =
 
-USE_VAAPI ?= $(if $(filter $(ARCH),amd64 x86),yes,no)
 ifeq ($(USE_VAAPI),yes)
-  CPPFLAGS += -DHAS_VAAPI
+  CPPFLAGS += -DUSE_VAAPI
   PC_DEPS += libva-drm
   VAAPI_OBJS = $(filter util_vaapi.o,$(C_OBJECTS))
+endif
+
+ifeq ($(USE_V4L2_CODEC),yes)
+  CPPFLAGS += -DUSE_V4L2_CODEC
+  V4L2_OBJS = $(filter util_v4l2.o,$(C_OBJECTS))
 endif
 
 ifneq ($(PC_DEPS),)
@@ -22,8 +26,8 @@ CPPFLAGS += $(PC_CFLAGS)
 LDLIBS += $(PC_LIBS)
 
 CC_BINARY(avtest_label_detect): \
-  $(filter-out util_vaapi.o,$(C_OBJECTS)) \
-  $(VAAPI_OBJS)
+  $(filter-out util_vaapi.o util_v4l2.o,$(C_OBJECTS)) \
+  $(VAAPI_OBJS) $(V4L2_OBJS)
 
 all: CC_BINARY(avtest_label_detect)
 clean: CLEAN(CC_BINARY(avtest_label_detect))
