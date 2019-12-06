@@ -373,7 +373,7 @@ HomeDirs::FreeSpaceState HomeDirs::GetFreeDiskSpaceState(
     return HomeDirs::FreeSpaceState::kAboveTarget;
   } else if (free_disk_space >= kFreeSpaceThresholdToTriggerCleanup) {
     return HomeDirs::FreeSpaceState::kAboveThreshold;
-  } else if (free_disk_space >= kMinFreeSpaceInBytes) {
+  } else if (free_disk_space >= kFreeSpaceThresholdToTriggerAggressiveCleanup) {
     return HomeDirs::FreeSpaceState::kNeedNormalCleanup;
   } else {
     return HomeDirs::FreeSpaceState::kNeedAggressiveCleanup;

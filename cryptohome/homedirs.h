@@ -39,6 +39,8 @@ const uid_t kArcContainerShiftUid = 655360;
 // The gid shift of ARC++ container.
 const gid_t kArcContainerShiftGid = 655360;
 const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
+const int64_t kFreeSpaceThresholdToTriggerAggressiveCleanup =
+                                      768 * 1024 * 1024;
 const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
 extern const char kAndroidCacheFilesAttribute[];
 extern const char kAndroidCacheInodeAttribute[];
@@ -103,8 +105,10 @@ class HomeDirs {
   //   kAboveThreshold: kTargetFreeSpaceAfterCleanup > free_disk_space =>
   //                      kFreeSpaceThresholdToTriggerCleanup
   //   kNeedNormalCleanup: kFreeSpaceThresholdToTriggerCleanup >
-  //                      free_disk_space => kMinFreeSpaceInBytes
-  //   kNeedAggressiveCleanup: kMinFreeSpaceInBytes > free_disk_space
+  //                      free_disk_space =>
+  //                      kFreeSpaceThresholdToTriggerAggressiveCleanup
+  //   kNeedAggressiveCleanup: kFreeSpaceThresholdToTriggerAggressiveCleanup >
+  //                      free_disk_space
   virtual FreeSpaceState GetFreeDiskSpaceState(int64_t free_disk_space) const;
 
   // Uses AmountOfFreeDiskSpace to get the current amount of free disk space and

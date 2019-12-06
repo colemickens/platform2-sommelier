@@ -931,8 +931,8 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
       .WillOnce(Return(0))  // Before cleanup
       .WillOnce(Return(0))  // After removing cache
-      .WillRepeatedly(
-          Return(kMinFreeSpaceInBytes + 1));  // After removing gcache
+      .WillRepeatedly(  // After removing gcache
+          Return(kFreeSpaceThresholdToTriggerAggressiveCleanup + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(Property(&FilePath::value,
@@ -991,8 +991,8 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
   homedirs_.FreeDiskSpace();
 
   // Should finish cleaning up because the free space size exceeds
-  // |kMinFreeSpaceInBytes| after deleting gcache, although it's still
-  // below |kTargetFreeSpaceAfterCleanup|.
+  // |kFreeSpaceThresholdToTriggerAggressiveCleanup| after deleting gcache,
+  // although it's still below |kTargetFreeSpaceAfterCleanup|.
   EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
@@ -1004,8 +1004,9 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
       .WillOnce(Return(0))
       .WillOnce(Return(0))
-      .WillOnce(Return(kMinFreeSpaceInBytes - 1))
-      .WillRepeatedly(Return(kMinFreeSpaceInBytes + 1));
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerAggressiveCleanup - 1))
+      .WillRepeatedly(
+        Return(kFreeSpaceThresholdToTriggerAggressiveCleanup + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(Property(&FilePath::value,
@@ -1115,8 +1116,8 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
   homedirs_.FreeDiskSpace();
 
   // Should finish cleaning up because the free space size exceeds
-  // |kMinFreeSpaceInBytes| after deleting Android cache, although it's still
-  // below |kTargetFreeSpaceAfterCleanup|.
+  // |kFreeSpaceThresholdToTriggerAggressiveCleanup| after deleting Android
+  // cache, although it's still below |kTargetFreeSpaceAfterCleanup|.
   EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
