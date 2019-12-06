@@ -278,7 +278,7 @@ do whatever makes sense in the YAML (from a sharing perspective) as long as it
 generates compliant JSON that passes the schema validation.
 
 The schema documentation is auto-generated (and put into this README.md file)
-via: python2 -m cros_config_host.generate_schema_doc -o README.md
+via: python -m cros_config_host.generate_schema_doc -o README.md
 
 The schema definition is below:
 
@@ -581,7 +581,7 @@ chromeos-config/cros_config_host/cros_config_schema.yaml
 Then update the `README.md` automatically via (unit tests will check this):
 
 ```bash
-(chroot) $ python2 -m cros_config_host.generate_schema_doc -o README.md
+(chroot) $ python -m cros_config_host.generate_schema_doc -o README.md
 ```
 
 To install the updated schema, run:

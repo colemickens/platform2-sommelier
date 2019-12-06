@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -47,7 +47,7 @@ class SchemaTests(unittest.TestCase):
             output_lines,
             readme_schema_lines,
             'Schema does not match README.\n'
-            'Please run: python2 -m cros_config_host.generate_schema_doc '
+            'Please run: python -m cros_config_host.generate_schema_doc '
             '-o README.md')
 
     os.remove(output)

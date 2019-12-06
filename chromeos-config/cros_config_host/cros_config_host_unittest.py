@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -12,7 +12,7 @@ import os
 import subprocess
 import unittest
 
-CLI_FILE = 'python2 -m cros_config_host.cros_config_host'
+CLI_FILE = 'python -m cros_config_host.cros_config_host'
 YAML_FILE = '../libcros_config/test.yaml'
 
 

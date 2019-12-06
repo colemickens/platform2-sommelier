@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -87,7 +87,7 @@ class MergeDictionaries(cros_test_lib.TestCase):
 class ParseArgsTests(cros_test_lib.TestCase):
 
   def testParseArgs(self):
-    argv = ['-s', 'schema', '-c', 'config', '-o', 'output', '-f' 'True']
+    argv = ['-s', 'schema', '-c', 'config', '-o', 'output', '-f', 'True']
     args = cros_config_schema.ParseArgs(argv)
     self.assertEqual(args.schema, 'schema')
     self.assertEqual(args.config, 'config')
@@ -95,10 +95,10 @@ class ParseArgsTests(cros_test_lib.TestCase):
     self.assertTrue(args.filter)
 
   def testParseArgsForConfigs(self):
-    argv = ['-o', 'output', '-m' 'm1' 'm2' 'm3']
+    argv = ['-o', 'output', '-m', 'm1', 'm2', 'm3']
     args = cros_config_schema.ParseArgs(argv)
     self.assertEqual(args.output, 'output')
-    self.assertEqual(args.configs, ['m1' 'm2' 'm3'])
+    self.assertEqual(args.configs, ['m1', 'm2', 'm3'])
 
 
 class TransformConfigTests(cros_test_lib.TestCase):
@@ -463,7 +463,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         json_output,
         gen_c_output_dir=self.tempdir)
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython2 -m cros_config_host.cros_config_schema '
+                 '\tpython -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test.yaml '
                  '-o libcros_config/test_build.json '
                  '-g libcros_config')
@@ -484,7 +484,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         filter_build_details=True)
 
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython2 -m cros_config_host.cros_config_schema '
+                 '\tpython -m cros_config_host.cros_config_schema '
                  '-f True '
                  '-c libcros_config/test.yaml '
                  '-o libcros_config/test.json')
@@ -502,7 +502,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         filter_build_details=True,
         gen_c_output_dir=self.tempdir)
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython2 -m cros_config_host.cros_config_schema '
+                 '\tpython -m cros_config_host.cros_config_schema '
                  '-f True '
                  '-c libcros_config/test_arm.yaml '
                  '-o libcros_config/test_arm.json '
@@ -522,7 +522,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         os.path.join(this_dir, '../libcros_config/test_import.yaml'),
         output)
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython2 -m cros_config_host.cros_config_schema '
+                 '\tpython -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test_import.yaml '
                  '-o libcros_config/test_import.json')
     expected_file = os.path.join(this_dir, '../libcros_config/test_import.json')
@@ -538,7 +538,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         configs=[os.path.join(base_path, 'test_merge_base.yaml'),
                  os.path.join(base_path, 'test_merge_overlay.yaml')])
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython2 -m cros_config_host.cros_config_schema '
+                 '\tpython -m cros_config_host.cros_config_schema '
                  '-o libcros_config/test_merge.json '
                  '-m libcros_config/test_merge_base.yaml '
                  'libcros_config/test_merge_overlay.yaml')

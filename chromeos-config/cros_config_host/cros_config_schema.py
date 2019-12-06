@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -581,7 +581,6 @@ def _GetValidSchemaProperties(schema_node, path, result):
 
 class ValidationError(Exception):
   """Exception raised for a validation error"""
-  pass
 
 
 def _ValidateUniqueIdentities(json_config):
