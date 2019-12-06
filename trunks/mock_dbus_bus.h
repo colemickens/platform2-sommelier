@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TRUNKS_MOCK_DBUS_H_
-#define TRUNKS_MOCK_DBUS_H_
+#ifndef TRUNKS_MOCK_DBUS_BUS_H_
+#define TRUNKS_MOCK_DBUS_BUS_H_
 
 #include <string>
 
@@ -27,4 +27,4 @@ class MockDBusBus : public dbus::Bus {
 
 }  // namespace trunks
 
-#endif  // TRUNKS_MOCK_DBUS_H_
+#endif  // TRUNKS_MOCK_DBUS_BUS_H_

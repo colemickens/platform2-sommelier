@@ -70,22 +70,11 @@ _BASIC_TYPES = ['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
 _OUTPUT_FILE_H = 'tpm_generated.h'
 _OUTPUT_FILE_CC = 'tpm_generated.cc'
 _COPYRIGHT_HEADER = (
-    '//\n'
-    '// Copyright (C) 2015 The Android Open Source Project\n'
-    '//\n'
-    '// Licensed under the Apache License, Version 2.0 (the "License");\n'
-    '// you may not use this file except in compliance with the License.\n'
-    '// You may obtain a copy of the License at\n'
-    '//\n'
-    '//      http://www.apache.org/licenses/LICENSE-2.0\n'
-    '//\n'
-    '// Unless required by applicable law or agreed to in writing, software\n'
-    '// distributed under the License is distributed on an "AS IS" BASIS,\n'
-    '// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or '
-    'implied.\n'
-    '// See the License for the specific language governing permissions and\n'
-    '// limitations under the License.\n'
-    '//\n\n'
+    '// Copyright 2019 The Chromium OS Authors. All rights reserved.\n'
+    '// Use of this source code is governed by a '
+    'BSD-style license that can be\n'
+    '// found in the LICENSE file.\n'
+    '\n'
     '// THIS CODE IS GENERATED - DO NOT MODIFY!\n')
 _HEADER_FILE_GUARD_HEADER = """
 #ifndef %(name)s

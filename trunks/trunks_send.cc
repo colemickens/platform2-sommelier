@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
-#include <openssl/sha.h>
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -12,6 +11,7 @@
 #include <base/sys_byteorder.h>
 #include <brillo/syslog_logging.h>
 #include <crypto/sha2.h>
+#include <openssl/sha.h>
 
 #include "trunks/trunks_dbus_proxy.h"
 
@@ -387,7 +387,7 @@ static bool ImageIsNewer(const EssentialHeader &header,
 // version is not older than the one in |update_image| is considered a success.
 //
 static bool TransferSection(TrunksDBusProxy* proxy,
-                            std::string &update_image,
+                            const std::string &update_image,
                             uint32_t section_offset,
                             const SignedHeaderVersion &shv,
                             bool force) {
@@ -451,7 +451,7 @@ static bool TransferSection(TrunksDBusProxy* proxy,
 // a negative value in case of error.
 //
 static int TransferImage(TrunksDBusProxy* proxy,
-                         std::string &update_image,
+                         const std::string &update_image,
                          const FirstResponsePdu &rpdu,
                          bool force) {
   int num_txed_sections = 0;

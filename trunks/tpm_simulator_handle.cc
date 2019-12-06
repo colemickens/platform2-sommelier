@@ -8,11 +8,11 @@
 
 #if defined(USE_SIMULATOR)
 extern "C" {
-#include <tpm2/BaseTypes.h>
-#include <tpm2/TpmBuildSwitches.h>
 #include <tpm2/_TPM_Init_fp.h>
+#include <tpm2/BaseTypes.h>
 #include <tpm2/ExecCommand_fp.h>
-#include <tpm2/Manufacture_fp.h>
+#include <tpm2/TpmBuildSwitches.h>
+#include <tpm2/Manufacture_fp.h>  // NOLINT(build/include_alpha) - needs TpmBuildSwitches.h
 #include <tpm2/Platform.h>
 }  // extern "C"
 #endif  // USE_SIMULATOR
