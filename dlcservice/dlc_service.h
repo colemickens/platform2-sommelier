@@ -138,7 +138,7 @@ class DlcService {
   // DLC modules being installed. An empty module infos signifies no install.
   DlcModuleList dlc_modules_being_installed_;
 
-  std::string current_boot_slot_name_;
+  BootSlot::Slot current_boot_slot_;
 
   // Map of currently existing DLC modules with it's corresponding DLC root.
   DlcRootMap installed_dlc_modules_;

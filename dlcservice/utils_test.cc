@@ -30,25 +30,16 @@ TEST(UtilsTest, GetDlcPackagePathTest) {
             "/tmp/dlc/id/package");
 }
 
-TEST(UtilsTest, GetDlcImagePathBadSlotTest) {
-  // IF current_slot is negative, THEN GetDlcImagePath() returns an empty
-  // path.
-  EXPECT_TRUE(utils::GetDlcImagePath(base::FilePath(kDlcRootPath), kDlcId,
-                                     kDlcPackage, -1)
-                  .value()
-                  .empty());
-}
-
-TEST(UtilsTest, GetDlcImagePathA) {
+TEST(UtilsTest, GetDlcModuleImagePathA) {
   EXPECT_EQ(utils::GetDlcImagePath(base::FilePath(kDlcRootPath), kDlcId,
-                                   kDlcPackage, 0)
+                                   kDlcPackage, BootSlot::Slot::A)
                 .value(),
             "/tmp/dlc/id/package/dlc_a/dlc.img");
 }
 
-TEST(UtilsTest, GetDlcImagePathB) {
+TEST(UtilsTest, GetDlcModuleImagePathB) {
   EXPECT_EQ(utils::GetDlcImagePath(base::FilePath(kDlcRootPath), kDlcId,
-                                   kDlcPackage, 1)
+                                   kDlcPackage, BootSlot::Slot::B)
                 .value(),
             "/tmp/dlc/id/package/dlc_b/dlc.img");
 }

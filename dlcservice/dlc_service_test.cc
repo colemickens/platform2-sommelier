@@ -111,14 +111,14 @@ class DlcServiceTest : public testing::Test {
     }
 
     // Create DLC content sub-directories and empty images.
-    base::FilePath image_a_path =
-        utils::GetDlcImagePath(content_path_, kFirstDlc, kPackage, 0);
+    base::FilePath image_a_path = utils::GetDlcImagePath(
+        content_path_, kFirstDlc, kPackage, BootSlot::Slot::A);
     base::CreateDirectory(image_a_path.DirName());
     base::File image_a(image_a_path,
                        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
 
-    base::FilePath image_b_path =
-        utils::GetDlcImagePath(content_path_, kFirstDlc, kPackage, 1);
+    base::FilePath image_b_path = utils::GetDlcImagePath(
+        content_path_, kFirstDlc, kPackage, BootSlot::Slot::B);
     base::CreateDirectory(image_b_path.DirName());
     base::File image_b(image_b_path,
                        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
@@ -325,12 +325,12 @@ TEST_F(DlcServiceTest, InstallTest) {
       utils::GetDlcPackagePath(content_path_, kSecondDlc, kPackage);
   base::GetPosixFilePermissions(module_path, &permissions);
   EXPECT_EQ(permissions, expected_permissions);
-  base::FilePath image_a_path =
-      utils::GetDlcImagePath(content_path_, kSecondDlc, kPackage, 0);
+  base::FilePath image_a_path = utils::GetDlcImagePath(
+      content_path_, kSecondDlc, kPackage, BootSlot::Slot::A);
   base::GetPosixFilePermissions(image_a_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
-  base::FilePath image_b_path =
-      utils::GetDlcImagePath(content_path_, kSecondDlc, kPackage, 1);
+  base::FilePath image_b_path = utils::GetDlcImagePath(
+      content_path_, kSecondDlc, kPackage, BootSlot::Slot::B);
   base::GetPosixFilePermissions(image_b_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
   base::FilePath metadata_path =

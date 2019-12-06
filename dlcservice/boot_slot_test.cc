@@ -81,35 +81,9 @@ TEST_F(BootSlotTest, SplitPartitionNameTest) {
   EXPECT_FALSE(boot_slot_->SplitPartitionName("/dev/_100", &disk, &part_num));
 }
 
-TEST_F(BootSlotTest, GetPartitionNumberTest) {
-  // The partition name should not be case-sensitive.
-  EXPECT_EQ(2, boot_slot_->GetPartitionNumber("kernel", 0, 2));
-  EXPECT_EQ(2, boot_slot_->GetPartitionNumber("KERNEL", 0, 2));
-
-  EXPECT_EQ(3, boot_slot_->GetPartitionNumber("ROOT", 0, 2));
-
-  EXPECT_EQ(3, boot_slot_->GetPartitionNumber("ROOT", 0, 2));
-
-  // Slot B.
-  EXPECT_EQ(4, boot_slot_->GetPartitionNumber("KERNEL", 1, 2));
-  EXPECT_EQ(5, boot_slot_->GetPartitionNumber("ROOT", 1, 2));
-
-  // Slot C doesn't exists.
-  EXPECT_EQ(-1, boot_slot_->GetPartitionNumber("KERNEL", 2, 2));
-  EXPECT_EQ(-1, boot_slot_->GetPartitionNumber("ROOT", 2, 2));
-
-  // Non A/B partitions are ignored.
-  EXPECT_EQ(-1, boot_slot_->GetPartitionNumber("OEM", 0, 2));
-  EXPECT_EQ(-1, boot_slot_->GetPartitionNumber("A little panda", 0, 2));
-
-  // Number of slots is too small.
-  EXPECT_EQ(-1, boot_slot_->GetPartitionNumber("kernel", 2, 2));
-}
-
 TEST_F(BootSlotTest, GetCurrentSlotTest) {
   std::string boot_disk_name;
-  int num_slots;
-  int current_slot;
+  BootSlot::Slot current_slot;
 
   EXPECT_CALL(*boot_device_, GetBootDevice())
       .WillOnce(testing::Return("/dev/sda3"))
@@ -122,29 +96,22 @@ TEST_F(BootSlotTest, GetCurrentSlotTest) {
       .WillOnce(testing::Return(true));
 
   // Boot from A slot.
-  EXPECT_TRUE(
-      boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
+  EXPECT_TRUE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
   EXPECT_EQ(boot_disk_name, "/dev/sda");
-  EXPECT_EQ(num_slots, 2);
-  EXPECT_EQ(current_slot, 0);
+  EXPECT_EQ(current_slot, BootSlot::Slot::A);
 
   // Boot from B slot.
-  EXPECT_TRUE(
-      boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
+  EXPECT_TRUE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
   EXPECT_EQ(boot_disk_name, "/dev/sda");
-  EXPECT_EQ(num_slots, 2);
-  EXPECT_EQ(current_slot, 1);
+  EXPECT_EQ(current_slot, BootSlot::Slot::B);
 
   // Boot from removable device.
-  EXPECT_TRUE(
-      boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
+  EXPECT_TRUE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
   EXPECT_EQ(boot_disk_name, "/dev/sdb");
-  EXPECT_EQ(num_slots, 1);
-  EXPECT_EQ(current_slot, 0);
+  EXPECT_EQ(current_slot, BootSlot::Slot::A);
 
   // Boot from an invalid device.
-  EXPECT_FALSE(
-      boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
+  EXPECT_FALSE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
 }
 
 }  // namespace dlcservice

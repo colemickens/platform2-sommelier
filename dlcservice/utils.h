@@ -14,6 +14,7 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <libimageloader/manifest.h>
 
+#include "dlcservice/boot_slot.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {
@@ -48,10 +49,10 @@ base::FilePath GetDlcPackagePath(const base::FilePath& dlc_root_path,
                                  const std::string& package);
 
 // Returns the path to a DLC module image given the |id| and |package|.
-base::FilePath GetDlcImagePath(const base::FilePath& dlc_root_path,
+base::FilePath GetDlcImagePath(const base::FilePath& dlc_module_root_path,
                                const std::string& id,
                                const std::string& package,
-                               int current_slot);
+                               BootSlot::Slot current_slot);
 
 bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
                     const std::string& id,

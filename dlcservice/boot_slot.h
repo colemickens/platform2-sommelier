@@ -17,22 +17,24 @@ class BootDeviceInterface;
 
 class BootSlot {
  public:
+  enum class Slot : int {
+    A = 0,
+    B = 1,
+  };
+
   explicit BootSlot(std::unique_ptr<BootDeviceInterface> boot_device);
   ~BootSlot();
 
   // Gets the partition slot the system is currently booted from. Returns true
   // if the operation returns valid results, otherwise returns false.
   // |boot_disk_name_out| returns the device path of the disk the system is
-  // booted from. For example, "/dev/sda". |num_slots_out| returns the number of
-  // slots of the disk the system is booted from. |current_slot_out| returns the
-  // slot the system is currently booted from.
+  // booted from. For example, "/dev/sda". |current_slot_out| returns the slot
+  // the system is currently booted from.
   bool GetCurrentSlot(std::string* boot_disk_name_out,
-                      int* num_slots_out,
-                      int* current_slot_out);
+                      BootSlot::Slot* current_slot_out);
 
  private:
   FRIEND_TEST(BootSlotTest, SplitPartitionNameTest);
-  FRIEND_TEST(BootSlotTest, GetPartitionNumberTest);
 
   // Splits the partition device name into the block device name and partition
   // number. For example, "/dev/sda3" will be split into {"/dev/sda", 3} and
@@ -45,13 +47,6 @@ class BootSlot {
   bool SplitPartitionName(std::string partition_name,
                           std::string* disk_name_out,
                           int* partition_num_out);
-
-  // Return the hard-coded partition number used in Chrome OS for the passed
-  // |partition_name|, |slot| and |num_slots|. In case of invalid data, returns
-  // -1.
-  int GetPartitionNumber(const std::string& partition_name,
-                         int slot,
-                         int num_slots);
 
   std::unique_ptr<BootDeviceInterface> boot_device_;
 

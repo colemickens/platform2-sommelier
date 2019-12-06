@@ -10,6 +10,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "dlcservice/dlc_service.h"
+
 using base::FilePath;
 using std::pair;
 using std::set;
@@ -41,16 +43,12 @@ FilePath GetDlcPackagePath(const FilePath& dlc_root_path,
   return GetDlcPath(dlc_root_path, id).Append(package);
 }
 
-FilePath GetDlcImagePath(const FilePath& dlc_root_path,
+FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,
                          const string& id,
                          const string& package,
-                         int current_slot) {
-  if (current_slot < 0) {
-    LOG(ERROR) << "current_slot is negative:" << current_slot;
-    return FilePath();
-  }
-  return GetDlcPackagePath(dlc_root_path, id, package)
-      .Append(current_slot == 0 ? kDlcDirAName : kDlcDirBName)
+                         BootSlot::Slot slot) {
+  return GetDlcPackagePath(dlc_module_root_path, id, package)
+      .Append(slot == BootSlot::Slot::A ? kDlcDirAName : kDlcDirBName)
       .Append(kDlcImageFileName);
 }
 

@@ -18,23 +18,15 @@ using std::unique_ptr;
 
 namespace dlcservice {
 
-namespace {
-
-constexpr char kChromeOSPartitionNameKernel[] = "kernel";
-constexpr char kChromeOSPartitionNameRoot[] = "root";
-
-}  // namespace
-
 BootSlot::BootSlot(unique_ptr<BootDeviceInterface> boot_device)
     : boot_device_(std::move(boot_device)) {}
 
 BootSlot::~BootSlot() {}
 
 bool BootSlot::GetCurrentSlot(string* boot_disk_name_out,
-                              int* num_slots_out,
-                              int* current_slot_out) {
-  if (!boot_disk_name_out || !num_slots_out || !current_slot_out)
-    return false;
+                              Slot* current_slot_out) {
+  CHECK(boot_disk_name_out);
+  CHECK(current_slot_out);
 
   string boot_device = boot_device_->GetBootDevice();
   if (boot_device.empty())
@@ -46,36 +38,34 @@ bool BootSlot::GetCurrentSlot(string* boot_disk_name_out,
 
   // All installed Chrome OS devices have two slots. We don't update removable
   // devices, so we will pretend we have only one slot in that case.
-  if (boot_device_->IsRemovableDevice(*boot_disk_name_out)) {
+  if (boot_device_->IsRemovableDevice(*boot_disk_name_out))
     LOG(INFO)
         << "Booted from a removable device, pretending we have only one slot.";
-    *num_slots_out = 1;
-  } else {
-    // TODO(xiaochu): Look at the actual number of slots reported in the GPT.
-    *num_slots_out = 2;
+
+  // Search through the slots to see which slot has the |partition_num| we
+  // booted from.
+  // In Chrome OS, the partition numbers are hard-coded:
+  //   KERNEL-A=2, ROOT-A=3, KERNEL-B=4, ROOT-B=5, ...
+  // To help compatibility between different casing we accept both lowercase and
+  // uppercase names in the ChromeOS or Brillo standard names.
+  // See http://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
+  switch (partition_num) {
+    case 2:  // KERNEL-A=2
+    case 3:  // ROOT-A=2
+      *current_slot_out = Slot::A;
+      return true;
+    case 4:  // KERNEL-B=4
+    case 5:  // ROOT-B=5
+      *current_slot_out = Slot::B;
+      return true;
   }
 
-  // Search through the slots to see which slot has the partition_num we booted
-  // from. This should map to one of the existing slots, otherwise something is
-  // very wrong.
-  *current_slot_out = 0;
-  while (*current_slot_out < *num_slots_out &&
-         partition_num != GetPartitionNumber(kChromeOSPartitionNameRoot,
-                                             *current_slot_out,
-                                             *num_slots_out)) {
-    (*current_slot_out)++;
-  }
-  if (*current_slot_out >= *num_slots_out) {
-    LOG(ERROR) << "Couldn't find the slot number corresponding to the "
-                  "partition "
-               << boot_device << ", number of slots: " << *num_slots_out
-               << ". This device is not updateable.";
-    *num_slots_out = 1;
-    *current_slot_out = UINT_MAX;
-    return false;
-  }
-
-  return true;
+  // This should map to one of the existing slots, otherwise something is very
+  // wrong.
+  LOG(ERROR) << "Couldn't find the slot number corresponding to the "
+                "partition "
+             << boot_device << ". This device is not updateable.";
+  return false;
 }
 
 bool BootSlot::SplitPartitionName(string partition_name,
@@ -123,30 +113,6 @@ bool BootSlot::SplitPartitionName(string partition_name,
   }
   LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
   return false;
-}
-
-int BootSlot::GetPartitionNumber(const string& partition_name,
-                                 int slot,
-                                 int num_slots) {
-  if (slot >= num_slots) {
-    LOG(ERROR) << "Invalid slot number: " << slot << ", we only have "
-               << num_slots << " slot(s)";
-    return -1;
-  }
-
-  // In Chrome OS, the partition numbers are hard-coded:
-  //   KERNEL-A=2, ROOT-A=3, KERNEL-B=4, ROOT-B=4, ...
-  // To help compatibility between different we accept both lowercase and
-  // uppercase names in the ChromeOS or Brillo standard names.
-  // See http://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
-  string partition_lower = base::ToLowerASCII(partition_name);
-  int base_part_num = 2 + 2 * slot;
-  if (partition_lower == kChromeOSPartitionNameKernel)
-    return base_part_num + 0;
-  if (partition_lower == kChromeOSPartitionNameRoot)
-    return base_part_num + 1;
-  LOG(ERROR) << "Unknown Chrome OS partition name \"" << partition_name << "\"";
-  return -1;
 }
 
 }  // namespace dlcservice

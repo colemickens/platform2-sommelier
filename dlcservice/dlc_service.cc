@@ -109,14 +109,8 @@ DlcService::DlcService(
       weak_ptr_factory_(this) {
   // Get current boot slot.
   string boot_disk_name;
-  int num_slots = -1;
-  int current_boot_slot = -1;
-  if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots,
-                                  &current_boot_slot))
+  if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &current_boot_slot_))
     LOG(FATAL) << "Can not get current boot slot.";
-
-  current_boot_slot_name_ = current_boot_slot == 0 ? imageloader::kSlotNameA
-                                                   : imageloader::kSlotNameB;
 
   // Register D-Bus signal callbacks.
   update_engine_proxy_->RegisterStatusUpdateAdvancedSignalHandler(
@@ -545,7 +539,8 @@ bool DlcService::CreateDlc(const string& id,
   }
 
   // Creates image A.
-  FilePath image_a_path = utils::GetDlcImagePath(content_dir_, id, package, 0);
+  FilePath image_a_path =
+      utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::A);
   if (!CreateImageFile(image_a_path, image_size)) {
     LogAndSetError(err, kErrorInternal,
                    "Failed to create slot A DLC image file");
@@ -553,7 +548,8 @@ bool DlcService::CreateDlc(const string& id,
   }
 
   // Creates image B.
-  FilePath image_b_path = utils::GetDlcImagePath(content_dir_, id, package, 1);
+  FilePath image_b_path =
+      utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::B);
   if (!CreateImageFile(image_b_path, image_size)) {
     LogAndSetError(err, kErrorInternal, "Failed to create slot B image file");
     return false;
@@ -585,8 +581,10 @@ bool DlcService::MountDlc(const string& id,
                           string* mount_point,
                           brillo::ErrorPtr* err) {
   if (!image_loader_proxy_->LoadDlcImage(id, ScanDlcModulePackage(id),
-                                         current_boot_slot_name_, mount_point,
-                                         nullptr)) {
+                                         current_boot_slot_ == BootSlot::Slot::A
+                                             ? imageloader::kSlotNameA
+                                             : imageloader::kSlotNameB,
+                                         mount_point, nullptr)) {
     LogAndSetError(err, kErrorInternal, "Imageloader is not available.");
     return false;
   }
