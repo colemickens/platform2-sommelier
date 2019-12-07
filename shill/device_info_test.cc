@@ -878,50 +878,6 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
   EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address5));
 }
 
-TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
-  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  SendMessageToDeviceInfo(*message);
-
-  IPAddress address0(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address0.SetAddressFromString(kTestIPAddress0));
-
-  // There are no addresses on this interface.
-  EXPECT_FALSE(
-      device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
-
-  IPAddress address1(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address1,
-                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  // No current addresses are of the same family as |address0|.
-  EXPECT_FALSE(
-      device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
-
-  IPAddress address6(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address6.SetAddressFromString(kTestIPAddress6));
-  address6.set_prefix(kTestIPAddressPrefix0);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address6,
-                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  // |address0| is not reachable from |address6|.
-  EXPECT_FALSE(
-      device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
-
-  IPAddress address5(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
-  address5.set_prefix(kTestIPAddressPrefix0);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address5,
-                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  // |address0| is reachable from |address5| which is associated with the
-  // interface.
-  EXPECT_TRUE(device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
-}
-
 TEST_F(DeviceInfoTest, HasSubdir) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());

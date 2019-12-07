@@ -985,24 +985,6 @@ bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
   return true;
 }
 
-bool DeviceInfo::HasDirectConnectivityTo(int interface_index,
-                                         const IPAddress& address) const {
-  SLOG(this, 3) << __func__ << "(" << interface_index << ")";
-  const Info* info = GetInfo(interface_index);
-  if (!info) {
-    return false;
-  }
-
-  for (const auto& local_address : info->ip_addresses) {
-    if (local_address.address.family() == address.family() &&
-        local_address.address.CanReachAddress(address)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 bool DeviceInfo::GetFlags(int interface_index, unsigned int* flags) const {
   const Info* info = GetInfo(interface_index);
   if (!info) {

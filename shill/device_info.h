@@ -107,11 +107,6 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
                                          std::vector<IPAddress>* address_list,
                                          uint32_t* life_time_seconds);
 
-  // Returns true if any of the addresses on |interface_index| are on the
-  // same network prefix as |address|.
-  virtual bool HasDirectConnectivityTo(int interface_index,
-                                       const IPAddress& address) const;
-
   virtual bool CreateTunnelInterface(std::string* interface_name) const;
   virtual int OpenTunnelInterface(const std::string& interface_name) const;
   virtual bool DeleteInterface(int interface_index) const;

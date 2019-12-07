@@ -760,6 +760,17 @@ bool Device::IsUsingStaticNameServers() const {
   return selected_service_->HasStaticNameServers();
 }
 
+bool Device::HasDirectConnectivityTo(const IPAddress& address) const {
+  for (const auto& device_address :
+       manager()->device_info()->GetAddresses(interface_index())) {
+    if (device_address.family() == address.family() &&
+        device_address.CanReachAddress(address)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool Device::AcquireIPConfig() {
   return AcquireIPConfigWithLeaseName(string());
 }
@@ -1965,7 +1976,7 @@ bool Device::ResolvePeerMacAddress(const string& input,
 
   // Peer address was specified as an IP address which we need to resolve.
   const DeviceInfo* device_info = manager()->device_info();
-  if (!device_info->HasDirectConnectivityTo(interface_index_, ip_address)) {
+  if (!HasDirectConnectivityTo(ip_address)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "IP address is not local to this interface");
     return false;

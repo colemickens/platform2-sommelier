@@ -780,6 +780,10 @@ class Device : public base::RefCounted<Device> {
   // Indicates if the selected service is configured with static nameservers.
   bool IsUsingStaticNameServers() const;
 
+  // Returns true if any of the addresses for this Device are on the same
+  // network prefix as |address|.
+  bool HasDirectConnectivityTo(const IPAddress& address) const;
+
   // Use for unit test.
   void set_traffic_monitor_for_test(
       std::unique_ptr<TrafficMonitor> traffic_monitor);

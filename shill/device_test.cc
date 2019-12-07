@@ -1716,6 +1716,18 @@ TEST_F(DeviceTest, ResolvePeerMacAddress) {
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
+  IPAddress device_address(IPAddress::kFamilyIPv4);
+  ASSERT_TRUE(device_address.SetAddressAndPrefixFromString("192.168.5.2/24"));
+  EXPECT_CALL(device_info_, GetAddresses(device_->interface_index()))
+      .WillRepeatedly(Return(std::vector<IPAddress>{device_address}));
+
+  const char kResolvedMac[] = "00:11:22:33:44:55";
+  const ByteString kMacBytes(
+      Device::MakeHardwareAddressFromString(kResolvedMac));
+  EXPECT_CALL(device_info_,
+              GetMacAddressOfPeer(device_->interface_index(), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kMacBytes), Return(true)));
+
   // Invalid peer address (not a valid IP address nor MAC address).
   Error error;
   string result;
@@ -1724,27 +1736,13 @@ TEST_F(DeviceTest, ResolvePeerMacAddress) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 
   // No direct connectivity to the peer.
-  const char kPeerIp[] = "192.168.1.1";
   error.Reset();
-  EXPECT_CALL(device_info_,
-              HasDirectConnectivityTo(device_->interface_index(), _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(device_->ResolvePeerMacAddress(kPeerIp, &result, &error));
+  EXPECT_FALSE(device_->ResolvePeerMacAddress("192.168.1.1", &result, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
-  Mock::VerifyAndClearExpectations(&device_info_);
 
   // Provided IP address is in the ARP cache, return the resolved MAC address.
-  const char kResolvedMac[] = "00:11:22:33:44:55";
-  const ByteString kMacBytes(
-      Device::MakeHardwareAddressFromString(kResolvedMac));
   error.Reset();
-  EXPECT_CALL(device_info_,
-              HasDirectConnectivityTo(device_->interface_index(), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(device_info_,
-              GetMacAddressOfPeer(device_->interface_index(), _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kMacBytes), Return(true)));
-  EXPECT_TRUE(device_->ResolvePeerMacAddress(kPeerIp, &result, &error));
+  EXPECT_TRUE(device_->ResolvePeerMacAddress("192.168.5.1", &result, &error));
   EXPECT_EQ(kResolvedMac, result);
 }
 
