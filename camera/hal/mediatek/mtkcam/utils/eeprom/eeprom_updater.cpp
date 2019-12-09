@@ -37,13 +37,13 @@ int main(int argc, char* const argv[]) {
   char eeprom_buffer[4096];
   unsigned int file_size;
   file_size =
-      NSCam::Utils::loadFileToBuf(pInfo.main_sensor.eeprom_path.c_str(),
+      NSCam::Utils::loadFileToBuf(pInfo.wf_sensor.eeprom_path.c_str(),
                                   (unsigned char* const)eeprom_buffer, 4096);
   NSCam::Utils::saveBufToFile(CAL_DUMP_PATH "/main_sensor_eeprom",
                               (unsigned char* const)eeprom_buffer, file_size);
 
   file_size =
-      NSCam::Utils::loadFileToBuf(pInfo.sub_sensor.eeprom_path.c_str(),
+      NSCam::Utils::loadFileToBuf(pInfo.uf_sensor.eeprom_path.c_str(),
                                   (unsigned char* const)eeprom_buffer, 4096);
   NSCam::Utils::saveBufToFile(CAL_DUMP_PATH "/sub_sensor_eeprom",
                               (unsigned char* const)eeprom_buffer, file_size);

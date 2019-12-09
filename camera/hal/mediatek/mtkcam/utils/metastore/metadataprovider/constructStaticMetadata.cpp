@@ -153,14 +153,12 @@ status_t MetadataProvider::constructStaticMetadata(
     if (mInfo.getDeviceId() == 0) {
       mtkMetadata->remove(MTK_SENSOR_INFO_ORIENTATION);
       IMetadata::IEntry entryA(MTK_SENSOR_INFO_ORIENTATION);
-      entryA.push_back(sensor_info.main_sensor.orientation,
-                       Type2Type<MINT32>());
+      entryA.push_back(sensor_info.wf_sensor.orientation, Type2Type<MINT32>());
       mtkMetadata->update(MTK_SENSOR_INFO_ORIENTATION, entryA);
 
       mtkMetadata->remove(MTK_SENSOR_INFO_WANTED_ORIENTATION);
       IMetadata::IEntry entryB(MTK_SENSOR_INFO_WANTED_ORIENTATION);
-      entryB.push_back(sensor_info.main_sensor.orientation,
-                       Type2Type<MINT32>());
+      entryB.push_back(sensor_info.wf_sensor.orientation, Type2Type<MINT32>());
       mtkMetadata->update(MTK_SENSOR_INFO_WANTED_ORIENTATION, entryB);
 
       mtkMetadata->remove(MTK_SENSOR_INFO_FACING);
@@ -169,16 +167,16 @@ status_t MetadataProvider::constructStaticMetadata(
       mtkMetadata->update(MTK_SENSOR_INFO_FACING, entryC);
 
       MY_LOGE("sensor %d update orientation %d", mInfo.getDeviceId(),
-              sensor_info.main_sensor.orientation);
+              sensor_info.wf_sensor.orientation);
     } else if (mInfo.getDeviceId() == 1) {
       mtkMetadata->remove(MTK_SENSOR_INFO_ORIENTATION);
       IMetadata::IEntry entryA(MTK_SENSOR_INFO_ORIENTATION);
-      entryA.push_back(sensor_info.sub_sensor.orientation, Type2Type<MINT32>());
+      entryA.push_back(sensor_info.uf_sensor.orientation, Type2Type<MINT32>());
       mtkMetadata->update(MTK_SENSOR_INFO_ORIENTATION, entryA);
 
       mtkMetadata->remove(MTK_SENSOR_INFO_WANTED_ORIENTATION);
       IMetadata::IEntry entryB(MTK_SENSOR_INFO_WANTED_ORIENTATION);
-      entryB.push_back(sensor_info.sub_sensor.orientation, Type2Type<MINT32>());
+      entryB.push_back(sensor_info.uf_sensor.orientation, Type2Type<MINT32>());
       mtkMetadata->update(MTK_SENSOR_INFO_WANTED_ORIENTATION, entryB);
 
       mtkMetadata->remove(MTK_SENSOR_INFO_FACING);
@@ -187,14 +185,13 @@ status_t MetadataProvider::constructStaticMetadata(
       mtkMetadata->update(MTK_SENSOR_INFO_FACING, entryC);
 
       MY_LOGE("sensor %d update orientation %d", mInfo.getDeviceId(),
-              sensor_info.sub_sensor.orientation);
+              sensor_info.uf_sensor.orientation);
     }
     // AF
     if (mInfo.getDeviceId() == 0) {
-      if (sensor_info.main_sensor.minFocusDistance ==
-          0) {  // fixed focus, update
+      if (sensor_info.wf_sensor.minFocusDistance == 0) {  // fixed focus, update
         MY_LOGE("main.minFocusDistance: %f, remove AF regions in availableKeys",
-                sensor_info.main_sensor.minFocusDistance);
+                sensor_info.wf_sensor.minFocusDistance);
         // MTK_CONTROL_AF_REGIONS
         auto availRequestEntry =
             mtkMetadata->entryFor(MTK_REQUEST_AVAILABLE_REQUEST_KEYS);

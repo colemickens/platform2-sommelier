@@ -33,8 +33,8 @@ struct CameraInfo {
 };
 
 struct PlatformInfo {
-  CameraInfo main_sensor;
-  CameraInfo sub_sensor;
+  CameraInfo wf_sensor;  // world facing sensor
+  CameraInfo uf_sensor;  // user facing sensor
 };
 
 class VISIBILITY_PUBLIC TuningPlatformInfo {

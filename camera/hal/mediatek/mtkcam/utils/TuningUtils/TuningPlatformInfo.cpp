@@ -37,9 +37,9 @@ int GetTuningIndex(int sensor_id) {
   PlatformInfo sensor_info;
   tuning_info.getTuningInfo(&sensor_info);
   if (sensor_id == 0) {
-    return sensor_info.main_sensor.tuning_module_id;
+    return sensor_info.wf_sensor.tuning_module_id;
   } else if (sensor_id == 1) {
-    return sensor_info.sub_sensor.tuning_module_id;
+    return sensor_info.uf_sensor.tuning_module_id;
   } else {
     CAM_LOGE("%s: sensor id out of range", __func__);
     return 0;
@@ -56,27 +56,27 @@ void TuningPlatformInfo::getTuningInfo(PlatformInfo* info) {
   else
     camera_config = cros::CameraConfig::Create("/etc/camera/camera_info.json");
 
-  info->main_sensor.tuning_module_id =
-      camera_config->GetInteger("main_sensor_tuning_module_id", 0);
-  info->main_sensor.mirror = camera_config->GetInteger("main_sensor_mirror", 0);
-  info->main_sensor.flip = camera_config->GetInteger("main_sensor_flip", 0);
-  info->main_sensor.eeprom_path = camera_config->GetString(
-      "main_sensor_eeprom", "/sys/bus/nvmem/devices/2-00500/nvmem");
-  info->main_sensor.orientation =
-      camera_config->GetInteger("main_sensor_orientation", 0);
-  info->main_sensor.minFocusDistance =
-      camera_config->GetInteger("main_sensor_minFocusDistance", 0);
+  info->wf_sensor.tuning_module_id =
+      camera_config->GetInteger("wf_sensor_tuning_module_id", 0);
+  info->wf_sensor.mirror = camera_config->GetInteger("wf_sensor_mirror", 0);
+  info->wf_sensor.flip = camera_config->GetInteger("wf_sensor_flip", 0);
+  info->wf_sensor.eeprom_path = camera_config->GetString(
+      "wf_sensor_eeprom", "/sys/bus/nvmem/devices/2-00500/nvmem");
+  info->wf_sensor.orientation =
+      camera_config->GetInteger("wf_sensor_orientation", 0);
+  info->wf_sensor.minFocusDistance =
+      camera_config->GetInteger("wf_sensor_minFocusDistance", 0);
 
-  info->sub_sensor.tuning_module_id =
-      camera_config->GetInteger("sub_sensor_tuning_module_id", 0);
-  info->sub_sensor.mirror = camera_config->GetInteger("sub_sensor_mirror", 0);
-  info->sub_sensor.flip = camera_config->GetInteger("sub_sensor_flip", 0);
-  info->sub_sensor.eeprom_path = camera_config->GetString(
-      "sub_sensor_eeprom", "/sys/bus/nvmem/devices/4-00500/nvmem");
-  info->sub_sensor.orientation =
-      camera_config->GetInteger("sub_sensor_orientation", 0);
-  info->sub_sensor.minFocusDistance =
-      camera_config->GetInteger("sub_sensor_minFocusDistance", 0);
+  info->uf_sensor.tuning_module_id =
+      camera_config->GetInteger("uf_sensor_tuning_module_id", 0);
+  info->uf_sensor.mirror = camera_config->GetInteger("uf_sensor_mirror", 0);
+  info->uf_sensor.flip = camera_config->GetInteger("uf_sensor_flip", 0);
+  info->uf_sensor.eeprom_path = camera_config->GetString(
+      "uf_sensor_eeprom", "/sys/bus/nvmem/devices/4-00500/nvmem");
+  info->uf_sensor.orientation =
+      camera_config->GetInteger("uf_sensor_orientation", 0);
+  info->uf_sensor.minFocusDistance =
+      camera_config->GetInteger("uf_sensor_minFocusDistance", 0);
 }
 
 }  // namespace TuningUtils
