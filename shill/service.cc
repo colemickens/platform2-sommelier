@@ -500,6 +500,10 @@ void Service::SetState(ConnectState state) {
   UpdateErrorProperty();
   manager_->NotifyServiceStateChanged(this);
   metrics()->NotifyServiceStateChanged(*this, state);
+
+  if (IsConnectedState(previous_state_) != IsConnectedState(state_)) {
+    adaptor_->EmitBoolChanged(kIsConnectedProperty, IsConnected());
+  }
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
