@@ -94,7 +94,8 @@ int main(int argc, char** argv) {
   }
 
   std::unique_ptr<mems_setup::Configuration> config(
-      new mems_setup::Configuration(device, kind, delegate.get()));
+      new mems_setup::Configuration(context.get(), device, kind,
+                                    delegate.get()));
 
   return config->Configure() ? 0 : 1;
 }

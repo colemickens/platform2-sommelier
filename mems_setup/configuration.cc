@@ -5,6 +5,7 @@
 #include "mems_setup/configuration.h"
 
 #include <initializer_list>
+#include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -56,10 +57,11 @@ constexpr std::initializer_list<const char*> kAccelAxes = {
 };
 }  // namespace
 
-Configuration::Configuration(libmems::IioDevice* sensor,
+Configuration::Configuration(libmems::IioContext* context,
+                             libmems::IioDevice* sensor,
                              SensorKind kind,
                              Delegate* del)
-    : delegate_(del), kind_(kind), sensor_(sensor) {}
+    : delegate_(del), kind_(kind), sensor_(sensor), context_(context) {}
 
 bool Configuration::Configure() {
   switch (kind_) {
@@ -230,7 +232,7 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
 
 bool Configuration::AddSysfsTrigger(int trigger_id) {
   // iio_sysfs_trigger
-  auto iio_trig = sensor_->GetContext()->GetTriggerById(kSysfsTriggerId);
+  auto iio_trig = context_->GetTriggerById(kSysfsTriggerId);
   if (iio_trig == nullptr) {
     LOG(ERROR) << "cannot find iio_trig_sysfs kernel module";
     return false;
@@ -248,8 +250,8 @@ bool Configuration::AddSysfsTrigger(int trigger_id) {
       LOG(WARNING) << "cannot instantiate trigger trigger" << trigger_id;
     }
 
-    sensor_->GetContext()->Reload();
-    trigger = sensor_->GetContext()->GetTriggerById(trigger_id);
+    context_->Reload();
+    trigger = context_->GetTriggerById(trigger_id);
     if (trigger == nullptr) {
       LOG(ERROR) << "cannot find trigger trigger" << trigger_id;
       return false;
@@ -389,6 +391,28 @@ bool Configuration::ConfigAccelerometer() {
 
   if (!EnableKeyboardAngle())
     return false;
+
+  /*
+   * Gather gyroscope. If one of them is on the same plane, set
+   * accelerometer range to 4g to meet Android 10 CCD Requirements
+   * (Sectiom 7.1.4, C.1.4).
+   * If no gyro found, set range to 4g on the lid accel.
+   */
+  int range = 0;
+  auto location = sensor_->ReadStringAttribute("location");
+  if (location && !location->empty()) {
+    auto gyros = context_->GetDevicesByName("cros-ec-gyro");
+    if (gyros.size() != 1 && strcmp(location->c_str(), kLidSensorLocation) == 0)
+      range = 4;
+    else if (gyros.size() == 1 &&
+             strcmp(location->c_str(),
+                    gyros[0]->ReadStringAttribute("location")->c_str()) == 0)
+      range = 4;
+    else
+      range = 2;
+
+    return sensor_->WriteNumberAttribute(kCalibrationScale, range);
+  }
 
   LOG(INFO) << "accelerometer configuration complete";
   return true;

@@ -82,8 +82,8 @@ void SensorTestBase::ConfigureVpd(
 
 Configuration* SensorTestBase::GetConfiguration() {
   if (config_ == nullptr) {
-    config_.reset(new Configuration(mock_device_.get(), sensor_kind_,
-                                    mock_delegate_.get()));
+    config_.reset(new Configuration(mock_context_.get(), mock_device_.get(),
+                                    sensor_kind_, mock_delegate_.get()));
   }
 
   return config_.get();

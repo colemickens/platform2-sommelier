@@ -256,6 +256,85 @@ TEST_F(AccelerometerTest, OkWithTrigger0Defined) {
   EXPECT_TRUE(GetConfiguration()->Configure());
 }
 
+TEST_F(AccelerometerTest, SetRangeNoGyroLid) {
+  SetSingleSensor(kLidSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(
+      4,
+      mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetRangeNoGyroLidOld) {
+  SetSharedSensor();
+  SetSingleSensor(kBaseSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_NE(
+      4,
+      mock_device_->ReadNumberAttribute("scale").value_or(0));
+}
+
+TEST_F(AccelerometerTest, SetRangeGyroBaseBase) {
+  auto mock_gyro = std::make_unique<FakeIioDevice>(mock_context_.get(),
+                                                   "cros-ec-gyro", 2);
+  mock_gyro->WriteStringAttribute("location", kBaseSensorLocation);
+  mock_context_->AddDevice(mock_gyro.get());
+
+  SetSingleSensor(kBaseSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(
+      4,
+      mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetRangeGyroBaseLid) {
+  auto mock_gyro = std::make_unique<FakeIioDevice>(mock_context_.get(),
+                                                   "cros-ec-gyro", 2);
+  mock_gyro->WriteStringAttribute("location", kBaseSensorLocation);
+  mock_context_->AddDevice(mock_gyro.get());
+
+  SetSingleSensor(kLidSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(
+      2,
+      mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetRangeMultipleGyroLid) {
+  auto mock_gyro1 = std::make_unique<FakeIioDevice>(mock_context_.get(),
+                                                   "cros-ec-gyro", 2);
+  mock_gyro1->WriteStringAttribute("location", kBaseSensorLocation);
+  mock_context_->AddDevice(mock_gyro1.get());
+
+  auto mock_gyro2 = std::make_unique<FakeIioDevice>(mock_context_.get(),
+                                                   "cros-ec-gyro", 3);
+  mock_gyro2->WriteStringAttribute("location", kLidSensorLocation);
+  mock_context_->AddDevice(mock_gyro2.get());
+
+  SetSingleSensor(kLidSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(
+      4,
+      mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetRangeMultipleGyroBase) {
+  auto mock_gyro1 = std::make_unique<FakeIioDevice>(mock_context_.get(),
+                                                   "cros-ec-gyro", 2);
+  mock_gyro1->WriteStringAttribute("location", kBaseSensorLocation);
+  mock_context_->AddDevice(mock_gyro1.get());
+
+  auto mock_gyro2 = std::make_unique<FakeIioDevice>(mock_context_.get(),
+                                                   "cros-ec-gyro", 3);
+  mock_gyro2->WriteStringAttribute("location", kLidSensorLocation);
+  mock_context_->AddDevice(mock_gyro2.get());
+
+  SetSingleSensor(kBaseSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(
+      2,
+      mock_device_->ReadNumberAttribute("scale").value());
+}
+
 }  // namespace
 
 }  // namespace mems_setup

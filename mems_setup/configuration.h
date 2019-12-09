@@ -18,7 +18,8 @@ namespace mems_setup {
 
 class Configuration {
  public:
-  Configuration(libmems::IioDevice* sensor,
+  Configuration(libmems::IioContext* context,
+                libmems::IioDevice* sensor,
                 SensorKind kind,
                 Delegate* delegate);
 
@@ -48,6 +49,7 @@ class Configuration {
   Delegate* delegate_;  // non-owned
   SensorKind kind_;
   libmems::IioDevice* sensor_;  // non-owned
+  libmems::IioContext* context_;  // non-owned
 
   DISALLOW_COPY_AND_ASSIGN(Configuration);
 };
