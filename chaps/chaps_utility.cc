@@ -55,11 +55,6 @@ string ConvertOpenSSLObjectToString(OpenSSLType* type) {
 
 namespace chaps {
 
-const size_t kTokenLabelSize = 32;
-const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
-const CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;
-const CK_ATTRIBUTE_TYPE kLegacyAttribute = CKA_VENDOR_DEFINED + 3;
-
 // Some NSS-specific constants (from NSS' pkcs11n.h).
 #define NSSCK_VENDOR_NSS 0x4E534350
 #define CKA_NSS (CKA_VENDOR_DEFINED | NSSCK_VENDOR_NSS)

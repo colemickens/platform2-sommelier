@@ -20,10 +20,10 @@ namespace chaps {
 
 constexpr char kSystemTokenPath[] = "/var/lib/chaps";
 
-extern const size_t kTokenLabelSize;
-extern const CK_ATTRIBUTE_TYPE kKeyBlobAttribute;
-extern const CK_ATTRIBUTE_TYPE kAuthDataAttribute;
-extern const CK_ATTRIBUTE_TYPE kLegacyAttribute;
+constexpr size_t kTokenLabelSize = 32;
+constexpr CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
+constexpr CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;
+constexpr CK_ATTRIBUTE_TYPE kLegacyAttribute = CKA_VENDOR_DEFINED + 3;
 
 }  // namespace chaps
 
