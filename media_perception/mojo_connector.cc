@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <mojo/core/embedder/embedder.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "media_perception/serialized_proto.h"
 
@@ -114,10 +115,10 @@ void MojoConnector::OnVideoSourceProviderConnectionErrorOrClosed() {
 
 void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
   CHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  mojo::edk::SetParentPipeHandle(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
   mojo::ScopedMessagePipeHandle child_pipe =
-      mojo::edk::CreateChildMessagePipe(kConnectorPipe);
+      invitation.ExtractMessagePipe(kConnectorPipe);
   if (!child_pipe.is_valid()) {
     LOG(ERROR) << "child_pipe is not valid";
   }
