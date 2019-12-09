@@ -33,7 +33,8 @@ bool ShouldEnableNDProxy() {
   static const char kLsbReleasePath[] = "/etc/lsb-release";
   static int kMinAndroidSdkVersion = 28;  // P
   static int kMinChromeMilestone = 80;
-  static std::array<std::string, 2> kSupportedBoards = {"atlas", "eve"};
+  static std::array<std::string, 3> kSupportedBoards = {"atlas", "eve",
+                                                        "eve-arcvm"};
 
   brillo::KeyValueStore store;
   if (!store.Load(base::FilePath(kLsbReleasePath))) {
@@ -175,6 +176,19 @@ void Manager::InitialSetup() {
                << patchpanel::kPatchPanelServiceName;
   }
   LOG(INFO) << "DBus service interface ready";
+
+  auto& runner = datapath_->runner();
+  // Enable IPv6 packet forarding
+  if (runner.SysctlWrite("net.ipv6.conf.all.forwarding", "1") != 0) {
+    LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
+               << " IPv6 functionality may be broken.";
+  }
+  // Kernel proxy_ndp is only needed for legacy IPv6 configuration
+  if (!ShouldEnableNDProxy() &&
+      runner.SysctlWrite("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
+    LOG(ERROR) << "Failed to update net.ipv6.conf.all.proxy_ndp."
+               << " IPv6 functionality may be broken.";
+  }
 
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(bus_), &addr_mgr_, datapath_.get(),

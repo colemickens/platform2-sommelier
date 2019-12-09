@@ -144,13 +144,6 @@ void OneTimeSetup(const Datapath& datapath) {
     LOG(WARNING) << "One or more optional kernel modules failed to load.";
   }
 
-  // Enable IPv6 packet forarding and neighbor discovery.
-  if (runner.SysctlWrite("net.ipv6.conf.all.forwarding", "1") != 0 ||
-      runner.SysctlWrite("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
-    LOG(ERROR) << "Failed to update kernel parameters. IPv6 routing and/or"
-               << " neighbor discovery may be broken.";
-  }
-
   // This is only needed for CTS (b/27932574).
   if (runner.Chown("655360", "655360", "/sys/class/xt_idletimer") != 0) {
     LOG(ERROR) << "Failed to change ownership of xt_idletimer.";
