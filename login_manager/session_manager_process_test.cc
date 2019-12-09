@@ -17,7 +17,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
-#include <brillo/message_loops/fake_message_loop.h>
+#include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
@@ -61,7 +61,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    fake_loop_.SetAsCurrent();
+    brillo_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
 
     aborted_browser_pid_path_ = tmpdir_.GetPath().Append("aborted_browser_pid");
@@ -121,10 +121,10 @@ class SessionManagerProcessTest : public ::testing::Test {
   void SimpleRunManager() {
     ExpectShutdown();
     manager_->RunBrowser();
-    fake_loop_.Run();
+    brillo_loop_.Run();
   }
 
-  void ForceRunLoop() { fake_loop_.Run(); }
+  void ForceRunLoop() { brillo_loop_.Run(); }
 
   FakeBrowserJob* CreateMockJobAndInitManager(bool schedule_exit) {
     FakeBrowserJob* job = new FakeBrowserJob("FakeBrowserJob", schedule_exit);
@@ -153,7 +153,7 @@ class SessionManagerProcessTest : public ::testing::Test {
  private:
   bool must_destroy_mocks_;
   base::ScopedTempDir tmpdir_;
-  brillo::FakeMessageLoop fake_loop_{nullptr};
+  brillo::BaseMessageLoop brillo_loop_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProcessTest);
 };
