@@ -66,7 +66,7 @@ std::string* g_connection_state;
 class MockClock : public base::Clock {
  public:
   ~MockClock() override {}
-  MOCK_METHOD(base::Time, Now, (), (override));
+  MOCK_METHOD(base::Time, Now, (), (const override));
 };
 
 // Parses the Chrome uploads.log file from Sender to a vector of items per line.

@@ -28,10 +28,10 @@ class AdvancingClock : public base::Clock {
   // Start clock at GetDefaultTime()
   AdvancingClock();
 
-  base::Time Now() override;
+  base::Time Now() const override;
 
  private:
-  base::Time time_;
+  mutable base::Time time_;
 };
 
 // Get an assumed "now" for things that mocks out the current time. Always

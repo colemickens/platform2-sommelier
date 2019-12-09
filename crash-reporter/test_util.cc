@@ -32,7 +32,7 @@ bool RetrieveActiveSessionsImpl(
 
 AdvancingClock::AdvancingClock() : time_(GetDefaultTime()) {}
 
-base::Time AdvancingClock::Now() {
+base::Time AdvancingClock::Now() const {
   time_ += base::TimeDelta::FromSeconds(10);
   return time_;
 }
