@@ -488,7 +488,7 @@ class CrosConfigBaseImpl(object):
       if target_type in device_targets:
         build_targets.append(device_targets[target_type])
       if target_type == 'ec':
-        for ec_extra in ('base', 'cr50'):
+        for ec_extra in ('base', ):
           if ec_extra in device_targets:
             build_targets.append(device_targets[ec_extra])
         if 'ec_extras' in device_targets:

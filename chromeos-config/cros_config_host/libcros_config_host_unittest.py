@@ -147,8 +147,7 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
                              ['another'])
     self.assertSequenceEqual(config.GetFirmwareBuildTargets('ec'),
-                             ['another', 'another_base', 'another_cr50',
-                              'extra1', 'extra2'])
+                             ['another', 'another_base', 'extra1', 'extra2'])
     del os.environ['FW_NAME']
 
   def testFileTree(self):
