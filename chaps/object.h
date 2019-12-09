@@ -94,6 +94,9 @@ class Object {
   virtual void RemoveAttribute(CK_ATTRIBUTE_TYPE type) = 0;
   // Provides a read-only map of all existing attributes.
   virtual const AttributeMap* GetAttributeMap() const = 0;
+  // This should be called after an object is loaded from disk. If this returns
+  // false, then object loading should be considered as failed.
+  virtual bool OnLoad() = 0;
   // Get / set handle as seen by PKCS #11 clients.
   virtual int handle() const = 0;
   virtual void set_handle(int handle) = 0;

@@ -197,6 +197,15 @@ const AttributeMap* ObjectImpl::GetAttributeMap() const {
   return &attributes_;
 }
 
+bool ObjectImpl::OnLoad() {
+  if (!SetPolicyByClass()) {
+    LOG(ERROR) << "Failed to set attribute access policy.";
+    return false;
+  }
+  stage_ = kModify;
+  return true;
+}
+
 bool ObjectImpl::SetPolicyByClass() {
   if (!IsAttributePresent(CKA_CLASS)) {
     LOG(ERROR) << "Missing object class attribute.";

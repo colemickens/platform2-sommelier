@@ -48,6 +48,7 @@ class ObjectImpl : public Object {
                           const std::string& value) override;
   void RemoveAttribute(CK_ATTRIBUTE_TYPE type) override;
   const AttributeMap* GetAttributeMap() const override;
+  bool OnLoad() override;
   int handle() const override { return handle_; }
   void set_handle(int handle) override { handle_ = handle; }
   int store_id() const override { return store_id_; }

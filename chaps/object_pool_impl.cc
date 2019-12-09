@@ -259,6 +259,12 @@ bool ObjectPoolImpl::Parse(const ObjectBlob& object_blob, Object* object) {
       return false;
     }
   }
+
+  if (!object->OnLoad()) {
+    LOG(ERROR) << "Object's OnLoad failed.";
+    return false;
+  }
+
   return true;
 }
 

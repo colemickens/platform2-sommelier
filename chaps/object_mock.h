@@ -42,6 +42,7 @@ class ObjectMock : public Object {
   MOCK_METHOD2(SetAttributeString, void(CK_ATTRIBUTE_TYPE, const std::string&));
   MOCK_METHOD1(RemoveAttribute, void(CK_ATTRIBUTE_TYPE));
   MOCK_CONST_METHOD0(GetAttributeMap, const AttributeMap*());
+  MOCK_METHOD0(OnLoad, bool());
   MOCK_CONST_METHOD0(handle, int());
   MOCK_METHOD1(set_handle, void(int));
   MOCK_CONST_METHOD0(store_id, int());
@@ -81,6 +82,7 @@ class ObjectMock : public Object {
         .WillByDefault(testing::Invoke(this, &ObjectMock::FakeRemoveAttribute));
     ON_CALL(*this, GetAttributeMap())
         .WillByDefault(testing::Return(&attributes_));
+    ON_CALL(*this, OnLoad()).WillByDefault(testing::Return(true));
     ON_CALL(*this, set_handle(testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectMock::FakeSetHandle));
     ON_CALL(*this, set_store_id(testing::_))
