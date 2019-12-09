@@ -401,6 +401,12 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
       return "CKA_NSS_EXPIRES";
     case CKA_NSS_KRL:
       return "CKA_NSS_KRL";
+    case kKeyBlobAttribute:
+      return "kKeyBlobAttribute";
+    case kAuthDataAttribute:
+      return "kAuthDataAttribute";
+    case kLegacyAttribute:
+      return "kLegacyAttribute";
     default:
       stringstream ss;
       ss << attribute;
@@ -485,6 +491,9 @@ bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
       {"CKA_NSS_PASSWORD_CHECK", CKA_NSS_PASSWORD_CHECK},
       {"CKA_NSS_EXPIRES", CKA_NSS_EXPIRES},
       {"CKA_NSS_KRL", CKA_NSS_KRL},
+      {"kKeyBlobAttribute", kKeyBlobAttribute},
+      {"kAuthDataAttribute", kAuthDataAttribute},
+      {"kLegacyAttribute", kLegacyAttribute},
   });
 
   // If we can match the attribute name, then we'll return whatever that's
