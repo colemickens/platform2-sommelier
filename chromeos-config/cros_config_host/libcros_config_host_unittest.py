@@ -58,8 +58,8 @@ def capture_sys_output():
 
 def _FormatNamedTuplesDict(value):
   result = copy.deepcopy(value)
-  for key, value in result.items():
-    result[key] = value._asdict()
+  for key, val in result.items():
+    result[key] = val._asdict()
   return json.dumps(result, indent=2)
 
 

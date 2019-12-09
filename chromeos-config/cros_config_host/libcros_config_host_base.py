@@ -76,7 +76,7 @@ DeviceSignerInfo = namedtuple('DeviceSignerInfo', ['key_id', 'sig_id'])
 class PathComponent(object):
   """A component in a directory/file tree
 
-  Properties:
+  Attributes:
     name: Name this component
     children: Dict of children:
       key: Name of child
