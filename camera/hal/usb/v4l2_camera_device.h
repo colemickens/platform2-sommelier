@@ -86,6 +86,12 @@ class V4L2CameraDevice {
 
   // TODO(shik): Change the type of |device_path| to base::FilePath.
 
+  // Gets the frame rate which is set previously.
+  float GetFrameRate();
+
+  // Sets the frame rate to |frame_rate| for current device.
+  int SetFrameRate(float frame_rate);
+
   // Get all supported formats of device by |device_path|. This function can be
   // called without calling Connect().
   static const SupportedFormats GetDeviceSupportedFormats(
@@ -135,6 +141,8 @@ class V4L2CameraDevice {
   // AF state
   bool autofocus_on_;
   bool autofocus_supported_;
+
+  float frame_rate_;
 
   // True if the buffer is used by client after GetNextFrameBuffer().
   std::vector<bool> buffers_at_client_;

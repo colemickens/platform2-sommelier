@@ -21,6 +21,17 @@
 #include "hal/usb/quirks.h"
 #include "hal/usb/stream_format.h"
 
+namespace {
+int GetFrameRateFromMetadata(const android::CameraMetadata& metadata) {
+  if (!metadata.exists(ANDROID_CONTROL_AE_TARGET_FPS_RANGE)) {
+    return 0;
+  }
+  camera_metadata_ro_entry entry =
+      metadata.find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
+  return entry.data.i32[1];
+}
+}  // namespace
+
 namespace cros {
 
 const int kBufferFenceReady = -1;
@@ -549,8 +560,19 @@ void CameraClient::RequestHandler::StreamOn(
 
   crop_rotate_scale_degrees_ = crop_rotate_scale_degrees;
 
+  const SupportedFormat* format =
+      FindFormatByResolution(qualified_formats_, stream_on_resolution.width,
+                             stream_on_resolution.height);
+  if (format == nullptr) {
+    LOGFID(ERROR, device_id_)
+        << "Cannot find resolution in supported list: width "
+        << stream_on_resolution.width << ", height "
+        << stream_on_resolution.height;
+    callback.Run(0, -EINVAL);
+    return;
+  }
   int ret = StreamOnImpl(stream_on_resolution, constant_frame_rate,
-                         use_native_sensor_ratio);
+                         use_native_sensor_ratio, GetMaximumFrameRate(*format));
   if (ret) {
     callback.Run(0, ret);
     return;
@@ -633,8 +655,12 @@ void CameraClient::RequestHandler::HandleRequest(
     }
   }
 
+  int target_frame_rate = GetFrameRateFromMetadata(*metadata);
+  bool should_update_frame_rate =
+      target_frame_rate != device_->GetFrameRate() &&
+      IsValidFrameRate(target_frame_rate);
   if (stream_resolution_reconfigure ||
-      constant_frame_rate != constant_frame_rate_) {
+      constant_frame_rate != constant_frame_rate_ || should_update_frame_rate) {
     VLOGFID(1, device_id_) << "Restart stream";
     int ret = StreamOffImpl();
     if (ret) {
@@ -643,7 +669,7 @@ void CameraClient::RequestHandler::HandleRequest(
     }
 
     ret = StreamOnImpl(new_resolution, constant_frame_rate,
-                       use_native_sensor_ratio_);
+                       use_native_sensor_ratio_, target_frame_rate);
     if (ret) {
       HandleAbortedRequest(&capture_result);
       return;
@@ -679,7 +705,7 @@ void CameraClient::RequestHandler::HandleRequest(
         break;
       }
       if (StreamOnImpl(new_resolution, constant_frame_rate,
-                       use_native_sensor_ratio_) != 0) {
+                       use_native_sensor_ratio_, target_frame_rate) != 0) {
         break;
       }
       keep_trying = true;
@@ -745,7 +771,8 @@ void CameraClient::RequestHandler::DiscardOutdatedBuffers() {
 
 int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
                                                bool constant_frame_rate,
-                                               bool use_native_sensor_ratio) {
+                                               bool use_native_sensor_ratio,
+                                               float target_frame_rate) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   int ret;
@@ -753,7 +780,8 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
   if (stream_on_resolution.width == stream_on_resolution_.width &&
       stream_on_resolution.height == stream_on_resolution_.height &&
       constant_frame_rate == constant_frame_rate_ &&
-      use_native_sensor_ratio == use_native_sensor_ratio_) {
+      use_native_sensor_ratio == use_native_sensor_ratio_ &&
+      target_frame_rate == stream_on_fps_) {
     VLOGFID(1, device_id_) << "Skip stream on for the same configuration";
     DiscardOutdatedBuffers();
     return 0;
@@ -776,17 +804,18 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
     return -EINVAL;
   }
 
-  float max_fps = GetMaximumFrameRate(*format);
   VLOGFID(1, device_id_) << "streamOn with width " << format->width
-                         << ", height " << format->height << ", fps " << max_fps
-                         << ", format " << FormatToString(format->fourcc)
+                         << ", height " << format->height << ", fps "
+                         << target_frame_rate << ", format "
+                         << FormatToString(format->fourcc)
                          << ", constant_frame_rate " << std::boolalpha
                          << constant_frame_rate;
 
   std::vector<base::ScopedFD> fds;
   std::vector<uint32_t> buffer_sizes;
   ret = device_->StreamOn(format->width, format->height, format->fourcc,
-                          max_fps, constant_frame_rate, &fds, &buffer_sizes);
+                          target_frame_rate, constant_frame_rate, &fds,
+                          &buffer_sizes);
   if (ret) {
     LOGFID(ERROR, device_id_)
         << "StreamOn failed: " << base::safe_strerror(-ret);
@@ -810,7 +839,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
   stream_on_resolution_ = stream_on_resolution;
   constant_frame_rate_ = constant_frame_rate;
   use_native_sensor_ratio_ = use_native_sensor_ratio;
-  stream_on_fps_ = max_fps;
+  stream_on_fps_ = target_frame_rate;
   current_buffer_timestamp_in_v4l2_ = 0;
   current_buffer_timestamp_in_user_ = 0;
   SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
@@ -918,6 +947,19 @@ bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
     }
   }
 
+  return false;
+}
+
+bool CameraClient::RequestHandler::IsValidFrameRate(int frame_rate) {
+  camera_metadata_ro_entry entry =
+      static_metadata_.find(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+  for (size_t i = 1; i < entry.count; i += 2) {
+    // Available fps ranges are listed as [[min_1, max_1], [min_2, max_2], ...].
+    // The frame rate is valid if it equals to the max value of any set.
+    if (frame_rate == entry.data.i32[i]) {
+      return true;
+    }
+  }
   return false;
 }
 

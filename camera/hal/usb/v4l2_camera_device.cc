@@ -27,6 +27,12 @@
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/quirks.h"
 
+namespace {
+// Since cameras might report non-integer fps but in Android Camera 3 API we
+// can only set fps range with integer in metadata.
+constexpr float kFpsDifferenceThreshold = 1.0f;
+}  // namespace
+
 namespace cros {
 
 V4L2CameraDevice::V4L2CameraDevice()
@@ -144,7 +150,6 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
 
   // Some drivers use rational time per frame instead of float frame rate, this
   // constant k is used to convert between both: A fps -> [k/k*A] seconds/frame.
-  const int kFrameRatePrecision = 10000;
   v4l2_format fmt = {};
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   fmt.fmt.pix.width = width;
@@ -166,36 +171,11 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     return -EINVAL;
   }
 
-  // Set capture framerate in the form of capture interval.
-  v4l2_streamparm streamparm = {};
-  streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  // The following line checks that the driver knows about framerate get/set.
-  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_G_PARM, &streamparm)) >=
-      0) {
-    // Now check if the device is able to accept a capture framerate set.
-    if (streamparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
-      // |frame_rate| is float, approximate by a fraction.
-      streamparm.parm.capture.timeperframe.numerator = kFrameRatePrecision;
-      streamparm.parm.capture.timeperframe.denominator =
-          (frame_rate * kFrameRatePrecision);
-
-      if (TEMP_FAILURE_RETRY(
-              ioctl(device_fd_.get(), VIDIOC_S_PARM, &streamparm)) < 0) {
-        LOGF(ERROR) << "Failed to set camera framerate";
-        return -EIO;
-      }
-
-      VLOGF(1) << "Actual camera driver framerate: "
-               << streamparm.parm.capture.timeperframe.denominator << "/"
-               << streamparm.parm.capture.timeperframe.numerator;
+  if (frame_rate != frame_rate_) {
+    ret = SetFrameRate(frame_rate);
+    if (ret < 0) {
+      return ret;
     }
-  }
-  float fps =
-      static_cast<float>(streamparm.parm.capture.timeperframe.denominator) /
-      streamparm.parm.capture.timeperframe.numerator;
-  if (std::fabs(fps - frame_rate) > std::numeric_limits<float>::epsilon()) {
-    LOGF(ERROR) << "Unsupported frame rate " << frame_rate;
-    return -EINVAL;
   }
 
   v4l2_requestbuffers req_buffers;
@@ -417,6 +397,55 @@ int V4L2CameraDevice::SetAutoFocus(bool enable) {
     autofocus_on_ = enable;
   }
   return ret;
+}
+
+float V4L2CameraDevice::GetFrameRate() {
+  return frame_rate_;
+}
+
+int V4L2CameraDevice::SetFrameRate(float frame_rate) {
+  const int kFrameRatePrecision = 10000;
+
+  if (!device_fd_.is_valid()) {
+    LOGF(ERROR) << "Device is not opened";
+    return -ENODEV;
+  }
+
+  v4l2_streamparm streamparm = {};
+  streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+  // The following line checks that the driver knows about framerate get/set.
+  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_G_PARM, &streamparm)) >=
+      0) {
+    // Now check if the device is able to accept a capture framerate set.
+    if (streamparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
+      // |frame_rate| is float, approximate by a fraction.
+      streamparm.parm.capture.timeperframe.numerator = kFrameRatePrecision;
+      streamparm.parm.capture.timeperframe.denominator =
+          (frame_rate * kFrameRatePrecision);
+
+      if (TEMP_FAILURE_RETRY(
+              ioctl(device_fd_.get(), VIDIOC_S_PARM, &streamparm)) < 0) {
+        LOGF(ERROR) << "Failed to set camera framerate";
+        return -errno;
+      }
+      VLOGF(1) << "Actual camera driver framerate: "
+               << streamparm.parm.capture.timeperframe.denominator << "/"
+               << streamparm.parm.capture.timeperframe.numerator;
+    }
+  }
+  float fps =
+      static_cast<float>(streamparm.parm.capture.timeperframe.denominator) /
+      streamparm.parm.capture.timeperframe.numerator;
+  if (std::fabs(fps - frame_rate) > kFpsDifferenceThreshold) {
+    LOGF(ERROR) << "Unsupported frame rate " << frame_rate;
+    return -EINVAL;
+  }
+
+  VLOGF(1) << "Successfully set the frame rate to: " << fps;
+  frame_rate_ = frame_rate;
+
+  return 0;
 }
 
 // static

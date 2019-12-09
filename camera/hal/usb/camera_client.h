@@ -187,7 +187,8 @@ class CameraClient {
     // Start streaming implementation.
     int StreamOnImpl(Size stream_on_resolution,
                      bool constant_frame_rate,
-                     bool use_native_sensor_ratio);
+                     bool use_native_sensor_ratio,
+                     float target_frame_rate);
 
     // Stop streaming implementation.
     int StreamOffImpl();
@@ -209,6 +210,10 @@ class CameraClient {
 
     // Check whether we should enable constant frame rate according to metadata.
     bool ShouldEnableConstantFrameRate(const android::CameraMetadata& metadata);
+
+    // Check whether given |frame_rate| is valid according to
+    // |static_metadata_|.
+    bool IsValidFrameRate(int frame_rate);
 
     // Convert to |capture_result->output_buffers| with |cached_frame_|.
     int WriteStreamBuffers(const android::CameraMetadata& metadata,
