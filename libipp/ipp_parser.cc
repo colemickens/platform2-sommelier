@@ -19,6 +19,33 @@ constexpr int kMaxCollectionLevel = 16;
 // This parameters defines maximum number of attribute groups in single package.
 constexpr int kMaxCountOfAttributeGroups = 20 * 1024;
 
+// Maximum size of 'text' value (rfc8011, section 5.1.2).
+constexpr int kMaxLengthOfText = 1023;
+
+// Maximum size of 'name' value (rfc8011, section 5.1.3).
+constexpr int kMaxLengthOfName = 255;
+
+// Maximum size of 'keyword' value (rfc8011, section 5.1.4).
+constexpr int kMaxLengthOfKeyword = 255;
+
+// Maximum size of 'uri' value (rfc8011, section 5.1.6).
+constexpr int kMaxLengthOfUri = 1023;
+
+// Maximum size of 'uriScheme' value (rfc8011, section 5.1.7).
+constexpr int kMaxLengthOfUriScheme = 63;
+
+// Maximum size of 'charset' value (rfc8011, section 5.1.8).
+constexpr int kMaxLengthOfCharset = 63;
+
+// Maximum size of 'naturalLanguage' value (rfc8011, section 5.1.9).
+constexpr int kMaxLengthOfNaturalLanguage = 63;
+
+// Maximum size of 'mimeMediaType' value (rfc8011, section 5.1.10).
+constexpr int kMaxLengthOfMimeMediaType = 255;
+
+// Maximum size of 'octetString' value (rfc8011, section 5.1.11).
+constexpr int kMaxLengthOfOctetString = 1023;
+
 // Converts the least significant 4 bits to hexadecimal digit (ASCII char).
 char ToHexDigit(uint8_t v) {
   v &= 0x0f;
@@ -59,15 +86,29 @@ bool LoadInteger(const std::vector<uint8_t>& data, int* out) {
   return true;
 }
 
-// Reads simple string from buf.
-std::string LoadOctetString(const std::vector<uint8_t>& buf) {
-  return std::string(buf.data(), buf.data() + buf.size());
+// Reads simple string from buf. The string is truncated if it is longer than
+// |max_length|. |truncated_chars| must not be nullptr and it is set to a count
+// of truncated characters.
+std::string LoadOctetString(const std::vector<uint8_t>& buf,
+                            size_t max_length,
+                            int* truncated_chars) {
+  if (max_length >= buf.size()) {
+    *truncated_chars = 0;
+    return std::string(buf.data(), buf.data() + buf.size());
+  }
+  *truncated_chars = buf.size() - max_length;
+  return std::string(buf.data(), buf.data() + max_length);
 }
 
 // Reads textWithLanguage/nameWithLanguage (see [rfc8010], section 3.9) from
 // buf. Returns false if given content is incorrect or (out == nullptr).
+// If parsed string is longer than |max_length|, it is truncated and true is
+// returned. |truncated_chars| must not be nullptr and is set to a count of
+// truncated characters when the function returns true.
 bool LoadStringWithLanguage(const std::vector<uint8_t>& buf,
-                            ipp::StringWithLanguage* out) {
+                            size_t max_length,
+                            ipp::StringWithLanguage* out,
+                            int* truncated_chars) {
   // The shortest possible value has 4 bytes: 2 times 2-bytes zero.
   if ((buf.size() < 4) || (out == nullptr))
     return false;
@@ -77,13 +118,21 @@ bool LoadStringWithLanguage(const std::vector<uint8_t>& buf,
     return false;
   if (buf.size() < 4 + length)
     return false;
+  if (length > kMaxLengthOfNaturalLanguage)
+    return false;
   out->language.assign(ptr, ptr + length);
   ptr += length;
   if (!ParseUnsignedInteger<2>(&ptr, &length))
     return false;
   if (buf.size() != 4 + out->language.size() + length)
     return false;
-  out->value.assign(ptr, ptr + length);
+  if (max_length >= length) {
+    out->value.assign(ptr, ptr + length);
+    *truncated_chars = 0;
+  } else {
+    out->value.assign(ptr, ptr + max_length);
+    *truncated_chars = length - max_length;
+  }
   return true;
 }
 
@@ -139,22 +188,38 @@ bool LoadRangeOfInteger(const std::vector<uint8_t>& buf,
 }
 
 // Reads name as specified in 3.2 section of rfc8010 and stores it in |out|.
-// Returns false <=> the name is incorrect. In this case |out| is set anyway,
-// but incorrect characters are replaced by '_' (underscore). For empty |buf|,
-// an empty string is set in |out| and false is returned. |out| must be not
-// nullptr.
-bool LoadName(const std::vector<uint8_t>& buf, std::string* out) {
-  bool result = !buf.empty() && buf.front() >= 0x61 && buf.front() <= 0x7a;
-  out->clear();
-  out->reserve(buf.size());
-  for (uint8_t c : buf) {
+// Returns list of errors (no error codes are repeated). The parameter |out|
+// is always set to obtained name. The resultant name is truncated if too long
+// and incorrect characters are replaced by '_' (underscore). For empty |buf|,
+// an empty string is set in |out|. |out| must not be nullptr.
+std::vector<ErrorCode> LoadName(const std::vector<uint8_t>& buf,
+                                std::string* out) {
+  if (buf.empty()) {
+    *out = "";
+    return {ErrorCode::kAttributeNameIsEmpty};
+  }
+  std::vector<ErrorCode> result;
+  if (buf.front() < 0x61 || buf.front() > 0x7a) {
+    result.push_back(ErrorCode::kAttributeNameDoesNotBeginWithLowercaseLetter);
+  }
+  size_t length = buf.size();
+  if (length > kMaxLengthOfKeyword) {
+    result.push_back(ErrorCode::kAttributeNameIsTooLong);
+    length = kMaxLengthOfKeyword;
+  }
+  out->resize(length);
+  bool has_incorrect_characters = false;
+  for (size_t i = 0; i < length; ++i) {
+    uint8_t c = buf[i];
     if ((c < 0x30 || c > 0x39) && (c < 0x61 || c > 0x7a) && (c != '-') &&
         (c != '_') && (c != '.')) {
       c = '_';
-      result = false;
+      has_incorrect_characters = true;
     }
-    out->push_back(c);
+    (*out)[i] = c;
   }
+  if (has_incorrect_characters)
+    result.push_back(ErrorCode::kAttributeNameContainsIncorrectCharacters);
   return result;
 }
 
@@ -228,6 +293,27 @@ void Parser::LogScannerError(const std::string& message, const uint8_t* ptr) {
   errors_->push_back(l);
 }
 
+void Parser::LogParserError(ErrorCode error_code) {
+  switch (error_code) {
+    case ErrorCode::kAttributeNameIsEmpty:
+      LogParserError("Attribute with an empty name was spotted");
+      break;
+    case ErrorCode::kAttributeNameIsTooLong:
+      LogParserError("Attribute's name is too long",
+                     "The name was truncated to " +
+                         std::to_string(kMaxLengthOfKeyword) + " characters");
+      break;
+    case ErrorCode::kAttributeNameDoesNotBeginWithLowercaseLetter:
+      LogParserError("Attribute's name does not begin with a lowercase letter",
+                     "The error was ignored");
+      break;
+    case ErrorCode::kAttributeNameContainsIncorrectCharacters:
+      LogParserError("Attribute's name contains incorrect characters",
+                     "Incorrect characters were replaced by '_'");
+      break;
+  }
+}
+
 void Parser::LogParserError(const std::string& message, std::string action) {
   Log l;
   l.message = "Parser error: " + message + ". " + action + ".";
@@ -256,16 +342,57 @@ void Parser::LoadAttrValue(Attribute* attr,
                            size_t index,
                            const std::vector<uint8_t>& buf,
                            uint8_t tag) {
-  // these two values are not in AttrType
-  if (tag == nameWithoutLanguage_value_tag ||
-      tag == textWithoutLanguage_value_tag) {
-    attr->SetValue(LoadOctetString(buf), index);
+  const AttrType tag_type = static_cast<AttrType>(tag);
+
+  // Process values mapped to simple strings.
+  size_t max_length = 0;
+  // Check the value type and set max_length if it is a simple string.
+  switch (tag_type) {
+    case AttrType::octetString:
+      max_length = kMaxLengthOfOctetString;
+      break;
+    case AttrType::keyword:
+      max_length = kMaxLengthOfKeyword;
+      break;
+    case AttrType::uri:
+      max_length = kMaxLengthOfUri;
+      break;
+    case AttrType::uriScheme:
+      max_length = kMaxLengthOfUriScheme;
+      break;
+    case AttrType::charset:
+      max_length = kMaxLengthOfCharset;
+      break;
+    case AttrType::naturalLanguage:
+      max_length = kMaxLengthOfNaturalLanguage;
+      break;
+    case AttrType::mimeMediaType:
+      max_length = kMaxLengthOfMimeMediaType;
+      break;
+    default:
+      // nameWithoutLanguage and textWithoutLanguage are not in AttrType.
+      if (tag == nameWithoutLanguage_value_tag) {
+        max_length = kMaxLengthOfName;
+      } else if (tag == textWithoutLanguage_value_tag) {
+        max_length = kMaxLengthOfText;
+      } else {
+        // Just leave max_length = 0.
+      }
+      break;
+  }
+  if (max_length != 0) {
+    // The value can be read as a simple string. Read it and exit.
+    int truncated_chars = 0;
+    attr->SetValue(LoadOctetString(buf, max_length, &truncated_chars), index);
+    if (truncated_chars != 0)
+      LogParserError("String value is too long", "The value was truncated");
     return;
   }
-  // build the first part of error message
-  const AttrType tag_type = static_cast<AttrType>(tag);
+
+  // If we are here, the value is not a simple string.
+  // Build the first part of error message.
   const std::string msg_prefix = "Incorrect " + ToString(tag_type) + " value";
-  // load value from the buffer
+  // Load value from the buffer.
   switch (tag_type) {
     case AttrType::boolean: {
       int v = 0;
@@ -306,21 +433,17 @@ void Parser::LoadAttrValue(Attribute* attr,
     }
     case AttrType::text:
     case AttrType::name: {
+      max_length =
+          (tag_type == AttrType::text) ? kMaxLengthOfText : kMaxLengthOfName;
       StringWithLanguage v;
-      if (!LoadStringWithLanguage(buf, &v))
+      int truncated_chars = 0;
+      if (!LoadStringWithLanguage(buf, max_length, &v, &truncated_chars))
         LogParserError(msg_prefix, "The value not set");
+      if (truncated_chars != 0)
+        LogParserError("String value is too long", "The value was truncated");
       attr->SetValue(v, index);
       break;
     }
-    case AttrType::octetString:
-    case AttrType::keyword:
-    case AttrType::uri:
-    case AttrType::uriScheme:
-    case AttrType::charset:
-    case AttrType::naturalLanguage:
-    case AttrType::mimeMediaType:
-      attr->SetValue(LoadOctetString(buf), index);
-      break;
     default:
       LogParserError("Internal parser error: cannot recognize value type",
                      "The value was not set");
@@ -491,12 +614,12 @@ bool Parser::ReadTNVsFromBuffer(const uint8_t** ptr2,
       return false;
     }
     if (!ParseUnsignedInteger<1>(&ptr, &tnv.tag)) {
-      LogScannerError("value-tag is out of range", ptr);
+      LogScannerError("value-tag is negative", ptr);
       return false;
     }
     int length = 0;
     if (!ParseUnsignedInteger<2>(&ptr, &length)) {
-      LogScannerError("name-length is out of range", ptr);
+      LogScannerError("name-length is negative", ptr);
       return false;
     }
     if (buf_end - ptr < length + 2) {
@@ -509,7 +632,7 @@ bool Parser::ReadTNVsFromBuffer(const uint8_t** ptr2,
     tnv.name.assign(ptr, ptr + length);
     ptr += length;
     if (!ParseUnsignedInteger<2>(&ptr, &length)) {
-      LogScannerError("value-length is out of range", ptr);
+      LogScannerError("value-length is negative", ptr);
       return false;
     }
     if (buf_end - ptr < length) {
@@ -640,14 +763,10 @@ bool Parser::ParseRawCollection(int coll_level,
           "Tag-name-value opening member attribute has non-empty name",
           "The field is ignored");
     std::string name;
-    if (!LoadName(tnv.value, &name)) {
-      if (name.empty()) {
-        LogParserError("Attribute with an empty name was spotted");
+    for (ErrorCode error_code : LoadName(tnv.value, &name)) {
+      LogParserError(error_code);
+      if (error_code == ErrorCode::kAttributeNameIsEmpty)
         return false;
-      } else {
-        LogParserError("Attribute's name has incorrect format",
-                       "Incorrect characters were replaced by '_'");
-      }
     }
     coll->attributes.emplace_back(name);
     RawAttribute* attr = &coll->attributes.back();
@@ -683,14 +802,10 @@ bool Parser::ParseRawGroup(std::list<TagNameValue>* tnvs, RawCollection* coll) {
     tnvs->pop_front();
     // parse name & create attribute
     std::string name;
-    if (!LoadName(tnv.name, &name)) {
-      if (name.empty()) {
-        LogParserError("Attribute with an empty name was spotted");
+    for (ErrorCode error_code : LoadName(tnv.name, &name)) {
+      LogParserError(error_code);
+      if (error_code == ErrorCode::kAttributeNameIsEmpty)
         return false;
-      } else {
-        LogParserError("Attribute's name has incorrect format",
-                       "Incorrect characters were replaced by '_'");
-      }
     }
     coll->attributes.emplace_back(name);
     RawAttribute* attr = &coll->attributes.back();

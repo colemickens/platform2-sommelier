@@ -24,6 +24,13 @@ class Package;
 struct RawAttribute;
 struct RawCollection;
 
+enum ErrorCode {
+  kAttributeNameIsEmpty,
+  kAttributeNameIsTooLong,
+  kAttributeNameDoesNotBeginWithLowercaseLetter,
+  kAttributeNameContainsIncorrectCharacters
+};
+
 class Parser {
  public:
   // Constructor, both parameters must not be nullptr. |frame| is used as
@@ -52,6 +59,7 @@ class Parser {
 
   // Methods for adding entries to the log.
   void LogScannerError(const std::string& message, const uint8_t* position);
+  void LogParserError(ErrorCode error_code);
   void LogParserError(
       const std::string& message,
       std::string action = "This is critical error, parsing was cancelled.");
