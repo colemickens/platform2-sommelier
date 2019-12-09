@@ -366,19 +366,33 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   // TODO(wtlee): Handle non-integer fps when setting controls.
   bool support_constant_framerate = !device_info.constant_framerate_unsupported;
   std::vector<int32_t> available_fps_ranges;
-  for (auto fps : supported_fps) {
-    available_fps_ranges.push_back(min_fps);
-    available_fps_ranges.push_back(fps);
 
-    if (support_constant_framerate) {
+  // TODO(b/145723638): Support specified FPS in USB Camera HAL so that we could
+  // list all supported fps range for built-in USB cameras as well. But for now,
+  // for built-in USB cameras, we only report (min, max) and optional (max, max)
+  // for devices which support constant frame rate.
+  if (is_external) {
+    for (auto fps : supported_fps) {
+      available_fps_ranges.push_back(min_fps);
       available_fps_ranges.push_back(fps);
-      available_fps_ranges.push_back(fps);
+
+      if (support_constant_framerate) {
+        available_fps_ranges.push_back(fps);
+        available_fps_ranges.push_back(fps);
+      }
     }
+  } else {
+    available_fps_ranges.push_back(min_fps);
+    available_fps_ranges.push_back(max_fps);
+
+    // Builtin USB cameras should support constant frame rate.
+    available_fps_ranges.push_back(max_fps);
+    available_fps_ranges.push_back(max_fps);
   }
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
          available_fps_ranges.data(), available_fps_ranges.size());
 
-  int32_t target_fps_range[] = {min_fps, max_fps};
+  int32_t target_fps_range[] = {max_fps, max_fps};
   UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, target_fps_range, 2);
 
   UPDATE(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
