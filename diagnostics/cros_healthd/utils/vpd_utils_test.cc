@@ -2,17 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iterator>
-#include <string>
-
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
-#include "diagnostics/cros_healthd/utils/disk_utils.h"
+#include "diagnostics/cros_healthd/utils/vpd_utils.h"
 
 namespace diagnostics {
+
 namespace {
 
 const char kRelativeSKUNumberPath[] = "sys/firmware/vpd/ro/sku_number";
@@ -21,7 +19,7 @@ const char kFakeSKUNumber[] = "ABCD&^A";
 }  // namespace
 
 // Test that we can read the cached VPD info, when it exists.
-TEST(DiskUtils, TestFetchCachedVpdInfo) {
+TEST(VpdUtils, TestFetchCachedVpdInfo) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath root_dir = temp_dir.GetPath();
@@ -32,7 +30,7 @@ TEST(DiskUtils, TestFetchCachedVpdInfo) {
 }
 
 // Test that reading cached VPD info that does not exist fails gracefully.
-TEST(DiskUtils, TestFetchCachedVpdInfoNoFile) {
+TEST(VpdUtils, TestFetchCachedVpdInfoNoFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto vpd_info = FetchCachedVpdInfo(temp_dir.GetPath());

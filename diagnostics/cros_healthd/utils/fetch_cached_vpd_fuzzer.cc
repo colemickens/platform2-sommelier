@@ -9,7 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
-#include "diagnostics/cros_healthd/utils/disk_utils.h"
+#include "diagnostics/cros_healthd/utils/vpd_utils.h"
 
 namespace diagnostics {
 

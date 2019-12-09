@@ -17,6 +17,7 @@
 
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
+#include "diagnostics/cros_healthd/utils/vpd_utils.h"
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
