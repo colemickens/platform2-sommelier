@@ -261,4 +261,13 @@ TEST(DatapathTest, RemoveIPv6Forwarding) {
        "/sbin/ip6tables -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
 }
 
+TEST(DatapathTest, AddIPv6HostRoute) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.AddIPv6HostRoute("eth0", "2001:da8:e00::1234", 128);
+  runner.VerifyRuns(
+      {"/bin/ip -6 route replace 2001:da8:e00::1234/128 dev eth0"});
+}
+
 }  // namespace arc_networkd

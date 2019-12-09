@@ -423,8 +423,8 @@ bool Datapath::AddIPv6HostRoute(const std::string& ifname,
   std::string ipv6_addr_cidr =
       ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
 
-  return process_runner_->Run({kIpPath, "-6", "route", "add", ipv6_addr_cidr,
-                               "dev", ifname}) == 0;
+  return process_runner_->Run({kIpPath, "-6", "route", "replace",
+                               ipv6_addr_cidr, "dev", ifname}) == 0;
 }
 
 void Datapath::RemoveIPv6HostRoute(const std::string& ifname,
