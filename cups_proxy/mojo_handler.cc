@@ -9,7 +9,6 @@
 
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <mojo/edk/embedder/embedder.h>
 
 namespace cups_proxy {
 
@@ -71,21 +70,24 @@ bool MojoHandler::StartThread() {
 
 void MojoHandler::SetupMojoPipe(base::ScopedFD fd,
                                 base::Closure error_handler) {
-  mojo::edk::SetParentPipeHandle(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
 
   mojo_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&MojoHandler::SetupMojoPipeOnThread,
-                            base::Unretained(this), std::move(error_handler)));
+      FROM_HERE,
+      base::BindOnce(&MojoHandler::SetupMojoPipeOnThread,
+                     base::Unretained(this), std::move(error_handler),
+                     std::move(invitation)));
 }
 
-void MojoHandler::SetupMojoPipeOnThread(base::Closure error_handler) {
+void MojoHandler::SetupMojoPipeOnThread(base::Closure error_handler,
+                                        mojo::IncomingInvitation invitation) {
   DCHECK(mojo_task_runner_->BelongsToCurrentThread());
   DCHECK(!chrome_proxy_);
 
   // Bind primordial message pipe to a CupsProxyService implementation.
   chrome_proxy_.Bind(mojom::CupsProxierPtrInfo(
-      mojo::edk::CreateChildMessagePipe(
+      invitation.ExtractMessagePipe(
           printing::kBootstrapMojoConnectionChannelToken),
       0u /* version */));
   chrome_proxy_.set_connection_error_handler(std::move(error_handler));

@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/threading/thread.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "cups_proxy/mhd_http_request.h"
 #include "cups_proxy/mojom/proxy.mojom.h"
@@ -51,7 +52,8 @@ class MojoHandler {
 
  private:
   // Setup the mojo pipe. This is always called on the mojo thread.
-  void SetupMojoPipeOnThread(base::Closure error_handler);
+  void SetupMojoPipeOnThread(base::Closure error_handler,
+                             mojo::IncomingInvitation invitation);
 
   // Sends the request to the mojo pipe. This is always called on the mojo
   // thread.
