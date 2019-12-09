@@ -17,7 +17,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "ml/machine_learning_service_impl.h"
 
@@ -98,12 +98,13 @@ void Daemon::BootstrapMojoConnection(
   }
 
   // Connect to mojo in the requesting process.
-  mojo::edk::SetParentPipeHandle(mojo::edk::ScopedPlatformHandle(
-      mojo::edk::PlatformHandle(file_handle.release())));
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(file_handle))));
 
   // Bind primordial message pipe to a MachineLearningService implementation.
   machine_learning_service_ = base::MakeUnique<MachineLearningServiceImpl>(
-      mojo::edk::CreateChildMessagePipe(kBootstrapMojoConnectionChannelToken),
+      invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken),
       base::Bind(&Daemon::OnConnectionError, base::Unretained(this)));
 
   metrics_.RecordMojoConnectionEvent(
