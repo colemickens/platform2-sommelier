@@ -5,10 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_MOJO_ADAPTER_CROS_HEALTHD_MOJO_ADAPTER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_MOJO_ADAPTER_CROS_HEALTHD_MOJO_ADAPTER_H_
 
+#include <memory>
 #include <vector>
 
 #include <base/macros.h>
 #include <base/threading/thread.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "mojo/cros_healthd.mojom.h"
 
@@ -34,6 +36,8 @@ class CrosHealthdMojoAdapter final {
   // IPC threads.
   base::Thread mojo_thread_{"Mojo Thread"};
   base::Thread dbus_thread_{"D-Bus Thread"};
+
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // Used to send mojo requests to cros_healthd.
   chromeos::cros_healthd::mojom::CrosHealthdServicePtr cros_healthd_service_;

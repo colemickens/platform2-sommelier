@@ -16,7 +16,7 @@
 #include <dbus/power_manager/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
 
 #include "debugd/dbus-proxy-mocks.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
@@ -35,7 +35,7 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 class CrosHealthdMojoServiceTest : public testing::Test {
  protected:
   CrosHealthdMojoServiceTest() {
-    mojo::edk::Init();
+    mojo::core::Init();
     mock_debugd_proxy_ = std::make_unique<org::chromium::debugdProxyMock>();
     options_.bus_type = dbus::Bus::SYSTEM;
     mock_bus_ = new dbus::MockBus(options_);

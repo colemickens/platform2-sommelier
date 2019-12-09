@@ -38,7 +38,7 @@
 #include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 
@@ -246,7 +246,7 @@ class CoreTest : public testing::Test {
 
  private:
   // Initialize the Mojo subsystem.
-  void InitializeMojo() { mojo::edk::Init(); }
+  void InitializeMojo() { mojo::core::Init(); }
 
   base::MessageLoop message_loop_;
 

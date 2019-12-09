@@ -15,6 +15,7 @@
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <dbus/power_manager/dbus-constants.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/pending_process_connection.h>
 
@@ -50,11 +51,12 @@ int CrosHealthd::OnInit() {
   if (exit_code != EXIT_SUCCESS)
     return exit_code;
 
-  // Init the Mojo Embedder API. The call to InitIPCSupport() is balanced with
-  // the ShutdownIPCSupport() one in OnShutdown().
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(
-      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */);
+  // Init the Mojo Embedder API.
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::
+          CLEAN /* blocking shutdown */);
 
   return EXIT_SUCCESS;
 }
@@ -74,19 +76,6 @@ void CrosHealthd::RegisterDBusObjectsAsync(
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object" /* descriptive_message */,
       true /* failure_is_fatal */));
-}
-
-void CrosHealthd::OnShutdown(int* error_code) {
-  // Gracefully tear down pieces that require asynchronous shutdown.
-  VLOG(1) << "Starting to shut down";
-
-  base::RunLoop run_loop;
-  mojo::edk::ShutdownIPCSupport(run_loop.QuitClosure());
-  run_loop.Run();
-
-  VLOG(1) << "Finished shutting down Mojo support with code " << *error_code;
-
-  DBusServiceDaemon::OnShutdown(error_code);
 }
 
 std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,

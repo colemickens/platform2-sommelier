@@ -5,8 +5,11 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DAEMON_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DAEMON_H_
 
+#include <memory>
+
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "diagnostics/wilco_dtc_supportd/core.h"
 #include "diagnostics/wilco_dtc_supportd/core_delegate_impl.h"
@@ -27,6 +30,7 @@ class Daemon final : public brillo::DBusServiceDaemon {
   void OnShutdown(int* error_code) override;
 
   CoreDelegateImpl wilco_dtc_supportd_core_delegate_impl_{this /* daemon */};
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   Core wilco_dtc_supportd_core_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);

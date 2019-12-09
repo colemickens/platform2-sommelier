@@ -10,7 +10,7 @@
 #include <base/memory/shared_memory.h>
 #include <base/strings/string_piece.h>
 #include <gtest/gtest.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
@@ -19,7 +19,7 @@ namespace {
 
 class MojoUtilsTest : public testing::Test {
  protected:
-  MojoUtilsTest() { mojo::edk::Init(); }
+  MojoUtilsTest() { mojo::core::Init(); }
 };
 
 }  // namespace

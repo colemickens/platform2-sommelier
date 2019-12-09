@@ -16,6 +16,7 @@
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
@@ -35,7 +36,6 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
   int OnInit() override;
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
-  void OnShutdown(int* error_code) override;
 
   // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
   // exposed by the cros_healthd daemon (see constants for the API methods at
@@ -47,6 +47,8 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
                                       bool is_chrome);
 
   void ShutDownDueToMojoError(const std::string& debug_reason);
+
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // This should be the only connection to D-Bus. Use |connection_| to get the
   // |dbus_bus_|.

@@ -11,9 +11,8 @@
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
 
-#include "diagnostics/common/bind_utils.h"
 #include "diagnostics/constants/grpc_constants.h"
 
 namespace diagnostics {
@@ -44,9 +43,11 @@ int Daemon::OnInit() {
 
   // Init the Mojo Embedder API. The call to InitIPCSupport() is balanced with
   // the ShutdownIPCSupport() one in OnShutdown().
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(
-      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */);
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::
+          CLEAN /* blocking shutdown */);
 
   return EXIT_SUCCESS;
 }
@@ -62,10 +63,7 @@ void Daemon::OnShutdown(int* error_code) {
   VLOG(1) << "Shutting down";
 
   base::RunLoop run_loop;
-  const base::Closure barrier_closure =
-      BarrierClosure(2, run_loop.QuitClosure());
-  mojo::edk::ShutdownIPCSupport(barrier_closure);
-  wilco_dtc_supportd_core_.ShutDown(barrier_closure);
+  wilco_dtc_supportd_core_.ShutDown(run_loop.QuitClosure());
   run_loop.Run();
 
   VLOG(0) << "Shutting down with code " << *error_code;

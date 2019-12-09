@@ -17,6 +17,7 @@
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
 
@@ -77,13 +78,13 @@ CrosHealthdMojoAdapter::CrosHealthdMojoAdapter() {
       base::Thread::Options(base::MessageLoop::TYPE_IO, 0)))
       << "Failed starting the D-Bus thread.";
 
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(mojo_thread_.task_runner());
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      mojo_thread_.task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 }
 
-CrosHealthdMojoAdapter::~CrosHealthdMojoAdapter() {
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
-}
+CrosHealthdMojoAdapter::~CrosHealthdMojoAdapter() = default;
 
 chromeos::cros_healthd::mojom::TelemetryInfoPtr
 CrosHealthdMojoAdapter::GetTelemetryInfo(
