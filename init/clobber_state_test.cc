@@ -758,7 +758,6 @@ class ClobberStateMock : public ClobberState {
   ClobberStateMock(const Arguments& args,
                    std::unique_ptr<CrosSystem> cros_system)
       : ClobberState(args, std::move(cros_system)),
-        delay_forced_(false),
         secure_erase_supported_(false) {}
 
   void SetStatResultForPath(const base::FilePath& path, const struct stat& st) {
@@ -768,8 +767,6 @@ class ClobberStateMock : public ClobberState {
   void SetSecureEraseSupported(bool supported) {
     secure_erase_supported_ = supported;
   }
-
-  bool DelayForced() { return delay_forced_; }
 
  protected:
   int Stat(const base::FilePath& path, struct stat* st) override {
@@ -781,8 +778,6 @@ class ClobberStateMock : public ClobberState {
     return 0;
   }
 
-  void ForceDelay() override { delay_forced_ = true; }
-
   bool SecureErase(const base::FilePath& path) override {
     return secure_erase_supported_ && base::DeleteFile(path, false);
   }
@@ -791,7 +786,6 @@ class ClobberStateMock : public ClobberState {
 
  private:
   std::unordered_map<std::string, struct stat> result_map_;
-  bool delay_forced_;
   bool secure_erase_supported_;
 };
 
@@ -1046,7 +1040,6 @@ TEST_F(AttemptSwitchToFastWipeTest, NotRotationalNoSecureErase) {
 
   clobber_.SetSecureEraseSupported(false);
   clobber_.AttemptSwitchToFastWipe(false);
-  EXPECT_FALSE(clobber_.DelayForced());
   EXPECT_FALSE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
   CheckPathsUntouched(keyset_paths_);
@@ -1060,7 +1053,6 @@ TEST_F(AttemptSwitchToFastWipeTest, AlreadyFast) {
 
   clobber_.SetSecureEraseSupported(true);
   clobber_.AttemptSwitchToFastWipe(true);
-  EXPECT_FALSE(clobber_.DelayForced());
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
   CheckPathsUntouched(keyset_paths_);
@@ -1074,7 +1066,6 @@ TEST_F(AttemptSwitchToFastWipeTest, RotationalNoSecureErase) {
 
   clobber_.SetSecureEraseSupported(false);
   clobber_.AttemptSwitchToFastWipe(true);
-  EXPECT_TRUE(clobber_.DelayForced());
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsDeleted(encrypted_stateful_paths_);
   CheckPathsShredded(keyset_paths_);
@@ -1088,7 +1079,6 @@ TEST_F(AttemptSwitchToFastWipeTest, SecureEraseNotRotational) {
 
   clobber_.SetSecureEraseSupported(true);
   clobber_.AttemptSwitchToFastWipe(false);
-  EXPECT_TRUE(clobber_.DelayForced());
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
   CheckPathsDeleted(keyset_paths_);
@@ -1103,7 +1093,6 @@ TEST_F(AttemptSwitchToFastWipeTest, SecureEraseNotRotationalFactoryWipe) {
 
   clobber_.SetSecureEraseSupported(true);
   clobber_.AttemptSwitchToFastWipe(false);
-  EXPECT_FALSE(clobber_.DelayForced());
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
   CheckPathsDeleted(keyset_paths_);
@@ -1117,7 +1106,6 @@ TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureErase) {
 
   clobber_.SetSecureEraseSupported(true);
   clobber_.AttemptSwitchToFastWipe(true);
-  EXPECT_TRUE(clobber_.DelayForced());
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsDeleted(encrypted_stateful_paths_);
   CheckPathsShredded(keyset_paths_);
@@ -1132,7 +1120,6 @@ TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureEraseFactoryWipe) {
 
   clobber_.SetSecureEraseSupported(true);
   clobber_.AttemptSwitchToFastWipe(true);
-  EXPECT_FALSE(clobber_.DelayForced());
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsDeleted(encrypted_stateful_paths_);
   CheckPathsShredded(keyset_paths_);

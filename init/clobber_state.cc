@@ -985,6 +985,8 @@ int ClobberState::CreateStatefulFileSystem() {
 int ClobberState::Run() {
   DCHECK(cros_system_);
 
+  wipe_start_time_ = base::TimeTicks::Now();
+
   // Defer callback to relocate log file back to stateful partition so that it
   // will be preserved after a reboot.
   base::ScopedClosureRunner relocate_clobber_state_log(base::BindRepeating(
@@ -1012,6 +1014,11 @@ int ClobberState::Run() {
   // 2. The request doesn't originate from a user-triggered powerwash.
   bool preserve_sensitive_files =
       !user_triggered_powerwash || preserve_dev_mode_crash_reports;
+
+  // True if we should ensure that this powerwash takes at least 5 minutes.
+  // Saved here because we may switch to using a fast wipe later, but we still
+  // want to enforce the delay in that case.
+  bool should_force_delay = !args_.fast_wipe && !args_.factory_wipe;
 
   LOG(INFO) << "Beginning clobber-state run";
   LOG(INFO) << "Factory wipe: " << args_.factory_wipe;
@@ -1208,6 +1215,11 @@ int ClobberState::Run() {
     WipeDevice(wipe_info_.inactive_kernel_device);
   }
 
+  // Ensure that we've run for at least 5 minutes if this run requires it.
+  if (should_force_delay) {
+    ForceDelay();
+  }
+
   // Check if we're in developer mode, and if so, create developer mode marker
   // file so that we don't run clobber-state again after reboot.
   if (!MarkDeveloperMode()) {
@@ -1248,29 +1260,23 @@ bool ClobberState::MarkDeveloperMode() {
 
 void ClobberState::AttemptSwitchToFastWipe(bool is_rotational) {
   // On a non-fast wipe, rotational drives take too long. Override to run them
-  // through "fast" mode, with a forced delay. Sensitive contents should already
+  // through "fast" mode. Sensitive contents should already
   // be encrypted.
   if (!args_.fast_wipe && is_rotational) {
     LOG(INFO) << "Stateful device is on rotational disk, shredding files";
     ShredRotationalStatefulFiles();
-    if (!args_.factory_wipe) {
-      ForceDelay();
-    }
     args_.fast_wipe = true;
     LOG(INFO) << "Switching to fast wipe";
   }
 
   // For drives that support secure erasure, wipe the keysets,
-  // and then run the drives through "fast" mode, with a forced delay.
+  // and then run the drives through "fast" mode.
   //
   // Note: currently only eMMC-based SSDs are supported.
   if (!args_.fast_wipe) {
     LOG(INFO) << "Attempting to wipe encryption keysets";
     if (WipeKeysets()) {
       LOG(INFO) << "Wiping encryption keysets succeeded";
-      if (!args_.factory_wipe) {
-        ForceDelay();
-      }
       args_.fast_wipe = true;
       LOG(INFO) << "Switching to fast wipe";
     } else {
@@ -1368,9 +1374,18 @@ bool ClobberState::WipeKeysets() {
 }
 
 void ClobberState::ForceDelay() {
-  for (int delay = 300; delay >= 0; delay--) {
-    std::string count =
-        base::StringPrintf("%2d:%02d\r", delay / 60, delay % 60);
+  int64_t elapsed_seconds =
+      (base::TimeTicks::Now() - wipe_start_time_).InSeconds();
+  LOG(INFO) << "Clobber has already run for " << elapsed_seconds << " seconds";
+  if (elapsed_seconds >= 300) {
+    LOG(INFO) << "Skipping forced delay";
+    return;
+  }
+
+  int delay = 300 - elapsed_seconds;
+  LOG(INFO) << "Forcing a delay of " << delay << " seconds";
+  for (int i = delay; i >= 0; i--) {
+    std::string count = base::StringPrintf("%2d:%02d\r", i / 60, i % 60);
     terminal_.WriteAtCurrentPos(count.c_str(), count.size());
     sleep(1);
   }

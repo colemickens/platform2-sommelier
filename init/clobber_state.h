@@ -13,6 +13,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 
 #include "init/crossystem.h"
 
@@ -156,6 +157,11 @@ class ClobberState {
   // devices.
   bool WipeKeysets();
 
+  // Forces a 5 minute delay, writing progress to the TTY at |terminal_|.
+  // This is used to prevent developer mode transitions from happening too
+  // quickly.
+  virtual void ForceDelay();
+
   // Returns vector of files to be preserved. All FilePaths are relative to
   // stateful_. |preserve_sensitive_files| includes sensitive files as a part of
   // preservation (eg. crash reports, clobber log).
@@ -179,11 +185,6 @@ class ClobberState {
 
   // Wrapper around stat(2).
   virtual int Stat(const base::FilePath& path, struct stat* st);
-
-  // Forces a 5 minute delay, writing progress to the TTY at |terminal_|.
-  // This is used to prevent developer mode transitions from happening too
-  // quickly.
-  virtual void ForceDelay();
 
   // Wrapper around secure_erase_file::SecureErase(const base::FilePath&).
   virtual bool SecureErase(const base::FilePath& path);
@@ -214,6 +215,7 @@ class ClobberState {
   PartitionNumbers partitions_;
   base::FilePath root_disk_;
   DeviceWipeInfo wipe_info_;
+  base::TimeTicks wipe_start_time_;
 
   // File for writing progress to TTY.
   base::File terminal_;
