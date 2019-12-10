@@ -43,7 +43,6 @@ generate_dbus_adaptors("libdisks-adaptors") {
 }
 
 static_library("libdisks") {
-  configs += [ ":target_defaults" ]
   sources = [
     "archive_manager.cc",
     "cros_disks_server.cc",
@@ -87,16 +86,17 @@ static_library("libdisks") {
     "uri.cc",
     "usb_device_info.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libdisks-adaptors",
   ]
 }
 
 executable("cros-disks") {
-  configs += [ ":target_defaults" ]
   sources = [
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libdisks",
   ]
@@ -107,30 +107,30 @@ if (use.fuzzer) {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("cros-disks_mount_options_fuzzer") {
+    sources = [
+      "mount_options_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":fuzzed_data_config",
       ":target_defaults",
     ]
     configs -= [ "//common-mk:no_exceptions" ]
-    sources = [
-      "mount_options_fuzzer.cc",
-    ]
     deps = [
       ":libdisks",
     ]
   }
 
   executable("cros-disks_filesystem_label_fuzzer") {
+    sources = [
+      "fuzzers/filesystem_label_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
     deps = [
       ":libdisks",
-    ]
-    sources = [
-      "fuzzers/filesystem_label_fuzzer.cc",
     ]
   }
 }
@@ -140,11 +140,6 @@ if (use.test) {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("disks_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":disks_test_config",
-      ":target_defaults",
-    ]
     sources = [
       "archive_manager_test.cc",
       "device_event_moderator_test.cc",
@@ -177,6 +172,11 @@ if (use.test) {
       "udev_device_test.cc",
       "uri_test.cc",
       "usb_device_info_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":disks_test_config",
+      ":target_defaults",
     ]
     deps = [
       ":libdisks",
