@@ -15,11 +15,9 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/pending_process_connection.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/platform_handle_vector.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
+#include <base/rand_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <mojo/public/cpp/platform/platform_channel.h>
 #include <mojo/public/cpp/platform/socket_utils_posix.h>
 #include <mojo/public/cpp/system/invitation.h>
 
@@ -84,6 +82,12 @@ bool MakeUnixAddrForPath(const std::string& socket_name,
 bool IsRecoverableError(int err) {
   return errno == ECONNABORTED || errno == EMFILE || errno == ENFILE ||
          errno == ENOMEM || errno == ENOBUFS;
+}
+
+std::string GenerateRandomToken() {
+  char random_bytes[16];
+  base::RandBytes(random_bytes, 16);
+  return base::HexEncode(random_bytes, 16);
 }
 
 }  // namespace
@@ -224,24 +228,28 @@ MojoResult CreateMojoChannelToChildByUnixDomainSocket(
   }
 
   VLOGF(1) << "Setting up message pipe";
-  mojo::edk::PendingProcessConnection process;
-  mojo::edk::PlatformChannelPair channel_pair;
-  process.Connect(base::kNullProcessHandle,
-                  mojo::edk::ConnectionParams(channel_pair.PassServerHandle()));
-  mojo::edk::ScopedPlatformHandleVectorPtr handles(
-      new mojo::edk::PlatformHandleVector(
-          {channel_pair.PassClientHandle().release()}));
-  std::string token;
+  mojo::OutgoingInvitation invitation;
+  mojo::PlatformChannel channel;
+
+  const std::string token = GenerateRandomToken();
   mojo::ScopedMessagePipeHandle message_pipe =
-      process.CreateMessagePipe(&token);
-  VLOGF(1) << "Generated token: " << token;
-  struct iovec iov = {const_cast<char*>(token.c_str()), token.length()};
-  if (mojo::edk::PlatformChannelSendmsgWithHandles(
-          mojo::edk::PlatformHandle(client_socket_fd.get()), &iov, 1,
-          handles->data(), handles->size()) == -1) {
+      invitation.AttachMessagePipe(token);
+  mojo::OutgoingInvitation::Send(std::move(invitation),
+                                 base::kNullProcessHandle,
+                                 channel.TakeLocalEndpoint());
+  VLOGF(1) << "Invitation sent, token: " << token;
+
+  std::vector<base::ScopedFD> handles;
+  handles.emplace_back(
+      channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD());
+
+  struct iovec iov = {const_cast<char*>(token.data()), token.size()};
+  if (mojo::SendmsgWithHandles(client_socket_fd.get(), &iov, 1, handles) ==
+      -1) {
     PLOGF(ERROR) << "Failed to send token and handle";
     return MOJO_RESULT_INTERNAL;
   }
+  VLOGF(1) << "Token and handle sent";
 
   *parent_pipe = std::move(message_pipe);
   return MOJO_RESULT_OK;
