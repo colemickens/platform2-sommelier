@@ -53,12 +53,6 @@ generate_dbus_proxies("generate_buffet_proxies") {
 }
 
 static_library("buffet_common") {
-  configs += [ ":target_defaults" ]
-  all_dependent_configs = [ ":buffet_common_config" ]
-  deps = [
-    ":generate_buffet_adaptors",
-    ":generate_buffet_proxies",
-  ]
   sources = [
     "buffet_config.cc",
     "dbus_command_dispatcher.cc",
@@ -70,23 +64,29 @@ static_library("buffet_common") {
     "shill_client.cc",
     "socket_stream.cc",
   ]
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":buffet_common_config" ]
+  deps = [
+    ":generate_buffet_adaptors",
+    ":generate_buffet_proxies",
+  ]
 }
 
 executable("buffet") {
-  configs += [ ":target_defaults" ]
   sources = [
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":buffet_common",
   ]
 }
 
 executable("buffet_client") {
-  configs += [ ":target_defaults" ]
   sources = [
     "buffet_client.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 if (use.test) {
@@ -99,15 +99,15 @@ if (use.test) {
   }
 
   executable("buffet_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":buffet_testrunner_config",
-      ":target_defaults",
-    ]
     sources = [
       "buffet_config_test.cc",
       "dbus_command_proxy_test.cc",
       "dbus_conversion_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":buffet_testrunner_config",
+      ":target_defaults",
     ]
     deps = [
       ":buffet_common",
