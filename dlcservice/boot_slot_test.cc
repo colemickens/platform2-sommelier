@@ -106,11 +106,17 @@ TEST_F(BootSlotTest, GetCurrentSlotTest) {
   int num_slots;
   int current_slot;
 
+  EXPECT_CALL(*boot_device_, GetBootDevice())
+      .WillOnce(testing::Return("/dev/sda3"))
+      .WillOnce(testing::Return("/dev/sda5"))
+      .WillOnce(testing::Return("/dev/sdb3"))
+      .WillOnce(testing::Return("/dev/sda"));
+  EXPECT_CALL(*boot_device_, IsRemovableDevice(testing::_))
+      .WillOnce(testing::Return(false))
+      .WillOnce(testing::Return(false))
+      .WillOnce(testing::Return(true));
+
   // Boot from A slot.
-  ON_CALL(*boot_device_, GetBootDevice())
-      .WillByDefault(testing::Return("/dev/sda3"));
-  ON_CALL(*boot_device_, IsRemovableDevice(testing::_))
-      .WillByDefault(testing::Return(false));
   EXPECT_TRUE(
       boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
   EXPECT_EQ(boot_disk_name, "/dev/sda");
@@ -118,10 +124,6 @@ TEST_F(BootSlotTest, GetCurrentSlotTest) {
   EXPECT_EQ(current_slot, 0);
 
   // Boot from B slot.
-  ON_CALL(*boot_device_, GetBootDevice())
-      .WillByDefault(testing::Return("/dev/sda5"));
-  ON_CALL(*boot_device_, IsRemovableDevice(testing::_))
-      .WillByDefault(testing::Return(false));
   EXPECT_TRUE(
       boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
   EXPECT_EQ(boot_disk_name, "/dev/sda");
@@ -129,10 +131,6 @@ TEST_F(BootSlotTest, GetCurrentSlotTest) {
   EXPECT_EQ(current_slot, 1);
 
   // Boot from removable device.
-  ON_CALL(*boot_device_, GetBootDevice())
-      .WillByDefault(testing::Return("/dev/sdb3"));
-  ON_CALL(*boot_device_, IsRemovableDevice(testing::_))
-      .WillByDefault(testing::Return(true));
   EXPECT_TRUE(
       boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
   EXPECT_EQ(boot_disk_name, "/dev/sdb");
@@ -140,10 +138,6 @@ TEST_F(BootSlotTest, GetCurrentSlotTest) {
   EXPECT_EQ(current_slot, 0);
 
   // Boot from an invalid device.
-  ON_CALL(*boot_device_, GetBootDevice())
-      .WillByDefault(testing::Return("/dev/sda"));
-  ON_CALL(*boot_device_, IsRemovableDevice(testing::_))
-      .WillByDefault(testing::Return(true));
   EXPECT_FALSE(
       boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot));
 }

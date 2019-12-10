@@ -129,29 +129,21 @@ class DlcServiceTest : public testing::Test {
 
     // Create mocks with default behaviors.
     mock_boot_device_ = std::make_unique<MockBootDevice>();
-    ON_CALL(*(mock_boot_device_.get()), GetBootDevice())
-        .WillByDefault(Return("/dev/sdb5"));
-    ON_CALL(*(mock_boot_device_.get()), IsRemovableDevice(_))
-        .WillByDefault(Return(false));
+    EXPECT_CALL(*(mock_boot_device_.get()), GetBootDevice())
+        .WillOnce(Return("/dev/sdb5"));
+    EXPECT_CALL(*(mock_boot_device_.get()), IsRemovableDevice(_))
+        .WillOnce(Return(false));
 
     mock_image_loader_proxy_ =
         std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
     mock_image_loader_proxy_ptr_ = mock_image_loader_proxy_.get();
-    ON_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-        .WillByDefault(
-            DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
-    ON_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
-        .WillByDefault(DoAll(SetArgPointee<2>(true), Return(true)));
 
     mock_update_engine_proxy_ =
         std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>();
     mock_update_engine_proxy_ptr_ = mock_update_engine_proxy_.get();
-    ON_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
-        .WillByDefault(Return(true));
-    StatusResult status_result;
-    status_result.set_current_operation(Operation::IDLE);
-    ON_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-        .WillByDefault(DoAll(SetArgPointee<0>(status_result), Return(true)));
+    EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+                RegisterStatusUpdateAdvancedSignalHandler(_, _))
+        .Times(1);
 
     // Use the mocks to create |DlcService|.
     dlc_service_ = std::make_unique<DlcService>(
@@ -163,7 +155,11 @@ class DlcServiceTest : public testing::Test {
     dlc_service_->AddObserver(dlc_service_test_observer_.get());
   }
 
-  void SetUp() override { dlc_service_->LoadDlcModuleImages(); }
+  void SetUp() override {
+    EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+        .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+    dlc_service_->LoadDlcModuleImages();
+  }
 
   void SetMountPath(const string& mount_path_expected) {
     ON_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
@@ -244,8 +240,10 @@ TEST_F(DlcServiceTest, GetInstalledTest) {
 }
 
 TEST_F(DlcServiceTest, UninstallTest) {
-  ON_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
-      .WillByDefault(DoAll(SetArgPointee<2>(true), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
 
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
@@ -257,8 +255,10 @@ TEST_F(DlcServiceTest, UninstallNotInstalledIsValidTest) {
 }
 
 TEST_F(DlcServiceTest, UninstallUnmountFailureTest) {
-  ON_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
-      .WillByDefault(DoAll(SetArgPointee<2>(false), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)));
 
   EXPECT_FALSE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
@@ -266,6 +266,8 @@ TEST_F(DlcServiceTest, UninstallUnmountFailureTest) {
 }
 
 TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(Return(false));
 
@@ -278,8 +280,8 @@ TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
 TEST_F(DlcServiceTest, UninstallUpdateEngineBusyFailureTest) {
   StatusResult status_result;
   status_result.set_current_operation(Operation::CHECKING_FOR_UPDATE);
-  ON_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-      .WillByDefault(DoAll(SetArgPointee<0>(status_result), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(status_result), Return(true)));
 
   EXPECT_FALSE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
@@ -289,8 +291,10 @@ TEST_F(DlcServiceTest, UninstallUpdateEngineBusyFailureTest) {
 TEST_F(DlcServiceTest, UninstallUpdatedNeedRebootSuccessTest) {
   StatusResult status_result;
   status_result.set_current_operation(Operation::UPDATED_NEED_REBOOT);
-  ON_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-      .WillByDefault(DoAll(SetArgPointee<0>(status_result), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(status_result), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
 
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, nullptr));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
@@ -307,9 +311,11 @@ TEST_F(DlcServiceTest, InstallTest) {
       CreateDlcModuleList({kSecondDlc}, omaha_url_default);
 
   SetMountPath(mount_path_.value());
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
-      .Times(1);
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
@@ -390,6 +396,8 @@ TEST_F(DlcServiceTest, InstallFailureCleansUp) {
       CreateDlcModuleList({kSecondDlc, kThirdDlc}, omaha_url_default);
 
   SetMountPath(mount_path_.value());
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .WillOnce(Return(false));
@@ -407,11 +415,10 @@ TEST_F(DlcServiceTest, InstallUrlTest) {
   DlcModuleList dlc_module_list =
       CreateDlcModuleList({kSecondDlc}, omaha_url_override);
 
-  ON_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
-      .WillByDefault(Return(true));
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              AttemptInstall(ProtoHasUrl(omaha_url_override), _, _))
-      .Times(1);
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
 
   dlc_service_->Install(dlc_module_list, nullptr);
 }
@@ -420,8 +427,15 @@ TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalDlcRootTest) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>("/some/mount"), Return(true)));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .Times(0);
 
@@ -449,6 +463,11 @@ TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalNoRemountTest) {
   const vector<string>& dlc_ids = {kFirstDlc, kSecondDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
@@ -471,6 +490,11 @@ TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalNoRemountTest) {
 TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalTest) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
@@ -496,6 +520,11 @@ TEST_F(DlcServiceTest, ReportingFailureCleanupTest) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
   for (const string& dlc_id : dlc_ids)
@@ -515,6 +544,11 @@ TEST_F(DlcServiceTest, ReportingFailureSignalTest) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
   for (const string& dlc_id : dlc_ids)
@@ -532,10 +566,18 @@ TEST_F(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
   for (const string& dlc_id : dlc_ids)
     EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetLastAttemptError(_, _, _))
+      .WillOnce(Return(false));
 
   StatusResult status_result;
   status_result.set_current_operation(Operation::IDLE);
@@ -548,14 +590,17 @@ TEST_F(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest) {
 }
 
 TEST_F(DlcServiceTest, UpdateEngineFailSafeTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-      .WillOnce(Return(true))
-      .WillOnce(Return(false));
-
   const vector<string>& dlc_ids = {kSecondDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+
   for (const string& dlc_id : dlc_ids)
     EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
 
@@ -567,14 +612,17 @@ TEST_F(DlcServiceTest, UpdateEngineFailSafeTest) {
 }
 
 TEST_F(DlcServiceTest, UpdateEngineFailAfterSignalsSafeTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-      .WillOnce(Return(true))
-      .WillOnce(Return(false));
-
   const vector<string>& dlc_ids = {kSecondDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+
   for (const string& dlc_id : dlc_ids)
     EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
 
@@ -594,8 +642,15 @@ TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalDownloadProgressTest) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>("/some/mount"), Return(true)));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .Times(0);
 
@@ -626,6 +681,11 @@ TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalDownloadProgressTest) {
 TEST_F(DlcServiceTest, PeriodCheckUpdateEngineInstallSignalRaceChecker) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
