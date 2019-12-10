@@ -310,6 +310,10 @@ void ReportFreeDiskSpaceTotalTime(int ms);
 // the "Cryptohome.FreeDiskSpaceTotalTime" histogram.
 void ReportFreeDiskSpaceTotalFreedInMb(int mb);
 
+// Reports the time between HomeDirs::FreeDiskSpace cleanup calls (seconds) to
+// the "Cryptohome.TimeBetweenFreeDiskSpace" histogram.
+void ReportTimeBetweenFreeDiskSpace(int s);
+
 // Reports removed GCache size by cryptohome to the
 // "Cryptohome.FreedGCacheDiskSpaceInMb" histogram.
 void ReportFreedGCacheDiskSpaceInMb(int mb);

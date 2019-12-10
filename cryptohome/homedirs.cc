@@ -164,6 +164,16 @@ void HomeDirs::FreeDiskSpace() {
       return;
   }
 
+  auto now = platform_->GetCurrentTime();
+
+  if (last_free_disk_space_) {
+    auto diff = now - *last_free_disk_space_;
+
+    ReportTimeBetweenFreeDiskSpace(diff.InSeconds());
+  }
+
+  last_free_disk_space_ = now;
+
   base::ElapsedTimer total_timer;
 
   FreeDiskSpaceInternal();

@@ -436,6 +436,7 @@ class HomeDirs {
   VaultKeysetFactory* vault_keyset_factory_;
   brillo::SecureBlob system_salt_;
   chaps::TokenManagerClient chaps_client_;
+  base::Optional<base::Time> last_free_disk_space_ = base::nullopt;
 
   // The container a not-shifted system UID in ARC++ container (AID_SYSTEM).
   static constexpr uid_t kAndroidSystemUid = 1000;
