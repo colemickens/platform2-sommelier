@@ -253,6 +253,44 @@ class ValidateConfigSchemaTests(cros_test_lib.TestCase):
     self.assertIn('is not valid', str(ctx.exception))
 
 
+WHITELABEL_CONFIG = """
+chromeos:
+  devices:
+    - $name: 'whitelabel'
+      products:
+        - $key-id: 'WL1'
+          $wallpaper: 'WL1_WALLPAPER'
+          $regulatory-label: 'WL1_LABEL'
+          $whitelabel-tag: 'WL1_TAG'
+          $brand-code: 'WL1_BRAND_CODE'
+          $stylus-category: ''
+          $powerd-prefs: 'WL1_POWERD_PREFS'
+        - $key-id: 'WL2'
+          $wallpaper: 'WL2_WALLPAPER'
+          $regulatory-label: 'WL2_LABEL'
+          $whitelabel-tag: 'WL2_TAG'
+          $brand-code: 'WL2_BRAND_CODE'
+          $stylus-category: 'external'
+          $powerd-prefs: 'WL2_POWERD_PREFS'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+              whitelabel-tag: '{{$whitelabel-tag}}'
+            name: '{{$name}}'
+            brand-code: '{{$brand-code}}'
+            wallpaper: '{{$wallpaper}}'
+            regulatory-label: '{{$regulatory-label}}'
+            hardware-properties:
+              stylus-category: '{{$stylus-category}}'
+"""
+
+INVALID_WHITELABEL_CONFIG = """
+            # THIS WILL CAUSE THE FAILURE
+            powerd-prefs: '{{$powerd-prefs}}'
+"""
+
+
 class ValidateConfigTests(cros_test_lib.TestCase):
 
   def testBasicValidation(self):
@@ -309,36 +347,13 @@ chromeos:
     except cros_config_schema.ValidationError as err:
       self.assertIn('Identities are not unique', err.__str__())
 
+  def testWhitelabelWithExternalStylus(self):
+    config = WHITELABEL_CONFIG
+    cros_config_schema.ValidateConfig(
+        cros_config_schema.TransformConfig(config))
+
   def testWhitelabelWithOtherThanBrandChanges(self):
-    config = """
-chromeos:
-  devices:
-    - $name: 'whitelabel'
-      products:
-        - $key-id: 'WL1'
-          $wallpaper: 'WL1_WALLPAPER'
-          $regulatory-label: 'WL1_LABEL'
-          $whitelabel-tag: 'WL1_TAG'
-          $brand-code: 'WL1_BRAND_CODE'
-          $powerd-prefs: 'WL1_POWERD_PREFS'
-        - $key-id: 'WL2'
-          $wallpaper: 'WL2_WALLPAPER'
-          $regulatory-label: 'WL2_LABEL'
-          $whitelabel-tag: 'WL2_TAG'
-          $brand-code: 'WL2_BRAND_CODE'
-          $powerd-prefs: 'WL2_POWERD_PREFS'
-      skus:
-        - config:
-            identity:
-              sku-id: 0
-              whitelabel-tag: '{{$whitelabel-tag}}'
-            name: '{{$name}}'
-            brand-code: '{{$brand-code}}'
-            wallpaper: '{{$wallpaper}}'
-            regulatory-label: '{{$regulatory-label}}'
-            # THIS WILL CAUSE THE FAILURE
-            powerd-prefs: '{{$powerd-prefs}}'
-"""
+    config = WHITELABEL_CONFIG + INVALID_WHITELABEL_CONFIG
     try:
       cros_config_schema.ValidateConfig(
           cros_config_schema.TransformConfig(config))

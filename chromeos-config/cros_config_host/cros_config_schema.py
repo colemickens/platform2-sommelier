@@ -34,6 +34,8 @@ SKUS = 'skus'
 CONFIG = 'config'
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper',
                   'regulatory-label']
+# External stylus is allowed for whitelabels
+EXTERNAL_STYLUS = 'external'
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
 
 EC_OUTPUT_NAME = 'ec_config'
@@ -626,6 +628,12 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
       for brand_element in BRAND_ELEMENTS:
         wl_minus_brand[brand_element] = ''
 
+      hw_props = wl_minus_brand.get('hardware-properties', None)
+      if hw_props:
+        stylus = hw_props.get('stylus-category', None)
+        if not stylus or stylus == EXTERNAL_STYLUS:
+          hw_props.pop('stylus-category', None)
+
       config_list.append(wl_minus_brand)
       whitelabels[name] = config_list
 
@@ -641,7 +649,8 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
         compare_str = str(compare_config)
         if base_str != compare_str:
           raise ValidationError(
-              'Whitelabel configs can only change branding attributes (%s).\n'
+              'Whitelabel configs can only change branding attributes '
+              'or use an external stylus for (%s).\n'
               'However, the device %s differs by other attributes.\n'
               'Example 1: %s\n'
               'Example 2: %s' % (device_name,
