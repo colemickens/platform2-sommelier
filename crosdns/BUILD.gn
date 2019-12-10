@@ -46,32 +46,35 @@ generate_dbus_proxies("crosdns_proxies") {
 }
 
 static_library("libcrosdns_static") {
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":crosdns_adaptors",
-  ]
   sources = [
     "crosdns_daemon.cc",
     "crosdns_daemon.h",
     "hosts_modifier.cc",
     "hosts_modifier.h",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":crosdns_adaptors",
+  ]
 }
 
 executable("crosdns") {
+  sources = [
+    "crosdns_daemon.h",
+    "main.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":crosdns_adaptors",
     ":libcrosdns_static",
   ]
-  sources = [
-    "crosdns_daemon.h",
-    "main.cc",
-  ]
 }
 
 if (use.test) {
   executable("run_tests") {
+    sources = [
+      "hosts_modifier_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -79,9 +82,6 @@ if (use.test) {
     deps = [
       ":libcrosdns_static",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "hosts_modifier_test.cc",
     ]
   }
 }
@@ -93,6 +93,9 @@ if (use.fuzzer) {
   }
 
   executable("hosts_modifier_fuzzer") {
+    sources = [
+      "hosts_modifier_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":hosts_modifier_fuzzer_config",
@@ -100,9 +103,6 @@ if (use.fuzzer) {
     ]
     deps = [
       ":libcrosdns_static",
-    ]
-    sources = [
-      "hosts_modifier_fuzzer.cc",
     ]
   }
 }
