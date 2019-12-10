@@ -56,7 +56,7 @@ class TestClockCopy : public base::Clock {
 
   ~TestClockCopy() override = default;
 
-  base::Time Now() override { return clock_->Now(); }
+  base::Time Now() const override { return clock_->Now(); }
 
  private:
   base::SimpleTestClock* clock_;
