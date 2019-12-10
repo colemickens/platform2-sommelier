@@ -40,6 +40,7 @@ TEST(AddressManager, BaseAddresses) {
       {AddressManager::Guest::ARC_NET, Ipv4Addr(100, 115, 92, 8)},
       {AddressManager::Guest::VM_TERMINA, Ipv4Addr(100, 115, 92, 24)},
       {AddressManager::Guest::VM_PLUGIN, Ipv4Addr(100, 115, 92, 128)},
+      {AddressManager::Guest::VM_PLUGIN_EXT, Ipv4Addr(100, 115, 93, 0)},
       {AddressManager::Guest::VM_TERMINA, Ipv4Addr(100, 115, 92, 192)},
   };
   AddressManager mgr({
@@ -48,6 +49,7 @@ TEST(AddressManager, BaseAddresses) {
       AddressManager::Guest::ARC_NET,
       AddressManager::Guest::VM_TERMINA,
       AddressManager::Guest::VM_PLUGIN,
+      AddressManager::Guest::VM_PLUGIN_EXT,
       AddressManager::Guest::CONTAINER,
   });
   for (const auto a : addrs) {
@@ -66,6 +68,7 @@ TEST(AddressManager, AddressesPerSubnet) {
       {AddressManager::Guest::ARC_NET, 2},
       {AddressManager::Guest::VM_TERMINA, 2},
       {AddressManager::Guest::VM_PLUGIN, 14},
+      {AddressManager::Guest::VM_PLUGIN_EXT, 6},
       {AddressManager::Guest::VM_TERMINA, 14},
   };
   AddressManager mgr({
@@ -74,6 +77,7 @@ TEST(AddressManager, AddressesPerSubnet) {
       AddressManager::Guest::ARC_NET,
       AddressManager::Guest::VM_TERMINA,
       AddressManager::Guest::VM_PLUGIN,
+      AddressManager::Guest::VM_PLUGIN_EXT,
       AddressManager::Guest::CONTAINER,
   });
   for (const auto a : addrs) {
@@ -90,6 +94,7 @@ TEST(AddressManager, SubnetsPerPool) {
       {AddressManager::Guest::ARC_NET, 4},
       {AddressManager::Guest::VM_TERMINA, 26},
       {AddressManager::Guest::VM_PLUGIN, 1},
+      {AddressManager::Guest::VM_PLUGIN_EXT, 32},
       {AddressManager::Guest::VM_TERMINA, 4},
   };
   AddressManager mgr({
@@ -98,6 +103,7 @@ TEST(AddressManager, SubnetsPerPool) {
       AddressManager::Guest::ARC_NET,
       AddressManager::Guest::VM_TERMINA,
       AddressManager::Guest::VM_PLUGIN,
+      AddressManager::Guest::VM_PLUGIN_EXT,
       AddressManager::Guest::CONTAINER,
   });
   for (const auto a : addrs) {

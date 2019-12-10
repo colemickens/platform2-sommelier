@@ -23,6 +23,8 @@ namespace {
 // | 144-188       | Reserved   |                                              |
 // | 192-252 (/28) | Containers | Used by Crostini                             |
 // +---------------+------------+----------------------------------------------+
+//
+// The 100.115.93.0/24 subnet is reserved for plugin VMs.
 
 }  // namespace
 
@@ -50,6 +52,11 @@ AddressManager::AddressManager(
       case Guest::VM_PLUGIN:
         base_addr = Ipv4Addr(100, 115, 92, 128);
         prefix_length = 28;
+        break;
+      case Guest::VM_PLUGIN_EXT:
+        base_addr = Ipv4Addr(100, 115, 93, 0);
+        prefix_length = 29;
+        subnets = 32;
         break;
       case Guest::CONTAINER:
         base_addr = Ipv4Addr(100, 115, 92, 192);
