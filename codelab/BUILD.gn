@@ -22,17 +22,17 @@ pkg_config("target_defaults") {
 }
 
 static_library("libcodelab") {
-  configs += [ ":target_defaults" ]
   sources = [
     "codelab.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("codelab") {
-  configs += [ ":target_defaults" ]
   sources = [
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libcodelab",
   ]
@@ -44,13 +44,13 @@ if (use.test) {
   }
 
   executable("codelab_test") {
+    sources = [
+      "codelab_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":codelab_test_config",
       ":target_defaults",
-    ]
-    sources = [
-      "codelab_test.cc",
     ]
     deps = [
       ":libcodelab",
