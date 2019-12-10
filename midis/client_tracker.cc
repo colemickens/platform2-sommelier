@@ -16,8 +16,8 @@
 #include <base/location.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 namespace {
 
@@ -110,10 +110,10 @@ void ClientTracker::RemoveClient(uint32_t client_id) {
 
 void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  mojo::edk::SetParentPipeHandle(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
   mojo::ScopedMessagePipeHandle child_pipe =
-      mojo::edk::CreateChildMessagePipe(kMidisPipe);
+      invitation.ExtractMessagePipe(kMidisPipe);
   midis_host_ = std::make_unique<MidisHostImpl>(
       mojo::MakeRequest<arc::mojom::MidisHost>(std::move(child_pipe)), this);
 }
