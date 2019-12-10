@@ -82,7 +82,6 @@ proto_library("chaps-protos") {
 # This is meant only for internal binaries like unittests.  All
 # client programs should be using the shared libchaps library.
 static_library("libchaps_static") {
-  configs += [ ":target_defaults" ]
   sources = [
     "attributes.cc",
     "chaps.cc",
@@ -94,13 +93,13 @@ static_library("libchaps_static") {
     "proto_conversion.cc",
     "token_manager_client.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":chaps-protos",
   ]
 }
 
 shared_library("libchaps") {
-  configs += [ ":target_defaults" ]
   sources = [
     "attributes.cc",
     "chaps.cc",
@@ -112,6 +111,7 @@ shared_library("libchaps") {
     "proto_conversion.cc",
     "token_manager_client.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":chaps-protos",
   ]
@@ -125,10 +125,6 @@ pkg_config("chapsd_config") {
 }
 
 executable("chapsd") {
-  configs += [
-    ":chapsd_config",
-    ":target_defaults",
-  ]
   sources = [
     "chaps_adaptor.cc",
     "chaps_factory_impl.cc",
@@ -150,6 +146,10 @@ executable("chapsd") {
     "session_impl.cc",
     "slot_manager_impl.cc",
     "system_shutdown_blocker.cc",
+  ]
+  configs += [
+    ":chapsd_config",
+    ":target_defaults",
   ]
   libs = [
     "dl",
@@ -173,20 +173,20 @@ executable("chapsd") {
 }
 
 executable("chaps_client") {
-  configs += [ ":target_defaults" ]
   sources = [
     "chaps_client.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libchaps_static",
   ]
 }
 
 executable("p11_replay") {
-  configs += [ ":target_defaults" ]
   sources = [
     "p11_replay.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libchaps",
   ]
@@ -198,8 +198,6 @@ if (use.test) {
   }
 
   static_library("libchaps_test") {
-    configs += [ ":target_defaults" ]
-    all_dependent_configs = [ ":libchaps_test_dependent_config" ]
     sources = [
       "chaps_factory_mock.cc",
       "object_importer_mock.cc",
@@ -211,7 +209,8 @@ if (use.test) {
       "slot_manager_mock.cc",
       "tpm_utility_mock.cc",
     ]
-
+    configs += [ ":target_defaults" ]
+    all_dependent_configs = [ ":libchaps_test_dependent_config" ]
     deps = [
       ":chaps-protos",
       ":libchaps_static",
@@ -219,12 +218,12 @@ if (use.test) {
   }
 
   executable("chaps_test") {
+    sources = [
+      "chaps_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
-    ]
-    sources = [
-      "chaps_test.cc",
     ]
     deps = [
       ":libchaps_static",
@@ -233,13 +232,13 @@ if (use.test) {
   }
 
   executable("chaps_service_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "chaps_service.cc",
       "chaps_service_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
@@ -249,13 +248,13 @@ if (use.test) {
   }
 
   executable("dbus_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "dbus/dbus_proxy_wrapper_test.cc",
       "dbus/scoped_bus_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
@@ -264,14 +263,14 @@ if (use.test) {
   }
 
   executable("slot_manager_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "slot_manager_impl.cc",
       "slot_manager_test.cc",
       "system_shutdown_blocker.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
@@ -281,13 +280,13 @@ if (use.test) {
   }
 
   executable("session_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "session_impl.cc",
       "session_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
@@ -296,13 +295,13 @@ if (use.test) {
   }
 
   executable("object_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "object_impl.cc",
       "object_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
@@ -312,10 +311,6 @@ if (use.test) {
   }
 
   executable("object_policy_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "object_policy_cert.cc",
       "object_policy_common.cc",
@@ -326,6 +321,10 @@ if (use.test) {
       "object_policy_secret_key.cc",
       "object_policy_test.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     deps = [
       ":libchaps_static",
       ":libchaps_test",
@@ -334,13 +333,13 @@ if (use.test) {
   }
 
   executable("object_pool_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "object_pool_impl.cc",
       "object_pool_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
@@ -354,14 +353,14 @@ if (use.test) {
   }
 
   executable("object_store_test") {
+    sources = [
+      "object_store_impl.cc",
+      "object_store_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":object_store_test_config",
       ":target_defaults",
-    ]
-    sources = [
-      "object_store_impl.cc",
-      "object_store_test.cc",
     ]
     libs = [
       "leveldb",
@@ -373,14 +372,14 @@ if (use.test) {
   }
 
   executable("opencryptoki_importer_test") {
+    sources = [
+      "opencryptoki_importer.cc",
+      "opencryptoki_importer_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":object_store_test_config",
       ":target_defaults",
-    ]
-    sources = [
-      "opencryptoki_importer.cc",
-      "opencryptoki_importer_test.cc",
     ]
     deps = [
       ":libchaps_static",
@@ -390,15 +389,15 @@ if (use.test) {
   }
 
   executable("isolate_login_client_test") {
-    configs += [
-      "//common-mk:test",
-      ":object_store_test_config",
-      ":target_defaults",
-    ]
     sources = [
       "isolate_login_client.cc",
       "isolate_login_client_test.cc",
       "token_file_manager_chromeos.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":object_store_test_config",
+      ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
@@ -413,13 +412,13 @@ if (use.test) {
   # run with autotest. These tests do not need to be run regularly
   # but may be useful in the future and so have been kept around.
   executable("chapsd_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
     sources = [
       "chapsd_test.cc",
       "platform_globals_chromeos.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
     ]
     libs = [ "dl" ]
     deps = [
@@ -429,24 +428,22 @@ if (use.test) {
   }
 
   executable("tpm_utility_test") {
+    sources = [
+      "tpm_utility_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
-    ]
-    sources = [
-      "tpm_utility_test.cc",
     ]
     deps = [
       ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
-
     if (use.tpm2) {
       sources += [ "tpm2_utility_impl.cc" ]
       libs = [ "trunks" ]
     }
-
     if (!use.tpm2) {
       sources += [ "tpm_utility_impl.cc" ]
       libs = [ "tspi" ]
@@ -458,13 +455,13 @@ if (use.test) {
   # conditionals in the middle of a target list, we added it at the end.
   if (use.tpm2) {
     executable("tpm2_utility_test") {
-      configs += [
-        "//common-mk:test",
-        ":target_defaults",
-      ]
       sources = [
         "tpm2_utility_impl.cc",
         "tpm2_utility_test.cc",
+      ]
+      configs += [
+        "//common-mk:test",
+        ":target_defaults",
       ]
       libs = [
         "trunks",
