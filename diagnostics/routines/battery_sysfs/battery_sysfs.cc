@@ -137,7 +137,8 @@ bool BatterySysfsRoutine::RunBatterySysfsRoutine() {
     if (!TryReadFileToString(absolute_file_path, &file_contents)) {
       // Failing to read and log a file should not cause the routine to fail,
       // but we should record the event.
-      LOG(WARNING) << "Battery attribute unavailable: " << item.battery_log_key;
+      PLOG(WARNING) << "Battery attribute unavailable: "
+                    << item.battery_log_key;
       continue;
     }
 
