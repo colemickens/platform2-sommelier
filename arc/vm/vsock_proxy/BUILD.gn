@@ -10,10 +10,7 @@ group("all") {
     ":server_proxy",
   ]
   if (use.test) {
-    deps += [
-      ":client_proxy_lib",
-      ":vsock_proxy_test",
-    ]
+    deps += [ ":vsock_proxy_test" ]
   }
 }
 
@@ -63,19 +60,6 @@ executable("server_proxy") {
 }
 
 if (use.test) {
-  # client_proxy is used only in VM guest, though build here for testing.
-  # TODO(b/121198129): Add actual unittest for those code.
-  # Currently, this exercises only that the library is successfully built.
-  static_library("client_proxy_lib") {
-    sources = [
-      "client_proxy.cc",
-    ]
-    configs += [ ":target_defaults" ]
-    deps = [
-      ":vsock_proxy_lib",
-    ]
-  }
-
   executable("vsock_proxy_test") {
     sources = [
       "file_descriptor_util_test.cc",

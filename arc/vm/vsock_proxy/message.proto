@@ -62,9 +62,7 @@ message FileDescriptor {
   int64 handle = 2;
 
   reserved 3;  // uint64 file_size = 3 [deprecated=true];
-
-  // Virtgpu resource handle of a dmabuf.
-  uint32 drm_virtgpu_res_handle = 4;
+  reserved 4;  // uint32 drm_virtgpu_res_handle = 4; [deprecated=true];
 }
 
 // Notify the data is available on a stream (pipe or socket) corresponding to

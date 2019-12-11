@@ -48,9 +48,15 @@ class ServerProxy : public VSockProxy::Delegate,
   void Fstat(int64_t handle, FstatCallback callback) override;
 
  private:
+  void AcceptVirtwlConnection();
+
   scoped_refptr<base::TaskRunner> proxy_file_system_task_runner_;
   ProxyFileSystem proxy_file_system_;
   base::OnceClosure quit_closure_;
+  base::ScopedFD virtwl_socket_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      virtwl_socket_watcher_;
+  base::ScopedFD virtwl_context_;
   std::unique_ptr<VSockProxy> vsock_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerProxy);
