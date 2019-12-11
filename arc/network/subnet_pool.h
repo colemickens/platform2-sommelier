@@ -31,7 +31,8 @@ class BRILLO_EXPORT SubnetPool {
   ~SubnetPool();
 
   // Allocates and returns a new subnet or nullptr if none are available.
-  std::unique_ptr<Subnet> Allocate();
+  // |index| may be used to request a particular subnet.
+  std::unique_ptr<Subnet> Allocate(int index = -1);
 
  private:
   SubnetPool(uint32_t base_addr, uint32_t prefix_length, uint32_t num_subnets);

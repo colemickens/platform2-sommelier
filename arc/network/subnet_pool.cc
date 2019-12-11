@@ -49,15 +49,17 @@ SubnetPool::~SubnetPool() {
   }
 }
 
-std::unique_ptr<Subnet> SubnetPool::Allocate() {
-  // Find the first un-allocated subnet.
-  uint32_t index = 0;
-  while (index < num_subnets_ && subnets_.test(index)) {
-    ++index;
+std::unique_ptr<Subnet> SubnetPool::Allocate(int index) {
+  if (index < 0) {
+    index = 0;
+    // Find the first un-allocated subnet.
+    while (index < num_subnets_ && subnets_.test(index)) {
+      ++index;
+    }
   }
 
-  if (index == num_subnets_) {
-    // All subnets are allocated.
+  if (index >= num_subnets_ || subnets_.test(index)) {
+    // No applicable subnet available.
     return nullptr;
   }
 

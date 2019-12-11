@@ -20,17 +20,13 @@ TEST(AddressManager, OnlyAllocateFromKnownGuests) {
   AddressManager mgr({AddressManager::Guest::ARC,
                       AddressManager::Guest::VM_TERMINA,
                       AddressManager::Guest::CONTAINER});
-  EXPECT_TRUE(mgr.AllocateIPv4Subnet(AddressManager::Guest::ARC) != nullptr);
-  EXPECT_TRUE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_TERMINA) !=
-              nullptr);
-  EXPECT_TRUE(mgr.AllocateIPv4Subnet(AddressManager::Guest::CONTAINER) !=
-              nullptr);
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_ARC) !=
-               nullptr);
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::ARC_NET) !=
-               nullptr);
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_PLUGIN) !=
-               nullptr);
+  EXPECT_TRUE(mgr.AllocateIPv4Subnet(AddressManager::Guest::ARC));
+  EXPECT_TRUE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_TERMINA));
+  EXPECT_TRUE(mgr.AllocateIPv4Subnet(AddressManager::Guest::CONTAINER));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_ARC));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::ARC_NET));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_PLUGIN));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_PLUGIN_EXT));
 }
 
 TEST(AddressManager, BaseAddresses) {
@@ -41,7 +37,7 @@ TEST(AddressManager, BaseAddresses) {
       {AddressManager::Guest::VM_TERMINA, Ipv4Addr(100, 115, 92, 24)},
       {AddressManager::Guest::VM_PLUGIN, Ipv4Addr(100, 115, 92, 128)},
       {AddressManager::Guest::VM_PLUGIN_EXT, Ipv4Addr(100, 115, 93, 0)},
-      {AddressManager::Guest::VM_TERMINA, Ipv4Addr(100, 115, 92, 192)},
+      {AddressManager::Guest::CONTAINER, Ipv4Addr(100, 115, 92, 192)},
   };
   AddressManager mgr({
       AddressManager::Guest::ARC,
@@ -69,7 +65,7 @@ TEST(AddressManager, AddressesPerSubnet) {
       {AddressManager::Guest::VM_TERMINA, 2},
       {AddressManager::Guest::VM_PLUGIN, 14},
       {AddressManager::Guest::VM_PLUGIN_EXT, 6},
-      {AddressManager::Guest::VM_TERMINA, 14},
+      {AddressManager::Guest::CONTAINER, 14},
   };
   AddressManager mgr({
       AddressManager::Guest::ARC,
@@ -95,7 +91,7 @@ TEST(AddressManager, SubnetsPerPool) {
       {AddressManager::Guest::VM_TERMINA, 26},
       {AddressManager::Guest::VM_PLUGIN, 1},
       {AddressManager::Guest::VM_PLUGIN_EXT, 32},
-      {AddressManager::Guest::VM_TERMINA, 4},
+      {AddressManager::Guest::CONTAINER, 4},
   };
   AddressManager mgr({
       AddressManager::Guest::ARC,
@@ -116,6 +112,25 @@ TEST(AddressManager, SubnetsPerPool) {
     auto subnet = mgr.AllocateIPv4Subnet(a.first);
     EXPECT_TRUE(subnet == nullptr);
   }
+}
+
+TEST(AddressManager, SubnetIndexing) {
+  AddressManager mgr({
+      AddressManager::Guest::ARC,
+      AddressManager::Guest::VM_ARC,
+      AddressManager::Guest::ARC_NET,
+      AddressManager::Guest::VM_TERMINA,
+      AddressManager::Guest::VM_PLUGIN,
+      AddressManager::Guest::VM_PLUGIN_EXT,
+      AddressManager::Guest::CONTAINER,
+  });
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::ARC, 0));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_ARC, 0));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::ARC_NET, 0));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_TERMINA, 0));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_PLUGIN, 0));
+  EXPECT_TRUE(mgr.AllocateIPv4Subnet(AddressManager::Guest::VM_PLUGIN_EXT, 0));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(AddressManager::Guest::CONTAINER, 0));
 }
 
 }  // namespace arc_networkd

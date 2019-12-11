@@ -43,7 +43,9 @@ class BRILLO_EXPORT AddressManager {
   // Allocates a subnet from the specified guest network pool if available.
   // Returns nullptr if the guest was configured or no more subnets are
   // available for allocation.
-  std::unique_ptr<Subnet> AllocateIPv4Subnet(Guest guest);
+  // |index| is used to acquire a particular subnet from the pool, if supported
+  // for |guest|.
+  std::unique_ptr<Subnet> AllocateIPv4Subnet(Guest guest, int index = -1);
 
  private:
   MacAddressGenerator mac_addrs_;

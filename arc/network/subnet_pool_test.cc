@@ -90,4 +90,18 @@ TEST(SubnetPool, Release) {
   EXPECT_EQ(address, subnet->AddressAtOffset(1));
 }
 
+TEST(SubnetPool, Index) {
+  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets);
+  auto subnet = pool->Allocate(0);
+  ASSERT_TRUE(subnet);
+  ASSERT_FALSE(pool->Allocate(0));
+  ASSERT_TRUE(pool->Allocate(-1));
+  ASSERT_TRUE(pool->Allocate());
+  ASSERT_TRUE(pool->Allocate(1));
+  ASSERT_FALSE(pool->Allocate(kMaxSubnets));
+  subnet.reset();
+  ASSERT_TRUE(pool->Allocate(0));
+  ASSERT_FALSE(pool->Allocate(kMaxSubnets + 1));
+}
+
 }  // namespace arc_networkd

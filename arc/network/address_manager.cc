@@ -73,9 +73,13 @@ MacAddress AddressManager::GenerateMacAddress() {
 }
 
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(
-    AddressManager::Guest guest) {
+    AddressManager::Guest guest, int index) {
+  if (index >= 0 && guest != AddressManager::Guest::VM_PLUGIN_EXT) {
+    LOG(ERROR) << "Subnet indexing not supported for guest";
+    return nullptr;
+  }
   const auto it = pools_.find(guest);
-  return (it != pools_.end()) ? it->second->Allocate() : nullptr;
+  return (it != pools_.end()) ? it->second->Allocate(index) : nullptr;
 }
 
 }  // namespace arc_networkd
