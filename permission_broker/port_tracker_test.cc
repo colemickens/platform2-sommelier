@@ -323,6 +323,15 @@ TEST_F(PortTrackerTest, StartPortForwarding_BaseSuccessCase) {
   ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
 }
 
+TEST_F(PortTrackerTest, StartAdbPortForwarding_BaseSuccessCase) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(7));
+  ASSERT_TRUE(port_tracker_.StartAdbPortForwarding("vmtap0", dbus_fd));
+
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
+  ASSERT_EQ(1, mock_firewall_.CountActiveCommands());
+}
+
 TEST_F(PortTrackerTest, StartPortForwarding_LifelineFdFailure) {
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
   ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
@@ -331,6 +340,13 @@ TEST_F(PortTrackerTest, StartPortForwarding_LifelineFdFailure) {
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
   ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
       tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartAdbPortForwarding_LifelineFdFailure) {
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
+  ASSERT_FALSE(port_tracker_.StartAdbPortForwarding("vmtap0", dbus_fd));
 
   ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
@@ -347,6 +363,16 @@ TEST_F(PortTrackerTest, StartPortForwarding_IptablesFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(6)).WillOnce(Return(true));
   ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
       tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartAdbPortForwarding_IptablesFailure) {
+  SetMockExpectations(&mock_firewall_, false /* failure */);
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(7));
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(7)).WillOnce(Return(true));
+  ASSERT_FALSE(port_tracker_.StartAdbPortForwarding("vmtap0", dbus_fd));
 
   ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
@@ -404,6 +430,18 @@ TEST_F(PortTrackerTest, StartPortForwarding_InputInterfaceValidation) {
   ASSERT_EQ(5, mock_firewall_.CountActiveCommands());
 }
 
+TEST_F(PortTrackerTest, StartAdbPortForwarding_InputInterfaceValidation) {
+  ASSERT_FALSE(port_tracker_.StartAdbPortForwarding("", dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartAdbPortForwarding("lo", dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartAdbPortForwarding("iface0", dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartAdbPortForwarding("VMTAP0", dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartAdbPortForwarding("vmtap0", dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartAdbPortForwarding("vmtap1", dbus_fd));
+
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
+  ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
+}
+
 TEST_F(PortTrackerTest, StartPortForwarding_TargetIpAddressValidation) {
   ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
       tcp_port, "eth0", "not_an_ip", tcp_port, dbus_fd));
@@ -441,6 +479,22 @@ TEST_F(PortTrackerTest, StopPortForwarding) {
   // Cannot stop twice.
   ASSERT_FALSE(port_tracker_.StopTcpPortForwarding(tcp_port, "eth0"));
   ASSERT_FALSE(port_tracker_.StopUdpPortForwarding(tcp_port, "eth0"));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StopAdbPortForwarding) {
+  // Cannot stop before starting.
+  ASSERT_FALSE(port_tracker_.StopAdbPortForwarding("vmtap0"));
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(7));
+  ASSERT_TRUE(port_tracker_.StartAdbPortForwarding("vmtap0", dbus_fd));
+
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(7)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.StopAdbPortForwarding("vmtap0"));
+
+  // Cannot stop twice.
+  ASSERT_FALSE(port_tracker_.StopAdbPortForwarding("vmtap0"));
 
   ASSERT_FALSE(port_tracker_.HasActiveRules());
 }

@@ -30,7 +30,10 @@ constexpr const uint16_t kLastSystemPort = 1023;
 // tethering, and WiFi.
 constexpr std::array<const char*, 4> kAllowedInterfacePrefixes{
     {"eth", "usb", "wlan", "mlan"}};
+// ADB forwarding is only allowed for Crostini's interface.
+constexpr const char kAdbAllowedInterfacePrefix[] = "vmtap";
 constexpr const char kLocalhost[] = "lo";
+constexpr const char kLocalhostAddr[] = "127.0.0.1";
 
 // Returns the network-byte order int32 representation of the IPv4 address given
 // byte per byte, most significant bytes first.
@@ -48,6 +51,11 @@ constexpr const struct in_addr kGuestBaseAddr = {.s_addr =
 constexpr const struct in_addr kGuestNetmask = {.s_addr =
                                                     Ipv4Addr(255, 255, 255, 0)};
 
+// ARC address known by Crostini for ADB sideloading.
+constexpr const char kArcAddr[] = "100.115.92.2";
+constexpr const uint16_t kAdbServerPort = 5555;
+constexpr const uint16_t kAdbProxyPort = 5550;
+
 std::string RuleTypeName(PortTracker::PortRuleType type) {
   switch (type) {
     case PortTracker::kUnknownRule:
@@ -58,6 +66,8 @@ std::string RuleTypeName(PortTracker::PortRuleType type) {
       return "LockdownRule";
     case PortTracker::kForwardingRule:
       return "ForwardingRule";
+    case PortTracker::kAdbForwardingRule:
+      return "AdbForwardingRule";
     default:
       NOTREACHED() << "Unknown rule type " << type;
       return std::to_string(type);
@@ -194,8 +204,13 @@ bool PortTracker::AddPortRule(const PortRule& rule, int dbus_fd) {
       break;
     case kForwardingRule:
       success = firewall_->AddIpv4ForwardRule(
-          rule.proto, rule.input_dst_port, rule.input_ifname, rule.dst_ip,
-          rule.dst_port);
+          rule.proto, "" /* input_dst_ip */, rule.input_dst_port,
+          rule.input_ifname, rule.dst_ip, rule.dst_port);
+      break;
+    case kAdbForwardingRule:
+      success = firewall_->AddIpv4ForwardRule(
+          rule.proto, kArcAddr, rule.input_dst_port, rule.input_ifname,
+          kLocalhostAddr, kAdbProxyPort);
       break;
     default:
       LOG(ERROR) << "Unknown port rule type " << rule.type;
@@ -301,11 +316,32 @@ bool PortTracker::StopUdpPortForwarding(uint16_t input_dst_port,
   return RevokePortRule(key);
 }
 
+bool PortTracker::StartAdbPortForwarding(const std::string& input_ifname,
+                                         int dbus_fd) {
+  PortRule rule = {
+      .type = kAdbForwardingRule,
+      .proto = kProtocolTcp,
+      .input_dst_port = kAdbServerPort,
+      .input_ifname = input_ifname,
+  };
+  return AddPortRule(rule, dbus_fd);
+}
+
+bool PortTracker::StopAdbPortForwarding(const std::string& input_ifname) {
+  PortRuleKey key = {
+      .proto = kProtocolTcp,
+      .input_dst_port = kAdbServerPort,
+      .input_ifname = input_ifname,
+  };
+  return RevokePortRule(key);
+}
+
 bool PortTracker::ValidatePortRule(const PortRule& rule) {
   switch (rule.type) {
     case kAccessRule:
     case kLockdownRule:
     case kForwardingRule:
+    case kAdbForwardingRule:
       break;
     default:
       CHECK(false) << "Unknown port rule type value " << rule.type;
@@ -323,46 +359,70 @@ bool PortTracker::ValidatePortRule(const PortRule& rule) {
 
   // TODO(hugobenichi): add some validation for port access and port lockdown
   // rules as well.
-  if (rule.type != kForwardingRule) {
-    return true;
-  }
+  switch (rule.type) {
+    case kForwardingRule: {
+      // Redirecting a reserved port is not allowed.
+      // Forwarding into a reserved port of the guest is allowed.
+      if (rule.input_dst_port <= kLastSystemPort) {
+        LOG(ERROR) << "Cannot forward system port " << rule.input_dst_port;
+        return false;
+      }
 
-  // Redirecting a reserved port is not allowed.
-  // Forwarding into a reserved port of the guest is allowed.
-  if (rule.input_dst_port <= kLastSystemPort) {
-    LOG(ERROR) << "Cannot forward system port " << rule.input_dst_port;
-    return false;
-  }
+      struct in_addr addr;
+      if (inet_pton(AF_INET, rule.dst_ip.c_str(), &addr) != 1) {
+        LOG(ERROR) << "Cannot forward to invalid IPv4 address " << rule.dst_ip;
+        return false;
+      }
 
-  struct in_addr addr;
-  if (inet_pton(AF_INET, rule.dst_ip.c_str(), &addr) != 1) {
-    LOG(ERROR) << "Cannot forward to invalid IPv4 address " << rule.dst_ip;
-    return false;
-  }
+      if ((addr.s_addr & kGuestNetmask.s_addr) != kGuestBaseAddr.s_addr) {
+        LOG(ERROR) << "Cannot forward to IPv4 address " << rule.dst_ip
+                   << " outside of " << kGuestSubnetCidr;
+        return false;
+      }
 
-  if ((addr.s_addr & kGuestNetmask.s_addr) != kGuestBaseAddr.s_addr) {
-    LOG(ERROR) << "Cannot forward to IPv4 address " << rule.dst_ip
-               << " outside of " << kGuestSubnetCidr;
-    return false;
-  }
+      if (rule.input_ifname.empty()) {
+        PLOG(ERROR) << "No interface name provided";
+        return false;
+      }
 
-  if (rule.input_ifname.empty()) {
-    PLOG(ERROR) << "No interface name provided";
-    return false;
-  }
-
-  bool allowedInputIface = false;
-  for (const auto& prefix : kAllowedInterfacePrefixes) {
-    if (base::StartsWith(rule.input_ifname, prefix,
-                         base::CompareCase::SENSITIVE)) {
-      allowedInputIface = true;
+      bool allowedInputIface = false;
+      for (const auto& prefix : kAllowedInterfacePrefixes) {
+        if (base::StartsWith(rule.input_ifname, prefix,
+                             base::CompareCase::SENSITIVE)) {
+          allowedInputIface = true;
+          break;
+        }
+      }
+      if (!allowedInputIface) {
+        PLOG(ERROR) << "Cannot forward traffic from interface "
+                    << rule.input_ifname;
+        return false;
+      }
       break;
     }
-  }
-  if (!allowedInputIface) {
-    PLOG(ERROR) << "Cannot forward traffic from interface "
-                << rule.input_ifname;
-    return false;
+    case kAdbForwardingRule: {
+      // Redirecting a reserved port is not allowed.
+      // Forwarding into a reserved port of the guest is allowed.
+      if (rule.input_dst_port <= kLastSystemPort) {
+        LOG(ERROR) << "Cannot forward system port " << rule.input_dst_port;
+        return false;
+      }
+
+      if (rule.input_ifname.empty()) {
+        PLOG(ERROR) << "No interface name provided";
+        return false;
+      }
+
+      if (!base::StartsWith(rule.input_ifname, kAdbAllowedInterfacePrefix,
+                            base::CompareCase::SENSITIVE)) {
+        PLOG(ERROR) << "Cannot forward traffic from interface "
+                    << rule.input_ifname;
+        return false;
+      }
+      break;
+    }
+    default:
+      break;
   }
 
   return true;
@@ -489,9 +549,14 @@ bool PortTracker::RevokePortRule(const PortRuleKey& key) {
       return deleted && firewall_->DeleteLoopbackLockdownRules(
                             key.proto, key.input_dst_port);
     case kForwardingRule:
+      return deleted &&
+             firewall_->DeleteIpv4ForwardRule(
+                 rule.proto, "" /* input_dst_ip */, rule.input_dst_port,
+                 rule.input_ifname, rule.dst_ip, rule.dst_port);
+    case kAdbForwardingRule:
       return deleted && firewall_->DeleteIpv4ForwardRule(
-                            rule.proto, rule.input_dst_port, rule.input_ifname,
-                            rule.dst_ip, rule.dst_port);
+                            rule.proto, kArcAddr, rule.input_dst_port,
+                            rule.input_ifname, kLocalhostAddr, kAdbProxyPort);
     default:
       LOG(ERROR) << "Unknown port rule entry type " << rule.type;
       return false;
