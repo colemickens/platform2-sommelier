@@ -78,6 +78,8 @@ getrlimit: 1
 nanosleep: 1
 ioctl: 1
 sched_yield: 1
+sysinfo: 1
+getrandom: 1
 
 # This call is attempted but apparently not necessary; return EPERM.
 prctl: return 1
