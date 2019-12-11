@@ -431,6 +431,12 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("background_blur"))
     builder->AddFeatureEnableOverride("EnableBackgroundBlur");
 
+  if (builder->UseFlagIsSet("shelf-hotseat"))
+    builder->AddFeatureEnableOverride("ShelfHotseat");
+
+  if (builder->UseFlagIsSet("webui-tab-strip"))
+    builder->AddArg("--webui-tab-strip");
+
   SetUpAutoDimFlag(builder, cros_config);
 
   SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
