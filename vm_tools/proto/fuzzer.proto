@@ -17,7 +17,7 @@ import "tremplin.proto";
 // This is used for fuzz testing; we get some fuzzed examples of this message
 // and then call the correct rpc handler based on which of the oneof is set.
 message ContainerListenerFuzzerSingleAction {
-  // Next id: 34
+  // Next id: 41
   // Skip [100-107]
   oneof input {
     // Calls to the ContainerListener service.
@@ -47,6 +47,7 @@ message ContainerListenerFuzzerSingleAction {
     vm_tools.tremplin.ContainerShutdownInfo tremplin_container_shutdown_info =
         106;
     vm_tools.tremplin.UpgradeContainerProgress upgrade_container_progress = 107;
+    vm_tools.tremplin.ListeningPortInfo update_listening_ports = 40;
   }
 
   // Claim all gRPC messages come from this address (overrides
@@ -86,6 +87,15 @@ message ContainerListenerFuzzerSingleAction {
   int32 tremplin_cancel_upgrade_container_status = 31;
   vm_tools.tremplin.CancelUpgradeContainerResponse
       tremplin_cancel_upgrade_container_response = 32;
+  int32 tremplin_delete_container_status = 34;
+  vm_tools.tremplin.DeleteContainerResponse tremplin_delete_container_response =
+      35;
+  int32 tremplin_cancel_export_container_status = 36;
+  vm_tools.tremplin.CancelExportContainerResponse
+      tremplin_cancel_export_container_response = 37;
+  int32 tremplin_cancel_import_container_status = 38;
+  vm_tools.tremplin.CancelImportContainerResponse
+      tremplin_cancel_import_container_response = 39;
 }
 
 // A list of fuzzer actions. This is the actual input to the fuzzer.

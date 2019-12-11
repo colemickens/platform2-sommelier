@@ -122,6 +122,21 @@ std::unique_ptr<vm_tools::tremplin::MockTremplinStub> CreateMockTremplinStub(
       .WillOnce(
           DoAll(SetArgPointee<2>(action.tremplin_import_container_response()),
                 Return(ToStatus(action.tremplin_import_container_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, DeleteContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(
+          DoAll(SetArgPointee<2>(action.tremplin_delete_container_response()),
+                Return(ToStatus(action.tremplin_delete_container_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, CancelExportContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(DoAll(
+          SetArgPointee<2>(action.tremplin_cancel_export_container_response()),
+          Return(ToStatus(action.tremplin_cancel_export_container_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, CancelImportContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(DoAll(
+          SetArgPointee<2>(action.tremplin_cancel_import_container_response()),
+          Return(ToStatus(action.tremplin_cancel_import_container_status()))));
 
   return mock_tremplin_stub;
 }
@@ -295,6 +310,12 @@ DEFINE_PROTO_FUZZER(
           kMetricsConsentRequest:
         crash_listener->CheckMetricsConsent(&context, &response,
                                             &metrics_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kUpdateListeningPorts:
+        tremplin_listener->UpdateListeningPorts(
+            &context, &action.update_listening_ports(), &tremplin_response);
         break;
 
       default:

@@ -761,6 +761,9 @@ service Tremplin {
       returns (UpgradeContainerResponse);
   rpc CancelUpgradeContainer(CancelUpgradeContainerRequest)
       returns (CancelUpgradeContainerResponse);
+
+  // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
+  // well.
 }
 
 // Service that is notified of events from tremplin.
@@ -774,4 +777,7 @@ service TremplinListener {
   rpc ContainerShutdown(ContainerShutdownInfo) returns (EmptyMessage);
   rpc UpdateListeningPorts(ListeningPortInfo) returns (EmptyMessage);
   rpc UpgradeContainerStatus(UpgradeContainerProgress) returns (EmptyMessage);
+
+  // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
+  // well.
 }
