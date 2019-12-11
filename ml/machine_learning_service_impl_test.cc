@@ -4,11 +4,11 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/containers/flat_map.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
@@ -235,7 +235,7 @@ TEST(ModelLoadAndInferenceTest, TestModel) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Construct input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("x", NewTensor<double>({1}, {0.5}));
   inputs.emplace("y", NewTensor<double>({1}, {0.25}));
   std::vector<std::string> outputs({"z"});
@@ -311,7 +311,7 @@ TEST(ModelLoadAndInferenceTest, SmartDim20181115) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Construct input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
                    {1, arraysize(kSmartDim20181115TestInput)},
@@ -391,7 +391,7 @@ TEST(ModelLoadAndInferenceTest, SmartDim20190221) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Construct input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
                    {1, arraysize(kSmartDim20190221TestInput)},
@@ -471,7 +471,7 @@ TEST(ModelLoadAndInferenceTest, SmartDim20190521) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Construct input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
                    {1, arraysize(kSmartDim20190521TestInput)},
@@ -551,7 +551,7 @@ TEST(ModelLoadAndInferenceTest, TopCat20190722) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Construct input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
                    {1, arraysize(kTopCat20190722TestInput)},
@@ -631,7 +631,7 @@ TEST(ModelLoadAndInferenceTest, SearchRanker20190923) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Construct input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("input", NewTensor<double>(
                               {1, arraysize(kSearchRanker20190923TestInput)},
                               std::vector<double>(
@@ -757,7 +757,7 @@ TEST(LoadModelStringAndInferenceTest, SmartDim20181115ModelString) {
           &model_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(model_callback_done);
-  ASSERT_NE(model, nullptr);
+  ASSERT_NE(model.get(), nullptr);
 
   // Get graph executor.
   GraphExecutorPtr graph_executor;
@@ -775,7 +775,7 @@ TEST(LoadModelStringAndInferenceTest, SmartDim20181115ModelString) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Construct input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
                    {1, arraysize(kSmartDim20181115TestInput)},

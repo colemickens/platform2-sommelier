@@ -169,7 +169,7 @@ void GraphExecutorImpl::set_connection_error_handler(
 }
 
 void GraphExecutorImpl::Execute(
-    std::unordered_map<std::string, TensorPtr> tensors,
+    base::flat_map<std::string, TensorPtr> tensors,
     const std::vector<std::string>& outputs,
     const ExecuteCallback& callback) {
   DCHECK(!metrics_model_name_.empty());

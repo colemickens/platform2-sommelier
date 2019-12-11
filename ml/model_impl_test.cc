@@ -4,11 +4,11 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/containers/flat_map.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
@@ -99,7 +99,7 @@ TEST_F(ModelImplTest, TestExampleModel) {
   ASSERT_TRUE(cge_callback_done);
 
   // Construct input/output for graph execution.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("x", NewTensor<double>({1}, {0.5}));
   inputs.emplace("y", NewTensor<double>({1}, {0.25}));
   std::vector<std::string> outputs({"z"});

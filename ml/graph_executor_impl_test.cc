@@ -4,11 +4,11 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/containers/flat_map.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
 #include <base/callback_helpers.h>
@@ -89,7 +89,7 @@ TEST(GraphExecutorTest, TestOk) {
 
   // Execute once.
   {
-    std::unordered_map<std::string, TensorPtr> inputs;
+    base::flat_map<std::string, TensorPtr> inputs;
     inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
     std::vector<std::string> outputs({"out_tensor"});
 
@@ -124,7 +124,7 @@ TEST(GraphExecutorTest, TestOk) {
 
   // Execute again with different input.
   {
-    std::unordered_map<std::string, TensorPtr> inputs;
+    base::flat_map<std::string, TensorPtr> inputs;
     inputs.emplace("in_tensor", NewTensor<double>({1}, {0.75}));
     std::vector<std::string> outputs({"out_tensor"});
 
@@ -205,7 +205,7 @@ TEST(GraphExecutorTest, TestNarrowing) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // We represent bools with int64 tensors.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<int64_t>({1}, {true}));
   std::vector<std::string> outputs({"out_tensor"});
 
@@ -249,7 +249,7 @@ TEST(GraphExecutorTest, TestInvalidOutputName) {
       mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
   // Ask for the input tensor (which isn't in our "outputs" list).
   std::vector<std::string> outputs({"in_tensor"});
@@ -282,7 +282,7 @@ TEST(GraphExecutorTest, TestMissingOutputName) {
       mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
 
   bool callback_done = false;
@@ -313,7 +313,7 @@ TEST(GraphExecutorTest, TestDuplicateOutputName) {
       mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
   // Ask for two copies of the output tensor.
   std::vector<std::string> outputs({"out_tensor", "out_tensor"});
@@ -347,7 +347,7 @@ TEST(GraphExecutorTest, TestInvalidInputName) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Specify a value for the output tensor (which isn't in our "inputs" list).
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("out_tensor", NewTensor<double>({1}, {0.5}));
   std::vector<std::string> outputs({"out_tensor"});
 
@@ -411,7 +411,7 @@ TEST(GraphExecutorTest, TestWrongInputType) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give an int tensor when a float tensor is expected.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<int64_t>({1}, {123}));
   std::vector<std::string> outputs({"out_tensor"});
 
@@ -444,7 +444,7 @@ TEST(GraphExecutorTest, TestWrongInputShape) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a 1x1 tensor when a scalar is expected.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1, 1}, {0.5}));
   std::vector<std::string> outputs({"out_tensor"});
 
@@ -478,7 +478,7 @@ TEST(GraphExecutorTest, TestInvalidInputFormat) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a tensor with scalar shape but multiple values.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5, 0.5}));
   std::vector<std::string> outputs({"out_tensor"});
 
@@ -532,7 +532,7 @@ TEST(GraphExecutorTest, TestInvalidInputNodeType) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Graph execution should fail before we get to input type checking.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({}, {}));
   std::vector<std::string> outputs({"out_tensor"});
 
@@ -613,7 +613,7 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeType) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
   std::vector<std::string> outputs({"out_tensor"});
 
@@ -668,7 +668,7 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeShape) {
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.
-  std::unordered_map<std::string, TensorPtr> inputs;
+  base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
   std::vector<std::string> outputs({"out_tensor"});
 

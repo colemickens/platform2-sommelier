@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/containers/flat_map.h>
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
@@ -107,7 +108,7 @@ class MLServiceFuzzer {
 
   void PerformInference(const uint8_t* data, size_t size) {
     // Construct input.
-    std::unordered_map<std::string, TensorPtr> inputs;
+    base::flat_map<std::string, TensorPtr> inputs;
 
     // Create input vector
     FuzzedDataProvider data_provider(data, size);
