@@ -9,78 +9,8 @@ integration tests use [Tast] and [Autotest].
 
 ### Running unit tests for Chrome OS
 
-Here `${BOARD}` is a valid board name, like octopus, scarlet or x86-generic.
-
--   Build the `shill_unittest` target.
-
-    ```bash
-    (chroot) cros_workon_start --board ${BOARD} chromeos-base/shill
-    # The below only builds shill code without tests
-    (chroot) cros_workon_make --board ${BOARD} chromeos-base/shill
-    # The below builds shill code with tests and runs the unit-tests
-    (chroot) cros_workon_make --board ${BOARD} chromeos-base/shill
-    ```
-
--   One can also do the above with emerge.
-
-    ```bash
-    (chroot) cros_workon_start --board ${BOARD} chromeos-base/shill
-    (chroot) FEATURES=test emerge-${BOARD} shill
-    ```
-
--   One can run the unit tests from your host machine under gdb.
-
-    ```bash
-    (chroot) FEATURES=test emerge-${BOARD} shill
-    (chroot) gdb_x86_local --board ${BOARD} /build/${BOARD}/var/cache/portage/chromeos-base/platform2/out/Default/shill_unittest
-    ```
-
--   The emerge workflow given above is incremental. It uses ninja to rebuild only
-    relevant objects in the shill target.
-
--   You can restrict the test runs to only shill unittests by using:
-
-    ```bash
-    (chroot) P2_TEST_FILTER="shill::WiFi*" FEATURES=test emerge-${BOARD} shill
-    ```
-
-    The filter can be made more specific to include googletest filters like
-    `shill::CellularTest.StartGSMRegister`.
-
--   If you want to set a breakpoint in gdb, make sure to include the shill
-    namespace. i.e. Below is the correct way:
-
-      ```bash
-    (cros-gdb) b shill::EthernetService::GetStorageIdentifier
-    Breakpoint 2 at 0x5555563cc270: file ethernet_service.cc, line 63.
-    ```
-
-    The below is incorrect:
-
-    ```bash
-    (cros-gdb) b EthernetService::GetStorageIdentifier
-    Function "EthernetService::GetStorageIdentifier" not defined.
-    Make breakpoint pending on future shared library load? (y or [n]) n
-    ```
-
--   Alternate build command:
-    -   To see the actual compiler commands that are run:
-
-        ```bash
-        (chroot) CFLAGS="-print-cmdline" cros_workon_make --reconf --board=${BOARD} shill
-        ```
-
--   To abort compilation on the first error:
-
-    ```bash
-    (chroot) MAKEFLAGS="--stop" cros_workon_make --test --board=${BOARD} --reconf shill
-    ```
-
-### Running unit tests for Chrome OS with the address sanitizer
-
-```bash
-(chroot) USE="asan clang" TEST_FILTER="shill::*" emerge-${BOARD} shill
-```
+Shill unit tests are run just like any other unit test in the platform2
+directory. See the [platform2 unittest docs] for more information.
 
 ### Running integration tests
 
@@ -115,6 +45,7 @@ wificell documentation]).
 
             `LESSOPEN=` prevents less from misinterpreting the logs as binary files, and piping them through `hexdump`.
 
+[platform2 unittest docs]: https://chromium.googlesource.com/chromiumos/docs/+/master/platform2_primer.md#running-unit-tests
 [Tast]: https://chromium.googlesource.com/chromiumos/platform/tast/
 [Autotest]: https://dev.chromium.org/chromium-os/testing/autotest-developer-faq
 [Autotest wificell documentation]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/docs/wificell.md
