@@ -16,6 +16,7 @@
 
 #include <hardware/camera3.h>
 
+#include <base/containers/flat_map.h>
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
@@ -71,7 +72,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
                              android::CameraMetadata*,
                              ScopedYUVBufferHandle*)>;
   using AllocatedBuffers =
-      std::unordered_map<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>;
+      base::flat_map<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>;
   // Starts the camera device adapter.  This method must be called before all
   // the other methods are called.
   bool Start(HasReprocessEffectVendorTagCallback
