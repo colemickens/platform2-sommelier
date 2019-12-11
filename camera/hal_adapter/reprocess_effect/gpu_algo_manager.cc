@@ -27,7 +27,7 @@ GPUAlgoManager::GPUAlgoManager() : req_id_(0) {
   return_callback = GPUAlgoManager::ReturnCallbackForwarder;
   bridge_ = cros::CameraAlgorithmBridge::CreateGPUAlgoInstance();
   if (!bridge_ || bridge_->Initialize(this) != 0) {
-    LOGF(ERROR) << "Failed to initialize camera algorithm bridge";
+    LOGF(WARNING) << "Failed to initialize camera GPU algorithm bridge";
     bridge_ = nullptr;
   }
 }

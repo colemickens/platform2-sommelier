@@ -38,6 +38,9 @@ CameraAlgorithmBridge::CreateVendorAlgoInstance() {
 std::unique_ptr<CameraAlgorithmBridge>
 CameraAlgorithmBridge::CreateGPUAlgoInstance() {
   VLOGF_ENTER();
+  if (access(cros::constants::kCrosCameraGPUAlgoSocketPathString, R_OK) != 0) {
+    return nullptr;
+  }
   return std::make_unique<CameraAlgorithmBridgeImpl>(
       cros::constants::kCrosCameraGPUAlgoSocketPathString);
 }
@@ -67,7 +70,7 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
     return -EFAULT;
   }
   const int32_t kInitializationRetryTimeoutMs = 3000;
-  const int32_t kInitializationWaitConnectionMs = 300;
+  const int32_t kInitializationWaitConnectionMs = 500;
   const int32_t kInitializationRetrySleepUs = 100000;
   auto get_elapsed_ms = [](struct timespec& start) {
     struct timespec stop = {};
