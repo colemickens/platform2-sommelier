@@ -11,6 +11,7 @@ group("all") {
     ":fuzzer-protos",
     ":tremplin-gorpcs",
     ":tremplin-rpcs",
+    ":vm-crash-rpcs",
     ":vm-gorpcs",
     ":vm-rpcs",
     ":vsh-protos",
@@ -34,6 +35,23 @@ proto_library("container-rpcs") {
   sources = [
     "${proto_in_dir}/container_guest.proto",
     "${proto_in_dir}/container_host.proto",
+  ]
+  deps = [
+    ":common-protos",
+  ]
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  standalone = true
+}
+
+proto_library("vm-crash-rpcs") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_protos/proto_bindings"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/vm_crash.proto",
   ]
   deps = [
     ":common-protos",

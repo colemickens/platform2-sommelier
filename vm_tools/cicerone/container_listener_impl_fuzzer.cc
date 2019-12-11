@@ -29,6 +29,7 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::vm_tools::cicerone::ContainerListenerImpl;
+using ::vm_tools::cicerone::CrashListenerImpl;
 using ::vm_tools::cicerone::Service;
 using ::vm_tools::cicerone::ServiceTestingHelper;
 using ::vm_tools::cicerone::TremplinListenerImpl;
@@ -156,6 +157,8 @@ DEFINE_PROTO_FUZZER(
     TremplinListenerImpl* tremplin_listener =
         test_framework.get_service().GetTremplinListenerImpl();
     tremplin_listener->OverridePeerAddressForTesting(action.peer_address());
+    CrashListenerImpl* crash_listener =
+        test_framework.get_service().GetCrashListenerImpl();
 
     SetUpMockObjectProxy(
         action, &test_framework.get_mock_vm_applications_service_proxy());
@@ -173,6 +176,7 @@ DEFINE_PROTO_FUZZER(
     grpc::ServerContext context;
     vm_tools::EmptyMessage response;
     vm_tools::tremplin::EmptyMessage tremplin_response;
+    vm_tools::cicerone::MetricsConsentResponse metrics_response;
 
     switch (action.input_case()) {
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
@@ -285,6 +289,12 @@ DEFINE_PROTO_FUZZER(
           kUpgradeContainerProgress:
         tremplin_listener->UpgradeContainerStatus(
             &context, &action.upgrade_container_progress(), &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kMetricsConsentRequest:
+        crash_listener->CheckMetricsConsent(&context, &response,
+                                            &metrics_response);
         break;
 
       default:

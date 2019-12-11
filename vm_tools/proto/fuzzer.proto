@@ -4,6 +4,7 @@ option cc_enable_arenas = true;
 
 package vm_tools.container;
 
+import "common.proto";
 import "container_host.proto";
 import "tremplin.proto";
 
@@ -16,6 +17,8 @@ import "tremplin.proto";
 // This is used for fuzz testing; we get some fuzzed examples of this message
 // and then call the correct rpc handler based on which of the oneof is set.
 message ContainerListenerFuzzerSingleAction {
+  // Next id: 34
+  // Skip [100-107]
   oneof input {
     // Calls to the ContainerListener service.
     ContainerStartupInfo container_startup_info = 1;
@@ -28,6 +31,9 @@ message ContainerListenerFuzzerSingleAction {
     UpdateMimeTypesRequest update_mime_types_request = 8;
     PendingAppListUpdateCount pending_app_list_update_count = 27;
     ApplyAnsiblePlaybookProgressInfo apply_ansible_playbook_progress_info = 28;
+
+    // Calls to the CrashListener service.
+    EmptyMessage metrics_consent_request = 33;
 
     // Calls to the TremplinListener service.
     vm_tools.tremplin.TremplinStartupInfo tremplin_startup_info = 100;

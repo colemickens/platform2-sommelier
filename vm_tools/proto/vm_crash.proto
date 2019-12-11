@@ -1,0 +1,21 @@
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+// This file defines services for tremplin, the container springboard service.
+package vm_tools.cicerone;
+
+import "common.proto";
+
+message MetricsConsentResponse {
+  bool consent_granted = 1;
+}
+
+// Service that is notified of events from tremplin.
+service CrashListener {
+  rpc CheckMetricsConsent(EmptyMessage) returns (MetricsConsentResponse);
+}

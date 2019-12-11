@@ -32,6 +32,7 @@
 
 #include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
+#include "vm_tools/cicerone/crash_listener_impl.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
 
@@ -61,6 +62,10 @@ class Service final {
 
   TremplinListenerImpl* GetTremplinListenerImpl() const {
     return tremplin_listener_.get();
+  }
+
+  CrashListenerImpl* GetCrashListenerImpl() const {
+    return crash_listener_.get();
   }
 
   // For testing only. Pretend that the Tremplin server for the given VM is
@@ -507,6 +512,15 @@ class Service final {
 
   // The server where the TremplinListener service lives.
   std::shared_ptr<grpc::Server> grpc_server_tremplin_;
+
+  // The CrashListener service.
+  std::unique_ptr<CrashListenerImpl> crash_listener_;
+
+  // Thread on which the CrashListener service lives.
+  base::Thread grpc_thread_crash_{"gRPC Crash Server Thread"};
+
+  // The server where the CrashListener service lives.
+  std::shared_ptr<grpc::Server> grpc_server_crash_;
 
   // Closure that's posted to the current thread's TaskRunner when the service
   // receives a SIGTERM.

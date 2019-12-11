@@ -382,6 +382,7 @@ Service::Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus)
       std::make_unique<ContainerListenerImpl>(weak_ptr_factory_.GetWeakPtr());
   tremplin_listener_ =
       std::make_unique<TremplinListenerImpl>(weak_ptr_factory_.GetWeakPtr());
+  crash_listener_ = std::make_unique<CrashListenerImpl>();
 }
 
 Service::~Service() {
@@ -391,6 +392,10 @@ Service::~Service() {
 
   if (grpc_server_tremplin_ && run_grpc_) {
     grpc_server_tremplin_->Shutdown();
+  }
+
+  if (grpc_server_crash_ && run_grpc_) {
+    grpc_server_crash_->Shutdown();
   }
 }
 
@@ -1430,6 +1435,8 @@ bool Service::Init(
       base::StringPrintf("unix://%s", kHostDomainSocket)};
   std::vector<std::string> tremplin_listener_address = {base::StringPrintf(
       "vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kTremplinListenerPort)};
+  std::vector<std::string> crash_listener_address = {base::StringPrintf(
+      "vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kCrashListenerPort)};
 
   if (unix_socket_path_for_testing.has_value()) {
     container_listener_addresses = {
@@ -1441,6 +1448,10 @@ bool Service::Init(
         unix_socket_path_for_testing.value()
             .Append(base::IntToString(vm_tools::kTremplinListenerPort))
             .value()};
+    crash_listener_address = {
+        "unix:" + unix_socket_path_for_testing.value()
+                      .Append(base::IntToString(vm_tools::kCrashListenerPort))
+                      .value()};
   }
 
   if (run_grpc_) {
@@ -1460,6 +1471,12 @@ bool Service::Init(
                               tremplin_listener_address,
                               &grpc_server_tremplin_)) {
       LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
+      return false;
+    }
+
+    if (!SetupListenerService(&grpc_thread_crash_, crash_listener_.get(),
+                              crash_listener_address, &grpc_server_crash_)) {
+      LOG(ERROR) << "Failed to setup/startup the crash reporting grpc server";
       return false;
     }
 
