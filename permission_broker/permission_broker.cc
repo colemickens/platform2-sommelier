@@ -71,7 +71,9 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
       dbus_object_(
           nullptr, bus, dbus::ObjectPath(kPermissionBrokerServicePath)),
       port_tracker_(&firewall_),
-      usb_control_(std::make_unique<UsbDeviceManager>()) {
+      usb_control_(std::make_unique<UsbDeviceManager>()),
+      session_manager_proxy_(
+          new org::chromium::SessionManagerInterfaceProxy(bus)) {
   rule_engine_.AddRule(new AllowUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
   rule_engine_.AddRule(new DenyClaimedUsbDeviceRule());
@@ -209,6 +211,19 @@ bool PermissionBroker::ReleaseUdpPortForward(uint16_t in_port,
   return port_tracker_.StopUdpPortForwarding(in_port, in_interface);
 }
 
+bool PermissionBroker::RequestAdbPortForward(const std::string& in_interface,
+                                             const base::ScopedFD& dbus_fd) {
+  if (!IsAdbSideloadingEnabled())
+    return false;
+  return port_tracker_.StartAdbPortForwarding(in_interface, dbus_fd.get());
+}
+
+bool PermissionBroker::ReleaseAdbPortForward(const std::string& in_interface) {
+  if (!IsAdbSideloadingEnabled())
+    return false;
+  return port_tracker_.StopAdbPortForwarding(in_interface);
+}
+
 void PowerCycleUsbPortsResultCallback(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool result) {
@@ -228,6 +243,21 @@ void PermissionBroker::PowerCycleUsbPorts(
       in_vid,
       in_pid,
       base::TimeDelta::FromInternalValue(in_delay));
+}
+
+bool PermissionBroker::IsAdbSideloadingEnabled() {
+  brillo::ErrorPtr error;
+  bool adb_sideloading_enabled = false;
+  session_manager_proxy_->QueryAdbSideload(&adb_sideloading_enabled, &error);
+
+  if (error) {
+    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
+               << "'" << session_manager_proxy_->GetObjectPath().value()
+               << "': " << error->GetMessage();
+    return false;
+  }
+
+  return adb_sideloading_enabled;
 }
 
 }  // namespace permission_broker
