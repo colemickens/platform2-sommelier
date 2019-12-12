@@ -628,6 +628,7 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
 Service::Service(base::Closure quit_closure)
     : network_address_manager_({
           arc_networkd::AddressManager::Guest::VM_PLUGIN,
+          arc_networkd::AddressManager::Guest::VM_PLUGIN_EXT,
       }),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
@@ -1374,34 +1375,67 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     return dbus_response;
   }
 
-  // Mark the mac address as in use and make sure it is not already in use.
-  if (request.host_mac_address().size() != sizeof(arc_networkd::MacAddress)) {
-    LOG(ERROR) << "Mac address is not exactly "
-               << sizeof(arc_networkd::MacAddress) << " bytes";
-    response.set_failure_reason("Invalid mac address length");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  // Copy over the mac address.
   arc_networkd::MacAddress mac_addr;
-  memcpy(&mac_addr, request.host_mac_address().data(),
-         sizeof(arc_networkd::MacAddress));
+  if (request.host_mac_address().size() == 0) {
+    mac_addr = mac_address_generator_.Generate();
+  } else {
+    // Mark the mac address as in use and make sure it is not already in use.
+    if (request.host_mac_address().size() != sizeof(arc_networkd::MacAddress)) {
+      LOG(ERROR) << "Mac address is not exactly "
+                 << sizeof(arc_networkd::MacAddress) << " bytes";
+      response.set_failure_reason("Invalid mac address length");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
 
-  if (!mac_address_generator_.Insert(mac_addr)) {
-    LOG(ERROR) << "Invalid mac address";
-    response.set_failure_reason("Invalid mac address");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    // Copy over the mac address.
+    memcpy(&mac_addr, request.host_mac_address().data(),
+           sizeof(arc_networkd::MacAddress));
+
+    if (!mac_address_generator_.Insert(mac_addr)) {
+      LOG(ERROR) << "Invalid mac address";
+      response.set_failure_reason("Invalid mac address");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
   }
 
-  // Mark the ip address as in use.
-  auto ipv4_addr = plugin_subnet_->Allocate(request.guest_ipv4_address());
-  if (!ipv4_addr) {
-    LOG(ERROR) << "Invalid IP address or address already in use";
-    response.set_failure_reason("Invalid IP address or address already in use");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+  std::unique_ptr<arc_networkd::Subnet> ipv4_subnet;
+  std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr, ipv4_gw;
+  if (request.guest_ipv4_address() == 0) {
+    // subnet_index is 1-based and -1 indicates any free subnet is ok.
+    int index = request.subnet_index() - 1;
+    ipv4_subnet = std::move(network_address_manager_.AllocateIPv4Subnet(
+      arc_networkd::AddressManager::Guest::VM_PLUGIN_EXT, index));
+    if (!ipv4_subnet) {
+      LOG(ERROR) << "IPv4 subnet is unavailable";
+      response.set_failure_reason("IPv4 subnet is unavailable");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    ipv4_gw = ipv4_subnet->AllocateAtOffset(0);
+    if (!ipv4_gw) {
+      LOG(ERROR) << "Failed to allocate IPv4 address for gateway";
+      response.set_failure_reason("Failed to allocate IPv4 address for gateway");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+    if (!ipv4_addr) {
+      LOG(ERROR) << "Failed to allocate IPv4 address for VM";
+      response.set_failure_reason("Failed to allocate IPv4 address for VM");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+  } else {
+    // Mark the ip address as in use.
+    ipv4_addr = std::move(plugin_subnet_->Allocate(request.guest_ipv4_address()));
+    if (!ipv4_addr) {
+      LOG(ERROR) << "Invalid IP address or address already in use";
+      response.set_failure_reason("Invalid IP address or address already in use");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
   }
 
   // Check the CPU count.
@@ -1517,12 +1551,22 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
 
   // Now start the VM.
   VmId vm_id(request.owner_id(), request.name());
-  auto vm = PluginVm::Create(
+  std::unique_ptr<PluginVm> vm;
+  if (ipv4_subnet) {
+    vm = std::move(PluginVm::Create(
+      vm_id, request.cpus(), std::move(params), std::move(mac_addr),
+      std::move(ipv4_subnet), std::move(ipv4_gw), std::move(ipv4_addr),
+      std::move(stateful_dir), std::move(iso_dir), root_dir.Take(),
+      runtime_dir.Take(), std::move(seneschal_server_proxy),
+      vmplugin_service_proxy_));
+  } else {
+    vm = std::move(PluginVm::Create(
       vm_id, request.cpus(), std::move(params), std::move(mac_addr),
       std::move(ipv4_addr), plugin_subnet_->Netmask(),
       plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
       std::move(iso_dir), root_dir.Take(), runtime_dir.Take(),
-      std::move(seneschal_server_proxy), vmplugin_service_proxy_);
+      std::move(seneschal_server_proxy), vmplugin_service_proxy_));
+  }
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");

@@ -51,6 +51,20 @@ class PluginVm final : public VmInterface {
       base::FilePath runtime_dir,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       dbus::ObjectProxy* vmplugin_service_proxy);
+   static std::unique_ptr<PluginVm> Create(
+      const VmId id,
+      uint32_t cpus,
+      std::vector<std::string> params,
+      arc_networkd::MacAddress mac_addr,
+      std::unique_ptr<arc_networkd::Subnet> ipv4_subnet,
+      std::unique_ptr<arc_networkd::SubnetAddress> ipv4_gw,
+      std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
+      base::FilePath stateful_dir,
+      base::FilePath iso_dir,
+      base::FilePath root_dir,
+      base::FilePath runtime_dir,
+      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+      dbus::ObjectProxy* vmplugin_service_proxy);
   ~PluginVm() override;
 
   // VmInterface overrides.
@@ -106,6 +120,16 @@ class PluginVm final : public VmInterface {
            base::FilePath iso_dir,
            base::FilePath root_dir,
            base::FilePath runtime_dir);
+   PluginVm(const VmId id,
+           arc_networkd::MacAddress mac_addr,
+           std::unique_ptr<arc_networkd::Subnet> ipv4_subnet,
+           std::unique_ptr<arc_networkd::SubnetAddress> ipv4_gw,
+           std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
+           std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+           dbus::ObjectProxy* vmplugin_service_proxy,
+           base::FilePath iso_dir,
+           base::FilePath root_dir,
+           base::FilePath runtime_dir);
   bool Start(uint32_t cpus,
              std::vector<std::string> params,
              base::FilePath stateful_dir);
@@ -139,6 +163,8 @@ class PluginVm final : public VmInterface {
 
   // Network configuration.
   arc_networkd::MacAddress mac_addr_;
+  std::unique_ptr<arc_networkd::Subnet> ipv4_subnet_;
+  std::unique_ptr<arc_networkd::SubnetAddress> ipv4_gw_;
   std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr_;
   uint32_t netmask_;
   uint32_t gateway_;

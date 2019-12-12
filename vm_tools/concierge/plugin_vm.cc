@@ -96,6 +96,34 @@ std::unique_ptr<PluginVm> PluginVm::Create(
 
   return vm;
 }
+// static
+std::unique_ptr<PluginVm> PluginVm::Create(
+    VmId id,
+    uint32_t cpus,
+    std::vector<string> params,
+    arc_networkd::MacAddress mac_addr,
+    std::unique_ptr<arc_networkd::Subnet> ipv4_subnet,
+    std::unique_ptr<arc_networkd::SubnetAddress> ipv4_gw,
+    std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
+    base::FilePath stateful_dir,
+    base::FilePath iso_dir,
+    base::FilePath root_dir,
+    base::FilePath runtime_dir,
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+    dbus::ObjectProxy* vmplugin_service_proxy) {
+  auto vm = base::WrapUnique(new PluginVm(
+      std::move(id), std::move(mac_addr), std::move(ipv4_subnet),
+      std::move(ipv4_gw), std::move(ipv4_addr),
+      std::move(seneschal_server_proxy), vmplugin_service_proxy,
+      std::move(iso_dir), std::move(root_dir), std::move(runtime_dir)));
+
+  if (!vm->CreateUsbListeningSocket() ||
+      !vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
+    vm.reset();
+  }
+
+  return vm;
+}
 
 PluginVm::~PluginVm() {
   StopVm();
@@ -586,6 +614,41 @@ PluginVm::PluginVm(VmId id,
   // Take ownership of the root and runtime directories.
   CHECK(root_dir_.Set(root_dir));
   CHECK(runtime_dir_.Set(runtime_dir));
+}
+
+PluginVm::PluginVm(VmId id,
+                   arc_networkd::MacAddress mac_addr,
+                   std::unique_ptr<arc_networkd::Subnet> ipv4_subnet,
+                   std::unique_ptr<arc_networkd::SubnetAddress> ipv4_gw,
+                   std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
+                   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+                   dbus::ObjectProxy* vmplugin_service_proxy,
+                   base::FilePath iso_dir,
+                   base::FilePath root_dir,
+                   base::FilePath runtime_dir)
+    : id_(std::move(id)),
+      iso_dir_(std::move(iso_dir)),
+      mac_addr_(std::move(mac_addr)),
+      ipv4_subnet_(std::move(ipv4_subnet)),
+      ipv4_gw_(std::move(ipv4_gw)),
+      ipv4_addr_(std::move(ipv4_addr)),
+      seneschal_server_proxy_(std::move(seneschal_server_proxy)),
+      vmplugin_service_proxy_(vmplugin_service_proxy),
+      usb_last_handle_(0) {
+  CHECK(ipv4_subnet_);
+  CHECK(ipv4_gw_);
+  CHECK(ipv4_addr_);
+  CHECK(vmplugin_service_proxy_);
+  CHECK(base::DirectoryExists(iso_dir_));
+  CHECK(base::DirectoryExists(root_dir));
+  CHECK(base::DirectoryExists(runtime_dir));
+
+  // Take ownership of the root and runtime directories.
+  CHECK(root_dir_.Set(root_dir));
+  CHECK(runtime_dir_.Set(runtime_dir));
+
+  gateway_ = ipv4_gw_->Address();
+  netmask_ = ipv4_subnet_->Netmask();
 }
 
 bool PluginVm::Start(uint32_t cpus,
