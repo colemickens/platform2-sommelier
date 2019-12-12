@@ -425,6 +425,23 @@ void ThirdPartyVpnDriver::SetParameters(
 }
 
 void ThirdPartyVpnDriver::OnInput(InputData* data) {
+  if (data->len <= 0) {
+    return;
+  }
+
+  // Not all Chrome apps can properly handle being passed IPv6 packets. This
+  // usually should not be an issue because we prevent IPv6 traffic from being
+  // routed to this VPN. However, the kernel itself can sometimes send IPv6
+  // packets to an interface--even before we set up our routing
+  // rules. Therefore, we drop non-IPv4 traffic here.
+  //
+  // See from RFC 791 Section 3.1 that the high nibble of the first byte in an
+  // IP header represents the IP version (4 in this case).
+  if ((data->buf[0] & 0xf0) != 0x40) {
+    SLOG(this, 1) << "Dropping non-IPv4 packet";
+    return;
+  }
+
   // TODO(kaliamoorthi): This is not efficient, transfer the descriptor over to
   // chrome browser or use a pipe in between. Avoid using DBUS for packet
   // transfer.
