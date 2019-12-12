@@ -3405,6 +3405,9 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   msg.msg_controllen = sizeof(fd_buffer);
 
   bytes = recvmsg(ctx->virtwl_socket_fd, &msg, 0);
+  if (bytes < 0) {
+    fprintf(stderr, "Failed to get message from virtwl: %s\n", strerror(errno));
+  }
   assert(bytes > 0);
 
   // If there were any FDs recv'd by recvmsg, there will be some data in the
@@ -3433,6 +3436,9 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   // structure which we now pass along to the kernel.
   ioctl_send->len = bytes;
   rv = ioctl(ctx->virtwl_ctx_fd, VIRTWL_IOCTL_SEND, ioctl_send);
+  if (!rv) {
+    fprintf(stderr, "Failed to send message to virtwl: %s\n", strerror(errno));
+  }
   assert(!rv);
   UNUSED(rv);
 
