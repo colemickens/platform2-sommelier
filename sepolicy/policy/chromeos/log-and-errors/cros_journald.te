@@ -39,4 +39,8 @@ allow cros_journald cros_rsyslogd:process signull;
 allow cros_journald self:netlink_audit_socket { create_socket_perms nlmsg_write };
 allow cros_journald self:capability2 audit_read;
 
+# Allow journald to detect process existence to clear entry cache of dead
+# process to reduce memory usage.
+allow cros_journald domain:process signull;
+
 pid_file(minijail, cros_run, "systemd-journald.pid", cros_journald_pid_file);
