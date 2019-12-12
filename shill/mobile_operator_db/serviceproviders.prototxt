@@ -7200,6 +7200,14 @@ mno {
       password : "0000"
     }
     mobile_apn {
+      apn : "rmobile.jp"
+      localized_name {
+        name : "楽天モバイル"
+      }
+      username : "rm"
+      password : "0000"
+    }
+    mobile_apn {
       apn : "lte-d.ocn.ne.jp"
       localized_name {
         name : "OCN モバイル ONE"
