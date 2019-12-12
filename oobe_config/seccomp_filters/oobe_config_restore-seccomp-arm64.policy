@@ -15,6 +15,7 @@ exit_group: 1
 faccessat: 1
 fcntl: 1
 fstat: 1
+futex: 1
 getegid: 1
 geteuid: 1
 getgid: 1
@@ -22,6 +23,7 @@ getpid: 1
 getresgid: 1
 getresuid: 1
 getrlimit: 1
+getrandom: 1
 getsockname: 1
 gettid: 1
 gettimeofday: 1
@@ -49,5 +51,6 @@ set_robust_list: 1
 set_tid_address: 1
 signalfd4: 1
 socket: arg0 == AF_UNIX
+sysinfo: 1
 uname: 1
 write: 1

@@ -6,6 +6,7 @@ access: 1
 arch_prctl: 1
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 creat: 1
@@ -14,13 +15,16 @@ exit_group: 1
 fcntl: 1
 flock: 1
 fstat: 1
+futex: 1
 getdents: 1
 geteuid: 1
 getpid: 1
+getrandom: 1
 getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 ioctl: arg1 == TCGETS
 lseek: 1
@@ -44,4 +48,5 @@ set_robust_list: 1
 set_tid_address: 1
 socket: arg0 == AF_UNIX
 stat: 1
+sysinfo: 1
 write: 1
