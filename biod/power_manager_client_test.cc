@@ -38,9 +38,9 @@ class PowerManagerClientTest : public testing::Test, public PowerEventObserver {
         .WillOnce(testing::Return(power_manager_proxy_.get()));
 
     EXPECT_CALL(*power_manager_proxy_,
-                ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kInputEventSignal, testing::_,
-                                testing::_))
+                MIGRATE_ConnectToSignal(power_manager::kPowerManagerInterface,
+                                        power_manager::kInputEventSignal,
+                                        testing::_, testing::_))
         .WillOnce(testing::SaveArg<2>(&input_event_callback_));
   }
 
