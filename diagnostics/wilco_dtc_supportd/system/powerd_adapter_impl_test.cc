@@ -85,24 +85,27 @@ class BasePowerdAdapterImplTest : public ::testing::Test {
                     dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
         .WillOnce(Return(dbus_object_proxy_.get()));
 
-    EXPECT_CALL(*dbus_object_proxy_,
-                ConnectToSignal(power_manager::kPowerManagerInterface,
+    EXPECT_CALL(
+        *dbus_object_proxy_,
+        MIGRATE_ConnectToSignal(power_manager::kPowerManagerInterface,
                                 power_manager::kPowerSupplyPollSignal, _, _))
         .WillOnce(SaveArg<2>(
             &on_signal_callbacks_[power_manager::kPowerSupplyPollSignal]));
-    EXPECT_CALL(*dbus_object_proxy_,
-                ConnectToSignal(power_manager::kPowerManagerInterface,
+    EXPECT_CALL(
+        *dbus_object_proxy_,
+        MIGRATE_ConnectToSignal(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendImminentSignal, _, _))
         .WillOnce(SaveArg<2>(
             &on_signal_callbacks_[power_manager::kSuspendImminentSignal]));
-    EXPECT_CALL(
-        *dbus_object_proxy_,
-        ConnectToSignal(power_manager::kPowerManagerInterface,
-                        power_manager::kDarkSuspendImminentSignal, _, _))
+    EXPECT_CALL(*dbus_object_proxy_,
+                MIGRATE_ConnectToSignal(
+                    power_manager::kPowerManagerInterface,
+                    power_manager::kDarkSuspendImminentSignal, _, _))
         .WillOnce(SaveArg<2>(
             &on_signal_callbacks_[power_manager::kDarkSuspendImminentSignal]));
-    EXPECT_CALL(*dbus_object_proxy_,
-                ConnectToSignal(power_manager::kPowerManagerInterface,
+    EXPECT_CALL(
+        *dbus_object_proxy_,
+        MIGRATE_ConnectToSignal(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendDoneSignal, _, _))
         .WillOnce(SaveArg<2>(
             &on_signal_callbacks_[power_manager::kSuspendDoneSignal]));

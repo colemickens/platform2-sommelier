@@ -115,10 +115,12 @@ TEST_F(BatteryUtilsTest, TestExtractingBatteryMetrics) {
       .Times(2)
       .WillRepeatedly(testing::Return(GetMockObjectProxy()));
 
-  EXPECT_CALL(*GetMockObjectProxy(),
-              MockCallMethodAndBlock(_, kDebugdTimeOut.InMilliseconds()))
+  EXPECT_CALL(*GetMockObjectProxy(), MIGRATE_MockCallMethodAndBlock(
+                                         _, kDebugdTimeOut.InMilliseconds()))
       .Times(2)
-      .WillRepeatedly(testing::Return(nullptr));
+      .WillRepeatedly([](dbus::MethodCall*, int) {
+        return MIGRATE_WrapObjectProxyResponseEmpty;
+      });
 
   ExtractBatteryMetrics(response.get(), &info);
   ASSERT_TRUE(info);
