@@ -16,7 +16,7 @@ clock_gettime: 1
 gettimeofday: 1
 time: 1
 
-socket: 1
+socket: arg0 == AF_UNIX
 socketpair: 1
 connect: 1
 getsockname: 1
@@ -80,10 +80,10 @@ rename: 1
 chmod: 1
 tgkill: 1
 nanosleep: 1
-ioctl: 1
 sched_yield: 1
 sysinfo: 1
 getrandom: 1
 
-# This call is attempted but apparently not necessary; return EPERM.
+# These calls are attempted but apparently not necessary; return EPERM.
+ioctl: return 1
 prctl: return 1

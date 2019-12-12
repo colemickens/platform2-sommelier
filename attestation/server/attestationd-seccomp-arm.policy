@@ -15,7 +15,7 @@ clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
 
-socket: 1
+socket: arg0 == AF_UNIX
 socketpair: 1
 connect: 1
 getsockname: 1
@@ -85,11 +85,11 @@ ARM_set_tls: 1
 uname: 1
 ugetrlimit: 1
 nanosleep: 1
-ioctl: 1
 sched_yield: 1
 sysinfo: 1
 getrandom: 1
 
-# This call is attempted but apparently not necessary; return EPERM.
+# These calls are attempted but apparently not necessary; return EPERM.
+ioctl: return 1
 prctl: return 1
 prlimit64: arg2 == 0 && arg3 != 0
