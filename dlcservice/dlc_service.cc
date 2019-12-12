@@ -421,8 +421,6 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
           scheduled_period_ue_check_id_)) {
     LOG(ERROR) << "Failed to cancel delayed update_engine check when signal "
                   "was received from update_engine, so letting it run.";
-  } else {
-    SchedulePeriodicInstallCheck(true);
   }
 
   Operation update_engine_operation = status_result.current_operation();
@@ -463,6 +461,7 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
           Status::RUNNING, kErrorNone, {}, status_result.progress()));
       FALLTHROUGH;
     default:
+      SchedulePeriodicInstallCheck(true);
       return false;
   }
 }
