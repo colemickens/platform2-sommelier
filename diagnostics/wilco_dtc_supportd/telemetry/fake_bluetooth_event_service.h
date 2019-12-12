@@ -18,10 +18,14 @@ class FakeBluetoothEventService : public BluetoothEventService {
   FakeBluetoothEventService();
   ~FakeBluetoothEventService() override;
 
+  const std::vector<AdapterData>& GetLatestEvent() override;
+
   void EmitBluetoothAdapterDataChanged(
-      const std::vector<BluetoothEventService::AdapterData>& adapters) const;
+      const std::vector<BluetoothEventService::AdapterData>& adapters);
 
  private:
+  std::vector<BluetoothEventService::AdapterData> last_adapters_data_;
+
   DISALLOW_COPY_AND_ASSIGN(FakeBluetoothEventService);
 };
 

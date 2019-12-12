@@ -168,6 +168,11 @@ bool Core::Start() {
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData,
       base::Bind(&GrpcService::GetDriveSystemData,
                  base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtcSupportd::AsyncService::
+          RequestRequestBluetoothDataNotification,
+      base::Bind(&GrpcService::RequestBluetoothDataNotification,
+                 base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
   VLOG(1) << "Starting gRPC server";
@@ -453,6 +458,18 @@ void Core::GetDriveSystemData(DriveSystemDataType data_type,
   }
 }
 
+void Core::RequestBluetoothDataNotification() {
+  VLOG(1) << "WilcoDtcSupportdCore::RequestBluetoothDataNotification";
+
+  if (!bluetooth_event_service_) {
+    VLOG(1) << "Bluetooth event service not yet ready";
+    return;
+  }
+
+  NotifyClientsBluetoothAdapterState(
+      bluetooth_event_service_->GetLatestEvent());
+}
+
 void Core::SendGrpcUiMessageToWilcoDtc(
     base::StringPiece json_message,
     const SendGrpcUiMessageToWilcoDtcCallback& callback) {
@@ -523,43 +540,7 @@ void Core::BluetoothAdapterDataChanged(
     const std::vector<BluetoothEventService::AdapterData>& adapters) {
   VLOG(1) << "Core::BluetoothAdapterDataChanged";
 
-  grpc_api::HandleBluetoothDataChangedRequest request;
-  for (const auto& adapter : adapters) {
-    VLOG(1) << base::StringPrintf(
-        "Bluetooth adapter adapter: name=%s addres=%s powered=%d "
-        "connected_devices_count=%d",
-        adapter.name.c_str(), adapter.address.c_str(), adapter.powered,
-        adapter.connected_devices_count);
-
-    auto adapter_data = request.add_adapters();
-    adapter_data->set_adapter_name(adapter.name);
-    adapter_data->set_adapter_mac_address(adapter.address);
-    adapter_data->set_connected_devices_count(adapter.connected_devices_count);
-    if (adapter.powered) {
-      adapter_data->set_carrier_status(
-          grpc_api::HandleBluetoothDataChangedRequest::AdapterData::STATUS_UP);
-    } else {
-      adapter_data->set_carrier_status(
-          grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
-              STATUS_DOWN);
-    }
-  }
-
-  for (auto& client : wilco_dtc_grpc_clients_) {
-    client->CallRpc(
-        &grpc_api::WilcoDtc::Stub::AsyncHandleBluetoothDataChanged, request,
-        base::Bind(
-            [](std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse>
-                   response) {
-              if (!response) {
-                VLOG(1) << "Failed to call HandleBluetoothDataChanged gRPC "
-                           "method on wilco_dtc: response message is nullptr";
-                return;
-              }
-              VLOG(1) << "gRPC method HandleBluetoothDataChanged was "
-                         "successfully called on wilco_dtc";
-            }));
-  }
+  NotifyClientsBluetoothAdapterState(adapters);
 }
 
 void Core::OnPowerdEvent(PowerEventType type) {
@@ -667,6 +648,47 @@ void Core::SendMojoEcEventToBrowser(const MojoEvent& mojo_event) {
   }
 
   mojo_service_->HandleEvent(mojo_event);
+}
+
+void Core::NotifyClientsBluetoothAdapterState(
+    const std::vector<BluetoothEventService::AdapterData>& adapters) {
+  grpc_api::HandleBluetoothDataChangedRequest request;
+  for (const auto& adapter : adapters) {
+    VLOG(1) << base::StringPrintf(
+        "Bluetooth adapter adapter: name=%s addres=%s powered=%d "
+        "connected_devices_count=%d",
+        adapter.name.c_str(), adapter.address.c_str(), adapter.powered,
+        adapter.connected_devices_count);
+
+    auto adapter_data = request.add_adapters();
+    adapter_data->set_adapter_name(adapter.name);
+    adapter_data->set_adapter_mac_address(adapter.address);
+    adapter_data->set_connected_devices_count(adapter.connected_devices_count);
+    if (adapter.powered) {
+      adapter_data->set_carrier_status(
+          grpc_api::HandleBluetoothDataChangedRequest::AdapterData::STATUS_UP);
+    } else {
+      adapter_data->set_carrier_status(
+          grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
+              STATUS_DOWN);
+    }
+  }
+
+  for (auto& client : wilco_dtc_grpc_clients_) {
+    client->CallRpc(
+        &grpc_api::WilcoDtc::Stub::AsyncHandleBluetoothDataChanged, request,
+        base::Bind(
+            [](std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse>
+                   response) {
+              if (!response) {
+                VLOG(1) << "Failed to call HandleBluetoothDataChanged gRPC "
+                           "method on wilco_dtc: response message is nullptr";
+                return;
+              }
+              VLOG(1) << "gRPC method HandleBluetoothDataChanged was "
+                         "successfully called on wilco_dtc";
+            }));
+  }
 }
 
 }  // namespace diagnostics

@@ -24,6 +24,9 @@ class BluetoothEventServiceImpl final : public BluetoothEventService,
   explicit BluetoothEventServiceImpl(BluetoothClient* bluetooth_client);
   ~BluetoothEventServiceImpl() override;
 
+  const std::vector<BluetoothEventService::AdapterData>& GetLatestEvent()
+      override;
+
   // BluetoothClient::Observer overrides:
   void AdapterAdded(
       const dbus::ObjectPath& adapter_path,

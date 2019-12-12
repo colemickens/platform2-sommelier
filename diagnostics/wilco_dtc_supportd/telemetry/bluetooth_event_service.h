@@ -42,6 +42,8 @@ class BluetoothEventService {
   BluetoothEventService();
   virtual ~BluetoothEventService();
 
+  virtual const std::vector<AdapterData>& GetLatestEvent() = 0;
+
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 

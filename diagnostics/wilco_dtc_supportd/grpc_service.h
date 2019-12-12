@@ -145,6 +145,12 @@ class GrpcService final {
     virtual void GetDriveSystemData(
         DriveSystemDataType data_type,
         const GetDriveSystemDataCallback& callback) = 0;
+
+    // Called when gRPC |RequestBluetoothDataNotification| was called.
+    //
+    // Calls wilco_dtc_supportd daemon |RequestBluetoothDataNotification|
+    // method.
+    virtual void RequestBluetoothDataNotification() = 0;
   };
 
   using SendMessageToUiCallback =
@@ -171,6 +177,8 @@ class GrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::GetVpdFieldResponse>)>;
   using GetDriveSystemDataCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
+  using RequestBluetoothDataNotificationCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::RequestBluetoothDataNotificationResponse>)>;
 
   explicit GrpcService(Delegate* delegate);
   ~GrpcService();
@@ -213,6 +221,10 @@ class GrpcService final {
   void GetDriveSystemData(
       std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
       const GetDriveSystemDataCallback& callback);
+  void RequestBluetoothDataNotification(
+      std::unique_ptr<grpc_api::RequestBluetoothDataNotificationRequest>
+          request,
+      const RequestBluetoothDataNotificationCallback& callback);
 
  private:
   void AddFileDump(

@@ -21,6 +21,7 @@
 using ::testing::_;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
+using ::testing::Invoke;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
 
@@ -118,7 +119,10 @@ class BluetoothEventServiceImplTest : public ::testing::Test {
   void ExpectBluetoothDataChanged(
       const std::vector<AdapterData>& adapters_data) {
     EXPECT_CALL(observer_,
-                BluetoothAdapterDataChanged(ElementsAreArray(adapters_data)));
+                BluetoothAdapterDataChanged(ElementsAreArray(adapters_data)))
+        .WillOnce(Invoke([&](const std::vector<AdapterData>& arg) {
+          EXPECT_EQ(bluetooth_service_->GetLatestEvent(), arg);
+        }));
   }
 
  protected:

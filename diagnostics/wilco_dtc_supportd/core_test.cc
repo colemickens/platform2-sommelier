@@ -224,6 +224,32 @@ class FakeCoreDelegate : public Core::Delegate {
   FakePowerdEventService* powerd_event_service_;
 };
 
+// Matches gRPC Bluetooth AdapterData and BluetoothEventService AdapterData.
+MATCHER_P(BluetoothAdaptersEquals, expected_adapters, "") {
+  if (arg.adapters_size() != expected_adapters.size()) {
+    return false;
+  }
+  for (int i = 0; i < arg.adapters_size(); i++) {
+    auto expected_carrier_status =
+        (expected_adapters[i].powered)
+            ? grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
+                  STATUS_UP
+            : grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
+                  STATUS_DOWN;
+
+    const auto& adapter = arg.adapters(i);
+
+    if (adapter.adapter_name() != expected_adapters[i].name ||
+        adapter.adapter_mac_address() != expected_adapters[i].address ||
+        adapter.carrier_status() != expected_carrier_status ||
+        adapter.connected_devices_count() !=
+            expected_adapters[i].connected_devices_count) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Tests for the Core class.
 class CoreTest : public testing::Test {
  protected:
@@ -539,6 +565,69 @@ TEST_F(StartedCoreTest, MojoBootstrapSuccessThenAbort) {
   mojo_service_factory_interface_ptr()->reset();
   base::RunLoop().RunUntilIdle();
   Mock::VerifyAndClearExpectations(core_delegate());
+}
+
+// Test that the method |RequestBluetoothDataNotification()| exposed by
+// wilco_dtc_supportd gRPC calls clients with the updated data
+TEST_F(StartedCoreTest, HandleRequestBluetoothDataNotification) {
+  std::vector<BluetoothEventService::AdapterData> adapters(2);
+  adapters[0].name = "sarien-laptop";
+  adapters[0].address = "aa:bb:cc:dd:ee:ff";
+  adapters[0].powered = true;
+  adapters[0].connected_devices_count = 0;
+  adapters[1].name = "usb-bluetooth";
+  adapters[1].address = "00:11:22:33:44:55";
+  adapters[1].powered = false;
+  adapters[1].connected_devices_count = 2;
+
+  {
+    base::RunLoop run_loop;
+
+    core_delegate()->bluetooth_event_service()->EmitBluetoothAdapterDataChanged(
+        adapters);
+
+    run_loop.RunUntilIdle();
+  }
+
+  FakeWilcoDtc fake_wilco_dtc(wilco_dtc_grpc_uri(),
+                              wilco_dtc_supportd_grpc_uri());
+  FakeWilcoDtc fake_ui_message_receiver_wilco_dtc(
+      ui_message_receiver_wilco_dtc_grpc_uri(), wilco_dtc_supportd_grpc_uri());
+
+  auto bluetooth_callback =
+      [](const base::Closure& callback,
+         grpc_api::HandleBluetoothDataChangedRequest* request_out,
+         const grpc_api::HandleBluetoothDataChangedRequest& request) {
+        DCHECK(request_out);
+        *request_out = request;
+        callback.Run();
+      };
+
+  base::RunLoop run_loop;
+  auto barrier_closure = BarrierClosure(2, run_loop.QuitClosure());
+
+  grpc_api::HandleBluetoothDataChangedRequest
+      fake_wilco_dtc_bluetooth_grpc_request;
+  grpc_api::HandleBluetoothDataChangedRequest
+      fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request;
+
+  fake_wilco_dtc.set_bluetooth_data_changed_callback(
+      base::BindRepeating(bluetooth_callback, barrier_closure,
+                          &fake_wilco_dtc_bluetooth_grpc_request));
+  fake_ui_message_receiver_wilco_dtc.set_bluetooth_data_changed_callback(
+      base::BindRepeating(
+          bluetooth_callback, barrier_closure,
+          &fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request));
+
+  core_delegate()->bluetooth_event_service()->EmitBluetoothAdapterDataChanged(
+      adapters);
+
+  run_loop.Run();
+
+  EXPECT_THAT(fake_wilco_dtc_bluetooth_grpc_request,
+              BluetoothAdaptersEquals(adapters));
+  EXPECT_THAT(fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request,
+              BluetoothAdaptersEquals(adapters));
 }
 
 // Tests for the Core class with the already established Mojo
@@ -869,32 +958,6 @@ TEST_F(BootstrappedCoreTest, GetDriveSystemData) {
   expected_response.set_payload(kFakeSmartctlData);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
-}
-
-// Matches gRPC Bluetooth AdapterData and BluetoothEventService AdapterData.
-MATCHER_P(BluetoothAdaptersEquals, expected_adapters, "") {
-  if (arg.adapters_size() != expected_adapters.size()) {
-    return false;
-  }
-  for (int i = 0; i < arg.adapters_size(); i++) {
-    auto expected_carrier_status =
-        (expected_adapters[i].powered)
-            ? grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
-                  STATUS_UP
-            : grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
-                  STATUS_DOWN;
-
-    const auto& adapter = arg.adapters(i);
-
-    if (adapter.adapter_name() != expected_adapters[i].name ||
-        adapter.adapter_mac_address() != expected_adapters[i].address ||
-        adapter.carrier_status() != expected_carrier_status ||
-        adapter.connected_devices_count() !=
-            expected_adapters[i].connected_devices_count) {
-      return false;
-    }
-  }
-  return true;
 }
 
 // Test that the method |HandleBluetoothDataChanged()| exposed by wilco_dtc gRPC

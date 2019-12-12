@@ -173,6 +173,11 @@ EXAMPLE USAGE
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::PerformWebRequest,
         FLAGS_message_body, callback);
+  } else if (FLAGS_message_name == "RequestBluetoothDataNotification") {
+    request_succeeded = diagnostics::MakeRequest(
+        requester.get(),
+        &diagnostics::DpslRequester::RequestBluetoothDataNotification,
+        FLAGS_message_body, callback);
   } else if (FLAGS_message_name == "RunRoutine") {
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::RunRoutine,

@@ -57,6 +57,10 @@ service WilcoDtcSupportd {
   // Retrieves the disk system data from smartctl/nvme command run output.
   rpc GetDriveSystemData(GetDriveSystemDataRequest)
       returns (GetDriveSystemDataResponse) {}
+
+  // Request a notification with the current bluetooth adapter data.
+  rpc RequestBluetoothDataNotification(RequestBluetoothDataNotificationRequest)
+      returns (RequestBluetoothDataNotificationResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -532,3 +536,11 @@ message GetDriveSystemDataResponse {
   // smartctl/nvme command run output.
   bytes payload = 2;
 }
+
+// Parameters for the RequestBluetoothDataNotification RPC. The message is
+// currently empty.
+message RequestBluetoothDataNotificationRequest {}
+
+// Return value for the RequestBluetoothDataNotification RPC. The message is
+// currently empty.
+message RequestBluetoothDataNotificationResponse {}

@@ -47,6 +47,8 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
   using GetDriveSystemDataCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
+  using RequestBluetoothDataNotificationCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::RequestBluetoothDataNotificationResponse>)>;
   using HandleConfigurationDataChangedCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
   using HandleBluetoothDataChangedCallback = base::Callback<void(
@@ -79,6 +81,9 @@ class FakeWilcoDtc final {
       const GetConfigurationDataCallback& callback);
   void GetDriveSystemData(const grpc_api::GetDriveSystemDataRequest& request,
                           const GetDriveSystemDataCallback& callback);
+  void RequestBluetoothDataNotification(
+      const grpc_api::RequestBluetoothDataNotificationRequest& request,
+      const RequestBluetoothDataNotificationCallback& callback);
 
   // Sets up the passed callback to be used for subsequent
   // |HandleMessageFromUi| gRPC calls.

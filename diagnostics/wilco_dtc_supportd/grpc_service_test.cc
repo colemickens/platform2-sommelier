@@ -13,6 +13,8 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/string_piece.h>
 #include "base/strings/stringprintf.h"
 #include "base/sys_info.h"
@@ -231,6 +233,7 @@ class MockGrpcServiceDelegate : public GrpcService::Delegate {
               GetDriveSystemData,
               (DriveSystemDataType, const GetDriveSystemDataCallback&),
               (override));
+  MOCK_METHOD(void, RequestBluetoothDataNotification, (), (override));
 };
 
 // Tests for the GrpcService class.
@@ -443,6 +446,7 @@ class GrpcServiceTest : public testing::Test {
   base::FilePath temp_dir_path() const { return temp_dir_.GetPath(); }
 
  private:
+  base::MessageLoop message_loop_;
   base::ScopedTempDir temp_dir_;
   StrictMock<MockGrpcServiceDelegate> delegate_;
   GrpcService service_{&delegate_};
@@ -670,6 +674,26 @@ TEST_F(GrpcServiceTest, GetDriveSystemDataInternalError) {
       grpc_api::GetDriveSystemDataResponse::STATUS_ERROR_REQUEST_PROCESSING);
   EXPECT_THAT(*response, ProtobufEquals(*expected_response))
       << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+TEST_F(GrpcServiceTest, RequestBluetoothDataNotification) {
+  auto request =
+      std::make_unique<grpc_api::RequestBluetoothDataNotificationRequest>();
+
+  EXPECT_CALL(*delegate(), RequestBluetoothDataNotification());
+
+  base::RunLoop run_loop;
+  service()->RequestBluetoothDataNotification(
+      std::move(request),
+      base::Bind(
+          [](base::Closure callback,
+             std::unique_ptr<
+                 grpc_api::RequestBluetoothDataNotificationResponse>) {
+            callback.Run();
+          },
+          run_loop.QuitClosure()));
+
+  run_loop.Run();
 }
 
 class GrpcServiceWithFakeSystemFilesServiceTest : public GrpcServiceTest {

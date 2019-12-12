@@ -20,6 +20,11 @@ BluetoothEventServiceImpl::~BluetoothEventServiceImpl() {
   bluetooth_client_->RemoveObserver(this);
 }
 
+const std::vector<BluetoothEventService::AdapterData>&
+BluetoothEventServiceImpl::GetLatestEvent() {
+  return last_adapters_data_;
+}
+
 void BluetoothEventServiceImpl::AdapterAdded(
     const dbus::ObjectPath& adapter_path,
     const BluetoothClient::AdapterProperties& properties) {

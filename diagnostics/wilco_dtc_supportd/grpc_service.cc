@@ -45,6 +45,8 @@ using RunRoutineCallback = GrpcService::RunRoutineCallback;
 using GetRoutineUpdateCallback = GrpcService::GetRoutineUpdateCallback;
 using GetConfigurationDataCallback = GrpcService::GetConfigurationDataCallback;
 using GetDriveSystemDataCallback = GrpcService::GetDriveSystemDataCallback;
+using RequestBluetoothDataNotificationCallback =
+    GrpcService::RequestBluetoothDataNotificationCallback;
 
 // Https prefix expected to be a prefix of URL in PerformWebRequestParameter.
 constexpr char kHttpsPrefix[] = "https://";
@@ -653,6 +655,15 @@ void GrpcService::GetDriveSystemData(
 
   delegate_->GetDriveSystemData(
       data_type, base::Bind(&ForwardGetDriveSystemDataResponse, callback));
+}
+
+void GrpcService::RequestBluetoothDataNotification(
+    std::unique_ptr<grpc_api::RequestBluetoothDataNotificationRequest> request,
+    const RequestBluetoothDataNotificationCallback& callback) {
+  delegate_->RequestBluetoothDataNotification();
+
+  callback.Run(
+      std::make_unique<grpc_api::RequestBluetoothDataNotificationResponse>());
 }
 
 void GrpcService::AddFileDump(

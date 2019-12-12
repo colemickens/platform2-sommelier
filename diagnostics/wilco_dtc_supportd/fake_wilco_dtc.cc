@@ -94,6 +94,14 @@ void FakeWilcoDtc::GetDriveSystemData(
       callback);
 }
 
+void FakeWilcoDtc::RequestBluetoothDataNotification(
+    const grpc_api::RequestBluetoothDataNotificationRequest& request,
+    const RequestBluetoothDataNotificationCallback& callback) {
+  wilco_dtc_supportd_grp_client_.CallRpc(
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncRequestBluetoothDataNotification,
+      request, callback);
+}
+
 void FakeWilcoDtc::HandleMessageFromUi(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
     const HandleMessageFromUiCallback& callback) {

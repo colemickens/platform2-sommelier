@@ -349,6 +349,26 @@ using GetDriveSystemDataTestParam = DpslRequesterImplServerTestParam<
         &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData),
     &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData>;
 
+void FillProtobufForTest(
+    grpc_api::RequestBluetoothDataNotificationRequest* req) {
+  // Message has no fields
+}
+
+void FillProtobufForTest(
+    grpc_api::RequestBluetoothDataNotificationResponse* res) {
+  // Message has no fields
+}
+
+using RequestBluetoothDataNotificationTestParam =
+    DpslRequesterImplServerTestParam<
+        grpc_api::RequestBluetoothDataNotificationRequest,
+        grpc_api::RequestBluetoothDataNotificationResponse,
+        &DpslRequesterImpl::RequestBluetoothDataNotification,
+        decltype(&grpc_api::WilcoDtcSupportd::AsyncService::
+                     RequestRequestBluetoothDataNotification),
+        &grpc_api::WilcoDtcSupportd::AsyncService::
+            RequestRequestBluetoothDataNotification>;
+
 class TestDsplMultiRequesterServer {
  public:
   explicit TestDsplMultiRequesterServer(const std::string& uri)
@@ -634,7 +654,8 @@ using DpslRequesterImplServerTestTypes =
                      GetOsVersionTestParam,
                      GetConfigurationDataTestParam,
                      GetVpdFieldTestParam,
-                     GetDriveSystemDataTestParam>;
+                     GetDriveSystemDataTestParam,
+                     RequestBluetoothDataNotificationTestParam>;
 TYPED_TEST_CASE(DpslRequesterImplServerTest, DpslRequesterImplServerTestTypes);
 
 TYPED_TEST(DpslRequesterImplServerTest, CallGrpcMethodFromMainThread) {

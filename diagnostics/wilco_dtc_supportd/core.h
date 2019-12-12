@@ -185,6 +185,7 @@ class Core final : public DBusService::Delegate,
       const GetConfigurationDataFromBrowserCallback& callback) override;
   void GetDriveSystemData(DriveSystemDataType data_type,
                           const GetDriveSystemDataCallback& callback) override;
+  void RequestBluetoothDataNotification() override;
 
   // MojoService::Delegate overrides:
   void SendGrpcUiMessageToWilcoDtc(
@@ -211,6 +212,10 @@ class Core final : public DBusService::Delegate,
   // OnEcEvent should trigger the following:
   void SendGrpcEcEventToWilcoDtc(const EcEventService::EcEvent& ec_event);
   void SendMojoEcEventToBrowser(const MojoEvent& mojo_event);
+
+  // Called by BluetoothAdapterDataChanged and RequestBluetoothDataNotification.
+  void NotifyClientsBluetoothAdapterState(
+      const std::vector<BluetoothEventService::AdapterData>& adapters);
 
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;

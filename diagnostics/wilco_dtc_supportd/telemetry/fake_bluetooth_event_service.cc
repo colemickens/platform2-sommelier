@@ -10,8 +10,15 @@ FakeBluetoothEventService::FakeBluetoothEventService() = default;
 
 FakeBluetoothEventService::~FakeBluetoothEventService() = default;
 
+const std::vector<BluetoothEventService::AdapterData>&
+FakeBluetoothEventService::GetLatestEvent() {
+  return last_adapters_data_;
+}
+
 void FakeBluetoothEventService::EmitBluetoothAdapterDataChanged(
-    const std::vector<BluetoothEventService::AdapterData>& adapters) const {
+    const std::vector<BluetoothEventService::AdapterData>& adapters) {
+  last_adapters_data_ = adapters;
+
   for (auto& observer : observers_) {
     observer.BluetoothAdapterDataChanged(adapters);
   }
