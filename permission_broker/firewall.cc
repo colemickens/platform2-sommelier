@@ -119,27 +119,38 @@ bool Firewall::DeleteAcceptRules(ProtocolEnum protocol,
 }
 
 bool Firewall::AddIpv4ForwardRule(ProtocolEnum protocol,
+                                  const std::string& input_ip,
                                   uint16_t port,
                                   const std::string& interface,
                                   const std::string& dst_ip,
                                   uint16_t dst_port) {
-  return ModifyIpv4DNATRule(protocol, port, interface, dst_ip, dst_port, "-I");
+  return ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip,
+                            dst_port, "-I");
 }
 
 bool Firewall::DeleteIpv4ForwardRule(ProtocolEnum protocol,
+                                     const std::string& input_ip,
                                      uint16_t port,
                                      const std::string& interface,
                                      const std::string& dst_ip,
                                      uint16_t dst_port) {
-  return ModifyIpv4DNATRule(protocol, port, interface, dst_ip, dst_port, "-D");
+  return ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip,
+                            dst_port, "-D");
 }
 
 bool Firewall::ModifyIpv4DNATRule(ProtocolEnum protocol,
+                                  const std::string& input_ip,
                                   uint16_t port,
                                   const std::string& interface,
                                   const std::string& dst_ip,
                                   uint16_t dst_port,
                                   const std::string& operation) {
+  struct in_addr addr;
+  if (!input_ip.empty() && inet_pton(AF_INET, input_ip.c_str(), &addr) != 1) {
+    LOG(ERROR) << "Invalid input IPv4 address '" << input_ip << "'";
+    return false;
+  }
+
   if (port == 0U) {
     LOG(ERROR) << "Port 0 is not a valid port";
     return false;
@@ -150,9 +161,8 @@ bool Firewall::ModifyIpv4DNATRule(ProtocolEnum protocol,
     return false;
   }
 
-  struct in_addr addr;
   if (inet_pton(AF_INET, dst_ip.c_str(), &addr) != 1) {
-    LOG(ERROR) << "Invalid IPv4 address '" << dst_ip << "'";
+    LOG(ERROR) << "Invalid destination IPv4 address '" << dst_ip << "'";
     return false;
   }
 
@@ -168,23 +178,26 @@ bool Firewall::ModifyIpv4DNATRule(ProtocolEnum protocol,
     return false;
   }
 
-  std::vector<std::string> argv{
-      kIpTablesPath,
-      "-t",
-      "nat",
-      operation,
-      "PREROUTING",
-      "-i",
-      interface,
-      "-p",  // protocol
-      ProtocolName(protocol),
-      "--dport",  // input destination port
-      std::to_string(port),
-      "-j",
-      "DNAT",
-      "--to-destination",  // new output destination ip:port
-      dst_ip + ":" + std::to_string(dst_port),
-      "-w"};  // Wait for xtables lock.
+  std::vector<std::string> argv{kIpTablesPath,
+                                "-t",
+                                "nat",
+                                operation,
+                                "PREROUTING",
+                                "-i",
+                                interface,
+                                "-p",  // protocol
+                                ProtocolName(protocol)};
+  if (!input_ip.empty()) {
+    argv.push_back("-d");  // input destination ip
+    argv.push_back(input_ip);
+  }
+  argv.push_back("--dport");  // input destination port
+  argv.push_back(std::to_string(port));
+  argv.push_back("-j");
+  argv.push_back("DNAT");
+  argv.push_back("--to-destination");  // new output destination ip:port
+  argv.push_back(dst_ip + ":" + std::to_string(dst_port));
+  argv.push_back("-w");  // Wait for xtables lock.
   return RunInMinijail(argv) == 0;
 }
 

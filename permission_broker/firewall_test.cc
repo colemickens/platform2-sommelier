@@ -197,50 +197,59 @@ TEST_F(FirewallTest, AddAcceptRules_InvalidArguments) {
   int id = mock_firewall.SetRunInMinijailFailCriterion({}, true, true);
 
   // Invalid input interface
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 80, "-startdash",
-                                                "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, 80, "enddash-",
-                                                "100.115.92.5", 8080));
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(
+      kProtocolTcp, "", 80, "-startdash", "100.115.92.5", 8080));
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(
+      kProtocolUdp, "", 80, "enddash-", "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
-      kProtocolTcp, 80, ".startdot", "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 80, "enddot.",
-                                                   "100.115.92.5", 8080));
+      kProtocolTcp, "", 80, ".startdot", "100.115.92.5", 8080));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
+      kProtocolUdp, "", 80, "enddot.", "100.115.92.5", 8080));
   // Empty interface
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 80, "",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "",
                                                 "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, 80, "",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 80, "",
                                                 "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, 80, "",
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, "", 80, "",
                                                    "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 80, "",
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 80, "",
                                                    "100.115.92.5", 8080));
+  // Invalid input dst address
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(
+      kProtocolTcp, "256.256.256.256", 80, "iface", "100.115.92.5", 8080));
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "qodpjqwpod", 80,
+                                                "iface", "100.115.92.5", 8080));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
+      kProtocolTcp, "1.1", 80, "iface", "100.115.92.5", 8080));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
+      kProtocolUdp, "2001:db8::1", 80, "iface", "100.115.92.5", 8080));
   // Invalid input dst port
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 0, "iface",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 0, "iface",
                                                 "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 0, "iface",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 0, "iface",
                                                 "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 0, "iface",
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 0, "iface",
                                                    "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 0, "iface",
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 0, "iface",
                                                    "100.115.92.5", 8080));
   // Invalid output dst address
-  ASSERT_FALSE(
-      mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 80, "iface", "", 8080));
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, 80, "iface",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "iface",
+                                                "", 8080));
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 80, "iface",
                                                 "qodpjqwpod", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, 80, "iface",
-                                                   "1.1", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 80, "iface",
-                                                   "2001:db8::1", 8080));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, "", 80,
+                                                   "iface", "1.1", 8080));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
+      kProtocolUdp, "", 80, "iface", "2001:db8::1", 8080));
   // Invalid output dst port
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 80, "iface",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "iface",
                                                 "100.115.92.5", 0));
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, 80, "iface",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 80, "iface",
                                                 "100.115.92.5", 0));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, 80, "iface",
-                                                   "100.115.92.5", 0));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 80, "iface",
-                                                   "100.115.92.5", 0));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, "", 80,
+                                                   "iface", "100.115.92.5", 0));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 80,
+                                                   "iface", "100.115.92.5", 0));
 
   EXPECT_EQ(mock_firewall.GetRunInMinijailCriterionMatchCount(id), 0);
 }
@@ -249,14 +258,14 @@ TEST_F(FirewallTest, AddAcceptRules_IptablesFails) {
   MockFirewall mock_firewall;
   SetMockExpectations(&mock_firewall, false /* success */);
 
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 80, "iface",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "iface",
                                                 "100.115.92.6", 8080));
-  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, 80, "iface",
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 80, "iface",
                                                 "100.115.92.6", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, 80, "iface",
-                                                   "100.115.92.6", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 80, "iface",
-                                                   "100.115.92.6", 8080));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
+      kProtocolTcp, "", 80, "iface", "100.115.92.6", 8080));
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
+      kProtocolUdp, "", 80, "iface", "100.115.92.6", 8080));
 }
 
 TEST_F(FirewallTest, AddAcceptRules_ValidRules) {
@@ -264,24 +273,32 @@ TEST_F(FirewallTest, AddAcceptRules_ValidRules) {
   int id = mock_firewall.SetRunInMinijailFailCriterion({}, true, true);
 
   // Invalid input interface
-  ASSERT_TRUE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, 80, "wlan0",
+  ASSERT_TRUE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "wlan0",
                                                "100.115.92.2", 8080));
-  ASSERT_TRUE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, 5353, "eth0",
+  ASSERT_TRUE(mock_firewall.AddIpv4ForwardRule(
+      kProtocolTcp, "100.115.92.2", 5555, "vmtap0", "127.0.0.1", 5550));
+  ASSERT_TRUE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 5353, "eth0",
                                                "192.168.1.1", 5353));
-  ASSERT_TRUE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, 5000, "mlan0",
-                                                  "10.0.0.24", 5001));
-  ASSERT_TRUE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, 443, "eth1",
+  ASSERT_TRUE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, "", 5000,
+                                                  "mlan0", "10.0.0.24", 5001));
+  ASSERT_TRUE(mock_firewall.DeleteIpv4ForwardRule(
+      kProtocolTcp, "100.115.92.2", 5555, "vmtap0", "127.0.0.1", 5550));
+  ASSERT_TRUE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 443, "eth1",
                                                   "1.2.3.4", 443));
 
-  EXPECT_EQ(mock_firewall.GetRunInMinijailCriterionMatchCount(id), 4);
+  EXPECT_EQ(mock_firewall.GetRunInMinijailCriterionMatchCount(id), 6);
 
   std::vector<std::string> expected_commands = {
       "/sbin/iptables -t nat -I PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.2:8080 -w",
+      "/sbin/iptables -t nat -I PREROUTING -i vmtap0 -p tcp -d 100.115.92.2 "
+      "--dport 5555 -j DNAT --to-destination 127.0.0.1:5550 -w",
       "/sbin/iptables -t nat -I PREROUTING -i eth0 -p udp --dport 5353 -j DNAT "
       "--to-destination 192.168.1.1:5353 -w",
       "/sbin/iptables -t nat -D PREROUTING -i mlan0 -p tcp --dport 5000 -j "
       "DNAT --to-destination 10.0.0.24:5001 -w",
+      "/sbin/iptables -t nat -D PREROUTING -i vmtap0 -p tcp -d 100.115.92.2 "
+      "--dport 5555 -j DNAT --to-destination 127.0.0.1:5550 -w",
       "/sbin/iptables -t nat -D PREROUTING -i eth1 -p udp --dport 443 -j DNAT "
       "--to-destination 1.2.3.4:443 -w"};
   std::vector<std::string> issued_commands = mock_firewall.GetAllCommands();

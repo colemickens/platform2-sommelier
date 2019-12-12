@@ -41,11 +41,13 @@ class Firewall {
   bool AddLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port);
   bool DeleteLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port);
   bool AddIpv4ForwardRule(ProtocolEnum protocol,
+                          const std::string& input_ip,
                           uint16_t port,
                           const std::string& interface,
                           const std::string& dst_ip,
                           uint16_t dst_port);
   bool DeleteIpv4ForwardRule(ProtocolEnum protocol,
+                             const std::string& input_ip,
                              uint16_t port,
                              const std::string& interface,
                              const std::string& dst_ip,
@@ -63,6 +65,7 @@ class Firewall {
                                 const std::string& interface);
 
   virtual bool ModifyIpv4DNATRule(ProtocolEnum protocol,
+                                  const std::string& input_ip,
                                   uint16_t port,
                                   const std::string& interface,
                                   const std::string& dst_ip,
