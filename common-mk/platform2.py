@@ -337,8 +337,7 @@ class Platform2(object):
         '--args=%s' % ' '.join(gn_args_args),
         self.get_products_path(),
     ]
-    cros_build_lib.RunCommand(gn_args, env=buildenv,
-                              cwd=self.get_platform2_root())
+    cros_build_lib.run(gn_args, env=buildenv, cwd=self.get_platform2_root())
 
   def compile(self, args):
     """Runs the compile step of the Platform2 build.
@@ -362,7 +361,7 @@ class Platform2(object):
     if os.environ.get('NINJA_ARGS'):
       ninja_args.extend(os.environ['NINJA_ARGS'].split())
 
-    cros_build_lib.RunCommand(ninja_args)
+    cros_build_lib.run(ninja_args)
 
   def deviterate(self, args):
     """Runs the configure and compile steps of the Platform2 build.

@@ -29,7 +29,7 @@ def GetActiveProjects():
   result = git.RunGit(TOP_DIR, cmd)
 
   # Split the output on NULs to avoid whitespace/etc... issues.
-  paths = result.output.split('\0')
+  paths = result.stdout.split('\0')
 
   # ls-tree -z will include a trailing NUL on all entries, not just seperation,
   # so filter it out if found (in case ls-tree behavior changes on us).

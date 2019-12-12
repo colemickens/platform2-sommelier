@@ -69,6 +69,7 @@ import collections
 import json
 import os
 import re
+import subprocess
 import sys
 
 # Find chromite!
@@ -134,9 +135,8 @@ def CheckFormat(gnfile):
   linter = 'CheckFormat'
   try:
     gn_path = os.path.join(chromite_root, 'chroot', 'usr', 'bin', 'gn')
-    result = cros_build_lib.RunCommand([gn_path, 'format', '--dry-run', gnfile],
-                                       error_code_ok=True,
-                                       debug_level=logging.DEBUG)
+    result = cros_build_lib.run([gn_path, 'format', '--dry-run', gnfile],
+                                check=False, debug_level=logging.DEBUG)
   except cros_build_lib.RunCommandError as e:
     issues.append(LintResult(
         linter, gnfile, 'Failed to run gn format: %s' % e, logging.ERROR))
@@ -157,7 +157,7 @@ def CheckFormat(gnfile):
       issues.append(LintResult(
           linter, gnfile, 'Unknown error with gn format: '
           'returncode=%i error=%s output=%s' %
-          (result.returncode, result.error, result.output), logging.ERROR))
+          (result.returncode, result.stderr, result.stdout), logging.ERROR))
   return issues
 
 
@@ -664,17 +664,16 @@ def CheckGnFile(gnfile):
   # Parse and check
   gn_path = os.path.join(chromite_root, 'chroot', 'usr', 'bin', 'gn')
   try:
-    command_result = cros_build_lib.RunCommand(
+    command_result = cros_build_lib.run(
         [gn_path, 'format', '--dump-tree=json', gnfile],
-        combine_stdout_stderr=True,
-        redirect_stdout=True, debug_level=logging.DEBUG)
+        stderr=subprocess.STDOUT, stdout=True, debug_level=logging.DEBUG)
   except cros_build_lib.RunCommandError as e:
     issues.append(LintResult('gn.input.CheckedEval', gnfile,
                              'Failed to run gn format: %s' % e, logging.ERROR))
     return issues
 
   try:
-    data = json.loads(command_result.output)
+    data = json.loads(command_result.stdout)
   except Exception as e:
     issues.append(LintResult('gn.input.CheckedEval', gnfile,
                              'invalid format: %s' % e, logging.ERROR))
