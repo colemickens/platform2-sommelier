@@ -46,6 +46,7 @@ constexpr char kDlcPluginBinDir[] =
 constexpr char kPluginBinName[] = "pvm";
 
 constexpr gid_t kPluginGidMap[] = {
+    27,     // video
     600,    // cras
     603,    // arc-camera
     20136,  // cups-proxy
@@ -613,6 +614,7 @@ bool PluginVm::Start(uint32_t cpus,
 
   std::vector<string> bind_mounts = {
       "/dev/log:/dev/log:true",
+      "/dev/udmabuf:/dev/udmabuf:true",
       "/lib64:/lib64:false",
       "/proc:/proc:false",
       "/run/camera:/run/camera:true",
