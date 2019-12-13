@@ -5,6 +5,7 @@
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <brillo/dbus/dbus_param_writer.h>
@@ -13,12 +14,19 @@
 #include <gtest/gtest.h>
 #include "tpm_manager/client/mock_tpm_ownership_signal_handler.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
+#include "tpm_manager-client/tpm_manager/dbus-constants.h"
 
 using testing::_;
 using testing::Invoke;
 using testing::SaveArg;
 using testing::StrictMock;
 using testing::WithArgs;
+
+ACTION_TEMPLATE(MovePointee,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_1_VALUE_PARAMS(pointer)) {
+  *pointer = std::move(MIGRATE_WrapObjectProxyCallback(::std::get<k>(args)));
+}
 
 namespace tpm_manager {
 
@@ -27,7 +35,7 @@ class TpmOwnershipDBusProxyTest : public testing::Test {
   ~TpmOwnershipDBusProxyTest() override = default;
   void SetUp() override {
     mock_object_proxy_ = new StrictMock<dbus::MockObjectProxy>(
-        nullptr, "", dbus::ObjectPath(""));
+        nullptr, "", dbus::ObjectPath(kTpmManagerServicePath));
     proxy_.set_object_proxy(mock_object_proxy_.get());
   }
 
@@ -46,10 +54,11 @@ TEST_F(TpmOwnershipDBusProxyTest, ConnectToSignal) {
       "endorsement password");
   dbus::ObjectProxy::SignalCallback ownership_taken_callback;
   dbus::ObjectProxy::OnConnectedCallback signal_connected_callback;
-  EXPECT_CALL(*mock_object_proxy_, ConnectToSignal(kTpmOwnershipInterface,
-                                                   kOwnershipTakenSignal, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_ConnectToSignal(kTpmOwnershipInterface,
+                                      kOwnershipTakenSignal, _, _))
       .WillOnce(DoAll(SaveArg<2>(&ownership_taken_callback),
-                      SaveArg<3>(&signal_connected_callback)));
+                      MovePointee<3>(&signal_connected_callback)));
   EXPECT_CALL(mock_signal_handler, OnOwnershipTaken(_))
       .WillOnce(SaveArg<0>(&result_signal));
   EXPECT_CALL(
@@ -62,8 +71,8 @@ TEST_F(TpmOwnershipDBusProxyTest, ConnectToSignal) {
   dbus::MessageWriter writer(&signal);
   brillo::dbus_utils::DBusParamWriter::Append(&writer, expected_signal);
   ownership_taken_callback.Run(&signal);
-  signal_connected_callback.Run(kTpmOwnershipInterface, kOwnershipTakenSignal,
-                                true);
+  std::move(signal_connected_callback)
+      .Run(kTpmOwnershipInterface, kOwnershipTakenSignal, true);
   EXPECT_EQ(expected_signal.SerializeAsString(),
             result_signal.SerializeAsString());
 }
@@ -71,7 +80,8 @@ TEST_F(TpmOwnershipDBusProxyTest, ConnectToSignal) {
 TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
   auto fake_dbus_call = [](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     GetTpmStatusRequest request;
@@ -84,9 +94,11 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     reply.set_enabled(true);
     reply.set_owned(true);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -114,7 +126,8 @@ TEST_F(TpmOwnershipDBusProxyTest, GetVersionInfo) {
 
   auto fake_dbus_call = [&expected_version_info](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     GetVersionInfoRequest request;
@@ -123,9 +136,11 @@ TEST_F(TpmOwnershipDBusProxyTest, GetVersionInfo) {
     auto response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
     writer.AppendProtoAsArrayOfBytes(expected_version_info);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -146,7 +161,8 @@ TEST_F(TpmOwnershipDBusProxyTest, GetVersionInfo) {
 TEST_F(TpmOwnershipDBusProxyTest, GetDictionaryAttackInfo) {
   auto fake_dbus_call = [](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     GetDictionaryAttackInfoRequest request;
@@ -161,9 +177,11 @@ TEST_F(TpmOwnershipDBusProxyTest, GetDictionaryAttackInfo) {
     reply.set_dictionary_attack_lockout_in_effect(true);
     reply.set_dictionary_attack_lockout_seconds_remaining(5);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -186,7 +204,8 @@ TEST_F(TpmOwnershipDBusProxyTest, GetDictionaryAttackInfo) {
 TEST_F(TpmOwnershipDBusProxyTest, TakeOwnership) {
   auto fake_dbus_call = [](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     TakeOwnershipRequest request;
@@ -197,9 +216,11 @@ TEST_F(TpmOwnershipDBusProxyTest, TakeOwnership) {
     TakeOwnershipReply reply;
     reply.set_status(STATUS_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -217,7 +238,8 @@ TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
   const std::string owner_dependency("owner");
   auto fake_dbus_call = [&owner_dependency](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     RemoveOwnerDependencyRequest request;
@@ -230,9 +252,11 @@ TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
     RemoveOwnerDependencyReply reply;
     reply.set_status(STATUS_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -251,7 +275,8 @@ TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
 TEST_F(TpmOwnershipDBusProxyTest, ClearStoredOwnerPassword) {
   auto fake_dbus_call = [](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     ClearStoredOwnerPasswordRequest request;
@@ -262,9 +287,11 @@ TEST_F(TpmOwnershipDBusProxyTest, ClearStoredOwnerPassword) {
     ClearStoredOwnerPasswordReply reply;
     reply.set_status(STATUS_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.

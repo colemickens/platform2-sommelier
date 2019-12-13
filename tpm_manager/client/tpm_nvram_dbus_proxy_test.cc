@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -11,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
+#include "tpm_manager-client/tpm_manager/dbus-constants.h"
 
 using testing::_;
 using testing::Invoke;
@@ -24,7 +26,7 @@ class TpmNvramDBusProxyTest : public testing::Test {
   ~TpmNvramDBusProxyTest() override = default;
   void SetUp() override {
     mock_object_proxy_ = new StrictMock<dbus::MockObjectProxy>(
-        nullptr, "", dbus::ObjectPath(""));
+        nullptr, "", dbus::ObjectPath(kTpmManagerServicePath));
     proxy_.set_object_proxy(mock_object_proxy_.get());
   }
 
@@ -38,7 +40,8 @@ TEST_F(TpmNvramDBusProxyTest, DefineSpace) {
   size_t nvram_size = 32;
   auto fake_dbus_call = [nvram_index, nvram_size](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     DefineSpaceRequest request;
@@ -53,9 +56,11 @@ TEST_F(TpmNvramDBusProxyTest, DefineSpace) {
     DefineSpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
@@ -74,7 +79,8 @@ TEST_F(TpmNvramDBusProxyTest, DestroySpaceRequest) {
   uint32_t nvram_index = 5;
   auto fake_dbus_call = [nvram_index](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     DestroySpaceRequest request;
@@ -87,9 +93,11 @@ TEST_F(TpmNvramDBusProxyTest, DestroySpaceRequest) {
     DestroySpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
@@ -107,7 +115,8 @@ TEST_F(TpmNvramDBusProxyTest, WriteSpace) {
   std::string nvram_data("nvram_data");
   auto fake_dbus_call = [nvram_index, nvram_data](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     WriteSpaceRequest request;
@@ -122,9 +131,11 @@ TEST_F(TpmNvramDBusProxyTest, WriteSpace) {
     WriteSpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
@@ -144,7 +155,8 @@ TEST_F(TpmNvramDBusProxyTest, ReadSpace) {
   std::string nvram_data("nvram_data");
   auto fake_dbus_call = [nvram_index, nvram_data](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     ReadSpaceRequest request;
@@ -158,9 +170,11 @@ TEST_F(TpmNvramDBusProxyTest, ReadSpace) {
     reply.set_result(NVRAM_RESULT_SUCCESS);
     reply.set_data(nvram_data);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
@@ -181,7 +195,8 @@ TEST_F(TpmNvramDBusProxyTest, LockSpace) {
   uint32_t nvram_index = 5;
   auto fake_dbus_call = [nvram_index](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     LockSpaceRequest request;
@@ -194,9 +209,11 @@ TEST_F(TpmNvramDBusProxyTest, LockSpace) {
     LockSpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
@@ -214,7 +231,8 @@ TEST_F(TpmNvramDBusProxyTest, ListSpaces) {
   constexpr uint32_t nvram_index_list[] = {3, 4, 5};
   auto fake_dbus_call = [nvram_index_list](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     ListSpacesRequest request;
@@ -228,9 +246,11 @@ TEST_F(TpmNvramDBusProxyTest, ListSpaces) {
       reply.add_index_list(index);
     }
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
@@ -256,7 +276,8 @@ TEST_F(TpmNvramDBusProxyTest, GetSpaceInfo) {
   size_t nvram_size = 32;
   auto fake_dbus_call = [nvram_index, nvram_size](
       dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+      dbus::MockObjectProxy::ResponseCallback
+      MIGRATE_WrapObjectProxyCallback(response_callback)) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     GetSpaceInfoRequest request;
@@ -270,9 +291,11 @@ TEST_F(TpmNvramDBusProxyTest, GetSpaceInfo) {
     reply.set_result(NVRAM_RESULT_SUCCESS);
     reply.set_size(nvram_size);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
+        .Run(response.get());
   };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
