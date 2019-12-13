@@ -212,13 +212,13 @@ TEST_F(ExportedObjectManagerWrapperTest, SyncProperty) {
       static_cast<dbus::Property<std::string>*>(property_base2.get());
 
   std::string value1 = "string1";
-  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _)).Times(1);
+  EXPECT_CALL(*object_proxy_, MIGRATE_MockCallMethodAndBlock(_, _)).Times(1);
   property1->SetAndBlock(value1);
   property1->ReplaceValueWithSetValue();
   ASSERT_EQ(value1, property1->value());
 
   std::string value2 = "string2";
-  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _)).Times(1);
+  EXPECT_CALL(*object_proxy_, MIGRATE_MockCallMethodAndBlock(_, _)).Times(1);
   property2->SetAndBlock(value2);
   property2->ReplaceValueWithSetValue();
   ASSERT_EQ(value2, property2->value());

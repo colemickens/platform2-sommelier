@@ -5,6 +5,7 @@
 #include "bluetooth/dispatcher/test_helper.h"
 
 #include <memory>
+#include <utility>
 
 #include <dbus/message.h>
 
@@ -24,8 +25,10 @@ void StubHandleMethod(const std::string& expected_interface_name,
                       const std::string& error_message,
                       dbus::MethodCall* method_call,
                       int timeout_ms,
-                      dbus::ObjectProxy::ResponseCallback callback,
-                      dbus::ObjectProxy::ErrorCallback error_callback) {
+                      dbus::ObjectProxy::ResponseCallback
+                          MIGRATE_WrapObjectProxyCallback(callback),
+                      dbus::ObjectProxy::ErrorCallback
+                          MIGRATE_WrapObjectProxyCallback(error_callback)) {
   // This stub doesn't handle method calls other than expected method.
   if (method_call->GetInterface() != expected_interface_name ||
       method_call->GetMember() != expected_method_name)
@@ -43,13 +46,14 @@ void StubHandleMethod(const std::string& expected_interface_name,
     std::unique_ptr<dbus::ErrorResponse> error_response =
         dbus::ErrorResponse::FromMethodCall(method_call, error_name,
                                             error_message);
-    error_callback.Run(error_response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(error_callback))
+        .Run(error_response.get());
   } else {
     std::unique_ptr<dbus::Response> response =
         dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
     writer.AppendString(response_string);
-    callback.Run(response.get());
+    std::move(MIGRATE_WrapObjectProxyCallback(callback)).Run(response.get());
   }
 }
 

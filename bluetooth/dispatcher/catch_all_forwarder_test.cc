@@ -52,10 +52,13 @@ class CatchAllForwarderTest : public ::testing::Test {
         from_bus_, to_bus_, kServiceDestination);
   }
 
-  void StubHandleTestMethod(dbus::MethodCall* method_call,
-                            int timeout_ms,
-                            dbus::ObjectProxy::ResponseCallback callback,
-                            dbus::ObjectProxy::ErrorCallback error_callback) {
+  void StubHandleTestMethod(
+      dbus::MethodCall* method_call,
+      int timeout_ms,
+      dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
+          callback),
+      dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
+          error_callback)) {
     StubHandleMethod(kTestInterface, kTestMethod, kTestMethodCallString,
                      kTestResponseString, "" /* error_name */,
                      "" /* error_message */, method_call, timeout_ms, callback,
@@ -65,8 +68,10 @@ class CatchAllForwarderTest : public ::testing::Test {
   void StubHandleTestMethodError(
       dbus::MethodCall* method_call,
       int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback callback,
-      dbus::ObjectProxy::ErrorCallback error_callback) {
+      dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
+          callback),
+      dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
+          error_callback)) {
     StubHandleMethod(kTestInterface, kTestMethod, kTestMethodCallString,
                      kTestResponseString, kTestErrorName,
                      kTestErrorResponseString, method_call, timeout_ms,
@@ -101,7 +106,7 @@ TEST_F(CatchAllForwarderTest, ForwardMethod) {
   EXPECT_CALL(*to_bus_,
               GetObjectProxy(kServiceDestination, dbus::ObjectPath(kTestPath)))
       .WillOnce(Return(object_proxy.get()));
-  EXPECT_CALL(*object_proxy, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*object_proxy, MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &CatchAllForwarderTest::StubHandleTestMethod));
 
   DBusMessage* raw_response = nullptr;
@@ -129,7 +134,7 @@ TEST_F(CatchAllForwarderTest, ForwardMethod) {
   EXPECT_CALL(*to_bus_,
               GetObjectProxy(kServiceDestination, dbus::ObjectPath(kTestPath)))
       .WillOnce(Return(object_proxy.get()));
-  EXPECT_CALL(*object_proxy, CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*object_proxy, MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(
           Invoke(this, &CatchAllForwarderTest::StubHandleTestMethodError));
   EXPECT_CALL(*from_bus_, Send(_, _))
