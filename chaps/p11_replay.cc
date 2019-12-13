@@ -701,6 +701,98 @@ void DeleteAllTestKeys(CK_SESSION_HANDLE session) {
   }
 }
 
+// Retrieve the object handle for the object with the specified |object_id| and
+// CKA_CLASS of |obj_type|, and return the object iff exactly one object is
+// found. Exit with a non-zero status code otherwise.
+CK_OBJECT_HANDLE GetObjectOrDie(CK_SESSION_HANDLE session,
+                                const vector<uint8_t>& object_id,
+                                string obj_type) {
+  CK_OBJECT_CLASS class_value;
+  if (base::EqualsCaseInsensitiveASCII(obj_type, "privkey")) {
+    class_value = CKO_PRIVATE_KEY;
+  } else if (base::EqualsCaseInsensitiveASCII(obj_type, "pubkey")) {
+    class_value = CKO_PUBLIC_KEY;
+  } else if (base::EqualsCaseInsensitiveASCII(obj_type, "cert")) {
+    class_value = CKO_CERTIFICATE;
+  } else {
+    LOG(INFO) << "Invalid object class: " << obj_type;
+    exit(-1);
+  }
+
+  CK_ATTRIBUTE attributes[] = {
+      {CKA_CLASS, &class_value, sizeof(class_value)},
+      {CKA_ID,
+       const_cast<char*>(reinterpret_cast<const char*>(object_id.data())),
+       object_id.size()},
+  };
+  vector<CK_OBJECT_HANDLE> objects;
+  Find(session, attributes, arraysize(attributes), &objects);
+  if (objects.size() == 0) {
+    LOG(INFO) << "No object found.";
+    exit(-1);
+  }
+  if (objects.size() > 1) {
+    LOG(INFO) << "More than 1 object.";
+    exit(-1);
+  }
+  return objects[0];
+}
+
+// Get the specified attribute for the specified object and print it out in
+// specified format.
+void GetAttribute(CK_SESSION_HANDLE session,
+                  const vector<uint8_t>& object_id,
+                  CK_ATTRIBUTE_TYPE attribute,
+                  string output_format,
+                  string obj_type) {
+  CK_OBJECT_HANDLE object = GetObjectOrDie(session, object_id, obj_type);
+
+  // Get the length of the attribute.
+  CK_ATTRIBUTE attribute_template[] = {
+      {attribute, nullptr, 0},
+  };
+  CK_RV ret = C_GetAttributeValue(session, object, attribute_template,
+                                  arraysize(attribute_template));
+  if (ret != CKR_OK) {
+    LOG(ERROR) << "Unable to access the attribute, error: "
+               << chaps::CK_RVToString(ret);
+    exit(-1);
+  }
+  if (attribute_template[0].ulValueLen == -1) {
+    LOG(ERROR)
+        << "Unable to access the attribute, got -1 for attribute length.";
+    exit(-1);
+  }
+
+  size_t attribute_size = attribute_template[0].ulValueLen;
+  printf("Size: %d\n", static_cast<int>(attribute_size));
+
+  if (attribute_size <= 0) {
+    // No data, we are done here.
+    return;
+  }
+
+  // Get the object value.
+  std::vector<uint8_t> buffer(attribute_template[0].ulValueLen, 0);
+  attribute_template[0].pValue = base::data(buffer);
+  ret = C_GetAttributeValue(session, object, attribute_template,
+                            arraysize(attribute_template));
+  if (ret != CKR_OK) {
+    LOG(ERROR) << "Unable to read the attribute, error: "
+               << chaps::CK_RVToString(ret);
+    exit(-1);
+  }
+
+  // Print out the attribute value.
+  if (output_format == "hex" || output_format == "") {
+    printf("Attribute Data in hex: %s\n",
+           base::HexEncode(base::data(buffer), buffer.size()).c_str());
+  } else {
+    LOG(ERROR) << "Invalid output format: " << output_format;
+    exit(-1);
+  }
+}
+
 // Cleans up the session and library.
 void TearDown(CK_SESSION_HANDLE session, bool logout) {
   CK_RV result = CKR_OK;
@@ -743,6 +835,9 @@ void PrintHelp() {
       "  --replay_wifi [--label=<key_label>]"
       " : Replays a EAP-TLS Wifi negotiation. This is the default command if"
       " no command is specified.\n");
+  printf(
+      "  --get_attribute --id=<token id str> --type=<cert, privkey, pubkey> "
+      "--attribute=<attribute>: Get the attribute for an object.\n");
 }
 
 void PrintTicks(base::TimeTicks* start_ticks) {
@@ -838,8 +933,10 @@ int main(int argc, char** argv) {
                 cl->HasSwitch("type") && cl->HasSwitch("id");
   bool digest_test = cl->HasSwitch("digest_test");
   bool list_tokens = cl->HasSwitch("list_tokens");
+  bool get_attribute = cl->HasSwitch("get_attribute");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
-      !inject && !list_objects && !import && !digest_test && !list_tokens) {
+      !inject && !list_objects && !import && !digest_test && !list_tokens &&
+      !get_attribute) {
     PrintHelp();
     return 0;
   }
@@ -934,6 +1031,22 @@ int main(int argc, char** argv) {
   }
   if (list_tokens) {
     PrintTokens();
+  }
+  if (get_attribute) {
+    vector<uint8_t> object_id;
+    if (!base::HexStringToBytes(cl->GetSwitchValueASCII("id"), &object_id)) {
+      LOG(ERROR) << "Invalid arg, expecting hex string for id (like b18aa8).";
+      exit(-1);
+    }
+    string attribute_string = cl->GetSwitchValueASCII("attribute");
+    CK_ATTRIBUTE_TYPE attribute;
+    if (!chaps::StringToAttribute(attribute_string, &attribute)) {
+      LOG(ERROR) << "Unable to parse attribute: " << attribute_string;
+      exit(-1);
+    }
+    GetAttribute(session, object_id, attribute,
+                 cl->GetSwitchValueASCII("output_format"),
+                 cl->GetSwitchValueASCII("type"));
   }
   if (cleanup)
     DeleteAllTestKeys(session);

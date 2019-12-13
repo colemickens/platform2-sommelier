@@ -103,6 +103,12 @@ EXPORT_SPEC const char* CK_RVToString(CK_RV value);
 // AttributeToString stringifies a PKCS #11 attribute type.
 std::string AttributeToString(CK_ATTRIBUTE_TYPE attribute);
 
+// StringToAttribute tries to parse the input string |attribute_string| into an
+// attribute |output|. It'll return true iff the |attribute_string| is parsed
+// into attribute.
+EXPORT_SPEC bool StringToAttribute(std::string attribute_string,
+                                   CK_ATTRIBUTE_TYPE* output);
+
 // ValueToString stringifies a PKCS #11 attribute value.
 std::string ValueToString(CK_ATTRIBUTE_TYPE attribute,
                           const std::vector<uint8_t>& value);

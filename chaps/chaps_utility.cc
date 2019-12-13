@@ -6,8 +6,10 @@
 
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bio.h>
@@ -410,6 +412,102 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
       return ss.str();
   }
   return string();
+}
+
+bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
+  static std::unordered_map<string, CK_ATTRIBUTE_TYPE> attribute_map({
+      {"CKA_CLASS", CKA_CLASS},
+      {"CKA_TOKEN", CKA_TOKEN},
+      {"CKA_PRIVATE", CKA_PRIVATE},
+      {"CKA_LABEL", CKA_LABEL},
+      {"CKA_APPLICATION", CKA_APPLICATION},
+      {"CKA_VALUE", CKA_VALUE},
+      {"CKA_OBJECT_ID", CKA_OBJECT_ID},
+      {"CKA_CERTIFICATE_TYPE", CKA_CERTIFICATE_TYPE},
+      {"CKA_ISSUER", CKA_ISSUER},
+      {"CKA_SERIAL_NUMBER", CKA_SERIAL_NUMBER},
+      {"CKA_AC_ISSUER", CKA_AC_ISSUER},
+      {"CKA_OWNER", CKA_OWNER},
+      {"CKA_ATTR_TYPES", CKA_ATTR_TYPES},
+      {"CKA_TRUSTED", CKA_TRUSTED},
+      {"CKA_CERTIFICATE_CATEGORY", CKA_CERTIFICATE_CATEGORY},
+      {"CKA_CHECK_VALUE", CKA_CHECK_VALUE},
+      {"CKA_JAVA_MIDP_SECURITY_DOMAIN", CKA_JAVA_MIDP_SECURITY_DOMAIN},
+      {"CKA_URL", CKA_URL},
+      {"CKA_HASH_OF_SUBJECT_PUBLIC_KEY", CKA_HASH_OF_SUBJECT_PUBLIC_KEY},
+      {"CKA_HASH_OF_ISSUER_PUBLIC_KEY", CKA_HASH_OF_ISSUER_PUBLIC_KEY},
+      {"CKA_KEY_TYPE", CKA_KEY_TYPE},
+      {"CKA_SUBJECT", CKA_SUBJECT},
+      {"CKA_ID", CKA_ID},
+      {"CKA_SENSITIVE", CKA_SENSITIVE},
+      {"CKA_ENCRYPT", CKA_ENCRYPT},
+      {"CKA_DECRYPT", CKA_DECRYPT},
+      {"CKA_WRAP", CKA_WRAP},
+      {"CKA_UNWRAP", CKA_UNWRAP},
+      {"CKA_SIGN", CKA_SIGN},
+      {"CKA_SIGN_RECOVER", CKA_SIGN_RECOVER},
+      {"CKA_VERIFY", CKA_VERIFY},
+      {"CKA_VERIFY_RECOVER", CKA_VERIFY_RECOVER},
+      {"CKA_DERIVE", CKA_DERIVE},
+      {"CKA_START_DATE", CKA_START_DATE},
+      {"CKA_END_DATE", CKA_END_DATE},
+      {"CKA_MODULUS", CKA_MODULUS},
+      {"CKA_MODULUS_BITS", CKA_MODULUS_BITS},
+      {"CKA_PUBLIC_EXPONENT", CKA_PUBLIC_EXPONENT},
+      {"CKA_PRIVATE_EXPONENT", CKA_PRIVATE_EXPONENT},
+      {"CKA_PRIME_1", CKA_PRIME_1},
+      {"CKA_PRIME_2", CKA_PRIME_2},
+      {"CKA_EXPONENT_1", CKA_EXPONENT_1},
+      {"CKA_EXPONENT_2", CKA_EXPONENT_2},
+      {"CKA_COEFFICIENT", CKA_COEFFICIENT},
+      {"CKA_PUBLIC_KEY_INFO", CKA_PUBLIC_KEY_INFO},
+      {"CKA_PRIME", CKA_PRIME},
+      {"CKA_SUBPRIME", CKA_SUBPRIME},
+      {"CKA_BASE", CKA_BASE},
+      {"CKA_PRIME_BITS", CKA_PRIME_BITS},
+      {"CKA_SUBPRIME_BITS", CKA_SUBPRIME_BITS},
+      {"CKA_VALUE_BITS", CKA_VALUE_BITS},
+      {"CKA_VALUE_LEN", CKA_VALUE_LEN},
+      {"CKA_EXTRACTABLE", CKA_EXTRACTABLE},
+      {"CKA_LOCAL", CKA_LOCAL},
+      {"CKA_NEVER_EXTRACTABLE", CKA_NEVER_EXTRACTABLE},
+      {"CKA_ALWAYS_SENSITIVE", CKA_ALWAYS_SENSITIVE},
+      {"CKA_KEY_GEN_MECHANISM", CKA_KEY_GEN_MECHANISM},
+      {"CKA_MODIFIABLE", CKA_MODIFIABLE},
+      {"CKA_ECDSA_PARAMS", CKA_ECDSA_PARAMS},
+      {"CKA_EC_POINT", CKA_EC_POINT},
+      {"CKA_SECONDARY_AUTH", CKA_SECONDARY_AUTH},
+      {"CKA_AUTH_PIN_FLAGS", CKA_AUTH_PIN_FLAGS},
+      {"CKA_ALWAYS_AUTHENTICATE", CKA_ALWAYS_AUTHENTICATE},
+      {"CKA_WRAP_WITH_TRUSTED", CKA_WRAP_WITH_TRUSTED},
+      {"CKA_WRAP_TEMPLATE", CKA_WRAP_TEMPLATE},
+      {"CKA_UNWRAP_TEMPLATE", CKA_UNWRAP_TEMPLATE},
+      {"CKA_NSS_URL", CKA_NSS_URL},
+      {"CKA_NSS_EMAIL", CKA_NSS_EMAIL},
+      {"CKA_NSS_SMIME_INFO", CKA_NSS_SMIME_INFO},
+      {"CKA_NSS_SMIME_TIMESTAMP", CKA_NSS_SMIME_TIMESTAMP},
+      {"CKA_NSS_PKCS8_SALT", CKA_NSS_PKCS8_SALT},
+      {"CKA_NSS_PASSWORD_CHECK", CKA_NSS_PASSWORD_CHECK},
+      {"CKA_NSS_EXPIRES", CKA_NSS_EXPIRES},
+      {"CKA_NSS_KRL", CKA_NSS_KRL},
+  });
+
+  // If we can match the attribute name, then we'll return whatever that's
+  // matched.
+  if (attribute_map.count(attribute_string) != 0) {
+    *output = attribute_map[attribute_string];
+    return true;
+  }
+
+  // If we can't match anything, then we'll treat the input as an integer.
+  uint64_t converted_int;
+  if (base::StringToUint64(attribute_string, &converted_int)) {
+    *output = static_cast<CK_ATTRIBUTE_TYPE>(converted_int);
+    return true;
+  }
+
+  // Can't parse it, so failure.
+  return false;
 }
 
 static CK_ULONG ExtractCK_ULONG(const vector<uint8_t>& value) {
