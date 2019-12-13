@@ -251,6 +251,8 @@ TEST_F(DlcServiceTest, UninstallTest) {
 }
 
 TEST_F(DlcServiceTest, UninstallNotInstalledIsValidTest) {
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true));
   EXPECT_TRUE(dlc_service_->Uninstall(kSecondDlc, nullptr));
 }
 

@@ -19,6 +19,7 @@
 #include <update_engine/dbus-proxies.h>
 
 #include "dlcservice/boot_slot.h"
+#include "dlcservice/dlc_manager.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {
@@ -62,9 +63,6 @@ class DlcService {
       const update_engine::StatusResult& status_result);
 
  private:
-  // Indicates whether DLC(s) are currently being installed.
-  bool IsInstalling();
-
   // Sends a signal indicating failure to install and cleans up prepped DLC(s).
   void SendFailedSignalAndCleanup();
 
@@ -81,31 +79,6 @@ class DlcService {
   // update_engine indicates an idle status while dlcservice expects an install.
   void SchedulePeriodicInstallCheck(bool retry);
 
-  // Creates the necessary directories and images for DLC installation. Will set
-  // |path| to the top DLC directory and met_path to the metadata directory for
-  // cleanup scoping.
-  bool CreateDlc(const std::string& id,
-                 base::FilePath* content_path,
-                 base::FilePath* metadata_path,
-                 brillo::ErrorPtr* err);
-
-  // Deletes the DLC installation.
-  bool DeleteDlc(const std::string& id, brillo::ErrorPtr* err);
-
-  // Tries to mount DLC images.
-  bool MountDlc(const std::string& id,
-                std::string* mount_point,
-                brillo::ErrorPtr* err);
-
-  // Tries to unmount DLC images.
-  bool UnmountDlc(const std::string& id, brillo::ErrorPtr* err);
-
-  // Scans a specific DLC |id| to discover all its packages. Currently, we only
-  // support one package per DLC. If at some point in the future we decided to
-  // support multiple packages, then appropriate changes to this function is
-  // granted.
-  std::string ScanDlcModulePackage(const std::string& id);
-
   // Gets update_engine's operation status.
   bool GetUpdateEngineStatus(update_engine::Operation* operation);
 
@@ -117,15 +90,9 @@ class DlcService {
                                              const std::string& signal_name,
                                              bool success);
 
-  std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-      image_loader_proxy_;
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
       update_engine_proxy_;
-  std::unique_ptr<BootSlot> boot_slot_;
-
-  base::FilePath manifest_dir_;
-  base::FilePath content_dir_;
-  base::FilePath metadata_dir_;
+  std::unique_ptr<DlcManager> dlc_manager_;
 
   // Holds the ML task id of the delayed |PeriodicInstallCheck()| if an install
   // is in progress.
@@ -134,18 +101,6 @@ class DlcService {
   // Indicates whether a retry to check update_engine's status during an install
   // needs to happen to make sure the install completion signal is not lost.
   bool scheduled_period_ue_check_retry_ = false;
-
-  // DLC modules being installed. An empty module infos signifies no install.
-  DlcModuleList dlc_modules_being_installed_;
-
-  BootSlot::Slot current_boot_slot_;
-
-  // Map of currently existing DLC modules with it's corresponding DLC root.
-  DlcRootMap installed_dlc_modules_;
-
-  // List of allowed DLC modules based on manifest. Use a set in order to handle
-  // repeats implicitly.
-  std::set<DlcId> supported_dlc_modules_;
 
   // The list of observers that will be called when a new status is ready.
   std::vector<Observer*> observers_;

@@ -61,6 +61,7 @@ static_library("libdlcservice") {
     "boot_slot.cc",
     "daemon.cc",
     "dbus_adaptor.cc",
+    "dlc_manager.cc",
     "dlc_service.cc",
     "utils.cc",
   ]
