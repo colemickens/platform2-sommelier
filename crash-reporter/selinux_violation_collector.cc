@@ -96,9 +96,6 @@ bool SELinuxViolationCollector::Collect() {
     return true;
   }
 
-  AddCrashMetaUploadData("weight",
-                         StringPrintf("%d", util::GetSelinuxWeight()));
-
   AddCrashMetaData(kSignatureKey, violation_signature);
 
   for (const auto& metadata : extra_metadata)
