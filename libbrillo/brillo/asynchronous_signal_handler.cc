@@ -60,10 +60,10 @@ void AsynchronousSignalHandler::RegisterHandler(int signal,
 
 void AsynchronousSignalHandler::UnregisterHandler(int signal) {
   Callbacks::iterator callback_it = registered_callbacks_.find(signal);
-  if (callback_it != registered_callbacks_.end()) {
-    registered_callbacks_.erase(callback_it);
-    ResetSignal(signal);
-  }
+  if (callback_it == registered_callbacks_.end())
+    return;
+  registered_callbacks_.erase(callback_it);
+  ResetSignal(signal);
 }
 
 void AsynchronousSignalHandler::OnReadable() {
@@ -80,9 +80,8 @@ void AsynchronousSignalHandler::OnReadable() {
     }
     const SignalHandler& callback = callback_it->second;
     bool must_unregister = callback.Run(info);
-    if (must_unregister) {
+    if (must_unregister)
       UnregisterHandler(signal);
-    }
   }
 }
 
@@ -92,12 +91,12 @@ void AsynchronousSignalHandler::ResetSignal(int signal) {
 }
 
 void AsynchronousSignalHandler::UpdateSignals() {
-  if (descriptor_ != kInvalidDescriptor) {
-    CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, nullptr));
-    CHECK_EQ(0, sigprocmask(SIG_BLOCK, &signal_mask_, nullptr));
-    CHECK_EQ(descriptor_,
-             signalfd(descriptor_, &signal_mask_, SFD_CLOEXEC | SFD_NONBLOCK));
-  }
+  if (descriptor_ == kInvalidDescriptor)
+    return;
+  CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, nullptr));
+  CHECK_EQ(0, sigprocmask(SIG_BLOCK, &signal_mask_, nullptr));
+  CHECK_EQ(descriptor_,
+      signalfd(descriptor_, &signal_mask_, SFD_CLOEXEC | SFD_NONBLOCK));
 }
 
 }  // namespace brillo
