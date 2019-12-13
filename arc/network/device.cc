@@ -15,6 +15,7 @@
 #include <base/lazy_instance.h>
 #include <base/logging.h>
 
+#include "arc/network/crostini_service.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -101,6 +102,16 @@ bool Device::IsArc() const {
 bool Device::IsCrostini() const {
   // TODO(garrick): Update as necessary.
   return guest_ == GuestMessage::TERMINA_VM;
+}
+
+std::string Device::HostInterfaceName() const {
+  if (IsCrostini()) {
+    auto ctx = dynamic_cast<const CrostiniService::Context*>(ctx_.get());
+    if (ctx) {
+      return ctx->TAP();
+    }
+  }
+  return config().host_ifname();
 }
 
 bool Device::UsesDefaultInterface() const {

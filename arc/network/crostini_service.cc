@@ -89,6 +89,7 @@ void CrostiniService::OnDeviceAdded(Device* device) {
   }
 
   ctx->SetTAP(tap);
+  dev_mgr_->StartForwarding(*device);
 }
 
 void CrostiniService::OnDeviceRemoved(Device* device) {

@@ -61,6 +61,9 @@ class DeviceManagerBase {
   virtual bool AddWithContext(const std::string& name,
                               std::unique_ptr<Device::Context>) = 0;
   virtual bool Remove(const std::string& name) = 0;
+
+  virtual void StartForwarding(const Device& device) = 0;
+  virtual void StopForwarding(const Device& device) = 0;
 };
 
 // Convenience class for managing the collection of host devices and their
@@ -119,6 +122,9 @@ class DeviceManager : public DeviceManagerBase {
                       std::unique_ptr<Device::Context>) override;
   bool Remove(const std::string& name) override;
 
+  void StartForwarding(const Device& device) override;
+  void StopForwarding(const Device& device) override;
+
  private:
   // Callback from ShillClient, invoked whenever the default network
   // interface changes or goes away.
@@ -136,9 +142,6 @@ class DeviceManager : public DeviceManagerBase {
   // Callback from RTNetlink listener, invoked when an interface changes
   // run state.
   void LinkMsgHandler(const shill::RTNLMessage& msg);
-
-  void StartForwarding(const Device& device);
-  void StopForwarding(const Device& device);
 
   // Listens for RTMGRP_LINK messages and invokes LinkMsgHandler.
   std::unique_ptr<shill::RTNLListener> link_listener_;

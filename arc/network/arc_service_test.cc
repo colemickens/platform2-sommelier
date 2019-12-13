@@ -57,6 +57,8 @@ class MockDeviceManager : public DeviceManagerBase {
   MOCK_METHOD2(AddWithContext,
                bool(const std::string&, std::unique_ptr<Device::Context>));
   MOCK_METHOD1(Remove, bool(const std::string&));
+  MOCK_METHOD1(StartForwarding, void(const Device&));
+  MOCK_METHOD1(StopForwarding, void(const Device&));
 };
 
 std::unique_ptr<Device> MakeDevice(const std::string& name,

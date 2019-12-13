@@ -259,6 +259,9 @@ const std::string& DeviceManager::DefaultInterface() const {
 }
 
 void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
+  // This function now is only used for legacy IPv6 configuration for ARC
+  // container, and should be removed after ndproxy enabled for all boards
+
   if (!msg.HasAttribute(IFLA_IFNAME)) {
     LOG(ERROR) << "Link event message does not have IFLA_IFNAME";
     return;
@@ -291,8 +294,6 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
     device->Enable(default_ifname_);
   else if (!device->IsAndroid())
     device->Enable(device->config().guest_ifname());
-
-  StartForwarding(*device);
 }
 
 std::unique_ptr<Device> DeviceManager::MakeDevice(
@@ -335,7 +336,9 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     opts.is_android = true;
     opts.is_sticky = true;
   } else if (IsTerminaDevice(name)) {
-    host_ifname = name;
+    opts.ipv6_enabled = true;
+    opts.fwd_multicast = true;
+    opts.use_default_interface = true;
     opts.is_sticky = true;
     guest = AddressManager::Guest::VM_TERMINA;
     lxd_subnet = std::move(
@@ -429,11 +432,11 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
 }
 
 void DeviceManager::StartForwarding(const Device& device) {
-  const std::string& ifname_physical =
+  std::string ifname_physical =
       device.UsesDefaultInterface() ? default_ifname_ : device.ifname();
   if (ifname_physical.empty())
     return;
-  const std::string& ifname_virtual = device.config().host_ifname();
+  std::string ifname_virtual = device.HostInterfaceName();
 
   LOG(INFO) << "Start forwarding from " << ifname_physical << " to "
             << ifname_virtual;
@@ -466,12 +469,11 @@ void DeviceManager::StartForwarding(const Device& device) {
 }
 
 void DeviceManager::StopForwarding(const Device& device) {
-  const std::string& ifname_physical =
+  std::string ifname_physical =
       device.UsesDefaultInterface() ? default_ifname_ : device.ifname();
   if (ifname_physical.empty())
     return;
-  const std::string& ifname_virtual = device.config().host_ifname();
-
+  std::string ifname_virtual = device.HostInterfaceName();
   LOG(INFO) << "Stop forwarding from " << ifname_physical << " to "
             << ifname_virtual;
 

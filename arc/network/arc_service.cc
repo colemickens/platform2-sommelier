@@ -529,7 +529,7 @@ bool ArcService::ContainerImpl::Start(int32_t pid) {
 
 void ArcService::ContainerImpl::Stop(int32_t /*pid*/) {
   if (!IsStarted())
-      return;
+    return;
 
   rtnl_handler_->RemoveListener(link_listener_.get());
   link_listener_.reset();
@@ -575,7 +575,7 @@ bool ArcService::ContainerImpl::OnStartDevice(Device* device) {
   if (device->IsAndroid()) {
     datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
   }
-
+  dev_mgr_->StartForwarding(*device);
   return true;
 }
 
@@ -889,6 +889,7 @@ bool ArcService::VmImpl::OnStartDevice(Device* device) {
   // TODO(garrick): Remove this once ARCVM supports ad hoc interface
   // configurations; but for now ARCVM needs to be treated like ARC++ N.
   OnDefaultInterfaceChanged(dev_mgr_->DefaultInterface());
+  dev_mgr_->StartForwarding(*device);
   return true;
 }
 

@@ -167,6 +167,10 @@ class Device {
   bool IsArc() const;
   bool IsCrostini() const;
 
+  // Host interface name for Termina devices is only determined on creation, so
+  // this function needs to be used rather than directly reading from config().
+  // This is a hack and should be cleaned up by b/145483351.
+  std::string HostInterfaceName() const;
   bool UsesDefaultInterface() const;
 
   void RegisterIPv6SetupHandler(const DeviceHandler& handler);
