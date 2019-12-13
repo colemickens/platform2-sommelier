@@ -793,6 +793,30 @@ void GetAttribute(CK_SESSION_HANDLE session,
   }
 }
 
+// Set the specified attribute for the specified object.
+void SetAttribute(CK_SESSION_HANDLE session,
+                  const vector<uint8_t>& object_id,
+                  CK_ATTRIBUTE_TYPE attribute,
+                  string obj_type,
+                  const vector<uint8_t>& data_to_write) {
+  CK_OBJECT_HANDLE object = GetObjectOrDie(session, object_id, obj_type);
+
+  // Set the attribute
+  // Cryptoki wants a non-const buffer in template.
+  vector<uint8_t> buffer = data_to_write;
+  CK_ATTRIBUTE attribute_template[] = {
+      {attribute, base::data(buffer), buffer.size()},
+  };
+  CK_RV ret = C_SetAttributeValue(session, object, attribute_template,
+                                  arraysize(attribute_template));
+  if (ret != CKR_OK) {
+    LOG(ERROR) << "Failed to set attribute, error: "
+               << chaps::CK_RVToString(ret);
+    exit(-1);
+  }
+  LOG(INFO) << "Set attribute OK.";
+}
+
 // Cleans up the session and library.
 void TearDown(CK_SESSION_HANDLE session, bool logout) {
   CK_RV result = CKR_OK;
@@ -838,6 +862,10 @@ void PrintHelp() {
   printf(
       "  --get_attribute --id=<token id str> --type=<cert, privkey, pubkey> "
       "--attribute=<attribute>: Get the attribute for an object.\n");
+  printf(
+      "  --set_attribute --id=<token id str> --type=<cert, privkey, pubkey> "
+      "--attribute=<attribute> --data=<raw hex string>: Set the attribute for "
+      "an object.\n");
 }
 
 void PrintTicks(base::TimeTicks* start_ticks) {
@@ -934,9 +962,10 @@ int main(int argc, char** argv) {
   bool digest_test = cl->HasSwitch("digest_test");
   bool list_tokens = cl->HasSwitch("list_tokens");
   bool get_attribute = cl->HasSwitch("get_attribute");
+  bool set_attribute = cl->HasSwitch("set_attribute");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
       !inject && !list_objects && !import && !digest_test && !list_tokens &&
-      !get_attribute) {
+      !get_attribute && !set_attribute) {
     PrintHelp();
     return 0;
   }
@@ -1047,6 +1076,26 @@ int main(int argc, char** argv) {
     GetAttribute(session, object_id, attribute,
                  cl->GetSwitchValueASCII("output_format"),
                  cl->GetSwitchValueASCII("type"));
+  }
+  if (set_attribute) {
+    vector<uint8_t> object_id;
+    if (!base::HexStringToBytes(cl->GetSwitchValueASCII("id"), &object_id)) {
+      LOG(ERROR) << "Invalid arg, expecting hex string for id (like b18aa8).";
+      exit(-1);
+    }
+    string attribute_string = cl->GetSwitchValueASCII("attribute");
+    CK_ATTRIBUTE_TYPE attribute;
+    if (!chaps::StringToAttribute(attribute_string, &attribute)) {
+      LOG(ERROR) << "Unable to parse attribute: " << attribute_string;
+      exit(-1);
+    }
+    string data_string = cl->GetSwitchValueASCII("data");
+    vector<uint8_t> data_to_write;
+    if (!base::HexStringToBytes(data_string, &data_to_write)) {
+      LOG(ERROR) << "Invalid hex input data: " << data_string;
+    }
+    SetAttribute(session, object_id, attribute, cl->GetSwitchValueASCII("type"),
+                 data_to_write);
   }
   if (cleanup)
     DeleteAllTestKeys(session);
