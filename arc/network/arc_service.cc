@@ -357,7 +357,7 @@ void ArcService::OnDeviceRemoved(Device* device) {
             << " bridge: " << config.host_ifname()
             << " guest_iface: " << config.guest_ifname();
 
-  device->Disable();
+  device->StopIPv6RoutingLegacy();
   if (device->UsesDefaultInterface()) {
     datapath_->RemoveOutboundIPv4(config.host_ifname());
     datapath_->RemoveLegacyIPv4DNAT();
@@ -588,7 +588,7 @@ void ArcService::ContainerImpl::OnStopDevice(Device* device) {
             << " bridge: " << config.host_ifname()
             << " guest_iface: " << config.guest_ifname() << " pid: " << pid_;
 
-  device->Disable();
+  device->StopIPv6RoutingLegacy();
   if (!device->IsAndroid()) {
     datapath_->RemoveInterface(ArcVethHostName(device->ifname()));
   }
@@ -608,12 +608,12 @@ void ArcService::ContainerImpl::OnDefaultInterfaceChanged(
       LOG(DFATAL) << "Expected legacy Android device missing";
       return;
     }
-    device->Disable();
+    device->StopIPv6RoutingLegacy();
 
     // If a new default interface was given, then re-enable with that.
     if (!ifname.empty()) {
       datapath_->AddLegacyIPv4InboundDNAT(ifname);
-      device->Enable(ifname);
+      device->StartIPv6RoutingLegacy(ifname);
     }
     return;
   }
@@ -671,7 +671,7 @@ void ArcService::ContainerImpl::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (device->IsAndroid())
     return;
 
-  device->Enable(ifname);
+  device->StartIPv6RoutingLegacy(ifname);
 }
 
 void ArcService::ContainerImpl::SetupIPv6(Device* device) {
@@ -913,7 +913,7 @@ void ArcService::VmImpl::OnStopDevice(Device* device) {
     return;
   }
 
-  device->Disable();
+  device->StopIPv6RoutingLegacy();
   datapath_->RemoveInterface(ctx->TAP());
 }
 
@@ -929,12 +929,12 @@ void ArcService::VmImpl::OnDefaultInterfaceChanged(const std::string& ifname) {
     LOG(DFATAL) << "Expected Android device missing";
     return;
   }
-  device->Disable();
+  device->StopIPv6RoutingLegacy();
 
   // If a new default interface was given, then re-enable with that.
   if (!ifname.empty()) {
     datapath_->AddLegacyIPv4InboundDNAT(ifname);
-    device->Enable(ifname);
+    device->StartIPv6RoutingLegacy(ifname);
   }
 }
 

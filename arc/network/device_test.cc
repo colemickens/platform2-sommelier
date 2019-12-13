@@ -71,7 +71,7 @@ TEST_F(DeviceTest, IPv6TeardownHandlerCalledOnDisable) {
   auto dev = NewDevice("foo");
   dev->RegisterIPv6TeardownHandler(
       base::Bind(&DeviceTest::IPv6Down, base::Unretained(this)));
-  dev->Disable();
+  dev->StopIPv6RoutingLegacy();
   EXPECT_TRUE(ipv6_down_);
 }
 

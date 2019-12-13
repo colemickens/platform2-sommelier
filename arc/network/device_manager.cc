@@ -283,7 +283,7 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
 
   if (!link_up) {
     LOG(INFO) << ifname << " is now down";
-    device->Disable();
+    device->StopIPv6RoutingLegacy();
     return;
   }
 
@@ -291,9 +291,9 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   LOG(INFO) << ifname << " is now up";
 
   if (device->UsesDefaultInterface())
-    device->Enable(default_ifname_);
+    device->StartIPv6RoutingLegacy(default_ifname_);
   else if (!device->IsAndroid())
-    device->Enable(device->config().guest_ifname());
+    device->StartIPv6RoutingLegacy(device->config().guest_ifname());
 }
 
 std::unique_ptr<Device> DeviceManager::MakeDevice(

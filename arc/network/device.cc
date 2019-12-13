@@ -133,15 +133,10 @@ bool Device::IsFullyUp() const {
   return ctx_->IsLinkUp();
 }
 
-void Device::Enable(const std::string& ifname) {
-  if (!IsFullyUp())
+void Device::StartIPv6RoutingLegacy(const std::string& ifname) {
+  if (!options_.ipv6_enabled || !options_.find_ipv6_routes_legacy)
     return;
 
-  if (options_.ipv6_enabled && options_.find_ipv6_routes_legacy)
-    StartIPv6RoutingLegacy(ifname);
-}
-
-void Device::StartIPv6RoutingLegacy(const std::string& ifname) {
   if (!IsFullyUp())
     return;
 
@@ -159,12 +154,10 @@ void Device::StartIPv6RoutingLegacy(const std::string& ifname) {
       ifname, base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
 }
 
-void Device::Disable() {
-  if (options_.ipv6_enabled && options_.find_ipv6_routes_legacy)
-    StopIPv6RoutingLegacy();
-}
-
 void Device::StopIPv6RoutingLegacy() {
+  if (!options_.ipv6_enabled || !options_.find_ipv6_routes_legacy)
+    return;
+
   if (neighbor_finder_ || router_finder_) {
     LOG(INFO) << "Disabling IPv6 route finding for device " << ifname_;
     neighbor_finder_.reset();

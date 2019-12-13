@@ -181,9 +181,6 @@ class Device {
 
   bool IsFullyUp() const;
 
-  void Enable(const std::string& ifname);
-  void Disable();
-
   void StartIPv6RoutingLegacy(const std::string& ifname);
   void StopIPv6RoutingLegacy();
 
