@@ -22,6 +22,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/run_loop.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/cryptohome.h>
 #include <brillo/message_loops/base_message_loop.h>
@@ -38,19 +39,17 @@
 using base::FilePath;
 
 namespace {
+
 void TearDown(cryptohome::MountHelper* mounter) {
   mounter->TearDownEphemeralMount();
 }
 
-void TearDownFromPoke(cryptohome::MountHelper* mounter) {
-  VLOG(1) << "Got poke";
-  TearDown(mounter);
-}
-
 bool TearDownFromSignal(cryptohome::MountHelper* mounter,
+                        base::Closure quit_closure,
                         const struct signalfd_siginfo&) {
   VLOG(1) << "Got signal";
   TearDown(mounter);
+  quit_closure.Run();
   return true;  // unregister the handler
 }
 
@@ -110,17 +109,14 @@ int main(int argc, char** argv) {
   // Mount and ack succeeded, release the closure without running it.
   ignore_result(tear_down_runner.Release());
 
-  // Clean up mounts if we get signalled.
+  base::RunLoop run_loop;
+
+  // Clean up mounts when we get signalled.
   sig_handler.RegisterHandler(
-      SIGTERM, base::Bind(&TearDownFromSignal, base::Unretained(&mounter)));
+      SIGTERM, base::Bind(&TearDownFromSignal, base::Unretained(&mounter),
+                          run_loop.QuitClosure()));
 
-  // Wait for poke from cryptohome, then clean up mounts.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher =
-      base::FileDescriptorWatcher::WatchReadable(
-          STDIN_FILENO,
-          base::Bind(&TearDownFromPoke, base::Unretained(&mounter)));
-
-  message_loop.RunOnce(true /* may_block */);
+  run_loop.Run();
 
   return EX_OK;
 }

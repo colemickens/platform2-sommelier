@@ -97,7 +97,6 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOP) {
   brillo::ProcessMock* process = platform_.mock_process();
   EXPECT_CALL(*process, Start()).WillOnce(Return(true));
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(kOOPHelperPid));
-  EXPECT_CALL(*process, Wait()).WillOnce(Return(0));
 
   // Allow reading from cryptohome's perspective.
   base::ScopedFD read_end, write_end;
@@ -130,7 +129,6 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPWriteProtobuf) {
   brillo::ProcessMock* process = platform_.mock_process();
   EXPECT_CALL(*process, Start()).WillOnce(Return(true));
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(kOOPHelperPid));
-  EXPECT_CALL(*process, Wait()).WillOnce(Return(0));
 
   // Reading from the helper always succeeds.
   base::ScopedFD dev_zero = GetDevZeroFd();
@@ -193,7 +191,7 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToReadAck) {
       .WillOnce(Return(kOOPHelperPid))
       .WillRepeatedly(Return(0));
 
-  // Writing the system salt succeeds.
+  // Writing the protobuf succeeds.
   base::ScopedFD dev_null = GetDevNullFd();
   ASSERT_TRUE(dev_null.is_valid());
   EXPECT_CALL(*process, GetPipe(STDIN_FILENO)).WillOnce(Return(dev_null.get()));
@@ -212,7 +210,7 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToPoke) {
   EXPECT_CALL(*process, Start()).WillOnce(Return(true));
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(kOOPHelperPid));
 
-  // Writing the system salt works.
+  // Writing the protobuf succeeds.
   base::ScopedFD write_to_helper = GetDevNullFd();
   ASSERT_TRUE(write_to_helper.is_valid());
   EXPECT_CALL(*process, GetPipe(STDIN_FILENO))
@@ -227,37 +225,10 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToPoke) {
   ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
 
   // Poking the helper fails.
-  write_to_helper.reset();
+  EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(false));
+  // If poking fails, OOP mount helper should be killed with SIGKILL.
+  EXPECT_CALL(*process, Kill(SIGKILL, _)).WillOnce(Return(true));
 
-  // If poking fails, OOP mount helper should be killed.
-  EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
-  out_of_process_mounter_->TearDownEphemeralMount();
-}
-
-TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToWait) {
-  brillo::ProcessMock* process = platform_.mock_process();
-  EXPECT_CALL(*process, Start()).WillOnce(Return(true));
-  // After the PID is checked twice and the process is killed, pid() should
-  // return 0.
-  EXPECT_CALL(*process, pid())
-      .WillOnce(Return(kOOPHelperPid))
-      .WillOnce(Return(kOOPHelperPid))
-      .WillRepeatedly(Return(0));
-
-  // Reading and writing always succeed.
-  base::ScopedFD read_from_helper = GetDevZeroFd();
-  base::ScopedFD write_to_helper = GetDevNullFd();
-  ASSERT_TRUE(read_from_helper.is_valid());
-  ASSERT_TRUE(write_to_helper.is_valid());
-  EXPECT_CALL(*process, GetPipe(STDIN_FILENO))
-      .WillOnce(Return(write_to_helper.get()));
-  EXPECT_CALL(*process, GetPipe(STDOUT_FILENO))
-      .WillOnce(Return(read_from_helper.get()));
-
-  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
-
-  // If Wait()-ing fails, unmount should still proceed.
-  EXPECT_CALL(*process, Wait()).WillOnce(Return(1));
   out_of_process_mounter_->TearDownEphemeralMount();
 }
 

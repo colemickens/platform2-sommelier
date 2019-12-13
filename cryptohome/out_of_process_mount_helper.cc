@@ -89,12 +89,24 @@ bool OutOfProcessMountHelper::IsPathMounted(const base::FilePath& path) const {
 }
 
 void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
-  if (helper_process_->pid() > 0 &&
-      !helper_process_->Kill(SIGTERM,
-                             kOutOfProcessHelperReapTimeout.InSeconds())) {
-    LOG(ERROR) << "Failed to terminate OOP mount helper";
-    ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToKill);
+  if (helper_process_->pid() == 0) {
+    return;
   }
+
+  if (helper_process_->Kill(SIGTERM,
+                            kOutOfProcessHelperReapTimeout.InSeconds())) {
+    ReportOOPMountCleanupResult(OOPMountCleanupResult::kSuccess);
+  } else {
+    LOG(ERROR) << "Failed to send SIGTERM to OOP mount helper";
+    ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToPoke);
+
+    // If the process didn't exit on SIGTERM, attempt SIGKILL.
+    if (!helper_process_->Kill(SIGKILL, 0)) {
+      LOG(ERROR) << "Failed to kill OOP mount helper";
+      ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToKill);
+    }
+  }
+
   // Reset the brillo::Process object to close pipe file descriptors.
   helper_process_->Reset(0);
 }
@@ -173,49 +185,18 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
 }
 
 void OutOfProcessMountHelper::TearDownEphemeralMount() {
-  if (!helper_process_ || helper_process_->pid() == 0) {
+  if (!helper_process_) {
     LOG(WARNING) << "Can't tear down mount, OOP mount helper is not running";
     return;
   }
 
   // While currently a MountHelper instance is not used for more than one
   // cryptohome mount operation, this function should ensure that the
-  // MountHelper instance is in a state suited to perform subsequent mounts.
-  // This closure will run when this function exits so |this| will always be
-  // valid.
-  base::ScopedClosureRunner kill_runner(
-      base::Bind(&OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary,
-                 base::Unretained(this)));
-
-  // Once the clean-up closure is scheduled and the helper process is guaranteed
-  // to be killed, clear the set of mounted paths and the username.
+  // MountHelper instance is left in a state suited to perform subsequent
+  // mounts.
+  KillOutOfProcessHelperIfNecessary();
   mounted_paths_.clear();
   username_.clear();
-
-  constexpr char outdata = '0';
-  if (!base::WriteFileDescriptor(write_to_helper_, &outdata, sizeof(outdata))) {
-    LOG(ERROR) << "Failed to poke OOP mount helper";
-    ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToPoke);
-    return;
-  }
-
-  int exit_status = helper_process_->Wait();
-  if (exit_status != 0) {
-    LOG(ERROR) << "OOP mount helper did not exit cleanly";
-    ReportOOPMountCleanupResult(OOPMountCleanupResult::kFailedToWait);
-
-    switch (exit_status) {
-      case EX_NOINPUT:
-        LOG(ERROR) << "OOP mount helper could not read system salt";
-        break;
-      case EX_SOFTWARE:
-        LOG(ERROR) << "OOP mount helper failed to mount";
-        break;
-      case EX_OSERR:
-        LOG(ERROR) << "OOP mount helper failed to write ack";
-        break;
-    }
-  }
 }
 
 }  // namespace cryptohome
