@@ -108,7 +108,7 @@ void SetUpAutoNightLightFlag(ChromiumCommandBuilder* builder,
     return;
   }
 
-  if (auto_night_light_str != "True")
+  if (auto_night_light_str != "true")
     return;
 
   builder->AddFeatureEnableOverride("AutoNightLight");
