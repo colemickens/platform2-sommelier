@@ -17,6 +17,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -107,6 +108,13 @@ bool ClientProxy::ConvertFileDescriptorToProto(
   prime.fd = fd;
   if (ioctl(render_node_.get(), DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime) == 0) {
     // This FD is a dmabuf.
+    base::ScopedClosureRunner close_gem(base::Bind(
+        [](int render_node, int handle) {
+          struct drm_gem_close gem_close = {};
+          gem_close.handle = handle;
+          ioctl(render_node, DRM_IOCTL_GEM_CLOSE, &gem_close);
+        },
+        render_node_.get(), prime.handle));
     struct drm_virtgpu_resource_info info = {};
     info.bo_handle = prime.handle;
     if (ioctl(render_node_.get(), DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &info)) {
