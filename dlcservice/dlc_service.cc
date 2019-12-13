@@ -297,6 +297,11 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
 
 bool DlcService::Uninstall(const string& id_in, brillo::ErrorPtr* err) {
   LoadDlcModuleImages();
+  if (supported_dlc_modules_.find(id_in) == supported_dlc_modules_.end()) {
+    LogAndSetError(err, kErrorInvalidDlc,
+                   "The DLC ID provided is not supported:" + id_in);
+    return false;
+  }
   if (installed_dlc_modules_.find(id_in) == installed_dlc_modules_.end()) {
     LOG(INFO) << "Uninstalling DLC id that's not installed: " << id_in;
     return true;
