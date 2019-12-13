@@ -53,6 +53,8 @@ int main(int argc, const char* argv[]) {
   DEFINE_bool(at_boot, false,
               "Invoke process at boot time. "
               "Exit if RW is up-to-date (no pairing)");
+  DEFINE_bool(force_inject_entropy, false,
+              "Force hammerd inject entropy during update.");
   DEFINE_string(update_if, "never",
                 "Update condition, one of: never|mismatch|always.\n"
                 "    never:\n"
@@ -118,6 +120,9 @@ int main(int argc, const char* argv[]) {
       ec_image, touchpad_image, touchpad_product_id, touchpad_fw_ver,
       FLAGS_vendor_id, FLAGS_product_id,
       FLAGS_usb_bus, FLAGS_usb_port, FLAGS_at_boot, update_condition);
+
+  updater.SetInjectEntropyFlag(FLAGS_force_inject_entropy);
+
   hammerd::HammerUpdater::RunStatus ret = updater.Run();
   if (ret == hammerd::HammerUpdater::RunStatus::kNoUpdate &&
       FLAGS_autosuspend_delay_ms >= 0) {

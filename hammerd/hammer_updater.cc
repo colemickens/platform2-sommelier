@@ -738,4 +738,9 @@ bool HammerUpdater::ParseTouchpadInfoFromFilename(
   return ret;
 }
 
+void HammerUpdater::SetInjectEntropyFlag(bool inject_entropy) {
+  LOG(INFO) << "inject_entropy is set to " << inject_entropy;
+  task_.inject_entropy = inject_entropy;
+}
+
 }  // namespace hammerd

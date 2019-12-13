@@ -103,6 +103,8 @@ class HammerUpdater {
       const std::string& filename,
       std::string* touchpad_product_id,
       std::string* touchpad_fw_ver);
+  // Setter for inject_entropy control flag in TestState.
+  void SetInjectEntropyFlag(bool inject_entropy);
 
  protected:
   // Used in unittests to inject mock instance.
