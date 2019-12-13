@@ -50,8 +50,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       boot_device, is_removable_device));
 
   std::string boot_disk_name;
-  int num_slots;
-  int current_slot;
-  boot_slot.GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot);
+  dlcservice::BootSlot::Slot slot;
+  boot_slot.GetCurrentSlot(&boot_disk_name, &slot);
   return 0;
 }
