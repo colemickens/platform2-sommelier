@@ -113,6 +113,12 @@ using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SetSystemSalt;
 
+ACTION_TEMPLATE(MovePointee,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_1_VALUE_PARAMS(pointer)) {
+  *pointer = std::move(MIGRATE_WrapObjectProxyCallback(::std::get<k>(args)));
+}
+
 using std::map;
 using std::string;
 using std::vector;
@@ -128,8 +134,8 @@ class FakeBus : public dbus::Bus {
  public:
   FakeBus()
       : dbus::Bus(GetBusOptions()),
-        exported_object_(
-            new dbus::MockExportedObject(nullptr, dbus::ObjectPath())) {}
+        exported_object_(new dbus::MockExportedObject(
+            nullptr, dbus::ObjectPath("/fake/path"))) {}
 
   dbus::MockExportedObject* exported_object() { return exported_object_.get(); }
 
@@ -285,10 +291,10 @@ class SessionManagerImplTest : public ::testing::Test,
       : bus_(new FakeBus()),
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
-        powerd_proxy_(
-            new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath(""))),
-        system_clock_proxy_(
-            new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath(""))) {}
+        powerd_proxy_(new dbus::MockObjectProxy(
+            nullptr, "", dbus::ObjectPath("/fake/powerd"))),
+        system_clock_proxy_(new dbus::MockObjectProxy(
+            nullptr, "", dbus::ObjectPath("/fake/clock"))) {}
 
   ~SessionManagerImplTest() override = default;
 
@@ -385,17 +391,18 @@ class SessionManagerImplTest : public ::testing::Test,
     impl_->SetLoginScreenStorageForTesting(std::make_unique<LoginScreenStorage>(
         login_screen_storage_path_, std::move(shared_memory_util)));
 
-    EXPECT_CALL(*powerd_proxy_,
-                ConnectToSignal(power_manager::kPowerManagerInterface,
+    EXPECT_CALL(
+        *powerd_proxy_,
+        MIGRATE_ConnectToSignal(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendImminentSignal, _, _))
         .WillOnce(SaveArg<2>(&suspend_imminent_callback_));
-    EXPECT_CALL(*powerd_proxy_,
-                ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kSuspendDoneSignal, _, _))
+    EXPECT_CALL(*powerd_proxy_, MIGRATE_ConnectToSignal(
+                                    power_manager::kPowerManagerInterface,
+                                    power_manager::kSuspendDoneSignal, _, _))
         .WillOnce(SaveArg<2>(&suspend_done_callback_));
 
-    EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
-        .WillOnce(SaveArg<0>(&available_callback_));
+    EXPECT_CALL(*system_clock_proxy_, MIGRATE_WaitForServiceToBeAvailable(_))
+        .WillOnce(MovePointee<0>(&available_callback_));
 
     EXPECT_CALL(*arc_sideload_status_, Initialize());
     impl_->Initialize();
@@ -714,16 +721,17 @@ class SessionManagerImplTest : public ::testing::Test,
     ASSERT_FALSE(available_callback_.is_null());
 
     dbus::ObjectProxy::ResponseCallback time_sync_callback;
-    EXPECT_CALL(*system_clock_proxy_,
-                CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-        .WillOnce(SaveArg<2>(&time_sync_callback));
-    available_callback_.Run(true);
+    EXPECT_CALL(
+        *system_clock_proxy_,
+        MIGRATE_CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+        .WillOnce(MovePointee<2>(&time_sync_callback));
+    std::move(available_callback_).Run(true);
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
 
     std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(network_synchronized);
-    time_sync_callback.Run(response.get());
+    std::move(time_sync_callback).Run(response.get());
   }
 
   base::FilePath GetTestLoginScreenStoragePath(const std::string& key) {
@@ -1289,7 +1297,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_FailedTimeSync) {
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 
   EXPECT_CALL(*system_clock_proxy_,
-              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+              MIGRATE_CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .Times(1);
   base::RunLoop().RunUntilIdle();
 }
@@ -1303,8 +1311,8 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
 
   dbus::ObjectProxy::ResponseCallback time_sync_callback;
   EXPECT_CALL(*system_clock_proxy_,
-              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-      .WillOnce(SaveArg<2>(&time_sync_callback));
+              MIGRATE_CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+      .WillOnce(MovePointee<2>(&time_sync_callback));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
   ASSERT_FALSE(time_sync_callback.is_null());
@@ -1313,7 +1321,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(true);
-  time_sync_callback.Run(response.get());
+  std::move(time_sync_callback).Run(response.get());
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {

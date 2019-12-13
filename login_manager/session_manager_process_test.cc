@@ -417,11 +417,12 @@ TEST_F(SessionManagerProcessTest, TestAbortedBrowserPidWritten) {
 TEST_F(SessionManagerProcessTest, StopAllVms) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(true);
   scoped_refptr<dbus::MockObjectProxy> vm_concierge_proxy(
-      new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("")));
+      new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/fake/vm")));
   manager_->test_api().set_vm_concierge_proxy(vm_concierge_proxy.get());
   manager_->test_api().set_vm_concierge_available(true);
 
-  EXPECT_CALL(*vm_concierge_proxy.get(), CallMethod(StopAllVmsMethod(), _, _))
+  EXPECT_CALL(*vm_concierge_proxy.get(),
+              MIGRATE_CallMethod(StopAllVmsMethod(), _, _))
       .Times(2);
 
   ExpectLivenessChecking();

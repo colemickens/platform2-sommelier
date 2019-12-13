@@ -5,6 +5,7 @@
 #include "login_manager/arc_sideload_status.h"
 
 #include <memory>
+#include <utility>
 
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_object_proxy.h>
@@ -21,12 +22,13 @@ namespace login_manager {
 ACTION_TEMPLATE(RunCallback,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(p0)) {
-  return ::testing::get<k>(args).Run(p0);
+  return std::move(MIGRATE_WrapObjectProxyCallback(::testing::get<k>(args)))
+      .Run(p0);
 }
 
-#define EXPECT_DBUS_CALL_THEN_CALLBACK(method_call, response)  \
-  EXPECT_CALL(*boot_lockbox_proxy_,                            \
-              CallMethod(DBusMethodCallEq(method_call), _, _)) \
+#define EXPECT_DBUS_CALL_THEN_CALLBACK(method_call, response)          \
+  EXPECT_CALL(*boot_lockbox_proxy_,                                    \
+              MIGRATE_CallMethod(DBusMethodCallEq(method_call), _, _)) \
       .WillOnce(RunCallback<2>(response));
 
 void EnableCallbackAdaptor(ArcSideloadStatusInterface::Status* status,
@@ -45,8 +47,8 @@ void QueryCallbackAdaptor(ArcSideloadStatusInterface::Status* status,
 class ArcSideloadStatusTest : public ::testing::Test {
  public:
   ArcSideloadStatusTest()
-      : boot_lockbox_proxy_(
-            new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath(""))),
+      : boot_lockbox_proxy_(new dbus::MockObjectProxy(
+            nullptr, "", dbus::ObjectPath("/fake/lockbox"))),
         bootlockbox_read_method_call_(cryptohome::kBootLockboxInterface,
                                       cryptohome::kBootLockboxReadBootLockbox),
         bootlockbox_store_method_call_(
@@ -70,7 +72,7 @@ class ArcSideloadStatusTest : public ::testing::Test {
   }
 
   void ExpectBootLockboxServiceToBeAvailable(bool available) {
-    EXPECT_CALL(*boot_lockbox_proxy_, WaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*boot_lockbox_proxy_, MIGRATE_WaitForServiceToBeAvailable(_))
         .WillOnce(RunCallback<0>(available));
   }
 
