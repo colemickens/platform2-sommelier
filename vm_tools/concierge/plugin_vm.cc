@@ -31,12 +31,6 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-// Name of the plugin dispatcher runtime directory.
-constexpr char kDispatcherRuntimeDir[] = "/run/pvm";
-
-// Name of the plugin dispatcher socket.
-constexpr char kDispatcherSocket[] = "vmplugin_dispatcher.socket";
-
 // Path to the plugin binaries and other assets.
 constexpr char kPluginBinDir[] = "/opt/pita/";
 constexpr char kDlcPluginBinDir[] =
@@ -706,21 +700,8 @@ bool PluginVm::Start(uint32_t cpus,
                              .Append("cicerone_socket")
                              .value()
                              .c_str()),
+      "/run/pvm/vmplugin_dispatcher.socket::true",
   };
-
-  // When testing dispatcher socket might be missing, let's warn and continue.
-  if (!PathExists(
-          base::FilePath(kDispatcherRuntimeDir).Append(kDispatcherSocket))) {
-    LOG(WARNING) << "Plugin dispatcher socket is missing";
-  } else {
-    bind_mounts.emplace_back(base::StringPrintf(
-        "%s:%s:true",
-        base::FilePath(kDispatcherRuntimeDir)
-            .Append(kDispatcherSocket)
-            .value()
-            .c_str(),
-        base::FilePath(kRuntimeDir).Append(kDispatcherSocket).value().c_str()));
-  }
 
   // Put everything into the brillo::ProcessImpl.
   for (auto& arg : args) {
