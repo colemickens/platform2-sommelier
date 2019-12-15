@@ -10,6 +10,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/run_loop.h"
 #include "base/sys_info.h"
+#include "base/threading/thread_local.h"
 #include "base/time/time.h"
 #include "metrics/cumulative_metrics.h"
 
@@ -18,6 +19,8 @@ using chromeos_metrics::CumulativeMetrics;
 namespace chromeos_metrics {
 
 namespace {
+
+base::ThreadLocalPointer<base::RunLoop> tls_run_loop;
 
 constexpr char kMetricNameX[] = "x.pi";
 constexpr char kMetricNameY[] = "y.pi";
@@ -51,7 +54,7 @@ static void ReportAccumulators(CumulativeMetrics* cm) {
   }
   // Quit loop.
   if (accumulator_report_count == kTotalReportCount) {
-    base::MessageLoop::current()->QuitNow();
+    tls_run_loop.Get()->Quit();
   }
   accumulator_update_partial_count = 0;
   accumulator_report_count += 1;
@@ -59,6 +62,9 @@ static void ReportAccumulators(CumulativeMetrics* cm) {
 
 TEST_F(CumulativeMetricsTest, TestLoop) {
   base::MessageLoop message_loop;
+  base::RunLoop run_loop;
+  tls_run_loop.Set(&run_loop);
+
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   const base::FilePath pi_path = temp_dir.GetPath().Append("cumulative");
@@ -70,7 +76,7 @@ TEST_F(CumulativeMetricsTest, TestLoop) {
                        base::TimeDelta::FromMilliseconds(500),
                        base::Bind(&ReportAccumulators));
 
-  base::RunLoop().Run();
+  run_loop.Run();
 
   // We don't want to rely on a precise number of calls to the update or report
   // callbacks because load on the buildbot can vary a lot, and also there are

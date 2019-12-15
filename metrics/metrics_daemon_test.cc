@@ -178,7 +178,7 @@ class MetricsDaemonTest : public testing::Test {
   // representation of |value|.
   void CreateUint64ValueFile(const base::FilePath& path, uint64_t value) {
     base::DeleteFile(path, false);
-    std::string value_string = base::Uint64ToString(value) + "\n";
+    std::string value_string = base::NumberToString(value) + "\n";
     ASSERT_EQ(value_string.length(), base::WriteFile(path, value_string.c_str(),
                                                      value_string.length()));
   }
