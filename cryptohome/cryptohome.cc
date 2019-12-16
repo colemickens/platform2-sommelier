@@ -117,7 +117,8 @@ namespace switches {
                                    "install_attributes_set",
                                    "install_attributes_get",
                                    "install_attributes_finalize",
-                                   "pkcs11_token_status",
+                                   "pkcs11_get_user_token_info",
+                                   "pkcs11_is_user_token_ok",
                                    "pkcs11_terminate",
                                    "tpm_verify_attestation",
                                    "tpm_verify_ek",
@@ -184,7 +185,8 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_SET,
     ACTION_INSTALL_ATTRIBUTES_GET,
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
-    ACTION_PKCS11_TOKEN_STATUS,
+    ACTION_PKCS11_GET_USER_TOKEN_INFO,
+    ACTION_PKCS11_IS_USER_TOKEN_OK,
     ACTION_PKCS11_TERMINATE,
     ACTION_TPM_VERIFY_ATTESTATION,
     ACTION_TPM_VERIFY_EK,
@@ -1838,7 +1840,7 @@ int main(int argc, char **argv) {
     printf("Fail to own TPM.\n");
     return 1;
   } else if (!strcmp(
-      switches::kActions[switches::ACTION_PKCS11_TOKEN_STATUS],
+      switches::kActions[switches::ACTION_PKCS11_GET_USER_TOKEN_INFO],
       action.c_str())) {
     // If no account_id is specified, proceed with the empty string.
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
@@ -1864,13 +1866,18 @@ int main(int argc, char **argv) {
         g_free(pin);
       }
     } else {
-      cryptohome::Pkcs11Init init;
-      if (!init.IsUserTokenOK()) {
-        printf("User token looks broken!\n");
-        return 1;
-      }
-      printf("User token looks OK!\n");
+      printf("Account ID/Username not specified.\n");
+      return 1;
     }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_PKCS11_IS_USER_TOKEN_OK],
+      action.c_str())) {
+    cryptohome::Pkcs11Init init;
+    if (!init.IsUserTokenOK()) {
+      printf("User token looks broken!\n");
+      return 1;
+    }
+    printf("User token looks OK!\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_PKCS11_TERMINATE],
                      action.c_str())) {
     // If no account_id is specified, proceed with the empty string.
