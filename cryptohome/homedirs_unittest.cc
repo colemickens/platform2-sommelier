@@ -20,6 +20,7 @@
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/credentials.h"
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_crypto.h"
@@ -1639,7 +1640,7 @@ class KeysetManagementTest : public HomeDirsTest {
 
   virtual bool VkDecrypt0(const brillo::SecureBlob& key,
                           bool is_pcr_extended,
-                          Crypto::CryptoError* crypto_error) {
+                          CryptoError* crypto_error) {
     return memcmp(key.data(), keys_[0].data(), key.size()) == 0;
   }
 

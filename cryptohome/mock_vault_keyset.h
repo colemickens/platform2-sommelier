@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto_error.h"
 
 namespace cryptohome {
 class Platform;
@@ -43,7 +44,7 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_METHOD(bool, Load, (const base::FilePath&), (override));
   MOCK_METHOD(bool,
               Decrypt,
-              (const brillo::SecureBlob&, bool, Crypto::CryptoError*),
+              (const brillo::SecureBlob&, bool, CryptoError*),
               (override));
   MOCK_METHOD(bool, Save, (const base::FilePath&), (override));
   MOCK_METHOD(bool,

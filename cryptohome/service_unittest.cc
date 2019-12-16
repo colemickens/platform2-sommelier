@@ -33,6 +33,7 @@
 #include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/glib_transition.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/make_tests.h"
@@ -2210,8 +2211,7 @@ TEST_F(ServiceTestNotInitialized, OwnershipCallbackRepeated) {
   EXPECT_CALL(tpm, HandleOwnershipTakenEvent).WillOnce(Return());
   // Called by ResetAllTPMContext().
   mount_->set_crypto(&crypto_);
-  EXPECT_CALL(crypto_, EnsureTpm(true))
-      .WillOnce(Return(Crypto::CryptoError::CE_NONE));
+  EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
   // Called by InitializeInstallAttributes()
   EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
 

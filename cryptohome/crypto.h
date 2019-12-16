@@ -23,6 +23,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
@@ -55,23 +56,6 @@ struct KeyBlobs {
 
 class Crypto {
  public:
-  enum CryptoError {
-    CE_NONE = 0,
-    CE_TPM_FATAL,
-    CE_TPM_COMM_ERROR,
-    CE_TPM_DEFEND_LOCK,
-    CE_TPM_CRYPTO,
-    CE_TPM_REBOOT,
-    CE_SCRYPT_CRYPTO,
-    CE_OTHER_FATAL,
-    CE_OTHER_CRYPTO,
-    CE_NO_PUBLIC_KEY_HASH,
-    // Low Entropy(LE) credential protection is not supported on this device.
-    CE_LE_NOT_SUPPORTED,
-    // The LE secret provided during decryption is invalid.
-    CE_LE_INVALID_SECRET,
-  };
-
   // Default constructor
   explicit Crypto(Platform* platform);
 

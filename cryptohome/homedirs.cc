@@ -23,6 +23,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/dircrypto_util.h"
@@ -370,7 +371,7 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds,
   creds.GetPasskey(&passkey);
 
   bool any_keyset_exists = false;
-  Crypto::CryptoError last_crypto_error = Crypto::CE_NONE;
+  CryptoError last_crypto_error = CryptoError::CE_NONE;
   for (int index : key_indices) {
     if (!vk->Load(GetVaultKeysetPath(obfuscated, index)))
       continue;
@@ -399,7 +400,7 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds,
   if (!any_keyset_exists) {
     LOG(ERROR) << "No parsable keysets found for " << obfuscated;
     local_error = MOUNT_ERROR_FATAL;
-  } else if (last_crypto_error == Crypto::CE_NONE) {
+  } else if (last_crypto_error == CryptoError::CE_NONE) {
     // If we're searching by label, don't let a no-key-found become
     // MOUNT_ERROR_FATAL.  In the past, no parseable key was a fatal
     // error.  Just treat it like an invalid key.  This allows for
@@ -414,17 +415,17 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds,
     }
   } else {
     switch (last_crypto_error) {
-      case Crypto::CE_TPM_FATAL:
-      case Crypto::CE_OTHER_FATAL:
+      case CryptoError::CE_TPM_FATAL:
+      case CryptoError::CE_OTHER_FATAL:
         local_error = MOUNT_ERROR_FATAL;
         break;
-      case Crypto::CE_TPM_COMM_ERROR:
+      case CryptoError::CE_TPM_COMM_ERROR:
         local_error = MOUNT_ERROR_TPM_COMM_ERROR;
         break;
-      case Crypto::CE_TPM_DEFEND_LOCK:
+      case CryptoError::CE_TPM_DEFEND_LOCK:
         local_error = MOUNT_ERROR_TPM_DEFEND_LOCK;
         break;
-      case Crypto::CE_TPM_REBOOT:
+      case CryptoError::CE_TPM_REBOOT:
         local_error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
         break;
       default:
@@ -1663,7 +1664,7 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
       credentials_checked = true;
     }
 
-    Crypto::CryptoError err;
+    CryptoError err;
     if (!crypto_->ResetLECredential(vk_reset->serialized(), &err, *vk)) {
       LOG(WARNING) << "Failed to reset an LE credential: " << err;
     } else {

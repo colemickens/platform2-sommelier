@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
@@ -50,8 +51,9 @@ class VaultKeyset {
 
   virtual bool Load(const base::FilePath& filename);
   // Load must be called first. |crypto_error| may be null.
-  virtual bool Decrypt(const brillo::SecureBlob& key, bool is_pcr_extended,
-                       Crypto::CryptoError* crypto_error);
+  virtual bool Decrypt(const brillo::SecureBlob& key,
+                       bool is_pcr_extended,
+                       CryptoError* crypto_error);
   // Encrypt must be called first.
   virtual bool Save(const base::FilePath& filename);
   virtual bool Encrypt(const brillo::SecureBlob& key,

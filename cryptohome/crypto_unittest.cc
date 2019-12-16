@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
@@ -219,7 +220,7 @@ TEST_F(CryptoTest, DecryptionTest) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform_, &crypto);
   unsigned int crypt_flags = 0;
-  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  CryptoError crypto_error = CryptoError::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key,
                                         false /* is_pcr_extended */,
                                         &crypt_flags, &crypto_error,
@@ -344,7 +345,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
-  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(vkk_key),
@@ -428,7 +429,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
-  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(vkk_key),
@@ -506,7 +507,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
-  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  CryptoError crypto_error = CryptoError::CE_NONE;
 
   // UnsealWithAuthorization operation will fail.
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
@@ -521,7 +522,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
                                          false /* is_pcr_extended */,
                                          &crypt_flags, &crypto_error,
                                          &new_keyset));
-  ASSERT_NE(Crypto::CE_NONE, crypto_error);
+  ASSERT_NE(CryptoError::CE_NONE, crypto_error);
 }
 
 TEST_F(CryptoTest, ScryptStepTest) {
@@ -553,7 +554,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
-  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  CryptoError crypto_error = CryptoError::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key,
                                         false /* is_pcr_extended */,
                                         &crypt_flags, &crypto_error,
@@ -613,7 +614,7 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform_, &crypto);
   unsigned int crypt_flags = 0;
-  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  CryptoError crypto_error = CryptoError::CE_NONE;
 
   // Successful DecryptValutKeyset for tpm-backed keyset should
   // lead to a call to DeclareTpmFirmwareStable().

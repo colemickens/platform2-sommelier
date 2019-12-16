@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
@@ -224,27 +225,27 @@ bool VaultKeyset::Load(const FilePath& filename) {
 
 bool VaultKeyset::Decrypt(const SecureBlob& key,
                           bool is_pcr_extended,
-                          Crypto::CryptoError* crypto_error) {
+                          CryptoError* crypto_error) {
   CHECK(crypto_);
 
   if (crypto_error)
-    *crypto_error = Crypto::CE_NONE;
+    *crypto_error = CryptoError::CE_NONE;
 
   if (!loaded_) {
-    *crypto_error = Crypto::CE_OTHER_FATAL;
+    *crypto_error = CryptoError::CE_OTHER_FATAL;
     return false;
   }
 
-  Crypto::CryptoError local_crypto_error = Crypto::CE_NONE;
+  CryptoError local_crypto_error = CryptoError::CE_NONE;
   bool ok = crypto_->DecryptVaultKeyset(serialized_, key, is_pcr_extended,
                                         nullptr, &local_crypto_error, this);
-  if (!ok && local_crypto_error == Crypto::CE_TPM_COMM_ERROR) {
+  if (!ok && local_crypto_error == CryptoError::CE_TPM_COMM_ERROR) {
     ok = crypto_->DecryptVaultKeyset(serialized_, key, is_pcr_extended,
                                      nullptr, &local_crypto_error, this);
   }
 
   if (!ok && IsLECredential() &&
-      local_crypto_error == Crypto::CE_TPM_DEFEND_LOCK) {
+      local_crypto_error == CryptoError::CE_TPM_DEFEND_LOCK) {
     // For LE credentials, if decrypting the keyset failed due to too many
     // attempts, set auth_locked=true in the keyset. Then save it for future
     // callers who can Load it w/o Decrypt'ing to check that flag.
@@ -259,8 +260,8 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
   // that the value assigned below must *not* say a fatal error, as otherwise
   // this may result in removal of the cryptohome which is undesired in this
   // case.
-  if (local_crypto_error == Crypto::CE_NONE)
-    local_crypto_error = Crypto::CE_OTHER_CRYPTO;
+  if (local_crypto_error == CryptoError::CE_NONE)
+    local_crypto_error = CryptoError::CE_OTHER_CRYPTO;
 
   if (!ok && crypto_error)
     *crypto_error = local_crypto_error;

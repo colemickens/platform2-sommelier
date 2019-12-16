@@ -51,59 +51,51 @@ constexpr int kTpmDecryptMaxRetries = 2;
 // decrypt it.
 constexpr unsigned int kDefaultPassBlobSize = 256;
 
-// Helper function to aovid the double nested if statements involved with
-// checking the error pointer. If |error| is |nullptr|, this does nothing.
-template <typename ErrorType>
-void PopulateError(ErrorType* error, ErrorType error_code) {
-  if (error)
-    *error = error_code;
-}
-
 bool TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action) {
   return retry_action == Tpm::kTpmRetryLoadFail ||
          retry_action == Tpm::kTpmRetryInvalidHandle ||
          retry_action == Tpm::kTpmRetryCommFailure;
 }
 
-Crypto::CryptoError ConvertLeError(int le_error) {
+CryptoError ConvertLeError(int le_error) {
   switch (le_error) {
     case LE_CRED_ERROR_INVALID_LE_SECRET:
-      return Crypto::CE_LE_INVALID_SECRET;
+      return CryptoError::CE_LE_INVALID_SECRET;
     case LE_CRED_ERROR_TOO_MANY_ATTEMPTS:
-      return Crypto::CE_TPM_DEFEND_LOCK;
+      return CryptoError::CE_TPM_DEFEND_LOCK;
     case LE_CRED_ERROR_INVALID_LABEL:
-      return Crypto::CE_OTHER_FATAL;
+      return CryptoError::CE_OTHER_FATAL;
     case LE_CRED_ERROR_HASH_TREE:
-      return Crypto::CE_OTHER_FATAL;
+      return CryptoError::CE_OTHER_FATAL;
     case LE_CRED_ERROR_PCR_NOT_MATCH:
       // We might want to return an error here that will make the device
       // reboot.
       LOG(ERROR) << "PCR in unexpected state.";
-      return Crypto::CE_LE_INVALID_SECRET;
+      return CryptoError::CE_LE_INVALID_SECRET;
     default:
-      return Crypto::CE_OTHER_FATAL;
+      return CryptoError::CE_OTHER_FATAL;
   }
 }
 
-Crypto::CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) {
+CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) {
   switch (retry_action) {
     case Tpm::kTpmRetryFatal:
       // All errors mapped here will cause re-creating the cryptohome if
       // they occur when decrypting the keyset.
-      return Crypto::CE_TPM_FATAL;
+      return CryptoError::CE_TPM_FATAL;
     case Tpm::kTpmRetryCommFailure:
     case Tpm::kTpmRetryInvalidHandle:
     case Tpm::kTpmRetryLoadFail:
     case Tpm::kTpmRetryLater:
-      return Crypto::CE_TPM_COMM_ERROR;
+      return CryptoError::CE_TPM_COMM_ERROR;
     case Tpm::kTpmRetryDefendLock:
-      return Crypto::CE_TPM_DEFEND_LOCK;
+      return CryptoError::CE_TPM_DEFEND_LOCK;
     case Tpm::kTpmRetryReboot:
-      return Crypto::CE_TPM_REBOOT;
+      return CryptoError::CE_TPM_REBOOT;
     default:
       // TODO(chromium:709646): kTpmRetryFailNoRetry maps here now. Find
       // a better corresponding CryptoError.
-      return Crypto::CE_NONE;
+      return CryptoError::CE_NONE;
   }
 }
 
@@ -227,8 +219,8 @@ bool Crypto::Init(TpmInit* tpm_init) {
   return true;
 }
 
-Crypto::CryptoError Crypto::EnsureTpm(bool reload_key) const {
-  Crypto::CryptoError result = Crypto::CE_NONE;
+CryptoError Crypto::EnsureTpm(bool reload_key) const {
+  CryptoError result = CryptoError::CE_NONE;
   if (tpm_ && tpm_init_) {
     if (reload_key || !tpm_init_->HasCryptohomeKey()) {
       tpm_init_->SetupTpm(true);
@@ -351,7 +343,7 @@ bool Crypto::IsTPMPubkeyHash(const std::string& hash,
       (brillo::SecureMemcmp(hash.data(),
                               pub_key_hash.data(),
                               pub_key_hash.size()))) {
-    PopulateError(error, CE_TPM_FATAL);
+    PopulateError(error, CryptoError::CE_TPM_FATAL);
     return false;
   }
   return true;
@@ -379,7 +371,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   if (!serialized.has_tpm_key()) {
     LOG(ERROR) << "Decrypting with TPM, but no tpm key present";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
-    PopulateError(error, CE_TPM_FATAL);
+    PopulateError(error, CryptoError::CE_TPM_FATAL);
     return false;
   }
 
@@ -392,11 +384,11 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
                << "keyset was wrapped by the TPM.  It is impossible to "
                << "recover this keyset.";
     ReportCryptohomeError(kDecryptAttemptButTpmNotOwned);
-    PopulateError(error, CE_TPM_FATAL);
+    PopulateError(error, CryptoError::CE_TPM_FATAL);
     return false;
   }
 
-  Crypto::CryptoError local_error = EnsureTpm(/*reload_key=*/false);
+  CryptoError local_error = EnsureTpm(/*reload_key=*/false);
   if (!is_cryptohome_key_loaded()) {
     LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                << "unavailable";
@@ -441,7 +433,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
       brillo::SecureBlob(serialized.wrapped_reset_seed());
 
   if (!serialized.has_tpm_public_key_hash() && error) {
-    *error = CE_NO_PUBLIC_KEY_HASH;
+    *error = CryptoError::CE_NO_PUBLIC_KEY_HASH;
   }
 
   return true;
@@ -472,12 +464,12 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
   if (!CryptoLib::AesDecrypt(local_encrypted_keyset, vkk_key, vkk_iv,
                              &plain_text)) {
     LOG(ERROR) << "AES decryption failed for vault keyset.";
-    PopulateError(error, CE_OTHER_CRYPTO);
+    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return false;
   }
   if (!keyset->FromKeysBlob(plain_text)) {
     LOG(ERROR) << "Failed to decode the keys blob.";
-    PopulateError(error, CE_OTHER_CRYPTO);
+    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return false;
   }
 
@@ -491,7 +483,7 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
                                chaps_iv,
                                &unwrapped_chaps_key)) {
       LOG(ERROR) << "AES decryption failed for chaps key.";
-      PopulateError(error, CE_OTHER_CRYPTO);
+      PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
       return false;
     }
 
@@ -509,7 +501,7 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
     if (!CryptoLib::AesDecrypt(local_wrapped_reset_seed, vkk_key,
                                local_reset_iv, &unwrapped_reset_seed)) {
       LOG(ERROR) << "AES decryption failed for reset seed.";
-      PopulateError(error, CE_OTHER_CRYPTO);
+      PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
       return false;
     }
 
@@ -579,7 +571,7 @@ bool Crypto::DecryptTpmNotBoundToPcr(const SerializedVaultKeyset& serialized,
   if (scrypt_derived) {
     if (!CryptoLib::DeriveSecretsSCrypt(vault_key, salt,
                                         {&aes_skey, &kdf_skey, vkk_iv})) {
-      PopulateError(error, CE_OTHER_FATAL);
+      PopulateError(error, CryptoError::CE_OTHER_FATAL);
       return false;
     }
   } else {
@@ -622,7 +614,7 @@ bool Crypto::DecryptTpmNotBoundToPcr(const SerializedVaultKeyset& serialized,
                                     vkk_key,
                                     vkk_iv)) {
       LOG(ERROR) << "Failure converting IVKK to VKK";
-      PopulateError(error, CE_OTHER_FATAL);
+      PopulateError(error, CryptoError::CE_OTHER_FATAL);
       return false;
     }
   }
@@ -641,14 +633,14 @@ bool Crypto::DecryptScryptBlob(const SecureBlob& wrapped_blob,
                             kScryptMaxMem, 100.0, kScryptMaxDecryptTime);
   if (scrypt_rc) {
     LOG(ERROR) << "Blob Scrypt decryption returned error code: " << scrypt_rc;
-    PopulateError(error, CE_SCRYPT_CRYPTO);
+    PopulateError(error, CryptoError::CE_SCRYPT_CRYPTO);
     return false;
   }
   // Check if the plaintext is the right length.
   if ((wrapped_blob.size() < kScryptHeaderLength) ||
       (out_len != (wrapped_blob.size() - kScryptHeaderLength))) {
     LOG(ERROR) << "Blob Scrypt decryption output was the wrong length";
-    PopulateError(error, CE_SCRYPT_CRYPTO);
+    PopulateError(error, CryptoError::CE_SCRYPT_CRYPTO);
     return false;
   }
   blob->resize(out_len);
@@ -714,7 +706,7 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
 
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
-    PopulateError(error, CE_LE_NOT_SUPPORTED);
+    PopulateError(error, CryptoError::CE_LE_NOT_SUPPORTED);
     return false;
   }
 
@@ -726,7 +718,7 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
   SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
   if (!CryptoLib::DeriveSecretsSCrypt(vault_key, salt,
                                       {&le_secret, &kdf_skey, &le_iv})) {
-    PopulateError(error, CE_OTHER_FATAL);
+    PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return false;
   }
 
@@ -760,7 +752,7 @@ bool Crypto::DecryptChallengeCredential(const SerializedVaultKeyset& serialized,
                                         VaultKeyset* vault_keyset) const {
   if (!(serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED)) {
     LOG(ERROR) << "Invalid flags for challenge-protected keyset";
-    *error = CE_OTHER_FATAL;
+    *error = CryptoError::CE_OTHER_FATAL;
     return false;
   }
   return DecryptScrypt(serialized, key, error, vault_keyset);
@@ -777,7 +769,7 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
                                 VaultKeyset* vault_keyset) const {
   if (crypt_flags)
     *crypt_flags = serialized.flags();
-  PopulateError(error, CE_NONE);
+  PopulateError(error, CryptoError::CE_NONE);
 
   unsigned int flags = serialized.flags();
 
@@ -1527,7 +1519,7 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
 
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
-    PopulateError(error, CE_LE_NOT_SUPPORTED);
+    PopulateError(error, CryptoError::CE_LE_NOT_SUPPORTED);
     return false;
   }
 
@@ -1537,7 +1529,7 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
                         serialized_reset.reset_salt().end());
   if (local_reset_seed.empty() || reset_salt.empty()) {
     LOG(ERROR) << "Reset seed/salt is empty, can't reset LE credential.";
-    PopulateError(error, CE_OTHER_FATAL);
+    PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return false;
   }
 
@@ -1546,8 +1538,8 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
       le_manager_->ResetCredential(serialized_reset.le_label(), reset_secret);
   if (ret != LE_CRED_SUCCESS) {
     PopulateError(error, ret == LE_CRED_ERROR_INVALID_RESET_SECRET
-                             ? CE_LE_INVALID_SECRET
-                             : CE_OTHER_FATAL);
+                             ? CryptoError::CE_LE_INVALID_SECRET
+                             : CryptoError::CE_OTHER_FATAL);
     return false;
   }
   return true;
