@@ -19,7 +19,6 @@ group("all") {
     deps += [
       ":cros_healthd_test",
       ":libcros_healthd_utils_test",
-      ":libtelem_test",
       ":wilco_dtc_supportd_test",
       "//diagnostics/common:libcommon_test",
       "//diagnostics/grpc_async_adapter:libgrpc_async_adapter_test",
@@ -174,32 +173,6 @@ source_set("libwilco_dtc_supportd") {
   ]
 }
 
-# Library that provides core functionality for the telemetry tool.
-pkg_config("libtelem_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-    "re2",
-    "system_api",
-  ]
-}
-
-source_set("libtelem") {
-  deps = [
-    ":libcros_healthd_mojo_adapter",
-    "//diagnostics/constants:libconstants",
-    "//diagnostics/grpc:wilco_dtc_grpc_protos",
-    "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
-  ]
-  all_dependent_configs = [ ":libtelem_pkg_deps" ]
-  sources = [
-    "telem/battery_utils.cc",
-    "telem/telem_cache.cc",
-    "telem/telem_parsers.cc",
-    "telem/telemetry.cc",
-  ]
-}
-
 # The cros_healthd daemon executable.
 pkg_config("cros_healthd_pkg_deps") {
   pkg_deps = [ "libbrillo-${libbase_ver}" ]
@@ -273,7 +246,7 @@ pkg_config("telem_pkg_deps") {
 
 executable("telem") {
   deps = [
-    ":libtelem",
+    ":libcros_healthd_mojo_adapter",
   ]
   configs += [ ":telem_pkg_deps" ]
   sources = [
@@ -379,32 +352,6 @@ if (use.test) {
       "wilco_dtc_supportd/telemetry/fake_system_files_service.cc",
       "wilco_dtc_supportd/telemetry/powerd_event_service_impl_test.cc",
       "wilco_dtc_supportd/telemetry/system_files_service_impl_test.cc",
-    ]
-  }
-
-  pkg_config("libtelem_test_pkg_deps") {
-    pkg_deps = [
-      "libchrome-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-    ]
-  }
-
-  executable("libtelem_test") {
-    configs += [
-      "//common-mk:test",
-      ":libtelem_test_pkg_deps",
-    ]
-    deps = [
-      ":libtelem",
-      "../common-mk/testrunner:testrunner",
-      "//diagnostics/common:libcommon",
-    ]
-    sources = [
-      "telem/battery_utils_test.cc",
-      "telem/cache_writer_impl.cc",
-      "telem/telem_cache_test.cc",
-      "telem/telem_parsers_test.cc",
-      "telem/telemetry_test.cc",
     ]
   }
 }
