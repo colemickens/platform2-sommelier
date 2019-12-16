@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
@@ -18,9 +19,11 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 
+#include "chaps/chaps_factory_impl.h"
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/handle_generator_mock.h"
+#include "chaps/object_impl.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_pool_mock.h"
 #include "chaps/tpm_utility_mock.h"
@@ -225,6 +228,24 @@ class TestSession : public ::testing::Test {
   std::unique_ptr<SessionImpl> session_;
 };
 
+// Session Test that uses real Object implementation (ObjectImpl)
+class TestSessionWithRealObject : public TestSession {
+ public:
+  TestSessionWithRealObject() {
+    chaps::ChapsFactory* factory = &factory_;
+    EXPECT_CALL(factory_, CreateObject())
+        .WillRepeatedly(InvokeWithoutArgs(
+            [factory] { return new chaps::ObjectImpl(factory); }));
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
+        .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
+    EXPECT_CALL(factory_, CreateObjectPolicy(_))
+        .WillRepeatedly(Invoke(ChapsFactoryImpl::GetObjectPolicyForType));
+    EXPECT_CALL(handle_generator_, CreateHandle()).WillRepeatedly(Return(1));
+    ConfigureObjectPool(&token_pool_, 0);
+    ConfigureTPMUtility(&tpm_);
+  }
+};
+
 typedef TestSession TestSession_DeathTest;
 
 // Test that SessionImpl asserts as expected when not properly initialized.
@@ -335,16 +356,18 @@ TEST_F(TestSession, Objects) {
   int handle = 0;
   int invalid_handle = -1;
   // Create a new object.
-  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, 1, &handle));
+  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, arraysize(attr), &handle));
   EXPECT_GT(handle, 0);
   const Object* o;
   // Get the new object from the new handle.
   EXPECT_TRUE(session_->GetObject(handle, &o));
   int handle2 = 0;
   // Copy an object (try invalid and valid handles).
-  EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
-            session_->CopyObject(attr, 1, invalid_handle, &handle2));
-  ASSERT_EQ(CKR_OK, session_->CopyObject(attr, 1, handle, &handle2));
+  EXPECT_EQ(
+      CKR_OBJECT_HANDLE_INVALID,
+      session_->CopyObject(attr, arraysize(attr), invalid_handle, &handle2));
+  ASSERT_EQ(CKR_OK,
+            session_->CopyObject(attr, arraysize(attr), handle, &handle2));
   // Ensure handles are unique.
   EXPECT_TRUE(handle != handle2);
   EXPECT_TRUE(session_->GetObject(handle2, &o));
@@ -354,8 +377,9 @@ TEST_F(TestSession, Objects) {
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, session_->FindObjects(1, &v));
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, session_->FindObjectsFinal());
   // Find the objects we've created (there should be 2).
-  EXPECT_EQ(CKR_OK, session_->FindObjectsInit(attr, 1));
-  EXPECT_EQ(CKR_OPERATION_ACTIVE, session_->FindObjectsInit(attr, 1));
+  EXPECT_EQ(CKR_OK, session_->FindObjectsInit(attr, arraysize(attr)));
+  EXPECT_EQ(CKR_OPERATION_ACTIVE,
+            session_->FindObjectsInit(attr, arraysize(attr)));
   // Test multi-step finds by only allowing 1 result at a time.
   EXPECT_EQ(CKR_OK, session_->FindObjects(1, &v));
   EXPECT_EQ(1, v.size());
@@ -789,17 +813,20 @@ TEST_F(TestSession, BadRSAGenerate) {
   // CKA_PUBLIC_EXPONENT too large.
   EXPECT_EQ(CKR_FUNCTION_FAILED,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      3, priv_attr, 1, &pub, &priv));
+                                      arraysize(pub_attr), priv_attr,
+                                      arraysize(priv_attr), &pub, &priv));
   pub_attr[1].ulValueLen = 3;
   size = 20000;
   // CKA_MODULUS_BITS too large.
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      3, priv_attr, 1, &pub, &priv));
+                                      arraysize(pub_attr), priv_attr,
+                                      arraysize(priv_attr), &pub, &priv));
   // CKA_MODULUS_BITS missing.
-  EXPECT_EQ(CKR_TEMPLATE_INCOMPLETE,
-            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      2, priv_attr, 1, &pub, &priv));
+  EXPECT_EQ(
+      CKR_TEMPLATE_INCOMPLETE,
+      session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr, 2,
+                                priv_attr, arraysize(priv_attr), &pub, &priv));
 }
 
 // Test that invalid attributes for key generation are handled correctly.
@@ -863,7 +890,7 @@ TEST_F(TestSession, Flush) {
   EXPECT_EQ(session_->FlushModifiableObject(&session_object), CKR_OK);
 }
 
-TEST_F(TestSession, GenerateRSAWithTPM) {
+TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
   EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
   EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).WillOnce(Return(true));
@@ -896,7 +923,7 @@ TEST_F(TestSession, GenerateRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
 }
 
-TEST_F(TestSession, GenerateRSAWithTPMInconsistentToken) {
+TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
   EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
   EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).WillOnce(Return(true));
@@ -932,7 +959,7 @@ TEST_F(TestSession, GenerateRSAWithTPMInconsistentToken) {
   EXPECT_EQ(CKR_OK, session_->DestroyObject(privh));
 }
 
-TEST_F(TestSession, GenerateRSAWithNoTPM) {
+TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
   EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
 
   CK_BBOOL no = CK_FALSE;
@@ -962,7 +989,7 @@ TEST_F(TestSession, GenerateRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
 }
 
-TEST_F(TestSession, GenerateECCWithTPM) {
+TEST_F(TestSessionWithRealObject, GenerateECCWithTPM) {
   EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
@@ -975,7 +1002,7 @@ TEST_F(TestSession, GenerateECCWithTPM) {
   EXPECT_FALSE(priv->IsAttributePresent(CKA_VALUE));
 }
 
-TEST_F(TestSession, GenerateECCWithTPMInconsistentToken) {
+TEST_F(TestSessionWithRealObject, GenerateECCWithTPMInconsistentToken) {
   EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
@@ -988,7 +1015,7 @@ TEST_F(TestSession, GenerateECCWithTPMInconsistentToken) {
   EXPECT_TRUE(priv->IsTokenObject());
 }
 
-TEST_F(TestSession, GenerateECCWithNoTPM) {
+TEST_F(TestSessionWithRealObject, GenerateECCWithNoTPM) {
   EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
 
   const Object* pub = NULL;
@@ -1018,7 +1045,7 @@ TEST_F(TestSession, EcdsaSignWithTPM) {
   EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
 }
 
-TEST_F(TestSession, ImportRSAWithTPM) {
+TEST_F(TestSessionWithRealObject, ImportRSAWithTPM) {
   EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
   EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, WrapRSAKey(_, _, _, _, _, _, _)).WillOnce(Return(true));
@@ -1091,7 +1118,7 @@ TEST_F(TestSession, ImportRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
 }
 
-TEST_F(TestSession, ImportRSAWithNoTPM) {
+TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
   EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
 
   crypto::ScopedBIGNUM exponent(BN_new());
@@ -1162,7 +1189,7 @@ TEST_F(TestSession, ImportRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
 }
 
-TEST_F(TestSession, ImportECCWithTPM) {
+TEST_F(TestSessionWithRealObject, ImportECCWithTPM) {
   EXPECT_CALL(tpm_, IsECCurveSupported(NID_X9_62_prime256v1))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, WrapECCKey(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
@@ -1208,7 +1235,7 @@ TEST_F(TestSession, ImportECCWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_VALUE));
 }
 
-TEST_F(TestSession, ImportECCWithNoTPM) {
+TEST_F(TestSessionWithRealObject, ImportECCWithNoTPM) {
   EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
 
   crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
@@ -1262,7 +1289,7 @@ TEST_F(TestSession, CreateObjectsNoPrivate) {
   CK_OBJECT_CLASS oc = CKO_SECRET_KEY;
   CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
   EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
-            session_->CreateObject(attr, 1, &handle));
+            session_->CreateObject(attr, arraysize(attr), &handle));
 
   CK_ATTRIBUTE key_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
                              {CKA_SIGN, &yes, sizeof(yes)},
@@ -1293,7 +1320,7 @@ TEST_F(TestSession, FindObjectsNoPrivate) {
   CK_OBJECT_CLASS oc = CKO_PRIVATE_KEY;
   CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
   EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
-            session_->FindObjectsInit(attr, 1));
+            session_->FindObjectsInit(attr, arraysize(attr)));
 }
 
 TEST_F(TestSession, DestroyObjectsNoPrivate) {
@@ -1304,7 +1331,7 @@ TEST_F(TestSession, DestroyObjectsNoPrivate) {
 
   CK_OBJECT_CLASS oc = CKO_SECRET_KEY;
   CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
-  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, 1, &handle));
+  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, arraysize(attr), &handle));
   EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
             session_->DestroyObject(handle));
 }

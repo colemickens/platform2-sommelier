@@ -30,6 +30,8 @@ class ChapsFactoryImpl : public ChapsFactory {
                                        const base::FilePath& path,
                                        TPMUtility* tpm_utility) override;
 
+  static ObjectPolicy* GetObjectPolicyForType(CK_OBJECT_CLASS type);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ChapsFactoryImpl);
 };

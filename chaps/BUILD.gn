@@ -281,6 +281,15 @@ if (use.test) {
 
   executable("session_test") {
     sources = [
+      "chaps_factory_impl.cc",
+      "object_impl.cc",
+      "object_policy_cert.cc",
+      "object_policy_common.cc",
+      "object_policy_data.cc",
+      "object_policy_key.cc",
+      "object_policy_private_key.cc",
+      "object_policy_public_key.cc",
+      "object_policy_secret_key.cc",
       "session_impl.cc",
       "session_test.cc",
     ]

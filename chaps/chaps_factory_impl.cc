@@ -66,6 +66,18 @@ Object* ChapsFactoryImpl::CreateObject() {
 }
 
 ObjectPolicy* ChapsFactoryImpl::CreateObjectPolicy(CK_OBJECT_CLASS type) {
+  return ChapsFactoryImpl::GetObjectPolicyForType(type);
+}
+
+ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
+    int slot_id, const FilePath& path, TPMUtility* tpm_utility) {
+  if (!tpm_utility->IsTPMAvailable()) {
+    return NULL;
+  }
+  return new OpencryptokiImporter(slot_id, path, tpm_utility, this);
+}
+
+ObjectPolicy* ChapsFactoryImpl::GetObjectPolicyForType(CK_OBJECT_CLASS type) {
   switch (type) {
     case CKO_DATA:
       return new ObjectPolicyData();
@@ -79,14 +91,6 @@ ObjectPolicy* ChapsFactoryImpl::CreateObjectPolicy(CK_OBJECT_CLASS type) {
       return new ObjectPolicySecretKey();
   }
   return new ObjectPolicyCommon();
-}
-
-ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
-    int slot_id, const FilePath& path, TPMUtility* tpm_utility) {
-  if (!tpm_utility->IsTPMAvailable()) {
-    return NULL;
-  }
-  return new OpencryptokiImporter(slot_id, path, tpm_utility, this);
 }
 
 }  // namespace chaps
