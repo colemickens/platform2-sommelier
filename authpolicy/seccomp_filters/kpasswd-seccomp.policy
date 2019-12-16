@@ -46,3 +46,4 @@ uname: 1
 write: 1
 writev: 1
 getpid: 1
+gettimeofday: 1
