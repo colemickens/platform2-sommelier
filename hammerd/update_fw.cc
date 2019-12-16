@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "hammerd/update_fw.h"
+#include "hammerd/vb21_struct.h"
 
 #include <fmap.h>
 
@@ -18,7 +19,6 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <openssl/rand.h>
-#include <vboot/vb21_struct.h>
 
 namespace hammerd {
 

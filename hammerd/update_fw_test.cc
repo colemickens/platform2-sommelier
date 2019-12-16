@@ -11,13 +11,13 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <vboot/vb21_struct.h>
 
 #include "hammerd/fmap_utils.h"
 #include "hammerd/mock_fmap_utils.h"
 #include "hammerd/mock_usb_utils.h"
 #include "hammerd/update_fw.h"
 #include "hammerd/usb_utils.h"
+#include "hammerd/vb21_struct.h"
 
 using testing::_;
 using testing::AnyNumber;

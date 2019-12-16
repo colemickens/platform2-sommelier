@@ -6,10 +6,10 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <vboot/vb21_struct.h>
 
 #include "hammerd/fmap_utils.h"
 #include "hammerd/update_fw.h"
+#include "hammerd/vb21_struct.h"
 
 namespace hammerd {
 
