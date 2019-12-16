@@ -108,19 +108,30 @@ For example, a well known password & key are installed for automatic ssh access.
 
 ### Prebuilt Creation
 
+During `build_image`, we generate the set of installable packages.
+See [create_dev_install_lists] for exact implementation details.
+Roughly, it builds a list of all the packages by taking the depgraphs of
+virtual/target-os-dev & virtual/target-os-test and subtracting the depgraph of
+virtual/target-os (since those packages are installed in the rootfs).
+That list is saved at `/build/dev-install/package.installable`.
+
 Release builders run the DevInstallerPrebuilts stage.
-This reads the set of packages defined by the dev-install package
-(`/build/dev-install/package.installable`) and uploads the binary packages for
-all of them to the `gs://chromeos-dev-installer` bucket.
+This reads the set of packages (created above) and uploads their binpkgs to the
+`gs://chromeos-dev-installer` bucket.
 
 That bucket uses the layout
 `gs://chromeos-dev-installer/board/${BOARD}/${OS_VERSION}/`.
+For example, `gs://chromeos-dev-installer/board/eve/12763.0.0/`.
 
 For local developer builds, the full URI is written to `CHROMEOS_DEVSERVER` in
 the [lsb-release] file and used by the `dev-install` command at runtime.
-For release builds, the value is computed on the fly.
+The URI will point to the local developer's system, not the release bucket.
+
+For release builds, the value is computed on the fly using [lsb-release].
 
 This is a normal Portage binpkg host repository.
+
+[create_dev_install_lists]: https://chromium.googlesource.com/chromiumos/platform/crosutils/+/release-R80-12739.B/build_library/base_image_util.sh#43
 
 ## Image Layout
 
