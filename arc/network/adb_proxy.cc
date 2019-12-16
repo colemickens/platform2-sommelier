@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sysexits.h>
 
+#include <set>
 #include <utility>
 
 #include <base/bind.h>
@@ -29,6 +30,8 @@ constexpr uint16_t kTcpConnectPort = 5555;
 constexpr uint32_t kTcpAddr = Ipv4Addr(100, 115, 92, 2);
 constexpr uint32_t kVsockPort = 5555;
 constexpr int kMaxConn = 16;
+const std::set<GuestMessage::GuestType> kArcGuestTypes{
+    GuestMessage::ARC, GuestMessage::ARC_LEGACY, GuestMessage::ARC_VM};
 
 }  // namespace
 
@@ -123,6 +126,10 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
 void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
   if (msg.type() == GuestMessage::UNKNOWN_GUEST) {
     LOG(DFATAL) << "Unexpected message from unknown guest";
+    return;
+  }
+
+  if (kArcGuestTypes.find(msg.type()) == kArcGuestTypes.end()) {
     return;
   }
 
