@@ -32,19 +32,12 @@ namespace concierge {
 namespace {
 
 // Path to the plugin binaries and other assets.
-constexpr char kPluginBinDir[] = "/opt/pita/";
+constexpr char kPluginBinDir[] = "/opt/pita";
 constexpr char kDlcPluginBinDir[] =
     "/run/imageloader/pita/package/root/opt/pita";
 
 // Name of the plugin VM binary.
 constexpr char kPluginBinName[] = "pvm";
-
-constexpr gid_t kPluginGidMap[] = {
-    27,     // video
-    600,    // cras
-    603,    // arc-camera
-    20136,  // cups-proxy
-};
 
 // Name of the runtime directory inside the jail.
 constexpr char kRuntimeDir[] = "/run/pvm";
@@ -657,26 +650,23 @@ bool PluginVm::Start(uint32_t cpus,
   }
 
   auto bin_dir = pvm::helper::IsDlcVm() ? kDlcPluginBinDir : kPluginBinDir;
+  auto plugin_bin_path = base::FilePath(bin_dir).Append(kPluginBinName);
   // Build up the process arguments.
   // clang-format off
   std::vector<string> args = {
-    kCrosvmBin,       "run",
-    "--cpus",         std::to_string(cpus),
-    "--tap-fd",       std::to_string(tap_fd.get()),
-    "--plugin",       base::FilePath(bin_dir)
-                          .Append(kPluginBinName)
-                          .value(),
+    kCrosvmBin,                 "run",
+    "--cpus",                   std::to_string(cpus),
+    "--tap-fd",                 std::to_string(tap_fd.get()),
+    "--plugin",                 plugin_bin_path.value(),
+    "--plugin-gid-map-file",    plugin_bin_path
+                                    .AddExtension("gid_maps")
+                                    .value(),
   };
   // clang-format on
 
+  // These are bind mounts with parts may change (i.e. they are either VM
+  // or config specific).
   std::vector<string> bind_mounts = {
-      "/dev/log:/dev/log:true",
-      "/dev/udmabuf:/dev/udmabuf:true",
-      "/lib64:/lib64:false",
-      "/run/camera:/run/camera:true",
-      "/run/cups_proxy:/run/cups:true",
-      // TODO(b:127478233) replace with CRAS proxy socket directory when ready.
-      "/run/cras:/run/cras:true",
       base::StringPrintf("%s:%s:false", bin_dir, kPluginBinDir),
       // This is directory where the VM image resides.
       base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
@@ -691,30 +681,23 @@ bool PluginVm::Start(uint32_t cpus,
       base::StringPrintf("%s:%s:true",
                          root_dir_.GetPath().Append("etc").value().c_str(),
                          "/etc"),
-      // This is the directory where the cicerone host socket lives. The
-      // plugin VM also creates the guest socket for cicerone in this same
-      // directory using the following <token>.sock as the name. The token
-      // resides in the VM runtime directory with name cicerone.token.
-      base::StringPrintf("/run/vm_cicerone/client:%s:true",
-                         base::FilePath(kRuntimeDir)
-                             .Append("cicerone_socket")
-                             .value()
-                             .c_str()),
-      "/run/pvm/vmplugin_dispatcher.socket::true",
   };
 
   // Put everything into the brillo::ProcessImpl.
   for (auto& arg : args) {
     process_.AddArg(std::move(arg));
   }
-  for (auto gid : kPluginGidMap) {
-    process_.AddArg("--plugin-gid-map");
-    process_.AddArg(base::StringPrintf("%u:%u:1", gid, gid));
-  }
+
   for (auto& mount : bind_mounts) {
     process_.AddArg("--plugin-mount");
     process_.AddArg(std::move(mount));
   }
+
+  // Because some of the static paths are mounted in /run/pvm... in the
+  // plugin jail, they have to come after the dynamic paths above.
+  process_.AddArg("--plugin-mount-file");
+  process_.AddArg(plugin_bin_path.AddExtension("bind_mounts").value());
+
   for (auto& param : params) {
     // Because additional parameters may start with a '--', we should use
     // --params=<Param> instead of --params <Param> to make explicit <Param>
