@@ -144,6 +144,8 @@ void OneTimeSetup(const Datapath& datapath) {
           // rules that use these conntrack modules for FTP/TFTP.
           "nf_nat_ftp",
           "nf_nat_tftp",
+          // The tun module is needed by the Android 464xlat clatd process.
+          "tun",
       }) != 0) {
     LOG(WARNING) << "One or more optional kernel modules failed to load.";
   }
