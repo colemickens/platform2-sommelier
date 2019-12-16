@@ -1362,6 +1362,13 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
       return result;
   }
 
+  if (copy_from_object) {
+    result = object->FinalizeCopyObject();
+    if (result != CKR_OK) {
+      return result;
+    }
+  }
+
   ObjectPool* pool =
       is_token_object ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());

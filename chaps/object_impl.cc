@@ -73,6 +73,11 @@ CK_RV ObjectImpl::FinalizeNewObject() {
   return CKR_OK;
 }
 
+CK_RV ObjectImpl::FinalizeCopyObject() {
+  stage_ = kModify;
+  return CKR_OK;
+}
+
 CK_RV ObjectImpl::Copy(const Object* original) {
   stage_ = kCopy;
   attributes_ = *original->GetAttributeMap();

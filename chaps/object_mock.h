@@ -30,6 +30,7 @@ class ObjectMock : public Object {
   MOCK_CONST_METHOD0(IsPrivate, bool());
   MOCK_CONST_METHOD0(GetSize, int());
   MOCK_METHOD0(FinalizeNewObject, CK_RV());
+  MOCK_METHOD0(FinalizeCopyObject, CK_RV());
   MOCK_METHOD1(Copy, CK_RV(const Object*));
   MOCK_CONST_METHOD2(GetAttributes, CK_RV(CK_ATTRIBUTE_PTR, int));
   MOCK_METHOD2(SetAttributes, CK_RV(const CK_ATTRIBUTE_PTR, int));

@@ -49,6 +49,8 @@ class Object {
   // - Set default values for attributes, if necessary.
   // - Move the object into the kModify stage.
   virtual CK_RV FinalizeNewObject() = 0;
+  // This is called when all changes to a copied object is done.
+  virtual CK_RV FinalizeCopyObject() = 0;
   // Copies attributes and policy from another object.
   virtual CK_RV Copy(const Object* original) = 0;
   // Provides PKCS #11 attribute values according to the semantics described in

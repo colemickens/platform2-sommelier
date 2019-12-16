@@ -31,6 +31,7 @@ class ObjectImpl : public Object {
   bool IsModifiable() const override;
   bool IsPrivate() const override;
   CK_RV FinalizeNewObject() override;
+  CK_RV FinalizeCopyObject() override;
   CK_RV Copy(const Object* original) override;
   CK_RV GetAttributes(CK_ATTRIBUTE_PTR attributes,
                       int num_attributes) const override;
