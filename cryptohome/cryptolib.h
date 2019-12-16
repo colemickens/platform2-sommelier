@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CRYPTOLIB_H_
 
 #include <string>
+#include <vector>
 
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -230,6 +231,19 @@ class CryptoLib {
   // modulus has a discrete logarithm modulus small primes). See research paper
   // for details: https://crocs.fi.muni.cz/public/papers/rsa_ccs17
   static bool TestRocaVulnerable(const BIGNUM* rsa_modulus);
+
+  // Derives secrets and other values from User Passkey.
+  //
+  // Parameters
+  //   passkey - The User Passkey, from which to derive the secrets.
+  //   salt - The salt used when deriving the secrests.
+  //   gen_secrets (IN-OUT) - Vector containing resulting secrets.
+  //                          The caller allocates each blob in |gen_secrets|
+  //                          to the appropriate size.
+  //
+  static bool DeriveSecretsSCrypt(const brillo::SecureBlob& passkey,
+                                  const brillo::SecureBlob& salt,
+                                  std::vector<brillo::SecureBlob*> gen_secrets);
 };
 
 }  // namespace cryptohome

@@ -118,18 +118,6 @@ class Crypto {
                                   const std::string& obfuscated_username,
                                   SerializedVaultKeyset* serialized) const;
 
-  // Derives secrets and other values from User Passkey.
-  //
-  // Parameters
-  //   passkey - The User Passkey, from which to derive the secrets.
-  //   salt - The salt used when deriving the secrests.
-  //   gen_secrets (OUT) - Vector containing resulting secrets.
-  //
-  // The blob in |gen_secrets| should be allocated by the caller.
-  bool DeriveSecretsSCrypt(const brillo::SecureBlob& passkey,
-                           const brillo::SecureBlob& salt,
-                           std::vector<brillo::SecureBlob*> gen_secrets) const;
-
   // Converts the passkey to authorization data for a TPM-backed crypto token.
   //
   // Parameters

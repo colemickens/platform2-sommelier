@@ -10,6 +10,7 @@
 
 #include <crypto/sha2.h>
 #include <limits>
+#include <malloc.h>
 #include <map>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -18,7 +19,6 @@
 #include <openssl/sha.h>
 #include <unistd.h>
 #include <utility>
-#include <malloc.h>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -237,44 +237,6 @@ Crypto::CryptoError Crypto::EnsureTpm(bool reload_key) const {
     }
   }
   return result;
-}
-
-bool Crypto::DeriveSecretsSCrypt(
-    const brillo::SecureBlob& passkey,
-    const brillo::SecureBlob& salt,
-    std::vector<brillo::SecureBlob*> gen_secrets) const {
-  // Scrypt parameters for deriving key material from UserPasskey.
-  // N = kUPScryptWorkFactor
-  // r = kUPScryptBlockSize
-  // p = kUPScryptParallelFactor
-  const uint64_t kUPScryptWorkFactor = (1 << 14);
-  const uint32_t kUPScryptBlockSize = 8;
-  const uint32_t kUPScryptParallelFactor = 1;
-
-  size_t generated_len = 0;
-  for (auto& secret : gen_secrets) {
-    generated_len += secret->size();
-  }
-
-  SecureBlob generated(generated_len);
-  if (crypto_scrypt(passkey.data(), passkey.size(), salt.data(), salt.size(),
-                    kUPScryptWorkFactor, kUPScryptBlockSize,
-                    kUPScryptParallelFactor, generated.data(),
-                    generated.size())) {
-    LOG(ERROR) << "Failed to derive scrypt keys from passkey.";
-    return false;
-  }
-  // Release unused heap space after crypto_scrypt.
-  // See crbug.com/899065 for details.
-  malloc_trim(0);
-
-  uint8_t* data = generated.data();
-  for (auto& value : gen_secrets) {
-    value->assign(data, data + value->size());
-    data += value->size();
-  }
-
-  return true;
 }
 
 bool Crypto::PasskeyToTokenAuthData(const brillo::SecureBlob& passkey,
@@ -564,7 +526,7 @@ bool Crypto::DecryptTpmBoundToPcr(const SecureBlob& vault_key,
                                   SecureBlob* vkk_iv,
                                   SecureBlob* vkk_key) const {
   SecureBlob pass_blob(kDefaultPassBlobSize);
-  if (!DeriveSecretsSCrypt(vault_key, salt, {&pass_blob, vkk_iv})) {
+  if (!CryptoLib::DeriveSecretsSCrypt(vault_key, salt, {&pass_blob, vkk_iv})) {
     return false;
   }
 
@@ -612,7 +574,8 @@ bool Crypto::DecryptTpmNotBoundToPcr(const SerializedVaultKeyset& serialized,
   bool scrypt_derived =
       serialized.flags() & SerializedVaultKeyset::SCRYPT_DERIVED;
   if (scrypt_derived) {
-    if (!DeriveSecretsSCrypt(vault_key, salt, {&aes_skey, &kdf_skey, vkk_iv})) {
+    if (!CryptoLib::DeriveSecretsSCrypt(vault_key, salt,
+                                        {&aes_skey, &kdf_skey, vkk_iv})) {
       PopulateError(error, CE_OTHER_FATAL);
       return false;
     }
@@ -758,7 +721,8 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
   SecureBlob kdf_skey(kDefaultAesKeySize);
   SecureBlob le_iv(kAesBlockSize);
   SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
-  if (!DeriveSecretsSCrypt(vault_key, salt, {&le_secret, &kdf_skey, &le_iv})) {
+  if (!CryptoLib::DeriveSecretsSCrypt(vault_key, salt,
+                                      {&le_secret, &kdf_skey, &le_iv})) {
     PopulateError(error, CE_OTHER_FATAL);
     return false;
   }
@@ -956,7 +920,7 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   const auto vkk_key = CryptoLib::CreateSecureRandomBlob(kDefaultAesKeySize);
   SecureBlob pass_blob(kDefaultPassBlobSize);
   SecureBlob vkk_iv(kAesBlockSize);
-  if (!DeriveSecretsSCrypt(key, salt, {&pass_blob, &vkk_iv}))
+  if (!CryptoLib::DeriveSecretsSCrypt(key, salt, {&pass_blob, &vkk_iv}))
     return false;
 
   SecureBlob tpm_key;
@@ -1025,7 +989,8 @@ bool Crypto::EncryptTPMNotBoundToPcr(const VaultKeyset& vault_keyset,
   SecureBlob kdf_skey(kDefaultAesKeySize);
   SecureBlob vkk_iv(kAesBlockSize);
 
-  if (!DeriveSecretsSCrypt(key, salt, { &aes_skey, &kdf_skey, &vkk_iv })) {
+  if (!CryptoLib::DeriveSecretsSCrypt(key, salt,
+                                      {&aes_skey, &kdf_skey, &vkk_iv})) {
     return false;
   }
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
@@ -1185,7 +1150,8 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   SecureBlob le_secret(kDefaultAesKeySize);
   SecureBlob kdf_skey(kDefaultAesKeySize);
   SecureBlob le_iv(kAesBlockSize);
-  if (!DeriveSecretsSCrypt(key, salt, {&le_secret, &kdf_skey, &le_iv})) {
+  if (!CryptoLib::DeriveSecretsSCrypt(key, salt,
+                                      {&le_secret, &kdf_skey, &le_iv})) {
     return false;
   }
 

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <malloc.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -20,6 +21,10 @@
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+extern "C" {
+#include <scrypt/crypto_scrypt.h>
+#include <scrypt/scryptenc.h>
+}
 
 #include "cryptohome/platform.h"
 
@@ -999,6 +1004,45 @@ bool CryptoLib::TestRocaVulnerable(const BIGNUM* rsa_modulus) {
 
   // Discrete logarithms exist for all small primes -> vulnerable with
   // negligible chance of false positive result.
+  return true;
+}
+
+// static
+bool CryptoLib::DeriveSecretsSCrypt(
+    const brillo::SecureBlob& passkey,
+    const brillo::SecureBlob& salt,
+    std::vector<brillo::SecureBlob*> gen_secrets) {
+  // Scrypt parameters for deriving key material from UserPasskey.
+  // N = kUPScryptWorkFactor
+  // r = kUPScryptBlockSize
+  // p = kUPScryptParallelFactor
+  const uint64_t kUPScryptWorkFactor = (1 << 14);
+  const uint32_t kUPScryptBlockSize = 8;
+  const uint32_t kUPScryptParallelFactor = 1;
+
+  size_t total_len = 0;
+  for (auto& secret : gen_secrets) {
+    total_len += secret->size();
+  }
+
+  SecureBlob generated(total_len);
+  if (crypto_scrypt(passkey.data(), passkey.size(), salt.data(), salt.size(),
+                    kUPScryptWorkFactor, kUPScryptBlockSize,
+                    kUPScryptParallelFactor, generated.data(),
+                    generated.size())) {
+    LOG(ERROR) << "Failed to derive scrypt keys from passkey.";
+    return false;
+  }
+  // Release unused heap space after crypto_scrypt.
+  // See crbug.com/899065 for details.
+  malloc_trim(0);
+
+  uint8_t* data = generated.data();
+  for (auto& value : gen_secrets) {
+    value->assign(data, data + value->size());
+    data += value->size();
+  }
+
   return true;
 }
 
