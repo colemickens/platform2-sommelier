@@ -24,6 +24,10 @@ using std::unique_ptr;
 
 namespace dlcservice {
 
+// Keep kDlcMetadataFilePingActive in sync with update_engine's.
+const char kDlcMetadataFilePingActive[] = "active";
+const char kDlcMetadataActiveValue[] = "1";
+
 namespace {
 
 // Permissions for DLC module directories.
@@ -119,6 +123,10 @@ class DlcManager::DlcManagerImpl {
       if (installed_.find(id) != installed_.end()) {
         installing_[id] = installed_[id];
       } else {
+        // Failure to create the metadata directory should not fail the install.
+        CreateMetadata(id, err_code, err_msg) &&
+            SetActive(id, err_code, err_msg);
+
         if (!Create(id, err_code, err_msg)) {
           string throwaway_err_code, throwaway_err_msg;
           CancelInstall(&throwaway_err_code, &throwaway_err_msg);
@@ -249,6 +257,61 @@ class DlcManager::DlcManagerImpl {
     return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
   }
 
+  bool CreateMetadata(const std::string& id,
+                      string* err_code,
+                      string* err_msg) {
+    const string& package = GetDlcPackage(id);
+    // Create the metadata directory.
+    FilePath metadata_path_local = utils::GetDlcPath(metadata_dir_, id);
+    FilePath metadata_package_path =
+        utils::GetDlcPackagePath(metadata_dir_, id, package);
+    // Create the DLC ID metadata directory with correct permissions if it
+    // doesn't exist.
+    if (!base::PathExists(metadata_path_local)) {
+      if (!CreateDirWithDlcPermissions(metadata_path_local)) {
+        *err_code = kErrorInternal;
+        *err_msg = "Failed to create the DLC ID metadata directory";
+        return false;
+      }
+    }
+    // Create the DLC package metadata directory with correct permissions if it
+    // doesn't exist.
+    if (!base::PathExists(metadata_package_path)) {
+      if (!CreateDirWithDlcPermissions(metadata_package_path)) {
+        *err_code = kErrorInternal;
+        *err_msg = "Failed to create the DLC package metadata directory";
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool SetActive(const string& id, string* err_code, string* err_msg) {
+    // Create the metadata directory if it doesn't exist.
+    if (!CreateMetadata(id, err_code, err_msg)) {
+      LOG(ERROR) << err_msg;
+      return false;
+    }
+    const string& package = GetDlcPackage(id);
+    FilePath active_metadata =
+        utils::GetDlcPackagePath(metadata_dir_, id, package)
+            .Append(dlcservice::kDlcMetadataFilePingActive);
+    base::ScopedFILE active_metadata_fp(base::OpenFile(active_metadata, "w"));
+    if (active_metadata_fp == nullptr) {
+      *err_code = kErrorInternal;
+      *err_msg = "Failed to open 'active' metadata file.";
+      return false;
+    }
+    // Set 'active' value to true.
+    if (!base::WriteFileDescriptor(fileno(active_metadata_fp.get()),
+                                   dlcservice::kDlcMetadataActiveValue, 1)) {
+      *err_code = kErrorInternal;
+      *err_msg = "Failed to write into active metadata file.";
+      return false;
+    }
+    return true;
+  }
+
   bool Create(const string& id, string* err_code, string* err_msg) {
     CHECK(err_code);
     CHECK(err_msg);
@@ -360,13 +423,19 @@ class DlcManager::DlcManagerImpl {
          /* Don't increment here */) {
       const string& installed_dlc_module_id = installed_dlc_module_itr->first;
       string& installed_dlc_module_root = installed_dlc_module_itr->second;
+      string err_code, err_msg;
+
+      // Set the DLCs to active.
+      if (!SetActive(installed_dlc_module_id, &err_code, &err_msg)) {
+        LOG(ERROR) << "Failed to set active metadata for DLC module: "
+                   << installed_dlc_module_id;
+      }
 
       if (base::PathExists(FilePath(installed_dlc_module_root))) {
         ++installed_dlc_module_itr;
         continue;
       }
 
-      string err_code, err_msg;
       string mount_point;
       if (!Mount(installed_dlc_module_id, &mount_point, &err_code, &err_msg)) {
         LOG(ERROR) << "Failed to mount DLC module during refresh: "

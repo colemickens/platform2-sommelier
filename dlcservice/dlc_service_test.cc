@@ -203,10 +203,17 @@ TEST_F(DlcServiceSkipLoadTest, StartUpMountSuccessTest) {
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>("/good/mount"), Return(true)));
 
+  base::FilePath metadata_path_active_first_dlc =
+      utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage)
+          .Append(kDlcMetadataFilePingActive);
+
+  EXPECT_FALSE(base::PathExists(metadata_path_active_first_dlc));
+
   dlc_service_->LoadDlcModuleImages();
 
-  // Startup with failure to mount.
+  // Startup successfully to mount.
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(base::PathExists(metadata_path_active_first_dlc));
 }
 
 TEST_F(DlcServiceSkipLoadTest, StartUpMountFailureTest) {
@@ -343,6 +350,14 @@ TEST_F(DlcServiceTest, InstallTest) {
       utils::GetDlcPackagePath(metadata_path_, kSecondDlc, kPackage);
   base::GetPosixFilePermissions(metadata_path, &permissions);
   EXPECT_EQ(permissions, expected_permissions);
+
+  std::string active_value;
+  base::FilePath metadata_path_active_second_dlc =
+      utils::GetDlcPackagePath(metadata_path_, kSecondDlc, kPackage)
+          .Append(kDlcMetadataFilePingActive);
+  EXPECT_TRUE(
+      base::ReadFileToString(metadata_path_active_second_dlc, &active_value));
+  EXPECT_STREQ(active_value.c_str(), kDlcMetadataActiveValue);
 }
 
 TEST_F(DlcServiceTest, InstallAlreadyInstalledValid) {
@@ -394,6 +409,14 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledAndDuplicatesFail) {
   EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
   EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
   EXPECT_FALSE(base::PathExists(metadata_path_.Append(kSecondDlc)));
+
+  std::string active_value;
+  base::FilePath metadata_path_active_first_dlc =
+      utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage)
+          .Append(kDlcMetadataFilePingActive);
+  EXPECT_TRUE(
+      base::ReadFileToString(metadata_path_active_first_dlc, &active_value));
+  EXPECT_STREQ(active_value.c_str(), kDlcMetadataActiveValue);
 }
 
 TEST_F(DlcServiceTest, InstallFailureCleansUp) {
