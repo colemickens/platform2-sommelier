@@ -115,6 +115,10 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
   datapath_ = std::make_unique<Datapath>(runner_.get());
 }
 
+Manager::~Manager() {
+  OnShutdown(nullptr);
+}
+
 int Manager::OnInit() {
   prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
 
@@ -206,6 +210,8 @@ void Manager::InitialSetup() {
 }
 
 void Manager::OnShutdown(int* exit_code) {
+  cros_svc_.reset();
+  arc_svc_.reset();
   device_mgr_.reset();
 }
 

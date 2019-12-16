@@ -32,7 +32,7 @@ class Manager final : public brillo::DBusDaemon {
   Manager(std::unique_ptr<HelperProcess> adb_proxy,
           std::unique_ptr<HelperProcess> mcast_proxy,
           std::unique_ptr<HelperProcess> nd_proxy);
-  ~Manager() = default;
+  ~Manager();
 
  protected:
   int OnInit() override;
