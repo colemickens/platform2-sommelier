@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/command_line.h>
@@ -19,6 +20,7 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
@@ -35,6 +37,7 @@ using base::TimeDelta;
 using base::TimeTicks;
 using chaps::ConvertStringToByteBuffer;
 using std::string;
+using std::unordered_map;
 using std::vector;
 using ScopedPKCS8_PRIV_KEY_INFO =
     crypto::ScopedOpenSSL<PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free>;
@@ -817,6 +820,43 @@ void SetAttribute(CK_SESSION_HANDLE session,
   LOG(INFO) << "Set attribute OK.";
 }
 
+void CopyObject(
+    CK_SESSION_HANDLE session,
+    string obj_type,
+    const vector<uint8_t>& object_id,
+    const unordered_map<CK_ATTRIBUTE_TYPE, vector<uint8_t>>& attr_map) {
+  CK_OBJECT_HANDLE object = GetObjectOrDie(session, object_id, obj_type);
+
+  vector<CK_ATTRIBUTE> copy_template{attr_map.size()};
+  // This will hold the buffer that is pointed to by copy_template's pValue.
+  vector<vector<uint8_t>> value_holder;
+  int i = 0;
+  for (const auto& itr : attr_map) {
+    CHECK(i < copy_template.size());
+    copy_template[i].type = itr.first;
+
+    // Copy the value buffer into value_holder.
+    value_holder.push_back(itr.second);
+    auto& buffer = value_holder[value_holder.size() - 1];
+
+    copy_template[i].pValue = reinterpret_cast<CK_VOID_PTR>(base::data(buffer));
+    copy_template[i].ulValueLen = buffer.size();
+    i++;
+  }
+
+  CK_OBJECT_HANDLE new_object;
+  CK_RV result = C_CopyObject(
+      session, object,
+      reinterpret_cast<CK_ATTRIBUTE_PTR>(base::data(copy_template)),
+      copy_template.size(), &new_object);
+  if (result != CKR_OK) {
+    LOG(ERROR) << "Failed to copy the attribute, error: "
+               << chaps::CK_RVToString(result);
+    exit(-1);
+  }
+  printf("Operation completed successfully.\n");
+}
+
 // Cleans up the session and library.
 void TearDown(CK_SESSION_HANDLE session, bool logout) {
   CK_RV result = CKR_OK;
@@ -866,6 +906,10 @@ void PrintHelp() {
       "  --set_attribute --id=<token id str> --type=<cert, privkey, pubkey> "
       "--attribute=<attribute> --data=<raw hex string>: Set the attribute for "
       "an object.\n");
+  printf(
+      "  --copy_object --id=<token id str> --attr_list=CKA_XXX:<hex "
+      "value>,CKA_YYY:<hex value>,... --type=<cert, privkey, pubkey>: Copy the "
+      "object specified by --id into a new object.\n");
 }
 
 void PrintTicks(base::TimeTicks* start_ticks) {
@@ -963,9 +1007,10 @@ int main(int argc, char** argv) {
   bool list_tokens = cl->HasSwitch("list_tokens");
   bool get_attribute = cl->HasSwitch("get_attribute");
   bool set_attribute = cl->HasSwitch("set_attribute");
+  bool copy = cl->HasSwitch("copy_object");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
       !inject && !list_objects && !import && !digest_test && !list_tokens &&
-      !get_attribute && !set_attribute) {
+      !get_attribute && !set_attribute && !copy) {
     PrintHelp();
     return 0;
   }
@@ -1096,6 +1141,53 @@ int main(int argc, char** argv) {
     }
     SetAttribute(session, object_id, attribute, cl->GetSwitchValueASCII("type"),
                  data_to_write);
+  }
+  if (copy) {
+    // Parse from and to object ID.
+    vector<uint8_t> object_id;
+    if (!base::HexStringToBytes(cl->GetSwitchValueASCII("id"), &object_id)) {
+      LOG(ERROR) << "Invalid arg, expecting hex string for --id (like b18aa8).";
+      exit(-1);
+    }
+
+    // Parse the --attr_list switch
+    vector<string> raw_attr_list =
+        base::SplitString(cl->GetSwitchValueASCII("attr_list"), ",",
+                          base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    unordered_map<CK_ATTRIBUTE_TYPE, vector<uint8_t>> attr_map;
+    for (const string& attr_pair : raw_attr_list) {
+      vector<string> splitted_attr = base::SplitString(
+          attr_pair, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      if (splitted_attr.size() != 2) {
+        LOG(ERROR)
+            << "Invalid attribute pair, expected <attr>:<hex value>, got: "
+            << attr_pair;
+        exit(-1);
+      }
+
+      // Parse the attribute.
+      CK_ATTRIBUTE_TYPE current_attr;
+      if (!chaps::StringToAttribute(splitted_attr[0], &current_attr)) {
+        LOG(ERROR) << "Unable to parse attribute: " << splitted_attr[0];
+        exit(-1);
+      }
+
+      // Parse the value.
+      vector<uint8_t> attr_value;
+      if (!base::HexStringToBytes(splitted_attr[1], &attr_value)) {
+        LOG(ERROR) << "Invalid attribute value, must be in hex: "
+                   << splitted_attr[1];
+        exit(-1);
+      }
+
+      // Insert it into the attribute map.
+      if (attr_map.count(current_attr) != 0) {
+        LOG(ERROR) << "Duplicate attribute: " << splitted_attr[0];
+        exit(-1);
+      }
+      attr_map[current_attr] = attr_value;
+    }
+    CopyObject(session, cl->GetSwitchValueASCII("type"), object_id, attr_map);
   }
   if (cleanup)
     DeleteAllTestKeys(session);
