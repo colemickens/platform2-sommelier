@@ -8,12 +8,11 @@
 
 from __future__ import print_function
 
+import distutils.version  # pylint: disable=import-error,no-name-in-module
 import json
 import os
 import re
 import zipfile
-
-from distutils.version import LooseVersion
 
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
@@ -27,6 +26,7 @@ COMPONENT_ZIP = 'files.zip'
 MANIFEST_FILE_NAME = 'manifest.json'
 MANIFEST_VERSION_FIELD = u'version'
 MANIFEST_PACKAGE_VERSION_FIELD = u'package_version'
+
 
 def GetParser():
   parser = commandline.ArgumentParser(description=__doc__)
@@ -67,11 +67,12 @@ def ParseVersion(version_str):
   Returns:
     [int]: a list with version components.
   """
-  pattern = re.compile("[0-9]+(\\.[0-9]+){2,3}")
+  pattern = re.compile(r'[0-9]+(\.[0-9]+){2,3}')
   m = pattern.match(version_str)
   if m:
     return [int(x) for x in m.group().split('.')]
   return []
+
 
 def CheckGsBucket(gsbucket):
   """Return list of folders in a gs bucket.
@@ -99,7 +100,7 @@ def GetCurrentVersion(paths, platform):
     str: current component version.
     str: gs path for current component version.
   """
-  current_version = LooseVersion('0.0.0.0')
+  current_version = distutils.version.LooseVersion('0.0.0.0')
   current_version_path = None
 
   for version_path in paths:
@@ -111,7 +112,7 @@ def GetCurrentVersion(paths, platform):
       # Path does not contain a component version.
       continue
 
-    v = LooseVersion(version)
+    v = distutils.version.LooseVersion(version)
     if v > current_version:
       # Skip the version if the path for the target platform does not exist.
       ctx = gs.GSContext()
@@ -141,17 +142,18 @@ def DecideVersion(version, current_version):
   """
   version = ParseVersion(version)
   current_version = ParseVersion(current_version)
-  if (len(version) != 3 and len(version) != 4) or \
-     (len(current_version) != 3 and len(current_version) != 4):
+  if ((len(version) != 3 and len(version) != 4) or
+      (len(current_version) != 3 and len(current_version) != 4)):
     logger.fatal('version is in wrong format.')
     return None
 
-  if LooseVersion('.'.join([str(x) for x in version[0:3]])) < \
-     LooseVersion('.'.join([str(x) for x in current_version[0:3]])):
+  LooseVersion = distutils.version.LooseVersion
+  if (LooseVersion('.'.join(str(x) for x in version[0:3])) <
+      LooseVersion('.'.join(str(x) for x in current_version[0:3]))):
     logger.fatal('component being built is outdated.')
     return None
-  if version[0] == current_version[0] and version[1] == current_version[1] and \
-     version[2] == current_version[2]:
+  if (version[0] == current_version[0] and version[1] == current_version[1] and
+      version[2] == current_version[2]):
     # Rev bug fix on top of current_version.
     version = current_version
     if len(version) < 4:
@@ -176,11 +178,11 @@ def CheckValidMetadata(metadata):
   Returns:
     bool: if metadata is valid.
   """
-  if not "package_name" in metadata or \
-      not "files" in metadata or \
-      not "gsbucket" in metadata or \
-      not "pkgpath" in metadata or \
-      not "manifest" in metadata:
+  if (not 'package_name' in metadata or
+      not 'files' in metadata or
+      not 'gsbucket' in metadata or
+      not 'pkgpath' in metadata or
+      not 'manifest' in metadata):
     cros_build_lib.Die('attribute is missing.')
     return False
   else:
@@ -289,6 +291,7 @@ def CreateComponent(manifest_path, version, package_name, package_version,
         UploadComponent(os.path.join(tempdir, data[MANIFEST_VERSION_FIELD]),
                         gsbucket)
 
+
 def GetCurrentPackageVersion(current_version_path, platform):
   """Get package version of current component.
 
@@ -314,6 +317,7 @@ def GetCurrentPackageVersion(current_version_path, platform):
           if MANIFEST_PACKAGE_VERSION_FIELD in manifest:
             return manifest[MANIFEST_PACKAGE_VERSION_FIELD]
   return '0.0.0.0'
+
 
 def FixPackageVersion(version):
   """Fix version to the format of X.Y.Z-rN
@@ -342,6 +346,7 @@ def FixPackageVersion(version):
     version += m.group(4)
   return version
 
+
 def GetPackageVersion(folder_name, package_name):
   """Get the version of the package.
 
@@ -360,6 +365,7 @@ def GetPackageVersion(folder_name, package_name):
   if m is not None and m.group(1) == package_name:
     return FixPackageVersion(folder_name[len(package_name)+1:])
   return None
+
 
 def BuildComponent(component_to_build, components, board, platform,
                    gsbucket_override=None, upload=False):
@@ -384,8 +390,8 @@ def BuildComponent(component_to_build, components, board, platform,
           cros_build_lib.Die('Invalid platform')
         logger.info('build component:%s', name)
         # Check if component files are built successfully.
-        files = [os.path.join(cros_build_lib.GetSysroot(), 'build', board, x) \
-                 for x in metadata["files"]]
+        files = [os.path.join(cros_build_lib.GetSysroot(), 'build', board, x)
+                 for x in metadata['files']]
         if not CheckComponentFilesExistence(files):
           cros_build_lib.Die('component files are missing.')
 
@@ -405,9 +411,9 @@ def BuildComponent(component_to_build, components, board, platform,
                                                            platform)
 
         # Check component (gentoo package) version.
-        package_name = metadata["package_name"]
+        package_name = metadata['package_name']
         for f in os.listdir(os.path.join(cros_build_lib.GetSysroot(), 'build',
-                                         board, metadata["pkgpath"])):
+                                         board, metadata['pkgpath'])):
           package_version = GetPackageVersion(f, package_name)
           if package_version is not None:
             logger.info('current package version: %s', package_version)
@@ -417,7 +423,7 @@ def BuildComponent(component_to_build, components, board, platform,
             logger.info('next component version on Omaha gs: %s', version)
 
             manifest_path = os.path.join(cros_build_lib.GetSysroot(), 'build',
-                                         board, metadata["manifest"])
+                                         board, metadata['manifest'])
 
             CreateComponent(manifest_path, version, package_name,
                             package_version, platform, files, upload, gsbucket)
@@ -447,6 +453,7 @@ def main(argv):
                  platform=opts.platform,
                  gsbucket_override=opts.gsbucket,
                  upload=opts.upload)
+
 
 if __name__ == '__main__':
   commandline.ScriptWrapperMain(lambda _: main)
