@@ -213,6 +213,10 @@ bool TPMUtilityImpl::IsTPMAvailable() {
   return is_enabled_;
 }
 
+TPMVersion TPMUtilityImpl::GetTPMVersion() {
+  return TPMVersion::TPM1_2;
+}
+
 bool TPMUtilityImpl::InitSRK() {
   if (!is_initialized_)
     return false;

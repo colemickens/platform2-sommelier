@@ -370,6 +370,10 @@ bool TPM2UtilityImpl::IsTPMAvailable() {
   return is_enabled_;
 }
 
+TPMVersion TPM2UtilityImpl::GetTPMVersion() {
+  return TPMVersion::TPM2_0;
+}
+
 bool TPM2UtilityImpl::Authenticate(int slot_id,
                                    const SecureBlob& auth_data,
                                    const std::string& auth_key_blob,

@@ -23,6 +23,7 @@ class TPMUtilityMock : public TPMUtility {
   MOCK_METHOD0(MaxRSAKeyBits, size_t());
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD0(IsTPMAvailable, bool());
+  MOCK_METHOD0(GetTPMVersion, TPMVersion());
   MOCK_METHOD5(Authenticate,
                bool(int,
                     const brillo::SecureBlob&,

@@ -47,6 +47,7 @@ class TPM2UtilityImpl : public TPMUtility {
   size_t MaxRSAKeyBits() override { return kMaxModulusSize * 8; }
   bool Init() override;
   bool IsTPMAvailable() override;
+  TPMVersion GetTPMVersion() override;
   bool Authenticate(int slot_id,
                     const brillo::SecureBlob& auth_data,
                     const std::string& auth_key_blob,

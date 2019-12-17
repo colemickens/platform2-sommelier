@@ -13,6 +13,12 @@
 
 namespace chaps {
 
+enum class TPMVersion {
+  TPM1_2,
+  TPM2_0,
+  TPM_VERSION_COUNT,
+};
+
 // TPMUtility is a high-level interface to TPM services. In practice, only a
 // single instance of this class is necessary to provide TPM services across
 // multiple logical tokens and sessions.
@@ -33,6 +39,9 @@ class TPMUtility {
 
   // Returns true if a TPM exists and is enabled.
   virtual bool IsTPMAvailable() = 0;
+
+  // Return the TPM version, as in TPMVersion::TPM1_2 or TPMVersion::TPM2_0.
+  virtual TPMVersion GetTPMVersion() = 0;
 
   // Authenticates a user by decrypting the user's master key with the user's
   // authorization key.

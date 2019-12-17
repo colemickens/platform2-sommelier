@@ -182,4 +182,14 @@ TEST_F(TestTPMUtility, BadInput) {
   tpm_->UnloadKeysForSlot(0);
 }
 
+TEST_F(TestTPMUtility, TPMVersionCheck) {
+  TPMVersion version;
+#if USE_TPM2
+  version = TPMVersion::TPM2_0;
+#else
+  version = TPMVersion::TPM1_2;
+#endif
+  EXPECT_EQ(tpm_->GetTPMVersion(), version);
+}
+
 }  // namespace chaps

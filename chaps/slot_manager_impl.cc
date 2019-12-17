@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -66,10 +67,9 @@ constexpr CK_FLAGS kCommonECParameters =
     CKF_EC_F_P | CKF_EC_F_2M | CKF_EC_NAMEDCURVE | CKF_EC_ECPARAMETERS |
     CKF_EC_UNCOMPRESS;
 
-constexpr struct MechanismInfo {
-  CK_MECHANISM_TYPE type;
-  CK_MECHANISM_INFO info;
-} kDefaultMechanismInfo[] = {
+typedef std::pair<CK_MECHANISM_TYPE, CK_MECHANISM_INFO> MechanismInfoPair;
+
+constexpr MechanismInfoPair kDefaultMechanismInfo[] = {
     {CKM_RSA_PKCS_KEY_PAIR_GEN, {512, 2048, CKF_GENERATE_KEY_PAIR | CKF_HW}},
     {CKM_RSA_PKCS,
      {512, 2048, CKF_HW | CKF_ENCRYPT | CKF_DECRYPT | CKF_SIGN | CKF_VERIFY}},
@@ -78,12 +78,6 @@ constexpr struct MechanismInfo {
     {CKM_SHA256_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
     {CKM_SHA384_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
     {CKM_SHA512_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-
-    {CKM_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-    {CKM_SHA1_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-    {CKM_SHA256_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-    {CKM_SHA384_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-    {CKM_SHA512_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
 
     {CKM_MD5, {0, 0, CKF_DIGEST}},
     {CKM_SHA_1, {0, 0, CKF_DIGEST}},
@@ -113,7 +107,17 @@ constexpr struct MechanismInfo {
     {CKM_AES_ECB, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
     {CKM_AES_CBC, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
     {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
+};
 
+constexpr MechanismInfoPair kTPM2OnlyMechanismInfo[] = {
+    // RSA PSS is TPM2 only.
+    {CKM_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA1_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA256_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA384_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA512_RSA_PKCS_PSS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+
+    // Elliptic Curve related mechanisms are TPM2 only.
     {CKM_EC_KEY_PAIR_GEN,
      {256, 256, CKF_GENERATE_KEY_PAIR | CKF_HW | kCommonECParameters}},
     {CKM_ECDSA_SHA1,
@@ -359,10 +363,14 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
   CHECK(factory_);
   CHECK(tpm_utility_);
 
-  // Populate mechanism info.  This will be the same for all TPM-backed tokens.
-  for (size_t i = 0; i < arraysize(kDefaultMechanismInfo); ++i) {
-    mechanism_info_[kDefaultMechanismInfo[i].type] =
-        kDefaultMechanismInfo[i].info;
+  // Populate mechanism info for mechanisms supported by all TPM versions.
+  mechanism_info_.insert(std::begin(kDefaultMechanismInfo),
+                         std::end(kDefaultMechanismInfo));
+  if (tpm_utility_->IsTPMAvailable() &&
+      tpm_utility_->GetTPMVersion() == TPMVersion::TPM2_0) {
+    // Populate mechanism info for mechanisms supported by TPM2.0 only.
+    mechanism_info_.insert(std::begin(kTPM2OnlyMechanismInfo),
+                           std::end(kTPM2OnlyMechanismInfo));
   }
 
   // Add default isolate.
