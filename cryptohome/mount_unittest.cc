@@ -618,9 +618,10 @@ TEST_P(MountTest, BadInitTest) {
                     Return(true)));
   EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
     .WillOnce(DoAll(SetArgPointee<1>(1002), Return(true)));
-  EXPECT_FALSE(mount_->Init(&platform_, &crypto_,
-                            user_timestamp_cache_.get(),
-                            base::BindRepeating(&base::DoNothing)));
+  EXPECT_FALSE(
+      mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get(),
+                   // TODO(crbug.com/909719): replace with base::DoNothing;
+                   base::BindRepeating([]() {})));
   ASSERT_FALSE(mount_->AreValid(credentials));
 }
 
@@ -853,9 +854,9 @@ class ChapsDirectoryTest : public ::testing::Test {
         mount_(new Mount()),
         user_timestamp_cache_(new UserOldestActivityTimestampCache()) {
     crypto_.set_platform(&platform_);
-    mount_->Init(&platform_, &crypto_,
-                 user_timestamp_cache_.get(),
-                 base::BindRepeating(&base::DoNothing));
+    mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get(),
+                 // TODO(crbug.com/909719): replace with base::DoNothing;
+                 base::BindRepeating([]() {}));
     mount_->chaps_user_ = kChapsUID;
     mount_->default_access_group_ = kSharedGID;
     // By default, set stats to the expected values.
