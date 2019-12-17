@@ -26,6 +26,10 @@ extern const unsigned int kAesBlockSize;
 extern const unsigned int kAesGcmTagSize;
 extern const unsigned int kAesGcmIVSize;
 extern const unsigned int kAesGcm256KeySize;
+extern const unsigned int kDefaultAesKeySize;
+extern const unsigned int kDefaultLegacyPasswordRounds;
+extern const unsigned int kDefaultPassBlobSize;
+extern const int kTpmDecryptMaxRetries;
 
 class CryptoLib {
  public:
