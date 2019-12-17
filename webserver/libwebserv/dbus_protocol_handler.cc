@@ -150,8 +150,8 @@ bool DBusProtocolHandler::RemoveHandler(int handler_id) {
   for (const auto& pair : p->second.remote_handler_ids) {
     pair.first->RemoveRequestHandlerAsync(
         pair.second,
-        base::Bind(&base::DoNothing),
-        base::Bind(&IgnoreDBusError));
+        // TODO(crbug.com/909719): replace with base::DoNothing;
+        base::Bind([]() {}), base::Bind(&IgnoreDBusError));
   }
 
   request_handlers_.erase(p);

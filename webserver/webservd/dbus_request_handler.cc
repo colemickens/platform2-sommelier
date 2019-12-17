@@ -104,7 +104,8 @@ void DBusRequestHandler::HandleRequest(Request* request,
   base::ScopedFD body_data_pipe(request->GetBodyDataFileDescriptor());
   handler_proxy_->ProcessRequestAsync(
       request_id, headers, params, files, body_data_pipe.get(),
-      base::Bind(&base::DoNothing), error_callback, kDbusTimeoutInMsec);
+      // TODO(crbug.com/909719): replace with base::DoNothing;
+      base::Bind([]() {}), error_callback, kDbusTimeoutInMsec);
 }
 
 }  // namespace webservd
