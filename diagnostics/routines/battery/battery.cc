@@ -4,6 +4,7 @@
 
 #include "diagnostics/routines/battery/battery.h"
 
+#include <cstdint>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -16,9 +17,10 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
 // Conversion factor from uAh to mAh.
-constexpr int kuAhTomAhDivisor = 1000;
+constexpr uint32_t kuAhTomAhDivisor = 1000;
 
-int CalculateProgressPercent(mojo_ipc::DiagnosticRoutineStatusEnum status) {
+uint32_t CalculateProgressPercent(
+    mojo_ipc::DiagnosticRoutineStatusEnum status) {
   // Since the battery test cannot be cancelled, the progress percent can only
   // be 0 or 100.
   if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
@@ -105,16 +107,16 @@ mojo_ipc::DiagnosticRoutineStatusEnum BatteryRoutine::RunBatteryRoutine() {
 
   base::TrimWhitespaceASCII(charge_full_design_contents, base::TRIM_TRAILING,
                             &charge_full_design_contents);
-  int charge_full_design_uah;
-  if (!base::StringToInt(charge_full_design_contents,
-                         &charge_full_design_uah)) {
+  uint32_t charge_full_design_uah;
+  if (!base::StringToUint(charge_full_design_contents,
+                          &charge_full_design_uah)) {
     status_message_ = kBatteryFailedParsingChargeFullDesignMessage;
     return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
   }
 
   // Conversion is necessary because the inputs are given in mAh, whereas the
   // design capacity is reported in uAh.
-  int charge_full_design_mah = charge_full_design_uah / kuAhTomAhDivisor;
+  uint32_t charge_full_design_mah = charge_full_design_uah / kuAhTomAhDivisor;
   if (!(charge_full_design_mah >= low_mah_) ||
       !(charge_full_design_mah <= high_mah_)) {
     status_message_ = kBatteryRoutineFailedMessage;

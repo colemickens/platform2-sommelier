@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -18,10 +19,10 @@ namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
-constexpr int kLowmAh = 1000;
-constexpr int kHighmAh = 10000;
-constexpr int kGoodFileContents = 8948000;
-constexpr int kBadFileContents = 10;
+constexpr uint32_t kLowmAh = 1000;
+constexpr uint32_t kHighmAh = 10000;
+constexpr uint32_t kGoodFileContents = 8948000;
+constexpr uint32_t kBadFileContents = 10;
 
 std::string FakeGoodFileContents() {
   return std::to_string(kGoodFileContents);
