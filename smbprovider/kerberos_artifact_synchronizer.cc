@@ -56,11 +56,11 @@ void KerberosArtifactSynchronizer::OnGetFilesResponse(
     bool success,
     const std::string& krb5_ccache,
     const std::string& krb5_conf) {
+  DCHECK(callback);
+
   if (!success) {
     LOG(ERROR) << "KerberosArtifactSynchronizer failed to get Kerberos files";
-    if (callback) {
-      std::move(callback).Run(false /* setup_success */);
-    }
+    std::move(callback).Run(false /* setup_success */);
     return;
   }
 
@@ -70,22 +70,27 @@ void KerberosArtifactSynchronizer::OnGetFilesResponse(
 void KerberosArtifactSynchronizer::WriteFiles(const std::string& krb5_ccache,
                                               const std::string& krb5_conf,
                                               SetupKerberosCallback callback) {
+  DCHECK(callback);
+
   bool success = WriteFile(krb5_conf_path_, krb5_conf) &&
                  WriteFile(krb5_ccache_path_, krb5_ccache);
 
-  if (!allow_credentials_update_ && is_kerberos_setup_) {
-    // Signal is already setup so return regardless of result but log failure.
+  if (is_kerberos_setup_) {
+    // Signal is already setup.
     if (!success) {
       LOG(ERROR) << "KerberosArtifactSynchronizer: failed to write updated "
                     "Kerberos Files";
+      std::move(callback).Run(false /* setup_success */);
+      return;
     }
-    if (callback) {
-      // If a callback was passed, this is rare case where the browser restarted
-      // and SetupKerberos() was called twice in quick succession. If
-      // |is_kerberos_setup_| is true, then the first call to SetupKerberos()
-      // succeeded, so treat this as a success.
-      std::move(callback).Run(true /* success */);
-    }
+    // If credentials update is allowed, this happens if we call setup more
+    // than once to update credentials or GetFiles is triggered by
+    // KerberosFilesChanged signal. Otherwise, if credentials update is not
+    // allowed, this is rare case where the browser restarted and
+    // SetupKerberos() was called twice in quick succession. If
+    // |is_kerberos_setup_| is true, then the first call to SetupKerberos()
+    // succeeded, so treat this as a success.
+    std::move(callback).Run(true /* setup_success */);
     return;
   }
 
@@ -93,21 +98,12 @@ void KerberosArtifactSynchronizer::WriteFiles(const std::string& krb5_ccache,
     // Failed to write the Kerberos files so return error to caller.
     LOG(ERROR) << "KerberosArtifactSynchronizer: failed to write initial "
                   "Kerberos Files";
-    DCHECK(allow_credentials_update_ || !is_kerberos_setup_);
-    DCHECK(callback);
     std::move(callback).Run(false /* setup_success */);
     return;
   }
 
-  if (!is_kerberos_setup_) {
-    // Sets is_kerberos_setup_ to true on successful signal connection.
-    ConnectToKerberosFilesChangedSignal(std::move(callback));
-  } else {
-    DCHECK(allow_credentials_update_);
-    // This happens if we call setup more than once to update credentials.
-    // Signal was already connected, so the setup is complete.
-    std::move(callback).Run(true /* setup_success */);
-  }
+  // Sets is_kerberos_setup_ to true on successful signal connection.
+  ConnectToKerberosFilesChangedSignal(std::move(callback));
 }
 
 void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
@@ -124,7 +120,12 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
     dbus::Signal* signal) {
   DCHECK(signal);
 
-  GetFiles({});
+  // Call GetFiles with empty callback, since after files are retrieved and
+  // stored there is no further action needed. Normally we would use
+  // base::DoNothing, but it's not working with a parameter.
+  // TODO(tomdobro): switch to base::DoNothing once libchrome is updated.
+  auto files_stored_callback = [](bool /* setup_success */) {};
+  GetFiles(base::Bind(files_stored_callback));
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(

@@ -76,8 +76,9 @@ void KerberosKerberosArtifactClient::HandleGetUserKeberosFiles(
   kerberos::GetKerberosFilesResponse response_proto;
   bool success =
       (GetErrorAndProto(response, &response_proto) == kerberos::ERROR_NONE);
-  if (success && (!response_proto.files().has_krb5cc() ||
-                  !response_proto.files().has_krb5conf())) {
+  if (success &&
+      (!response_proto.has_files() || !response_proto.files().has_krb5cc() ||
+       !response_proto.files().has_krb5conf())) {
     DLOG(ERROR) << "KerberosKerberosArtifactClient: Kerberos files are empty.";
     success = false;
   }

@@ -129,6 +129,32 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesRunsOnSignalFire) {
   EXPECT_EQ(1, setup_callback_count);
 }
 
+// Synchronizer calls GetFiles an additional time when the signal fires
+// with credentials update allowed.
+TEST_F(KerberosArtifactSynchronizerTest,
+       GetFilesRunsOnSignalFireUpdateAllowed) {
+  Initialize(true /* allow_credentials_update */);
+
+  const std::string user = "test user";
+  const std::string krb5cc = "test creds";
+  const std::string krb5conf = "test conf";
+
+  authpolicy::KerberosFiles kerberos_files =
+      CreateKerberosFilesProto(krb5cc, krb5conf);
+  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
+  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  int setup_callback_count = 0;
+  synchronizer_->SetupKerberos(
+      user, base::Bind(&IncrementInt, &setup_callback_count, true));
+
+  EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
+
+  fake_artifact_client_->FireSignal();
+
+  EXPECT_EQ(2, fake_artifact_client_->GetFilesMethodCallCount());
+  EXPECT_EQ(1, setup_callback_count);
+}
+
 // Synchronizer calls GetFiles an additional time when the signal fires, but
 // GetUserKerberosFiles() fails.
 TEST_F(KerberosArtifactSynchronizerTest,
