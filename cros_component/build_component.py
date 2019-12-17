@@ -305,10 +305,10 @@ def GetCurrentPackageVersion(current_version_path, platform):
     if ctx.Exists(src):
       with osutils.TempDir(prefix='component_') as tempdir:
         ctx.Copy(src, tempdir)
-        cros_build_lib.RunCommand(
+        cros_build_lib.run(
             ['unzip', '-o', '-d',
              tempdir, os.path.join(tempdir, COMPONENT_ZIP)],
-            redirect_stdout=True, redirect_stderr=True)
+            stdout=True, stderr=True)
         with open(os.path.join(tempdir, MANIFEST_FILE_NAME)) as f:
           manifest = json.load(f)
           if MANIFEST_PACKAGE_VERSION_FIELD in manifest:
