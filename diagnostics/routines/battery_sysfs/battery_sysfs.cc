@@ -4,7 +4,6 @@
 
 #include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
 
-#include <algorithm>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -19,7 +18,8 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
 
-int CalculateProgressPercent(mojo_ipc::DiagnosticRoutineStatusEnum status) {
+uint32_t CalculateProgressPercent(
+    mojo_ipc::DiagnosticRoutineStatusEnum status) {
   // Since the battery_sysfs routine cannot be cancelled, the progress percent
   // can only be 0 or 100.
   if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
@@ -53,7 +53,8 @@ bool TryReadFileToString(const base::FilePath& absolute_file_path,
   return true;
 }
 
-bool TryReadFileToInt(const base::FilePath& absolute_file_path, int* output) {
+bool TryReadFileToUint(const base::FilePath& absolute_file_path,
+                       uint32_t* output) {
   DCHECK(output);
 
   std::string file_contents;
@@ -61,7 +62,7 @@ bool TryReadFileToInt(const base::FilePath& absolute_file_path, int* output) {
     return false;
 
   base::TrimWhitespaceASCII(file_contents, base::TRIM_TRAILING, &file_contents);
-  if (!base::StringToInt(file_contents, output))
+  if (!base::StringToUint(file_contents, output))
     return false;
 
   return true;
@@ -82,6 +83,8 @@ const char kBatterySysfsStatusPath[] = "status";
 const char kBatterySysfsVoltageNowPath[] = "voltage_now";
 const char kBatterySysfsChargeNowPath[] = "charge_now";
 
+const char kBatterySysfsInvalidParametersMessage[] =
+    "Invalid battery sysfs routine parameters.";
 const char kBatterySysfsFailedCalculatingWearPercentageMessage[] =
     "Could not get wear percentage.";
 const char kBatterySysfsExcessiveWearMessage[] = "Battery is over-worn.";
@@ -163,8 +166,8 @@ bool BatterySysfsRoutine::RunBatterySysfsRoutine() {
   return true;
 }
 
-bool BatterySysfsRoutine::ReadBatteryCapacities(int* capacity,
-                                                int* design_capacity) {
+bool BatterySysfsRoutine::ReadBatteryCapacities(uint32_t* capacity,
+                                                uint32_t* design_capacity) {
   DCHECK(capacity);
   DCHECK(design_capacity);
 
@@ -174,8 +177,8 @@ bool BatterySysfsRoutine::ReadBatteryCapacities(int* capacity,
   base::FilePath absolute_charge_full_design_path(
       root_dir_.AppendASCII(kBatterySysfsPath)
           .AppendASCII(kBatterySysfsChargeFullDesignPath));
-  if (!TryReadFileToInt(absolute_charge_full_path, capacity) ||
-      !TryReadFileToInt(absolute_charge_full_design_path, design_capacity)) {
+  if (!TryReadFileToUint(absolute_charge_full_path, capacity) ||
+      !TryReadFileToUint(absolute_charge_full_design_path, design_capacity)) {
     // No charge values, check for energy-reporting batteries.
     base::FilePath absolute_energy_full_path(
         root_dir_.AppendASCII(kBatterySysfsPath)
@@ -183,8 +186,8 @@ bool BatterySysfsRoutine::ReadBatteryCapacities(int* capacity,
     base::FilePath absolute_energy_full_design_path(
         root_dir_.AppendASCII(kBatterySysfsPath)
             .AppendASCII(kBatterySysfsEnergyFullDesignPath));
-    if (!TryReadFileToInt(absolute_energy_full_path, capacity) ||
-        !TryReadFileToInt(absolute_energy_full_design_path, design_capacity)) {
+    if (!TryReadFileToUint(absolute_energy_full_path, capacity) ||
+        !TryReadFileToUint(absolute_energy_full_design_path, design_capacity)) {
       return false;
     }
   }
@@ -192,21 +195,28 @@ bool BatterySysfsRoutine::ReadBatteryCapacities(int* capacity,
   return true;
 }
 
-bool BatterySysfsRoutine::ReadCycleCount(int* cycle_count) {
+bool BatterySysfsRoutine::ReadCycleCount(uint32_t* cycle_count) {
   DCHECK(cycle_count);
 
   base::FilePath absolute_cycle_count_path(
       root_dir_.AppendASCII(kBatterySysfsPath)
           .AppendASCII(kBatterySysfsCycleCountPath));
-  if (!TryReadFileToInt(absolute_cycle_count_path, cycle_count))
+  if (!TryReadFileToUint(absolute_cycle_count_path, cycle_count))
     return false;
 
   return true;
 }
 
 bool BatterySysfsRoutine::TestWearPercentage() {
-  int capacity;
-  int design_capacity;
+  uint32_t capacity;
+  uint32_t design_capacity;
+
+  if (percent_battery_wear_allowed_ > 100) {
+    status_message_ = kBatterySysfsInvalidParametersMessage;
+    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    return false;
+  }
+
   if (!ReadBatteryCapacities(&capacity, &design_capacity) || capacity < 0 ||
       design_capacity < 0) {
     status_message_ = kBatterySysfsFailedCalculatingWearPercentageMessage;
@@ -217,7 +227,8 @@ bool BatterySysfsRoutine::TestWearPercentage() {
   // Cap the wear percentage at 0. There are cases where the capacity can be
   // higher than the design capacity, due to variance in batteries or vendors
   // setting conservative design capacities.
-  int wear_percentage = std::max(0, 100 - capacity * 100 / design_capacity);
+  uint32_t wear_percentage =
+      capacity > design_capacity ? 0 : 100 - capacity * 100 / design_capacity;
 
   battery_sysfs_log_["Wear Percentage"] = std::to_string(wear_percentage);
   if (wear_percentage > percent_battery_wear_allowed_) {
@@ -230,7 +241,7 @@ bool BatterySysfsRoutine::TestWearPercentage() {
 }
 
 bool BatterySysfsRoutine::TestCycleCount() {
-  int cycle_count;
+  uint32_t cycle_count;
   if (!ReadCycleCount(&cycle_count) || cycle_count < 0) {
     status_message_ = kBatterySysfsFailedReadingCycleCountMessage;
     status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kError;

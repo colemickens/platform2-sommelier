@@ -32,6 +32,7 @@ extern const char kBatterySysfsVoltageNowPath[];
 extern const char kBatterySysfsChargeNowPath[];
 
 // Status messages for the BatterySysfs routine when in various states.
+extern const char kBatterySysfsInvalidParametersMessage[];
 extern const char kBatterySysfsFailedCalculatingWearPercentageMessage[];
 extern const char kBatterySysfsExcessiveWearMessage[];
 extern const char kBatterySysfsFailedReadingCycleCountMessage[];
@@ -63,8 +64,8 @@ class BatterySysfsRoutine final : public DiagnosticRoutine {
 
  private:
   bool RunBatterySysfsRoutine();
-  bool ReadBatteryCapacities(int* capacity, int* design_capacity);
-  bool ReadCycleCount(int* cycle_count);
+  bool ReadBatteryCapacities(uint32_t* capacity, uint32_t* design_capacity);
+  bool ReadCycleCount(uint32_t* cycle_count);
   bool TestWearPercentage();
   bool TestCycleCount();
 
