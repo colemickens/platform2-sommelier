@@ -186,6 +186,13 @@ void Manager::InitialSetup() {
   LOG(INFO) << "DBus service interface ready";
 
   auto& runner = datapath_->runner();
+  // Limit local port range: Android owns 47104-61000.
+  // TODO(garrick): The original history behind this tweak is gone. Some
+  // investigation is needed to see if it is still applicable.
+  if (runner.SysctlWrite("net.ipv4.ip_local_port_range", "32768 47103") != 0) {
+    LOG(ERROR) << "Failed to limit local port range. Some Android features or"
+               << " apps may not work correctly.";
+  }
   // Enable IPv6 packet forarding
   if (runner.SysctlWrite("net.ipv6.conf.all.forwarding", "1") != 0) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
@@ -213,6 +220,14 @@ void Manager::OnShutdown(int* exit_code) {
   cros_svc_.reset();
   arc_svc_.reset();
   device_mgr_.reset();
+
+  // Restore original local port range.
+  // TODO(garrick): The original history behind this tweak is gone. Some
+  // investigation is needed to see if it is still applicable.
+  if (datapath_->runner().SysctlWrite("net.ipv4.ip_local_port_range",
+                                      "32768 61000") != 0) {
+    LOG(ERROR) << "Failed to restore local port range";
+  }
 }
 
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
