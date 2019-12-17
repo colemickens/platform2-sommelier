@@ -56,8 +56,10 @@ constexpr size_t kMaxDumpRecords = 100;
 // Maximum buffer size of pstore records reads. PSTORE_DEFAULT_KMSG_BYTES as set
 // in the kernel is 10KiB, and record_size for RAM Oops/Panic trigger is
 // defaulted at 4KiB with another 4KiB each for console, ftrace, and pmsg logs.
-// Files over this limit might be malformed and are skipped.
-constexpr size_t kMaxRecordSize = 15 * 1024;
+// This gives a maximum of ~26 KiB, but in practice logs can be significantly
+// larger (e.g. 66 KiB is easily achieved). Set a limit substantially above
+// this.
+constexpr size_t kMaxRecordSize = 1024 * 1024;
 constexpr pid_t kKernelPid = 0;
 constexpr char kKernelSignatureKey[] = "sig";
 // Byte length of maximum human readable portion of a kernel crash signature.
