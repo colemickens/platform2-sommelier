@@ -68,9 +68,10 @@ constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/termina";
 
 std::unique_ptr<arc_networkd::Subnet>
 MakeSubnet(const patchpanel::IPv4Subnet& subnet) {
-  return std::make_unique<arc_networkd::Subnet>(subnet.base_addr(),
-                                                subnet.prefix_len(),
-                                                base::Bind(&base::DoNothing));
+  return std::make_unique<arc_networkd::Subnet>(
+      subnet.base_addr(), subnet.prefix_len(),
+      // TODO(crbug.com/909719): replace with base::DoNothing;
+      base::Bind([]() {}));
 }
 
 }  // namespace
@@ -281,7 +282,8 @@ bool TerminaVm::Shutdown() {
   // This should run before the process existence check below since we still
   // want to release the network resources on crash.
   // Note the client will only be null during testing.
-  if (network_client_ && !network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
+  if (network_client_ &&
+      !network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
     LOG(WARNING) << "Unable to notify networking services";
   }
 

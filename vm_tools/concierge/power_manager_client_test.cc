@@ -125,8 +125,11 @@ TEST_F(PowerManagerClientTest, SuspendReadiness) {
   delay_id_ = 19;
   current_suspend_id_ = 13;
 
-  client->RegisterSuspendDelay(base::Bind(&base::DoNothing),
-                               base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): replace with base::DoNothing;
+  client->RegisterSuspendDelay(
+      base::Bind([]() {}),
+      // TODO(crbug.com/909719): replace with base::DoNothing;
+      base::Bind([]() {}));
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendImminentSignal);
@@ -148,8 +151,11 @@ TEST_F(PowerManagerClientTest, Unregister) {
   std::unique_ptr<PowerManagerClient> client =
       std::make_unique<PowerManagerClient>(mock_bus_);
 
-  client->RegisterSuspendDelay(base::Bind(&base::DoNothing),
-                               base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): replace with base::DoNothing;
+  client->RegisterSuspendDelay(
+      base::Bind([]() {}),
+      // TODO(crbug.com/909719): replace with base::DoNothing;
+      base::Bind([]() {}));
   client.reset();
 
   EXPECT_TRUE(unregistered_);
@@ -164,8 +170,10 @@ TEST_F(PowerManagerClientTest, SuspendImminent) {
   current_suspend_id_ = 1297;
 
   bool called = false;
-  client->RegisterSuspendDelay(base::Bind(&SetTrue, &called),
-                               base::Bind(&base::DoNothing));
+  client->RegisterSuspendDelay(
+      base::Bind(&SetTrue, &called),
+      // TODO(crbug.com/909719): replace with base::DoNothing;
+      base::Bind([]() {}));
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendImminentSignal);
@@ -189,7 +197,8 @@ TEST_F(PowerManagerClientTest, SuspendDone) {
   current_suspend_id_ = 509;
 
   bool called = false;
-  client->RegisterSuspendDelay(base::Bind(&base::DoNothing),
+  // TODO(crbug.com/909719): replace with base::DoNothing;
+  client->RegisterSuspendDelay(base::Bind([]() {}),
                                base::Bind(&SetTrue, &called));
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
@@ -226,7 +235,8 @@ TEST_F(PowerManagerClientTest, WrongSuspendId) {
   current_suspend_id_ = 92;
 
   bool called = false;
-  client->RegisterSuspendDelay(base::Bind(&base::DoNothing),
+  // TODO(crbug.com/909719): replace with base::DoNothing;
+  client->RegisterSuspendDelay(base::Bind([]() {}),
                                base::Bind(&SetTrue, &called));
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
@@ -263,8 +273,10 @@ TEST_F(PowerManagerClientTest, MultipleSuspendImminents) {
   current_suspend_id_ = 7261;
 
   int32_t counter = 0;
-  client->RegisterSuspendDelay(base::Bind(&Increment, &counter),
-                               base::Bind(&base::DoNothing));
+  client->RegisterSuspendDelay(
+      base::Bind(&Increment, &counter),
+      // TODO(crbug.com/909719): replace with base::DoNothing;
+      base::Bind([]() {}));
 
   for (int i = 0; i < 3; ++i) {
     ++current_suspend_id_;
@@ -291,8 +303,11 @@ TEST_F(PowerManagerClientTest, NameOwnerChanged) {
 
   // Register the suspend delay and do one suspend.
   delay_id_ = 189;
-  client->RegisterSuspendDelay(base::Bind(&base::DoNothing),
-                               base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): replace with base::DoNothing;
+  client->RegisterSuspendDelay(
+      base::Bind([]() {}),
+      // TODO(crbug.com/909719): replace with base::DoNothing;
+      base::Bind([]() {}));
 
   dbus::Signal suspend_imminent(power_manager::kPowerManagerInterface,
                                 power_manager::kSuspendImminentSignal);
