@@ -57,6 +57,9 @@ int main(int argc, char** argv) {
 
   DEFINE_uint64(forward_to_host_port, 0, "Port to forward to on the host");
   DEFINE_bool(inherit_env, false, "Inherit the current environment variables");
+  DEFINE_string(default_user, "chronos", "Default login user");
+  DEFINE_bool(allow_to_switch_user, true,
+              "Allow to switch to another user on login");
 
   brillo::FlagHelper::Init(argc, argv, "vsh daemon");
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
@@ -95,8 +98,9 @@ int main(int argc, char** argv) {
     // Set up and start the message loop.
     brillo::BaseMessageLoop message_loop;
     message_loop.SetAsCurrent();
-    auto forwarder =
-        VshForwarder::Create(std::move(sock_fd), FLAGS_inherit_env);
+    auto forwarder = VshForwarder::Create(std::move(sock_fd), FLAGS_inherit_env,
+                                          std::move(FLAGS_default_user),
+                                          FLAGS_allow_to_switch_user);
 
     if (!forwarder) {
       return EXIT_FAILURE;
@@ -204,8 +208,9 @@ int main(int argc, char** argv) {
           // Set up and start the message loop.
           brillo::BaseMessageLoop message_loop;
           message_loop.SetAsCurrent();
-          auto forwarder =
-              VshForwarder::Create(std::move(peer_sock_fd), FLAGS_inherit_env);
+          auto forwarder = VshForwarder::Create(
+              std::move(peer_sock_fd), FLAGS_inherit_env,
+              std::move(FLAGS_default_user), FLAGS_allow_to_switch_user);
 
           if (!forwarder) {
             return EXIT_FAILURE;

@@ -85,9 +85,12 @@ namespace vm_tools {
 namespace vsh {
 
 std::unique_ptr<VshForwarder> VshForwarder::Create(base::ScopedFD sock_fd,
-                                                   bool inherit_env) {
+                                                   bool inherit_env,
+                                                   std::string default_user,
+                                                   bool allow_to_switch_user) {
   auto forwarder = std::unique_ptr<VshForwarder>(
-      new VshForwarder(std::move(sock_fd), inherit_env));
+      new VshForwarder(std::move(sock_fd), inherit_env, std::move(default_user),
+                       allow_to_switch_user));
 
   if (!forwarder->Init()) {
     return nullptr;
@@ -96,11 +99,16 @@ std::unique_ptr<VshForwarder> VshForwarder::Create(base::ScopedFD sock_fd,
   return forwarder;
 }
 
-VshForwarder::VshForwarder(base::ScopedFD sock_fd, bool inherit_env)
+VshForwarder::VshForwarder(base::ScopedFD sock_fd,
+                           bool inherit_env,
+                           std::string default_user,
+                           bool allow_to_switch_user)
     : sock_fd_(std::move(sock_fd)),
       inherit_env_(inherit_env),
       interactive_(true),
-      exit_pending_(false) {}
+      exit_pending_(false),
+      default_user_(std::move(default_user)),
+      allow_to_switch_user_(allow_to_switch_user) {}
 
 bool VshForwarder::Init() {
   SetupConnectionRequest connection_request;
@@ -113,23 +121,31 @@ bool VshForwarder::Init() {
   const std::string target = connection_request.target();
   std::string user = connection_request.user();
   if (target == kVmShell) {
-    // The default user for VM shells should be chronos.
+    // For VM shells, the user should be |default_user_|.
     if (user.empty()) {
-      user = "chronos";
+      user = default_user_;
     }
 
-    if (user != "chronos" && !IsTestImage()) {
-      LOG(ERROR) << "Only chronos is allowed login on the VM shell";
-      SendConnectionResponse(FAILED,
-                             "only chronos is allowed login on the VM shell");
+    if (user != default_user_ && !IsTestImage()) {
+      LOG(ERROR) << "Only " << default_user_
+                 << " is allowed login on the VM shell";
+      SendConnectionResponse(
+          FAILED, base::StringPrintf("only %s is allowed login on the VM shell",
+                                     default_user_.c_str()));
       return false;
     }
   }
 
   struct passwd* passwd = nullptr;
   uid_t current_uid = geteuid();
-  // If the user is unspecified, run as the current user.
-  if (user.empty()) {
+  struct passwd dummy_passwd = {.pw_uid = current_uid,
+                                .pw_dir = const_cast<char*>("/"),
+                                .pw_shell = const_cast<char*>("/bin/sh")};
+  // If not switching user, use the |dummy_passwd| struct.
+  if (!allow_to_switch_user_) {
+    passwd = &dummy_passwd;
+  } else if (user.empty()) {
+    // If the user is unspecified, run as the current user.
     // We're not using threads, so getpwuid is safe.
     passwd = getpwuid(current_uid);  // NOLINT(runtime/threadsafe_fn)
     if (!passwd) {
@@ -157,7 +173,8 @@ bool VshForwarder::Init() {
   }
 
   // If changing users, set up supplementary groups and switch to that user.
-  if (passwd->pw_uid != current_uid && current_uid == 0) {
+  if (allow_to_switch_user_ && passwd->pw_uid != current_uid &&
+      current_uid == 0) {
     // Set supplementary groups from passwd file.
     if (initgroups(user.c_str(), passwd->pw_gid) < 0) {
       PLOG(ERROR) << "Failed to set supplementary groups";

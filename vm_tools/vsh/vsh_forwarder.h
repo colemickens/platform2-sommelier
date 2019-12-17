@@ -27,11 +27,16 @@ namespace vsh {
 class VshForwarder {
  public:
   static std::unique_ptr<VshForwarder> Create(base::ScopedFD sock_fd,
-                                              bool inherit_env);
+                                              bool inherit_env,
+                                              std::string default_user,
+                                              bool allow_to_switch_user);
   ~VshForwarder() = default;
 
  private:
-  VshForwarder(base::ScopedFD sock_fd, bool inherit_env);
+  VshForwarder(base::ScopedFD sock_fd,
+               bool inherit_env,
+               std::string default_user,
+               bool allow_to_switch_user);
 
   bool Init();
 
@@ -61,6 +66,8 @@ class VshForwarder {
 
   bool exit_pending_;
   int exit_code_;
+  const std::string default_user_;
+  const bool allow_to_switch_user_;
 
   DISALLOW_COPY_AND_ASSIGN(VshForwarder);
 };
