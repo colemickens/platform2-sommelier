@@ -90,9 +90,6 @@ class DlcManager::DlcManagerImpl {
     if (!boot_slot->GetCurrentSlot(&boot_disk_name, &current_boot_slot_))
       LOG(FATAL) << "Can not get current boot slot.";
 
-    for (auto installed_dlc_id : utils::ScanDirectory(content_dir_))
-      installed_[installed_dlc_id];
-
     // Initialize supported DLC modules.
     supported_ = utils::ScanDirectory(manifest_dir_);
   }
@@ -418,6 +415,10 @@ class DlcManager::DlcManagerImpl {
   }
 
   void RefreshInstalled() {
+    // Recheck installed DLC modules.
+    for (auto installed_dlc_id : utils::ScanDirectory(content_dir_))
+      installed_[installed_dlc_id];
+
     for (auto installed_dlc_module_itr = installed_.begin();
          installed_dlc_module_itr != installed_.end();
          /* Don't increment here */) {

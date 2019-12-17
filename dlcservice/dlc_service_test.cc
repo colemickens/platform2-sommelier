@@ -725,4 +725,45 @@ TEST_F(DlcServiceTest, PeriodCheckUpdateEngineInstallSignalRaceChecker) {
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
 }
 
+TEST_F(DlcServiceTest, StrongerInstalledDlcRefresh) {
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+
+  base::FilePath root_path;
+  {
+    DlcModuleList dlc_module_list;
+    EXPECT_TRUE(dlc_service_->GetInstalled(&dlc_module_list, nullptr));
+    EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
+    const auto& dlc_info = dlc_module_list.dlc_module_infos(0);
+    EXPECT_EQ(dlc_info.dlc_id(), kFirstDlc);
+    root_path = base::FilePath(dlc_info.dlc_root());
+    EXPECT_TRUE(base::PathExists(root_path));
+  }
+
+  // Mimic a force deletion of DLC.
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_TRUE(base::DeleteFile(content_path_.Append(kFirstDlc), true));
+  EXPECT_TRUE(base::DeleteFile(root_path, true));
+  {
+    DlcModuleList dlc_module_list;
+    EXPECT_TRUE(dlc_service_->GetInstalled(&dlc_module_list, nullptr));
+    EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 0);
+    EXPECT_FALSE(base::PathExists(root_path));
+  }
+
+  // Mimic a force creation of DLC.
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(root_path.value()), Return(true)));
+  EXPECT_TRUE(base::CreateDirectory(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(base::CreateDirectory(root_path));
+  {
+    DlcModuleList dlc_module_list;
+    EXPECT_TRUE(dlc_service_->GetInstalled(&dlc_module_list, nullptr));
+    EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
+    const auto& dlc_info = dlc_module_list.dlc_module_infos(0);
+    EXPECT_EQ(dlc_info.dlc_id(), kFirstDlc);
+    EXPECT_TRUE(base::PathExists(root_path));
+  }
+}
+
 }  // namespace dlcservice
