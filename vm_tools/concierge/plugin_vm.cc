@@ -673,8 +673,11 @@ bool PluginVm::Start(uint32_t cpus,
     process_.AddArg(std::move(mount));
   }
   for (auto& param : params) {
-    process_.AddArg("--params");
-    process_.AddArg(std::move(param));
+    // Because additional parameters may start with a '--', we should use
+    // --params=<Param> instead of --params <Param> to make explicit <Param>
+    // is a parameter for the plugin rather than just another parameter to
+    // the crosvm process.
+    process_.AddArg(std::string("--params=") + param);
   }
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
