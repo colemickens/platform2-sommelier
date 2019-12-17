@@ -5,8 +5,8 @@
 #include <base/run_loop.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/test_embedder.h>
+#include <mojo/core/core.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 
@@ -23,8 +23,9 @@ class ClientImpl : public arc::mojom::MidisClient {
   void OnDeviceRemoved(arc::mojom::MidisDeviceInfoPtr device) override {}
 
   void BindClientPtr(arc::mojom::MidisClientPtr* ptr) {
-    mojo::InterfaceRequest<arc::mojom::MidisClient> request(ptr);
-    binding_ = base::MakeUnique<mojo::Binding<arc::mojom::MidisClient>>(
+    mojo::InterfaceRequest<arc::mojom::MidisClient> request =
+        mojo::MakeRequest<arc::mojom::MidisClient>(ptr);
+    binding_ = std::make_unique<mojo::Binding<arc::mojom::MidisClient>>(
         this, std::move(request));
   }
 
@@ -41,11 +42,14 @@ class ClientTest : public ::testing::Test {
  protected:
   void SetUp() override {
     message_loop_.SetAsCurrent();
-    mojo::edk::Init();
+    mojo::core::Init();
   }
 
   void TearDown() override {
-    ASSERT_TRUE(mojo::edk::test::Shutdown());
+    auto core = mojo::core::Core::Get();
+    std::vector<MojoHandle> leaks;
+    core->GetActiveHandlesForTest(&leaks);
+    EXPECT_TRUE(leaks.empty());
   }
  private:
   brillo::BaseMessageLoop message_loop_;
