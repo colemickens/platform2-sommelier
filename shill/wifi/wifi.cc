@@ -451,10 +451,6 @@ void WiFi::ConnectTo(WiFiService* service) {
     SetConnectionDebugging(true);
   }
 
-  // Enable HT40 for this network in case if it was disabled previously due to
-  // unreliable link.
-  supplicant_interface_proxy_->SetHT40Enable(network_rpcid, true);
-
   supplicant_interface_proxy_->SelectNetwork(network_rpcid);
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
@@ -582,25 +578,6 @@ bool WiFi::DisableNetwork(const RpcIdentifier& network) {
 
 bool WiFi::RemoveNetwork(const RpcIdentifier& network) {
   return supplicant_interface_proxy_->RemoveNetwork(network);
-}
-
-void WiFi::SetHT40EnableForService(const WiFiService* service, bool enable) {
-  if (!supplicant_present_) {
-    LOG(ERROR) << "In " << __func__ << "(): "
-               << "wpa_supplicant is not present.  Cannot SetHT40Enable.";
-    return;
-  }
-
-  Error error;
-  RpcIdentifier rpcid = FindNetworkRpcidForService(service, &error);
-  if (rpcid.empty()) {
-    LOG(ERROR) << "Unable to find supplicant network.";
-    return;
-  }
-
-  if (!supplicant_interface_proxy_->SetHT40Enable(rpcid, enable)) {
-    LOG(ERROR) << "SetHT40Enable for " << rpcid << " failed.";
-  }
 }
 
 bool WiFi::IsIdle() const {
@@ -2008,13 +1985,6 @@ void WiFi::OnLinkMonitorFailure() {
   LOG(INFO) << "In " << __func__ << "(): Called Reattach().";
 }
 
-void WiFi::OnUnreliableLink() {
-  Device::OnUnreliableLink();
-
-  // Disable HT40 for the current network.
-  SetHT40EnableForService(current_service_.get(), false);
-}
-
 bool WiFi::ShouldUseArpGateway() const {
   return !IsUsingStaticIP();
 }
@@ -2164,12 +2134,6 @@ void WiFi::OnAfterResume() {
 
   // Since we stopped the scan timer before suspending, start it again here.
   StartScanTimer();
-
-  // Enable HT40 for current service in case if it was disabled previously due
-  // to unreliable link.
-  if (current_service_) {
-    SetHT40EnableForService(current_service_.get(), true);
-  }
 }
 
 void WiFi::AbortScan() {

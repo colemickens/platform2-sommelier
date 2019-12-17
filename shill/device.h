@@ -293,14 +293,6 @@ class Device : public base::RefCounted<Device> {
   // addresses from this interface.
   mockable void OnIPv6DnsServerAddressesChanged();
 
-  // Called when link becomes unreliable (multiple link monitor failures
-  // detected in short period of time).
-  virtual void OnUnreliableLink();
-
-  // Called when link becomes reliable (no link failures in a predefined period
-  // of time).
-  void OnReliableLink();
-
   // Program a rule into the NIC to wake the system from suspend upon receiving
   // packets from |ip_endpoint|. |error| indicates the result of the
   // operation.
@@ -662,6 +654,14 @@ class Device : public base::RefCounted<Device> {
   // is advisory, since an "Updated" or "Failed" signal is guaranteed to
   // follow.
   void OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig);
+
+  // Called when link becomes unreliable (multiple link monitor failures
+  // detected in short period of time).
+  void OnUnreliableLink();
+
+  // Called when link becomes reliable (no link failures in a predefined period
+  // of time).
+  void OnReliableLink();
 
   // Return true if given IP configuration contain both IP address and DNS
   // servers. Hence, ready to be used for network connection.

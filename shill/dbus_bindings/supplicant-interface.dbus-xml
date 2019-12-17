@@ -62,10 +62,6 @@
     <method name="TDLSTeardown">
       <arg name="peer" type="s" direction="in"/>
     </method>
-    <method name="SetHT40Enable">
-      <arg name="network" type="o" direction="in"/>
-      <arg name="enable" type="b" direction="in"/>
-    </method>
     <method name="EnableMACAddressRandomization">
       <arg name="mask" type="ay" direction="in"/>
     </method>

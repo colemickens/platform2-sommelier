@@ -52,7 +52,6 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool TDLSSetup(const std::string& peer) override;
   bool TDLSStatus(const std::string& peer, std::string* status) override;
   bool TDLSTeardown(const std::string& peer) override;
-  bool SetHT40Enable(const RpcIdentifier& network, bool enable) override;
   bool EnableMacAddressRandomization(const std::vector<unsigned char>& mask,
                                      bool sched_scan) override;
   bool DisableMacAddressRandomization() override;

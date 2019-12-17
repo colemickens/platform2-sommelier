@@ -1175,6 +1175,20 @@ void Device::OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig) {
   UpdateIPConfigsProperty();
 }
 
+void Device::OnUnreliableLink() {
+  SLOG(this, 2) << "Device " << link_name() << ": Link is unreliable.";
+  selected_service_->set_unreliable(true);
+  reliable_link_callback_.Cancel();
+  metrics()->NotifyUnreliableLinkSignalStrength(technology_,
+                                                selected_service_->strength());
+}
+
+void Device::OnReliableLink() {
+  SLOG(this, 2) << "Device " << link_name() << ": Link is reliable.";
+  selected_service_->set_unreliable(false);
+  // TODO(zqiu): report signal strength to UMA.
+}
+
 void Device::OnConnected() {
   if (selected_service_->unreliable()) {
     // Post a delayed task to reset link back to reliable if no link
@@ -1477,20 +1491,6 @@ bool Device::StartLinkMonitor() {
 void Device::StopLinkMonitor() {
   SLOG(this, 2) << "Device " << link_name() << ": Link Monitor stopping.";
   link_monitor_.reset();
-}
-
-void Device::OnUnreliableLink() {
-  SLOG(this, 2) << "Device " << link_name() << ": Link is unreliable.";
-  selected_service_->set_unreliable(true);
-  reliable_link_callback_.Cancel();
-  metrics()->NotifyUnreliableLinkSignalStrength(technology_,
-                                                selected_service_->strength());
-}
-
-void Device::OnReliableLink() {
-  SLOG(this, 2) << "Device " << link_name() << ": Link is reliable.";
-  selected_service_->set_unreliable(false);
-  // TODO(zqiu): report signal strength to UMA.
 }
 
 void Device::OnLinkMonitorFailure() {

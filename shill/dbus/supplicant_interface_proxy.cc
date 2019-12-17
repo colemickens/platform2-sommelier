@@ -290,20 +290,6 @@ bool SupplicantInterfaceProxy::SelectNetwork(const RpcIdentifier& network) {
   return true;
 }
 
-bool SupplicantInterfaceProxy::SetHT40Enable(const RpcIdentifier& network,
-                                             bool enable) {
-  SLOG(&interface_proxy_->GetObjectPath(), 2)
-      << __func__ << " network: " << network << " enable: " << enable;
-  brillo::ErrorPtr error;
-  if (!interface_proxy_->SetHT40Enable(dbus::ObjectPath(network), enable,
-                                       &error)) {
-    LOG(ERROR) << "Failed to set HT40 enable: " << error->GetCode() << " "
-               << error->GetMessage();
-    return false;
-  }
-  return true;
-}
-
 bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
     const std::vector<unsigned char>& mask, bool sched_scan) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;

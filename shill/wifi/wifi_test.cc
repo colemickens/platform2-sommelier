@@ -809,8 +809,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
       EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
           .WillOnce(DoAll(SetArgPointee<1>(network_path), Return(true)));
-      EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-                  SetHT40Enable(network_path, true));
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(network_path));
     }
     EXPECT_CALL(*service, SetState(Service::kStateAssociating));
@@ -1085,8 +1083,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
   void OnLinkMonitorFailure() { wifi_->OnLinkMonitorFailure(); }
-
-  void OnUnreliableLink() { wifi_->OnUnreliableLink(); }
 
   bool SetBgscanShortInterval(const uint16_t& interval, Error* error) {
     return wifi_->SetBgscanShortInterval(interval, error);
@@ -1706,7 +1702,6 @@ TEST_F(WiFiMainTest, ResumeWithCurrentService) {
   StartWiFi();
   SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
 
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, true)).Times(1);
   OnAfterResume();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
@@ -1960,7 +1955,6 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kPath), Return(true)));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(kPath, true));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(kPath));
   InitiateConnect(service);
   ReportCurrentBSSChanged(bss_path);
@@ -2896,15 +2890,6 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
       .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   OnLinkMonitorFailure();
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-}
-
-TEST_F(WiFiMainTest, UnreliableLink) {
-  StartWiFi();
-  SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
-
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, false)).Times(1);
-  OnUnreliableLink();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 

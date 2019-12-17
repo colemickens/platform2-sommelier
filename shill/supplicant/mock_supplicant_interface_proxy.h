@@ -48,7 +48,6 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD(bool, TDLSSetup, (const std::string&), (override));
   MOCK_METHOD(bool, TDLSStatus, (const std::string&, std::string*), (override));
   MOCK_METHOD(bool, TDLSTeardown, (const std::string&), (override));
-  MOCK_METHOD(bool, SetHT40Enable, (const RpcIdentifier&, bool), (override));
   MOCK_METHOD(bool,
               EnableMacAddressRandomization,
               (const std::vector<unsigned char>&, bool),
