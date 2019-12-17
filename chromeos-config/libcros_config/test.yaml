@@ -191,7 +191,7 @@ chromeos:
                   - "extra1"
                   - "extra2"
                 coreboot: "another"
-                cr50: "another_cr50"
+                gsc: "another"
                 ec: "another"
                 depthcharge: "another"
                 libpayload: "another"

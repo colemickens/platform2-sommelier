@@ -319,7 +319,7 @@ properties:
                         type: string
                         description: Extra EC build targets to build within chromeos-ec.
                     coreboot: *firmware_build_target
-                    cr50: *firmware_build_target
+                    gsc: *firmware_build_target
                     depthcharge: *firmware_build_target
                     ec: *firmware_build_target
                     ish: *firmware_build_target

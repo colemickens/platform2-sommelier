@@ -434,10 +434,10 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | base | string |  | False |  | True | Build target of the base EC firmware for a detachable device, that will be considered dirty when building/testing |
 | coreboot | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
-| cr50 | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | depthcharge | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | ec | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | ec_extras | array - string |  | False |  | True | Extra EC build targets to build within chromeos-ec. |
+| gsc | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | ish | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | libpayload | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | u-boot | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
