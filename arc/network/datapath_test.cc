@@ -36,7 +36,8 @@ TEST(DatapathTest, AddTAP) {
   FakeProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
-  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): replace with base::DoNothing;
+  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind([]() {}));
   auto addr = subnet.AllocateAtOffset(0);
   auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "");
   EXPECT_EQ(ifname, "foo0");
@@ -51,7 +52,8 @@ TEST(DatapathTest, AddTAPWithOwner) {
   FakeProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
-  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): replace with base::DoNothing;
+  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind([]() {}));
   auto addr = subnet.AllocateAtOffset(0);
   auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "root");
   EXPECT_EQ(ifname, "foo0");
