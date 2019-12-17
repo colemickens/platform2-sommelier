@@ -51,8 +51,8 @@ class MockDatapath : public Datapath {
                void(const std::string& ifname, const std::string& ipv4_addr));
   MOCK_METHOD1(AddOutboundIPv4, bool(const std::string& ifname));
   MOCK_METHOD1(RemoveOutboundIPv4, void(const std::string& ifname));
-  MOCK_METHOD2(SetInterfaceFlag,
-               bool(const std::string& ifname, uint16_t flag));
+  MOCK_METHOD3(MaskInterfaceFlags,
+               bool(const std::string& ifname, uint16_t on, uint16_t off));
   MOCK_METHOD2(AddIPv6Forwarding,
                bool(const std::string& ifname1, const std::string& ifname2));
   MOCK_METHOD2(RemoveIPv6Forwarding,

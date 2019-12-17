@@ -195,6 +195,13 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr, Datapath* datapath)
 }
 
 ArcService::~ArcService() {
+  if (impl_) {
+    // Stop the service.
+    Stop(impl_->id());
+    // Delete all the bridges and veth pairs.
+    dev_mgr_->ProcessDevices(
+        base::Bind(&ArcService::OnDeviceRemoved, weak_factory_.GetWeakPtr()));
+  }
   dev_mgr_->UnregisterAllGuestHandlers(GuestMessage::ARC);
 }
 
@@ -290,8 +297,17 @@ void ArcService::OnDeviceAdded(Device* device) {
   // Create the bridge.
   if (!datapath_->AddBridge(config.host_ifname(),
                             IPv4AddressToString(config.host_ipv4_addr()))) {
-    LOG(ERROR) << "Failed to setup arc bridge: " << config.host_ifname();
-    return;
+    // Per crbug/1008686 this device cannot be deleted and then re-added.
+    // It could be that arc-networkd was restarted after a crash and this device
+    // is being re-added.
+    if (!device->IsAndroid()) {
+      LOG(ERROR) << "Failed to setup arc bridge: " << config.host_ifname();
+      return;
+    }
+    if (!datapath_->MaskInterfaceFlags(config.host_ifname(), IFF_UP)) {
+      LOG(ERROR) << "Failed to bring up arc bridge: " << config.host_ifname();
+      return;
+    }
   }
 
   // Setup the iptables.
@@ -367,7 +383,19 @@ void ArcService::OnDeviceRemoved(Device* device) {
         device->ifname(), IPv4AddressToString(config.guest_ipv4_addr()));
   }
 
-  datapath_->RemoveBridge(config.host_ifname());
+  // Per crbug/1008686 this device cannot be deleted and then re-added.
+  // So instead of removing the bridge, bring it down and mark it. This will
+  // allow us to detect if the device is re-added in case of a crash restart and
+  // do the right thing.
+  if (device->IsAndroid()) {
+    // This can be safely deleted now.
+    datapath_->RemoveInterface(ArcVethHostName("arc0"));
+    if (!datapath_->MaskInterfaceFlags(config.host_ifname(), IFF_DEBUG, IFF_UP))
+      LOG(ERROR) << "Failed to bring down arc bridge "
+                 << "- it may not restart correctly";
+  } else {
+    datapath_->RemoveBridge(config.host_ifname());
+  }
 
   device->set_context(nullptr);
 }
@@ -480,6 +508,10 @@ ArcService::ContainerImpl::ContainerImpl(DeviceManagerBase* dev_mgr,
 
 GuestMessage::GuestType ArcService::ContainerImpl::guest() const {
   return guest_;
+}
+
+int32_t ArcService::ContainerImpl::id() const {
+  return pid_;
 }
 
 bool ArcService::ContainerImpl::Start(int32_t pid) {
@@ -738,7 +770,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
     }
     // Tag the interface so that ARC can detect this manual configuration and
     // skip disabling and re-enabling IPv6 (b/144545910).
-    if (!datapath_->SetInterfaceFlag(config.guest_ifname(), IFF_DEBUG)) {
+    if (!datapath_->MaskInterfaceFlags(config.guest_ifname(), IFF_DEBUG)) {
       LOG(ERROR) << "Failed to mark IPv6 manual config flag on interface";
     }
     if (!datapath_->AddIPv6GatewayRoutes(config.guest_ifname(), addr, router,
@@ -817,6 +849,10 @@ ArcService::VmImpl::VmImpl(DeviceManagerBase* dev_mgr, Datapath* datapath)
 
 GuestMessage::GuestType ArcService::VmImpl::guest() const {
   return GuestMessage::ARC_VM;
+}
+
+int32_t ArcService::VmImpl::id() const {
+  return cid_;
 }
 
 bool ArcService::VmImpl::Start(int32_t cid) {

@@ -359,7 +359,9 @@ void Datapath::RemoveOutboundIPv4(const std::string& ifname) {
                         ifname, "-j", "ACCEPT", "-w"});
 }
 
-bool Datapath::SetInterfaceFlag(const std::string& ifname, uint16_t flag) {
+bool Datapath::MaskInterfaceFlags(const std::string& ifname,
+                                  uint16_t on,
+                                  uint16_t off) {
   base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!sock.is_valid()) {
     PLOG(ERROR) << "Failed to create control socket";
@@ -371,10 +373,11 @@ bool Datapath::SetInterfaceFlag(const std::string& ifname, uint16_t flag) {
     PLOG(WARNING) << "ioctl() failed to get interface flag on " << ifname;
     return false;
   }
-  ifr.ifr_flags |= flag;
+  ifr.ifr_flags |= on;
+  ifr.ifr_flags &= ~off;
   if ((*ioctl_)(sock.get(), SIOCSIFFLAGS, &ifr) < 0) {
-    PLOG(WARNING) << "ioctl() failed to set flag 0x" << std::hex << flag
-                  << " on " << ifname;
+    PLOG(WARNING) << "ioctl() failed to set flag 0x" << std::hex << on
+                  << " unset flag 0x" << std::hex << off << " on " << ifname;
     return false;
   }
   return true;

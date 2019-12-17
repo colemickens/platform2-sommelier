@@ -217,6 +217,10 @@ void Manager::InitialSetup() {
 }
 
 void Manager::OnShutdown(int* exit_code) {
+  if (!device_mgr_)
+    return;
+
+  LOG(INFO) << "Shutting down and cleaning up";
   cros_svc_.reset();
   arc_svc_.reset();
   device_mgr_.reset();

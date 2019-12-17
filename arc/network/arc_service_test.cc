@@ -153,8 +153,8 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDoesNothingNonArcDevice) {
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForLegacyAndroid) {
-  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0")));
   EXPECT_CALL(*datapath_, RemoveOutboundIPv4(StrEq("arcbr0")));
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("veth_arc0")));
 
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
@@ -171,7 +171,7 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid) {
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForAndroid) {
-  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0")));
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("veth_arc0")));
 
   auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);

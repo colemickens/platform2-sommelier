@@ -67,6 +67,7 @@ class ArcService {
     virtual ~Impl() = default;
 
     virtual GuestMessage::GuestType guest() const = 0;
+    virtual int32_t id() const = 0;
 
     virtual bool Start(int32_t id) = 0;
     virtual void Stop(int32_t id) = 0;
@@ -88,6 +89,7 @@ class ArcService {
     ~ContainerImpl() = default;
 
     GuestMessage::GuestType guest() const override;
+    int32_t id() const override;
 
     bool Start(int32_t pid) override;
     void Stop(int32_t pid) override;
@@ -124,6 +126,7 @@ class ArcService {
     ~VmImpl() = default;
 
     GuestMessage::GuestType guest() const override;
+    int32_t id() const override;
 
     bool Start(int32_t cid) override;
     void Stop(int32_t cid) override;

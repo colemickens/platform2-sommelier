@@ -100,7 +100,9 @@ class Datapath {
   virtual void RemoveOutboundIPv4(const std::string& ifname);
 
   // Methods supporting IPv6 configuration for ARC.
-  virtual bool SetInterfaceFlag(const std::string& ifname, uint16_t flag);
+  virtual bool MaskInterfaceFlags(const std::string& ifname,
+                                  uint16_t on,
+                                  uint16_t off = 0);
 
   virtual bool AddIPv6Forwarding(const std::string& ifname1,
                                  const std::string& ifname2);

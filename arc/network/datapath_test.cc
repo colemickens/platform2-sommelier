@@ -233,10 +233,10 @@ TEST(DatapathTest, RemoveInboundIPv4) {
       {"/sbin/iptables -t filter -D FORWARD -o eth0 -j ACCEPT -w"});
 }
 
-TEST(DatapathTest, SetInterfaceFlag) {
+TEST(DatapathTest, MaskInterfaceFlags) {
   FakeProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
-  bool result = datapath.SetInterfaceFlag("foo0", IFF_DEBUG);
+  bool result = datapath.MaskInterfaceFlags("foo0", IFF_DEBUG);
   EXPECT_TRUE(result);
   std::set<ioctl_req_t> expected = {SIOCGIFFLAGS, SIOCSIFFLAGS};
   EXPECT_EQ(ioctl_reqs, expected);

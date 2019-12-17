@@ -51,7 +51,7 @@ class Manager final : public brillo::DBusDaemon {
   // subprocesses died.
   void OnSubprocessExited(pid_t pid, const siginfo_t& info);
 
-  // Callback from Daemon to notify that a signal was received and
+  // Callback from Daemon to notify that SIGTERM or SIGINT was received and
   // the daemon should clean up in preparation to exit.
   void OnShutdown(int* exit_code) override;
 

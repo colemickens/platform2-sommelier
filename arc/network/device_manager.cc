@@ -454,11 +454,11 @@ void DeviceManager::StartForwarding(const Device& device) {
       LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
                  << ifname_physical << " to " << ifname_virtual;
     }
-    if (!datapath_->SetInterfaceFlag(ifname_physical, IFF_ALLMULTI)) {
+    if (!datapath_->MaskInterfaceFlags(ifname_physical, IFF_ALLMULTI)) {
       LOG(WARNING) << "Failed to setup all multicast mode for interface "
                    << ifname_physical;
     }
-    if (!datapath_->SetInterfaceFlag(ifname_virtual, IFF_ALLMULTI)) {
+    if (!datapath_->MaskInterfaceFlags(ifname_virtual, IFF_ALLMULTI)) {
       LOG(WARNING) << "Failed to setup all multicast mode for interface "
                    << ifname_virtual;
     }
