@@ -25,6 +25,7 @@
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
@@ -36,23 +37,6 @@ namespace cryptohome {
 class VaultKeyset;
 
 extern const char kSystemSaltFile[];
-
-// This struct is populated by the various authentication methods, with the
-// secrets derived from the user input.
-struct KeyBlobs {
-  // The file encryption key.
-  base::Optional<brillo::SecureBlob> vkk_key;
-  // The file encryption IV.
-  base::Optional<brillo::SecureBlob> vkk_iv;
-  // The IV to use with the chaps key.
-  base::Optional<brillo::SecureBlob> chaps_iv;
-  // The IV to use with the authorization data.
-  base::Optional<brillo::SecureBlob> auth_iv;
-  // The wrapped reset seet, if it should be unwrapped.
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
-  // The IV used to decrypt the authorization data.
-  base::Optional<brillo::SecureBlob> authorization_data_iv;
-};
 
 class Crypto {
  public:
