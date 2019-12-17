@@ -19,8 +19,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/single_thread_task_runner.h>
-#include <base/synchronization/waitable_event.h>
 #include <base/synchronization/lock.h>
+#include <base/synchronization/waitable_event.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>

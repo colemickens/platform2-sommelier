@@ -23,7 +23,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/posix/unix_domain_socket_linux.h>
+#include <base/posix/unix_domain_socket.h>
 #include <base/run_loop.h>
 #include <base/strings/string_piece.h>
 #include <gtest/gtest.h>
