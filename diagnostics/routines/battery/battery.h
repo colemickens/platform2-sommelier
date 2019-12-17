@@ -19,7 +19,6 @@ namespace diagnostics {
 extern const char kBatteryChargeFullDesignPath[];
 // Output messages for the battery routine when in various states.
 extern const char kBatteryRoutineParametersInvalidMessage[];
-extern const char kBatteryNoChargeFullDesignMessage[];
 extern const char kBatteryFailedReadingChargeFullDesignMessage[];
 extern const char kBatteryFailedParsingChargeFullDesignMessage[];
 extern const char kBatteryRoutineSucceededMessage[];

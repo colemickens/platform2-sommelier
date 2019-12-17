@@ -35,8 +35,6 @@ const char kBatteryChargeFullDesignPath[] =
     "sys/class/power_supply/BAT0/charge_full_design";
 const char kBatteryRoutineParametersInvalidMessage[] =
     "Invalid BatteryRoutineParameters.";
-const char kBatteryNoChargeFullDesignMessage[] =
-    "charge_full_design does not exist.";
 const char kBatteryFailedReadingChargeFullDesignMessage[] =
     "Failed to read charge_full_design.";
 const char kBatteryFailedParsingChargeFullDesignMessage[] =
@@ -92,11 +90,6 @@ mojo_ipc::DiagnosticRoutineStatusEnum BatteryRoutine::RunBatteryRoutine() {
 
   base::FilePath charge_full_design_path(
       root_dir_.AppendASCII(kBatteryChargeFullDesignPath));
-
-  if (!base::PathExists(charge_full_design_path)) {
-    status_message_ = kBatteryNoChargeFullDesignMessage;
-    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
-  }
 
   std::string charge_full_design_contents;
   if (!base::ReadFileToString(charge_full_design_path,
