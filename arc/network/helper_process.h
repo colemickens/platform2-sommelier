@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
@@ -31,6 +32,10 @@ class HelperProcess {
   // mainloop.
   void Start(int argc, char* argv[], const std::string& fd_arg);
 
+  // Attempts to restart the process with the original arguments.
+  // Returns false if the maximum number of restarts has been exceeded.
+  bool Restart();
+
   // Serializes a protobuf and sends it to the helper process.
   void SendMessage(const google::protobuf::MessageLite& proto) const;
 
@@ -42,13 +47,18 @@ class HelperProcess {
   void RegisterDeviceMessageHandler(
       const base::Callback<void(const DeviceMessage&)>& handler);
 
-  const pid_t pid() { return pid_; }
-
- protected:
-  pid_t pid_{0};
+  pid_t pid() const { return pid_; }
+  uint8_t restarts() const { return restarts_; }
 
  private:
+  void Launch();
+
+  pid_t pid_{0};
+  uint8_t restarts_{0};
+  std::vector<std::string> argv_;
+  std::string fd_arg_;
   std::unique_ptr<MessageDispatcher> msg_dispatcher_;
+
   DISALLOW_COPY_AND_ASSIGN(HelperProcess);
 };
 

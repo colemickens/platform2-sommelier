@@ -50,6 +50,7 @@ class Manager final : public brillo::DBusDaemon {
   // Callback from ProcessReaper to notify Manager that one of the
   // subprocesses died.
   void OnSubprocessExited(pid_t pid, const siginfo_t& info);
+  void RestartSubprocess(HelperProcess* subproc);
 
   // Callback from Daemon to notify that SIGTERM or SIGINT was received and
   // the daemon should clean up in preparation to exit.

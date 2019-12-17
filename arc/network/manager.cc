@@ -28,6 +28,7 @@
 
 namespace arc_networkd {
 namespace {
+constexpr int kSubprocessRestartDelayMs = 900;
 
 bool ShouldEnableNDProxy() {
   static const char kLsbReleasePath[] = "/etc/lsb-release";
@@ -234,9 +235,39 @@ void Manager::OnShutdown(int* exit_code) {
   }
 }
 
-void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
-  LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly";
-  Quit();
+void Manager::OnSubprocessExited(pid_t pid, const siginfo_t&) {
+  LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly -"
+             << " attempting to restart";
+
+  HelperProcess* proc;
+  if (pid == adb_proxy_->pid()) {
+    proc = adb_proxy_.get();
+  } else if (pid == mcast_proxy_->pid()) {
+    proc = mcast_proxy_.get();
+  } else if (pid == nd_proxy_->pid()) {
+    proc = nd_proxy_.get();
+  } else {
+    LOG(DFATAL) << "Unknown child process";
+    return;
+  }
+
+  process_reaper_.ForgetChild(pid);
+
+  base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&Manager::RestartSubprocess, weak_factory_.GetWeakPtr(), proc),
+      base::TimeDelta::FromMilliseconds((2 << proc->restarts()) *
+                                        kSubprocessRestartDelayMs));
+}
+
+void Manager::RestartSubprocess(HelperProcess* subproc) {
+  if (subproc->Restart()) {
+    DCHECK(process_reaper_.WatchForChild(
+        FROM_HERE, subproc->pid(),
+        base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                   subproc->pid())))
+        << "Failed to watch child process " << subproc->pid();
+  }
 }
 
 bool Manager::StartArc(pid_t pid) {
