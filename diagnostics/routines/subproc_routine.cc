@@ -17,25 +17,22 @@
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-constexpr char kSubprocRoutineCancelled[] = "The test was canceled.";
+constexpr char kSubprocRoutineCancelledMessage[] = "The routine was cancelled.";
 constexpr char kSubprocRoutineErrorMessage[] =
-    "The test crashed or was killed.";
-constexpr char kSubprocRoutineFailedMessage[] = "Test failed.";
+    "The routine crashed or was killed.";
+constexpr char kSubprocRoutineFailedMessage[] = "Routine failed.";
 constexpr char kSubprocRoutineFailedToLaunchProcessMessage[] =
     "Could not launch the process.";
 constexpr char kSubprocRoutineFailedToStopMessage[] =
     "Failed to stop the routine.";
-constexpr char kSubprocRoutineInvalidParametersMessage[] =
-    "The test could not be run due to invalid parameters.";
 constexpr char kSubprocRoutineProcessCancellingMessage[] =
-    "Cancelled test. Waiting for cleanup...";
+    "Cancelled routine. Waiting for cleanup...";
 constexpr char kSubprocRoutineProcessRunningMessage[] =
-    "Test is still running.";
+    "Routine is still running.";
 constexpr char kSubprocRoutineReadyMessage[] = "Routine is ready.";
-constexpr char kSubprocRoutineSucceededMessage[] = "Test passed.";
+constexpr char kSubprocRoutineSucceededMessage[] = "Routine passed.";
 
-constexpr int kSubprocRoutineFakeProgressPercentUnknown = 33;
-constexpr int kSubprocRoutineFakeProgressPercentCancelling = 99;
+constexpr uint32_t kSubprocRoutineFakeProgressPercentUnknown = 33;
 
 mojo_ipc::DiagnosticRoutineStatusEnum
 GetDiagnosticRoutineStatusFromSubprocRoutineStatus(
@@ -78,12 +75,12 @@ std::string GetStatusMessageFromSubprocRoutineStatus(
     case SubprocRoutine::kSubprocStatusError:
       return kSubprocRoutineErrorMessage;
     case SubprocRoutine::kSubprocStatusCancelled:
-      return kSubprocRoutineCancelled;
+      return kSubprocRoutineCancelledMessage;
   }
 }
 
 SubprocRoutine::SubprocRoutine(const base::CommandLine& command_line,
-                               int predicted_duration_in_seconds)
+                               uint32_t predicted_duration_in_seconds)
     : SubprocRoutine(std::make_unique<DiagProcessAdapterImpl>(),
                      std::make_unique<base::DefaultTickClock>(),
                      command_line,
@@ -93,7 +90,7 @@ SubprocRoutine::SubprocRoutine(
     std::unique_ptr<DiagProcessAdapter> process_adapter,
     std::unique_ptr<base::TickClock> tick_clock,
     const base::CommandLine& command_line,
-    int predicted_duration_in_seconds)
+    uint32_t predicted_duration_in_seconds)
     : subproc_status_(kSubprocStatusReady),
       process_adapter_(std::move(process_adapter)),
       tick_clock_(std::move(tick_clock)),
@@ -107,14 +104,7 @@ SubprocRoutine::~SubprocRoutine() {
 }
 
 void SubprocRoutine::Start() {
-  DCHECK_EQ(subproc_status_, kSubprocStatusReady);
   DCHECK_EQ(handle_, base::kNullProcessHandle);
-
-  if (predicted_duration_in_seconds_ < 0) {
-    subproc_status_ = kSubprocStatusLaunchFailed;
-    LOG(ERROR) << kSubprocRoutineInvalidParametersMessage;
-    return;
-  }
 
   StartProcess();
 }
@@ -152,25 +142,17 @@ mojo_ipc::DiagnosticRoutineStatusEnum SubprocRoutine::GetStatus() {
 }
 
 void SubprocRoutine::StartProcess() {
-  if (subproc_status_ == kSubprocStatusReady) {
-    subproc_status_ = kSubprocStatusRunning;
-    // Don't bother joining the command_line_ if we aren't in verbose mode.
-    if (VLOG_IS_ON(1)) {
-      VLOG(1) << "Starting command "
-              << base::JoinString(command_line_.argv(), " ");
-    }
+  DCHECK_EQ(subproc_status_, kSubprocStatusReady);
+  subproc_status_ = kSubprocStatusRunning;
+  VLOG(1) << "Starting command " << base::JoinString(command_line_.argv(), " ");
 
-    if (!process_adapter_->StartProcess(command_line_.argv(), &handle_)) {
-      subproc_status_ = kSubprocStatusLaunchFailed;
-      LOG(ERROR) << kSubprocRoutineFailedToLaunchProcessMessage;
-    }
-    // Keep track of when we began the routine, in case we need to predict
-    // progress.
-    start_ticks_ = tick_clock_->NowTicks();
-  } else {
-    LOG(ERROR) << "An attempt was made to start a SubprocRoutine, but it is "
-                  "not ready.";
+  if (!process_adapter_->StartProcess(command_line_.argv(), &handle_)) {
+    subproc_status_ = kSubprocStatusLaunchFailed;
+    LOG(ERROR) << kSubprocRoutineFailedToLaunchProcessMessage;
   }
+  // Keep track of when we began the routine, in case we need to predict
+  // progress.
+  start_ticks_ = tick_clock_->NowTicks();
 }
 
 void SubprocRoutine::KillProcess(bool from_dtor) {
@@ -238,10 +220,7 @@ void SubprocRoutine::CheckActiveProcessStatus() {
     default:
       // The process is mysteriously just missing.
       handle_ = base::kNullProcessHandle;
-
-      subproc_status_ = (subproc_status_ == kSubprocStatusCancelling)
-                            ? kSubprocStatusCancelled
-                            : kSubprocStatusError;
+      subproc_status_ = kSubprocStatusError;
       break;
   }
 }
@@ -263,21 +242,21 @@ void SubprocRoutine::CheckProcessStatus() {
   }
 }
 
-int SubprocRoutine::CalculateProgressPercent() {
+uint32_t SubprocRoutine::CalculateProgressPercent() {
   switch (subproc_status_) {
     case kSubprocStatusCompleteSuccess:
     case kSubprocStatusCompleteFailure:
       last_reported_progress_percent_ = 100;
       break;
     case kSubprocStatusRunning:
-      if (predicted_duration_in_seconds_ <= 0) {
+      if (predicted_duration_in_seconds_ == 0) {
         /* when we don't know the progress, we fake at a low percentage */
         last_reported_progress_percent_ =
             kSubprocRoutineFakeProgressPercentUnknown;
       } else {
-        last_reported_progress_percent_ = std::min(
-            100,
-            std::max(0, static_cast<int>(
+        last_reported_progress_percent_ = std::min<uint32_t>(
+            100, std::max<uint32_t>(
+                     0, static_cast<uint32_t>(
                             100 * (tick_clock_->NowTicks() - start_ticks_) /
                             base::TimeDelta::FromSeconds(
                                 predicted_duration_in_seconds_))));

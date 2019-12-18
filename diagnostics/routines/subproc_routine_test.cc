@@ -4,6 +4,7 @@
 
 #include "diagnostics/routines/subproc_routine.h"
 
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -28,7 +29,7 @@ using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using ::testing::Test;
 
-void CheckRoutineUpdate(int progress_percent,
+void CheckRoutineUpdate(uint32_t progress_percent,
                         std::string status_message,
                         mojo_ipc::DiagnosticRoutineStatusEnum status,
                         const mojo_ipc::RoutineUpdate& update) {
@@ -54,7 +55,16 @@ class MockDiagProcessAdapter : public DiagProcessAdapter {
 
 class SubprocRoutineTest : public Test {
  protected:
-  SubprocRoutineTest() {
+  SubprocRoutineTest() = default;
+
+  SubprocRoutine* routine() { return routine_.get(); }
+
+  mojo_ipc::RoutineUpdate* update() { return &update_; }
+
+  StrictMock<MockDiagProcessAdapter>* mock_adapter() { return mock_adapter_; }
+  base::SimpleTestTickClock* tick_clock() { return tick_clock_; }
+
+  void CreateRoutine(uint32_t predicted_duration_in_seconds = 10) {
     auto mock_adapter_ptr =
         std::make_unique<StrictMock<MockDiagProcessAdapter>>();
     mock_adapter_ = mock_adapter_ptr.get();
@@ -66,29 +76,17 @@ class SubprocRoutineTest : public Test {
     // DiagProcessAdapter to do things appropriately.
     auto command_line = base::CommandLine({"/dev/null"});
 
-    // For testing purposes, we will always pretend that subprocs are predicted
-    // to take 10s.
-    int predicted_duration_in_seconds = 10;
-
     routine_ = std::make_unique<SubprocRoutine>(
         std::move(mock_adapter_ptr), std::move(tick_clock_ptr), command_line,
         predicted_duration_in_seconds);
   }
 
-  SubprocRoutine* routine() { return routine_.get(); }
-
-  StrictMock<MockDiagProcessAdapter>* mock_adapter() { return mock_adapter_; }
-  base::SimpleTestTickClock* tick_clock() { return tick_clock_; }
-
   void RunRoutineWithTerminationStatus(base::TerminationStatus status) {
+    EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
+        .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
+                        Return(true)));
     routine_->Start();
     PopulateStatusUpdateForRunningRoutine(status);
-  }
-
-  void RunRoutinePastCompletion() {
-    routine_->Start();
-    PopulateStatusUpdateForRunningRoutine(
-        base::TERMINATION_STATUS_STILL_RUNNING);
   }
 
   void PopulateStatusUpdateForRunningRoutine(base::TerminationStatus status) {
@@ -96,9 +94,7 @@ class SubprocRoutineTest : public Test {
     routine_->PopulateStatusUpdate(&update_, true);
   }
 
-  void PopulateStatusUpdate() {
-    routine_->PopulateStatusUpdate(&update_, true);
-  }
+  void DestroyRoutine() { routine_.reset(); }
 
  private:
   StrictMock<MockDiagProcessAdapter>* mock_adapter_;  // Owned by |routine_|.
@@ -111,6 +107,7 @@ class SubprocRoutineTest : public Test {
 };
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithSuccess) {
+  CreateRoutine();
   EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
                       Return(true)));
@@ -128,6 +125,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithSuccess) {
 }
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithFailure) {
+  CreateRoutine();
   EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
                       Return(true)));
@@ -144,6 +142,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithFailure) {
 }
 
 TEST_F(SubprocRoutineTest, FailInvokingSubproc) {
+  CreateRoutine();
   EXPECT_CALL(*mock_adapter(), StartProcess(_, _)).WillOnce(Return(false));
   routine()->Start();
 
@@ -152,6 +151,7 @@ TEST_F(SubprocRoutineTest, FailInvokingSubproc) {
 }
 
 TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
+  CreateRoutine();
   EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
                       Return(true)));
@@ -173,6 +173,7 @@ TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
 }
 
 TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
+  CreateRoutine();
   EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
                       Return(true)));
@@ -207,8 +208,112 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
   // Now the process should appear dead
   routine()->PopulateStatusUpdate(&update, false);
 
-  CheckRoutineUpdate(50, kSubprocRoutineCancelled,
+  CheckRoutineUpdate(50, kSubprocRoutineCancelledMessage,
                      mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled, update);
+}
+
+// Test that we can handle repeated cancel commands to a process that is slow to
+// die.
+TEST_F(SubprocRoutineTest, RepeatedCancelCommands) {
+  CreateRoutine();
+  EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
+                      Return(true)));
+  EXPECT_CALL(*mock_adapter(), KillProcess(_));
+  EXPECT_CALL(*mock_adapter(), GetStatus(_))
+      .Times(4)
+      .WillOnce(Return(base::TERMINATION_STATUS_STILL_RUNNING))
+      .WillOnce(Return(base::TERMINATION_STATUS_STILL_RUNNING))
+      .WillOnce(Return(base::TERMINATION_STATUS_STILL_RUNNING))
+      .WillOnce(Return(base::TERMINATION_STATUS_NORMAL_TERMINATION));
+
+  routine()->Start();
+  routine()->Cancel();
+
+  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                 mojo_ipc::RoutineUpdateUnion::New()};
+  routine()->PopulateStatusUpdate(&update, false);
+
+  VerifyNonInteractiveUpdate(update.routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling,
+                             kSubprocRoutineProcessCancellingMessage);
+
+  routine()->Cancel();
+
+  routine()->PopulateStatusUpdate(&update, false);
+
+  VerifyNonInteractiveUpdate(update.routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+                             kSubprocRoutineCancelledMessage);
+}
+
+// Test that SubprocRoutine handles an invalid termination status returned from
+// the diag process adapter.
+TEST_F(SubprocRoutineTest, InvalidTerminationStatus) {
+  CreateRoutine();
+  RunRoutineWithTerminationStatus(static_cast<base::TerminationStatus>(-1));
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             kSubprocRoutineErrorMessage);
+}
+
+// Test that SubprocRoutine handles a command line that fails to start.
+TEST_F(SubprocRoutineTest, FailedToStart) {
+  CreateRoutine();
+  RunRoutineWithTerminationStatus(base::TERMINATION_STATUS_LAUNCH_FAILED);
+  VerifyNonInteractiveUpdate(
+      update()->routine_update_union,
+      mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart,
+      kSubprocRoutineFailedToLaunchProcessMessage);
+}
+
+// Test that we attempt to kill a running process during destruction.
+TEST_F(SubprocRoutineTest, KillProcessDuringDestruction) {
+  CreateRoutine();
+  EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
+                      Return(true)));
+
+  routine()->Start();
+
+  // When we kill the routine, it should attempt to kill a running process.
+  EXPECT_CALL(*mock_adapter(), GetStatus(_))
+      .WillOnce(Return(base::TERMINATION_STATUS_STILL_RUNNING));
+  EXPECT_CALL(*mock_adapter(), KillProcess(_));
+
+  DestroyRoutine();
+}
+
+// Test that we report the correct progress percent when we don't know the
+// routine's predicted duration.
+TEST_F(SubprocRoutineTest, NoPredictedDuration) {
+  CreateRoutine(/*predicted_duration_in_seconds=*/0);
+  RunRoutineWithTerminationStatus(base::TERMINATION_STATUS_STILL_RUNNING);
+  EXPECT_EQ(update()->progress_percent,
+            kSubprocRoutineFakeProgressPercentUnknown);
+
+  // Since we left a zombie process, expect the destructor to try and kill it.
+  EXPECT_CALL(*mock_adapter(), GetStatus(_))
+      .WillOnce(Return(base::TERMINATION_STATUS_NORMAL_TERMINATION));
+}
+
+// Test that calling resume doesn't crash.
+TEST_F(SubprocRoutineTest, Resume) {
+  CreateRoutine();
+  routine()->Resume();
+}
+
+// Test that we can create a SubprocRoutine with the production constructor.
+TEST(SubprocRoutineTestNoFixture, ProductionConstructor) {
+  std::unique_ptr<SubprocRoutine> prod_routine =
+      std::make_unique<SubprocRoutine>(base::CommandLine({"/dev/null"}),
+                                       /*predicted_duration_in_seconds=*/0);
+  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                 mojo_ipc::RoutineUpdateUnion::New()};
+  prod_routine->PopulateStatusUpdate(&update, false);
+  VerifyNonInteractiveUpdate(update.routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kReady,
+                             kSubprocRoutineReadyMessage);
 }
 
 }  // namespace diagnostics

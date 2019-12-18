@@ -20,26 +20,19 @@
 namespace diagnostics {
 
 // Output messages for the routine when in various states.
-extern const char kSubprocRoutineCancelled[];
+extern const char kSubprocRoutineCancelledMessage[];
+extern const char kSubprocRoutineErrorMessage[];
 extern const char kSubprocRoutineFailedMessage[];
 extern const char kSubprocRoutineFailedToLaunchProcessMessage[];
 extern const char kSubprocRoutineFailedToStopMessage[];
-extern const char kSubprocRoutineInvalidParametersMessage[];
-extern const char kSubprocRoutineProcessCrashedOrKilledMessage[];
 extern const char kSubprocRoutineProcessCancellingMessage[];
 extern const char kSubprocRoutineProcessRunningMessage[];
-extern const char kSubprocRoutineReady[];
+extern const char kSubprocRoutineReadyMessage[];
 extern const char kSubprocRoutineSucceededMessage[];
 
 // We don't always know when a SubprocRoutine should finish. Sometimes we have
 // to fake our prediction of percent complete.
-extern const int kSubprocRoutineFakeProgressPercentUnknown;
-extern const int kSubprocRoutineFakeProgressPercentCancelling;
-
-// Progress percentage when the routine has been running for equal to
-// or longer than the time specified in the SubprocRoutineRoutineParameters, but
-// has not stopped yet.
-extern const int64_t kSubprocRoutineLongRunningProgress;
+extern const uint32_t kSubprocRoutineFakeProgressPercentUnknown;
 
 // The SubprocRoutine takes a command line to run. It is non-interactive, and
 // this does not fully support Pause and Resume. Pause will simply kill the
@@ -61,11 +54,11 @@ class SubprocRoutine final : public DiagnosticRoutine {
   };
 
   SubprocRoutine(const base::CommandLine& command_line,
-                 int predicted_duration_in_seconds);
+                 uint32_t predicted_duration_in_seconds);
   SubprocRoutine(std::unique_ptr<DiagProcessAdapter> process_adapter,
                  std::unique_ptr<base::TickClock> tick_clock,
                  const base::CommandLine& command_line,
-                 int predicted_duration_in_seconds);
+                 uint32_t predicted_duration_in_seconds);
 
   // DiagnosticRoutine overrides:
   ~SubprocRoutine() override;
@@ -85,7 +78,7 @@ class SubprocRoutine final : public DiagnosticRoutine {
   // Handle state transitions due to process state within this object.
   void CheckProcessStatus();
   void CheckActiveProcessStatus();
-  int CalculateProgressPercent();
+  uint32_t CalculateProgressPercent();
 
   // |subproc_status_| is the state of the subproc as understood by the
   // SubprocRoutine object's state machine. Essentially, this variable stores
@@ -108,11 +101,11 @@ class SubprocRoutine final : public DiagnosticRoutine {
 
   // |predicted_duration_in_seconds_| is used to calculate progress percentage
   // when it is non-zero.
-  int predicted_duration_in_seconds_ = 0;
+  uint32_t predicted_duration_in_seconds_ = 0;
 
   // |last_reported_progress_percent_| is used to save the last reported
   // progress percentage for handling progress reported across status changes.
-  int last_reported_progress_percent_ = 0;
+  uint32_t last_reported_progress_percent_ = 0;
 
   // |handle_| keeps track of the running process.
   base::ProcessHandle handle_ = base::kNullProcessHandle;
