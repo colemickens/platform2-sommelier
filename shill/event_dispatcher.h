@@ -34,7 +34,10 @@ class EventDispatcher {
                                const base::Closure& task,
                                int64_t delay_ms);
 
+  virtual void QuitDispatchForever();
+
  private:
+  base::RepeatingClosure quit_closure_;
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };
 

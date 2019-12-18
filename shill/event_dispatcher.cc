@@ -19,7 +19,9 @@ EventDispatcher::EventDispatcher() = default;
 EventDispatcher::~EventDispatcher() = default;
 
 void EventDispatcher::DispatchForever() {
-  base::RunLoop().Run();
+  base::RunLoop run_loop;
+  quit_closure_ = run_loop.QuitWhenIdleClosure();
+  run_loop.Run();
 }
 
 void EventDispatcher::DispatchPendingEvents() {
@@ -35,6 +37,10 @@ void EventDispatcher::PostDelayedTask(const Location& location,
                                       int64_t delay_ms) {
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       location, task, base::TimeDelta::FromMilliseconds(delay_ms));
+}
+
+void EventDispatcher::QuitDispatchForever() {
+  this->PostTask(FROM_HERE, quit_closure_);
 }
 
 }  // namespace shill

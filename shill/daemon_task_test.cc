@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/memory/ref_counted.h>
+#include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -56,7 +57,11 @@ class DaemonTaskForTest : public DaemonTask {
 
   bool Quit(const base::Closure& completion_callback) override {
     quit_result_ = DaemonTask::Quit(completion_callback);
-    dispatcher_->PostTask(FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::Bind(&EventDispatcher::QuitDispatchForever,
+                   // dispatcher_ will not be deleted before RunLoop quits.
+                   base::Unretained(dispatcher_.get())));
     return quit_result_;
   }
 

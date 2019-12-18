@@ -118,7 +118,11 @@ TEST_F(HookTableTest, ActionTimesOut) {
 
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
   event_dispatcher_.PostDelayedTask(
-      FROM_HERE, base::MessageLoop::QuitWhenIdleClosure(), kTimeout + 1);
+      FROM_HERE,
+      base::Bind(&EventDispatcherForTest::QuitDispatchForever,
+                 // event_dispatcher_ will not be deleted before RunLoop quits.
+                 base::Unretained(&event_dispatcher_)),
+      kTimeout + 1);
   event_dispatcher_.DispatchForever();
   EXPECT_TRUE(GetDoneCallback()->is_null());
 }
@@ -165,7 +169,11 @@ TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
   hook_table_.ActionComplete(kName3);
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
   event_dispatcher_.PostDelayedTask(
-      FROM_HERE, base::MessageLoop::QuitWhenIdleClosure(), kTimeout + 1);
+      FROM_HERE,
+      base::Bind(&EventDispatcherForTest::QuitDispatchForever,
+                 // event_dispatcher_ will not be deleted before RunLoop quits.
+                 base::Unretained(&event_dispatcher_)),
+      kTimeout + 1);
   event_dispatcher_.DispatchForever();
 }
 

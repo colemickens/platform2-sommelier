@@ -79,7 +79,11 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
     // the message loop. Then we run until the message loop becomes idle to
     // exercise the destruction task of ExternalTask.
     service_ = nullptr;
-    dispatcher_.PostTask(FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
+    dispatcher_.PostTask(
+        FROM_HERE,
+        base::Bind(&EventDispatcherForTest::QuitDispatchForever,
+                   // dispatcher_ will not be deleted before RunLoop quits.
+                   base::Unretained(&dispatcher_)));
     dispatcher_.DispatchForever();
   }
 
