@@ -4,11 +4,6 @@
 
 #include "media_perception/producer_impl.h"
 
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
-#include <mojo/edk/embedder/platform_handle_vector.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <stdlib.h>
 #include <utility>
 

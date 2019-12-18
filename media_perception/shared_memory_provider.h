@@ -5,12 +5,8 @@
 #ifndef MEDIA_PERCEPTION_SHARED_MEMORY_PROVIDER_H_
 #define MEDIA_PERCEPTION_SHARED_MEMORY_PROVIDER_H_
 
+#include <base/files/scoped_file.h>
 #include <base/memory/shared_memory.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
-#include <mojo/edk/embedder/platform_handle_vector.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <memory>
 // NOLINTNEXTLINE
@@ -27,7 +23,8 @@ class SharedMemoryProvider {
   // Returns a new SharedMemoryProvider unique_ptr, which is a nullptr if the
   // initialization failed and sets up |shared_memory_| from a file descriptor.
   static std::unique_ptr<SharedMemoryProvider> CreateFromRawFileDescriptor(
-      bool read_only, mojo::ScopedHandle fd_handle,
+      bool read_only,
+      mojo::ScopedHandle fd_handle,
       uint32_t memory_size_in_bytes);
 
   // Shared memory is owned by the provider.
@@ -39,7 +36,7 @@ class SharedMemoryProvider {
   // Initializes the |shared_memory_| member.
   // scoped_handle is owned by the caller.
   SharedMemoryProvider(bool read_only,
-                       mojo::edk::ScopedPlatformHandle* scoped_handle,
+                       base::ScopedFD scoped_handle,
                        uint32_t memory_size_in_bytes);
 
   std::unique_ptr<base::SharedMemory> shared_memory_;
