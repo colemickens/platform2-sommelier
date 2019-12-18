@@ -428,5 +428,16 @@ grpc::Status ServiceImpl::ApplyAnsiblePlaybook(
   return grpc::Status::OK;
 }
 
+grpc::Status ServiceImpl::ConfigureForArcSideload(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::ConfigureForArcSideloadRequest* request,
+    vm_tools::container::ConfigureForArcSideloadResponse* response) {
+  LOG(ERROR) << "ConfigureForArcSideload is not implemented yet.";
+  response->set_status(
+      vm_tools::container::ConfigureForArcSideloadResponse::FAILED);
+  response->set_failure_reason("Arc++ sideload is not implemented yet.");
+  return grpc::Status::OK;
+}
+
 }  // namespace garcon
 }  // namespace vm_tools

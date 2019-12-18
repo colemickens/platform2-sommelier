@@ -407,6 +407,11 @@ class Service final {
   std::unique_ptr<dbus::Response> ApplyAnsiblePlaybook(
       dbus::MethodCall* method_call);
 
+  // Handles a request to allow sideloading Arc (android) apps from the
+  // container.
+  std::unique_ptr<dbus::Response> ConfigureForArcSideload(
+      dbus::MethodCall* method_call);
+
   // Handles a request to upgrade a container.
   std::unique_ptr<dbus::Response> UpgradeContainer(
       dbus::MethodCall* method_call);

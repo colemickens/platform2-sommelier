@@ -248,6 +248,27 @@ message ApplyAnsiblePlaybookResponse {
   string failure_reason = 2;
 }
 
+// Request for the container to configure itself to allow sideloading android
+// apps.
+message ConfigureForArcSideloadRequest {}
+
+// Response from the sideloading configuration.
+message ConfigureForArcSideloadResponse {
+  enum Status {
+    UNKNOWN = 0;
+
+    SUCCEEDED = 2;
+
+    FAILED = 3;
+  }
+
+  // Status of the request.
+  Status status = 1;
+
+  // If status is FAILED, contains the reason the request failed.
+  string failure_reason = 2;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
@@ -283,4 +304,8 @@ service Garcon {
   // Apply Ansible playbook to the container.
   rpc ApplyAnsiblePlaybook(ApplyAnsiblePlaybookRequest)
       returns (ApplyAnsiblePlaybookResponse);
+
+  // Configure the container to allow sideloading android apps.
+  rpc ConfigureForArcSideload(ConfigureForArcSideloadRequest)
+      returns (ConfigureForArcSideloadResponse);
 }

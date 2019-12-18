@@ -1363,6 +1363,7 @@ bool Service::Init(
       {kConnectChunnelMethod, &Service::ConnectChunnel},
       {kGetDebugInformationMethod, &Service::GetDebugInformation},
       {kApplyAnsiblePlaybookMethod, &Service::ApplyAnsiblePlaybook},
+      {kConfigureForArcSideloadMethod, &Service::ConfigureForArcSideload},
       {kUpgradeContainerMethod, &Service::UpgradeContainer},
       {kCancelUpgradeContainerMethod, &Service::CancelUpgradeContainer},
   };
@@ -2836,6 +2837,67 @@ std::unique_ptr<dbus::Response> Service::ApplyAnsiblePlaybook(
       response.set_failure_reason(
           "Unknown ApplyAnsiblePlaybookResponse Status from container");
       response.set_status(ApplyAnsiblePlaybookResponse::FAILED);
+      break;
+  }
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::ConfigureForArcSideload(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received ConfigureForArcSideload request";
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ConfigureForArcSideloadRequest request;
+  ConfigureForArcSideloadResponse response;
+  response.set_status(ConfigureForArcSideloadResponse::FAILED);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ConfigureForArcSideloadRequest from message";
+    response.set_failure_reason("Unable to parse request protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_failure_reason(base::StringPrintf(
+        "requested container does not exist: %s", container_name.c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  vm_tools::container::ConfigureForArcSideloadResponse::Status status =
+      container->ConfigureForArcSideload(&error_msg);
+  response.set_failure_reason(error_msg);
+  switch (status) {
+    case vm_tools::container::ConfigureForArcSideloadResponse::SUCCEEDED:
+      response.set_status(ConfigureForArcSideloadResponse::SUCCEEDED);
+      break;
+    case vm_tools::container::ConfigureForArcSideloadResponse::FAILED:
+      response.set_status(ConfigureForArcSideloadResponse::FAILED);
+      break;
+    default:
+      LOG(ERROR) << "Unknown ConfigureForArcSideloadResponse Status " << status;
+      response.set_failure_reason(
+          "Unknown ConfigureForArcSideloadResponse Status from container");
+      response.set_status(ConfigureForArcSideloadResponse::FAILED);
       break;
   }
   writer.AppendProtoAsArrayOfBytes(response);

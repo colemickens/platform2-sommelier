@@ -319,5 +319,28 @@ Container::ApplyAnsiblePlaybook(const std::string& playbook,
   return container_response.status();
 }
 
+vm_tools::container::ConfigureForArcSideloadResponse::Status
+Container::ConfigureForArcSideload(std::string* out_error) {
+  vm_tools::container::ConfigureForArcSideloadRequest container_request;
+  vm_tools::container::ConfigureForArcSideloadResponse container_response;
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = garcon_stub_->ConfigureForArcSideload(
+      &ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to configure for arc sideloading: "
+               << status.error_message() << " code: " << status.error_code();
+    out_error->assign("gRPC failure configuring container for arc sideload: " +
+                      status.error_message());
+    return vm_tools::container::ConfigureForArcSideloadResponse::FAILED;
+  }
+  out_error->assign(container_response.failure_reason());
+  return container_response.status();
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

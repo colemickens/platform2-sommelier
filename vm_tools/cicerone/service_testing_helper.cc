@@ -494,10 +494,8 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kSetTimezone].method_name = kSetTimezoneMethod;
   dbus_callbacks_[kSetUpLxdContainerUser].method_name =
       kSetUpLxdContainerUserMethod;
-  dbus_callbacks_[kExportLxdContainer].method_name =
-      kExportLxdContainerMethod;
-  dbus_callbacks_[kImportLxdContainer].method_name =
-      kImportLxdContainerMethod;
+  dbus_callbacks_[kExportLxdContainer].method_name = kExportLxdContainerMethod;
+  dbus_callbacks_[kImportLxdContainer].method_name = kImportLxdContainerMethod;
   dbus_callbacks_[kCancelExportLxdContainer].method_name =
       kCancelExportLxdContainerMethod;
   dbus_callbacks_[kCancelImportLxdContainer].method_name =
@@ -506,6 +504,8 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
       kGetDebugInformationMethod;
   dbus_callbacks_[kApplyAnsiblePlaybook].method_name =
       kApplyAnsiblePlaybookMethod;
+  dbus_callbacks_[kConfigureForArcSideload].method_name =
+      kConfigureForArcSideloadMethod;
   dbus_callbacks_[kConnectChunnel].method_name = kConnectChunnelMethod;
   dbus_callbacks_[kUpgradeContainer].method_name = kUpgradeContainerMethod;
   dbus_callbacks_[kCancelUpgradeContainer].method_name =

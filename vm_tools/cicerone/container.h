@@ -113,6 +113,9 @@ class Container {
   vm_tools::container::ApplyAnsiblePlaybookResponse::Status
   ApplyAnsiblePlaybook(const std::string& playbook, std::string* out_error);
 
+  vm_tools::container::ConfigureForArcSideloadResponse::Status
+  ConfigureForArcSideload(std::string* out_error);
+
   bool ConnectChunnel(uint32_t chunneld_port,
                       uint32_t tcp4_port,
                       std::string* out_error);

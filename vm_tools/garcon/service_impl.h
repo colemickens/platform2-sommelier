@@ -71,6 +71,11 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::ApplyAnsiblePlaybookRequest* request,
       vm_tools::container::ApplyAnsiblePlaybookResponse* response) override;
 
+  grpc::Status ConfigureForArcSideload(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::ConfigureForArcSideloadRequest* request,
+      vm_tools::container::ConfigureForArcSideloadResponse* response) override;
+
  private:
   PackageKitProxy* package_kit_proxy_;  // Not owned.
   base::TaskRunner* task_runner_;

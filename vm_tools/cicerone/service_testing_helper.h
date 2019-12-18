@@ -65,6 +65,7 @@ class ServiceTestingHelper {
     kCancelImportLxdContainer,
     kGetDebugInformation,
     kApplyAnsiblePlaybook,
+    kConfigureForArcSideload,
     kConnectChunnel,
     kUpgradeContainer,
     kCancelUpgradeContainer,
