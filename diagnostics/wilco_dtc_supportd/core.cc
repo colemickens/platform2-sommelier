@@ -112,15 +112,7 @@ Core::Core(const std::vector<std::string>& grpc_service_uris,
   ec_event_service_->AddObserver(this);
 }
 
-Core::~Core() {
-  if (bluetooth_event_service_) {
-    bluetooth_event_service_->RemoveObserver(this);
-  }
-  if (powerd_event_service_) {
-    powerd_event_service_->RemoveObserver(this);
-  }
-  ec_event_service_->RemoveObserver(this);
-}
+Core::~Core() = default;
 
 bool Core::Start() {
   // Associate RPCs of the to-be-exposed gRPC interface with methods of
@@ -216,6 +208,7 @@ bool Core::Start() {
 void Core::ShutDown(const base::Closure& on_shutdown_callback) {
   VLOG(1) << "Tearing down gRPC server, gRPC wilco_dtc clients, "
              "EC event service and D-Bus server";
+  UnsubscribeFromEventServices();
   const base::Closure barrier_closure =
       BarrierClosure(wilco_dtc_grpc_clients_.size() + 2, on_shutdown_callback);
   ec_event_service_->ShutDown(barrier_closure);
@@ -689,6 +682,16 @@ void Core::NotifyClientsBluetoothAdapterState(
                          "successfully called on wilco_dtc";
             }));
   }
+}
+
+void Core::UnsubscribeFromEventServices() {
+  if (bluetooth_event_service_) {
+    bluetooth_event_service_->RemoveObserver(this);
+  }
+  if (powerd_event_service_) {
+    powerd_event_service_->RemoveObserver(this);
+  }
+  ec_event_service_->RemoveObserver(this);
 }
 
 }  // namespace diagnostics

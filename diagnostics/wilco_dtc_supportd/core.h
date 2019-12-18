@@ -217,6 +217,9 @@ class Core final : public DBusService::Delegate,
   void NotifyClientsBluetoothAdapterState(
       const std::vector<BluetoothEventService::AdapterData>& adapters);
 
+  // Unsubscribes Core from observing events in preparation to shut down.
+  void UnsubscribeFromEventServices();
+
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
 
