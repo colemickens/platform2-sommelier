@@ -7,7 +7,6 @@
 #include <memory>
 #include <vector>
 
-#include <attestation-client-test/attestation/dbus-proxy-mocks.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
@@ -104,7 +103,6 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_mount_factory(&mount_factory_);
     userdataauth_->set_tpm_ownership_proxy(&tpm_ownership_proxy_);
-    userdataauth_->set_attestation_proxy(&attestation_proxy_);
     userdataauth_->set_disable_threading(true);
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
@@ -186,10 +184,6 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   // Mock tpm ownership proxy object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<org::chromium::TpmOwnershipProxyMock> tpm_ownership_proxy_;
-
-  // Mock attestation proxy object, will be passed to UserDataAuth for its
-  // internal use.
-  NiceMock<org::chromium::AttestationProxyMock> attestation_proxy_;
 
   // Mock Mount Factory object, will be passed to UserDataAuth for its internal
   // use.
@@ -2439,147 +2433,6 @@ class UserDataAuthTestThreaded : public UserDataAuthTestNotInitialized {
  private:
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthTestThreaded);
 };
-
-TEST_F(UserDataAuthTestNotInitialized, SetSystemSaltCalledOnInit) {
-  // Retrieve the expected salt content.
-  brillo::SecureBlob salt;
-  AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
-
-  // Set up the expectation for calling SetSystemSaltAsync.
-  EXPECT_CALL(attestation_proxy_,
-              SetSystemSaltAsync(
-                  Property(&attestation::SetSystemSaltRequest::system_salt,
-                           salt.to_string()),
-                  _, _, _))
-      .WillOnce(
-          Invoke([](const attestation::SetSystemSaltRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::SetSystemSaltReply& /*reply*/)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
-            attestation::SetSystemSaltReply reply;
-            reply.set_status(attestation::AttestationStatus::STATUS_SUCCESS);
-            success_callback.Run(reply);
-          }));
-
-  // Do the initialization.
-  EXPECT_TRUE(userdataauth_->Initialize());
-  // A mock dbus is needed so that it doesn't crash.
-  userdataauth_->set_dbus(bus_);
-  EXPECT_TRUE(userdataauth_->PostDBusInitialize());
-}
-
-TEST_F(UserDataAuthTestThreaded, SetSystemSaltRetryOnFailure) {
-  // Retrieve the expected salt content.
-  brillo::SecureBlob salt;
-  AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
-
-  // Signals that we're done with the test.
-  base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
-                           base::WaitableEvent::InitialState::NOT_SIGNALED);
-
-  // The first call should fail.
-  EXPECT_CALL(attestation_proxy_,
-              SetSystemSaltAsync(
-                  Property(&attestation::SetSystemSaltRequest::system_salt,
-                           salt.to_string()),
-                  _, _, _))
-      .WillOnce(
-          Invoke([](const attestation::SetSystemSaltRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::SetSystemSaltReply& /*reply*/)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
-            error_callback.Run(
-                UserDataAuthTestNotInitialized::CreateDefaultError(FROM_HERE)
-                    .get());
-          }))
-      // The second call should be successful.
-      .WillOnce(Invoke(
-          [&done](const attestation::SetSystemSaltRequest& in_request,
-                  const base::Callback<void(
-                      const attestation::SetSystemSaltReply& /*reply*/)>&
-                      success_callback,
-                  const base::Callback<void(brillo::Error*)>& error_callback,
-                  int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
-            attestation::SetSystemSaltReply reply;
-            reply.set_status(attestation::AttestationStatus::STATUS_SUCCESS);
-            success_callback.Run(reply);
-            done.Signal();
-          }));
-
-  // Do the initialization.
-  InitializeUserDataAuth();
-  // A mock dbus is needed so that it doesn't crash.
-  userdataauth_->set_dbus(bus_);
-  PostToOriginAndBlock(base::BindOnce(
-      [](UserDataAuth* userdataauth) {
-        ASSERT_TRUE(userdataauth->PostDBusInitialize());
-      },
-      base::Unretained(userdataauth_.get())));
-
-  EXPECT_TRUE(done.TimedWait(base::TimeDelta::FromSeconds(10)));
-}
-
-TEST_F(UserDataAuthTestThreaded, SetSystemSaltRetryOnUnsuccessful) {
-  // Note that this test is pretty much equivalent to
-  // SetSystemSaltRetryOnFailure, except that in the previous test, we test for
-  // dbus error, but here, we test for error condition from sucessful dbus call.
-
-  // Retrieve the expected salt content.
-  brillo::SecureBlob salt;
-  AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
-
-  // Signals that we're done with the test.
-  base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
-                           base::WaitableEvent::InitialState::NOT_SIGNALED);
-
-  // The first call should fail.
-  EXPECT_CALL(attestation_proxy_,
-              SetSystemSaltAsync(
-                  Property(&attestation::SetSystemSaltRequest::system_salt,
-                           salt.to_string()),
-                  _, _, _))
-      .WillOnce(
-          Invoke([](const attestation::SetSystemSaltRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::SetSystemSaltReply& /*reply*/)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
-            attestation::SetSystemSaltReply reply;
-            reply.set_status(
-                attestation::AttestationStatus::STATUS_NOT_SUPPORTED);
-            success_callback.Run(reply);
-          }))
-      // The second call should be successful.
-      .WillOnce(Invoke(
-          [&done](const attestation::SetSystemSaltRequest& in_request,
-                  const base::Callback<void(
-                      const attestation::SetSystemSaltReply& /*reply*/)>&
-                      success_callback,
-                  const base::Callback<void(brillo::Error*)>& error_callback,
-                  int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
-            attestation::SetSystemSaltReply reply;
-            reply.set_status(attestation::AttestationStatus::STATUS_SUCCESS);
-            success_callback.Run(reply);
-            done.Signal();
-          }));
-
-  // Do the initialization.
-  InitializeUserDataAuth();
-  // A mock dbus is needed so that it doesn't crash.
-  userdataauth_->set_dbus(bus_);
-  PostToOriginAndBlock(base::BindOnce(
-      [](UserDataAuth* userdataauth) {
-        ASSERT_TRUE(userdataauth->PostDBusInitialize());
-      },
-      base::Unretained(userdataauth_.get())));
-
-  EXPECT_TRUE(done.TimedWait(base::TimeDelta::FromSeconds(10)));
-}
 
 TEST_F(UserDataAuthTestThreaded,
        CheckUpdateCurrentUserActivityTimestampCalledDaily) {
