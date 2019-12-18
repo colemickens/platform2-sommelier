@@ -127,9 +127,6 @@ class AttestationService : public AttestationInterface {
   void ResetIdentity(
       const ResetIdentityRequest& request,
       const ResetIdentityCallback& callback) override;
-  void SetSystemSalt(
-      const SetSystemSaltRequest& request,
-      const SetSystemSaltCallback& callback) override;
   void GetEnrollmentId(
       const GetEnrollmentIdRequest& request,
       const GetEnrollmentIdCallback& callback) override;

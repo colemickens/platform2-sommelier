@@ -2898,14 +2898,6 @@ void AttestationService::ResetIdentityTask(
   result->set_status(STATUS_NOT_SUPPORTED);
 }
 
-void AttestationService::SetSystemSalt(
-    const SetSystemSaltRequest& request,
-    const SetSystemSaltCallback& callback) {
-  system_salt_.assign(request.system_salt());
-  brillo::cryptohome::home::SetSystemSalt(&system_salt_);
-  SetSystemSaltReply result;
-  callback.Run(result);
-}
 
 void AttestationService::GetEnrollmentId(
     const GetEnrollmentIdRequest& request,

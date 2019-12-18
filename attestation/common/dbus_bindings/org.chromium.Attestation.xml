@@ -230,17 +230,6 @@
       </arg>
     </method>
 
-    <method name="SetSystemSalt">
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::SetSystemSaltRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::SetSystemSaltReply" />
-      </arg>
-    </method>
-
     <method name="GetEnrollmentId">
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"

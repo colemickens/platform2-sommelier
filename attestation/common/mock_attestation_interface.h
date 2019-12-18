@@ -111,10 +111,6 @@ class MockAttestationInterface : public AttestationInterface {
               (const ResetIdentityRequest&, const ResetIdentityCallback&),
               (override));
   MOCK_METHOD(void,
-              SetSystemSalt,
-              (const SetSystemSaltRequest&, const SetSystemSaltCallback&),
-              (override));
-  MOCK_METHOD(void,
               GetEnrollmentId,
               (const GetEnrollmentIdRequest&, const GetEnrollmentIdCallback&),
               (override));

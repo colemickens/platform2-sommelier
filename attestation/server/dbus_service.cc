@@ -83,9 +83,6 @@ void DBusService::Register(const CompletionAction& callback) {
       kResetIdentity, base::Unretained(this),
       &DBusService::HandleResetIdentity);
   dbus_interface->AddMethodHandler(
-      kSetSystemSalt, base::Unretained(this),
-      &DBusService::HandleSetSystemSalt);
-  dbus_interface->AddMethodHandler(
       kGetEnrollmentId, base::Unretained(this),
       &DBusService::HandleGetEnrollmentId);
   dbus_interface->AddMethodHandler(kGetCertifiedNvIndex, base::Unretained(this),
@@ -461,25 +458,6 @@ void DBusService::HandleResetIdentity(
     response->Return(reply);
   };
   service_->ResetIdentity(
-      request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
-}
-
-void DBusService::HandleSetSystemSalt(
-    std::unique_ptr<DBusMethodResponse<const SetSystemSaltReply&>>
-        response,
-    const SetSystemSaltRequest& request) {
-  VLOG(1) << __func__;
-  // Convert |response| to a shared_ptr so |service_| can safely copy the
-  // callback.
-  using SharedResponsePointer = std::shared_ptr<
-      DBusMethodResponse<const SetSystemSaltReply&>>;
-  // A callback that fills the reply protobuf and sends it.
-  auto callback = [](const SharedResponsePointer& response,
-                     const SetSystemSaltReply& reply) {
-    response->Return(reply);
-  };
-  service_->SetSystemSalt(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }
