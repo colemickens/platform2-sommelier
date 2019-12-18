@@ -20,6 +20,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptolib.h"
@@ -35,26 +36,21 @@ class VaultKeyset;
 
 extern const char kSystemSaltFile[];
 
-// This struct is populated by the various authentication methods.
+// This struct is populated by the various authentication methods, with the
+// secrets derived from the user input.
 struct KeyBlobs {
-  KeyBlobs()
-      : vkk_key(kAesBlockSize),
-        vkk_iv(kAesBlockSize),
-        chaps_iv(kAesBlockSize),
-        wrapped_reset_seed(),
-        authorization_data_iv(kAesBlockSize) {}
   // The file encryption key.
-  brillo::SecureBlob vkk_key;
+  base::Optional<brillo::SecureBlob> vkk_key;
   // The file encryption IV.
-  brillo::SecureBlob vkk_iv;
+  base::Optional<brillo::SecureBlob> vkk_iv;
   // The IV to use with the chaps key.
-  brillo::SecureBlob chaps_iv;
+  base::Optional<brillo::SecureBlob> chaps_iv;
   // The IV to use with the authorization data.
-  brillo::SecureBlob auth_iv;
+  base::Optional<brillo::SecureBlob> auth_iv;
   // The wrapped reset seet, if it should be unwrapped.
-  brillo::SecureBlob wrapped_reset_seed;
+  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
   // The IV used to decrypt the authorization data.
-  brillo::SecureBlob authorization_data_iv;
+  base::Optional<brillo::SecureBlob> authorization_data_iv;
 };
 
 class Crypto {

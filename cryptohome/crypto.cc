@@ -414,27 +414,31 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     }
   }
 
+  // Setup the key_out_data object.
+  key_out_data->vkk_key = brillo::SecureBlob(kAesBlockSize);
+  key_out_data->vkk_iv = brillo::SecureBlob(kAesBlockSize);
+
   SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
   SecureBlob tpm_key = GetTpmKeyFromSerialized(serialized, is_pcr_extended);
   bool is_pcr_bound = serialized.flags() & SerializedVaultKeyset::PCR_BOUND;
   if (is_pcr_bound) {
     if (!DecryptTpmBoundToPcr(vault_key, tpm_key, salt, error,
-                              &key_out_data->vkk_iv, &key_out_data->vkk_key)) {
+                              &key_out_data->vkk_iv.value(),
+                              &key_out_data->vkk_key.value())) {
       return false;
     }
   } else {
     if (!DecryptTpmNotBoundToPcr(serialized, vault_key, tpm_key, salt, error,
-                                 &key_out_data->vkk_iv,
-                                 &key_out_data->vkk_key)) {
+                                 &key_out_data->vkk_iv.value(),
+                                 &key_out_data->vkk_key.value())) {
       return false;
     }
   }
 
   key_out_data->chaps_iv = key_out_data->vkk_iv;
   key_out_data->authorization_data_iv = key_out_data->vkk_iv;
-  key_out_data->wrapped_reset_seed.assign(
-      serialized.wrapped_reset_seed().begin(),
-      serialized.wrapped_reset_seed().end());
+  key_out_data->wrapped_reset_seed =
+      brillo::SecureBlob(serialized.wrapped_reset_seed());
 
   if (!serialized.has_tpm_public_key_hash() && error) {
     *error = CE_NO_PUBLIC_KEY_HASH;
@@ -447,10 +451,18 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
                                const KeyBlobs& vkk_data,
                                VaultKeyset* keyset,
                                CryptoError* error) const {
-  const SecureBlob& vkk_key = vkk_data.vkk_key;
-  const SecureBlob& vkk_iv = vkk_data.vkk_iv;
-  const SecureBlob& chaps_iv = vkk_data.chaps_iv;
-  const SecureBlob& auth_data_iv = vkk_data.authorization_data_iv;
+  if (vkk_data.vkk_key == base::nullopt ||
+      vkk_data.vkk_iv == base::nullopt ||
+      vkk_data.chaps_iv == base::nullopt ||
+      vkk_data.authorization_data_iv == base::nullopt) {
+    DLOG(FATAL) << "Fields missing from KeyBlobs.";
+    return false;
+  }
+
+  const SecureBlob& vkk_key = vkk_data.vkk_key.value();
+  const SecureBlob& vkk_iv = vkk_data.vkk_iv.value();
+  const SecureBlob& chaps_iv = vkk_data.chaps_iv.value();
+  const SecureBlob& auth_data_iv = vkk_data.authorization_data_iv.value();
 
   // Decrypt the keyset protobuf.
   SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
@@ -487,7 +499,8 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
   }
 
   // Decrypt the reset seed.
-  if (!vkk_data.wrapped_reset_seed.empty()) {
+  if (vkk_data.wrapped_reset_seed != base::nullopt &&
+      !vkk_data.wrapped_reset_seed.value().empty()) {
     SecureBlob unwrapped_reset_seed;
     SecureBlob local_wrapped_reset_seed =
         SecureBlob(serialized.wrapped_reset_seed());
@@ -718,8 +731,8 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
   }
 
   vkk_data->authorization_data_iv = le_iv;
-  vkk_data->chaps_iv.assign(serialized.le_chaps_iv().begin(),
-                            serialized.le_chaps_iv().end());
+  vkk_data->chaps_iv = brillo::SecureBlob(serialized.le_chaps_iv().begin(),
+                                          serialized.le_chaps_iv().end());
 
   // Try to obtain the HE Secret from the LECredentialManager.
   SecureBlob he_secret;
@@ -731,8 +744,8 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
     return false;
   }
 
-  vkk_data->vkk_iv.assign(serialized.le_fek_iv().begin(),
-                          serialized.le_fek_iv().end());
+  vkk_data->vkk_iv = brillo::SecureBlob(serialized.le_fek_iv().begin(),
+                                        serialized.le_fek_iv().end());
 
   SecureBlob vkk_seed = CryptoLib::HmacSha256(
       he_secret, brillo::BlobFromString(kHESecretHmacData));
@@ -858,11 +871,18 @@ bool Crypto::GenerateAndWrapKeys(const VaultKeyset& vault_keyset,
                                  const KeyBlobs& blobs,
                                  bool store_reset_seed,
                                  SerializedVaultKeyset* serialized) const {
+  if (blobs.vkk_key == base::nullopt ||
+      blobs.vkk_iv == base::nullopt ||
+      blobs.chaps_iv == base::nullopt) {
+    DLOG(FATAL) << "Fields missing from KeyBlobs.";
+    return false;
+  }
+
   SecureBlob cipher_text;
   SecureBlob wrapped_chaps_key;
-  if (!GenerateEncryptedRawKeyset(vault_keyset, blobs.vkk_key, blobs.vkk_iv,
-                                  blobs.chaps_iv, &cipher_text,
-                                  &wrapped_chaps_key)) {
+  if (!GenerateEncryptedRawKeyset(vault_keyset, blobs.vkk_key.value(),
+                                  blobs.vkk_iv.value(), blobs.chaps_iv.value(),
+                                  &cipher_text, &wrapped_chaps_key)) {
     return false;
   }
 
@@ -879,7 +899,7 @@ bool Crypto::GenerateAndWrapKeys(const VaultKeyset& vault_keyset,
     const auto reset_iv =
         CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
     SecureBlob wrapped_reset_seed;
-    if (!CryptoLib::AesEncrypt(vault_keyset.reset_seed(), blobs.vkk_key,
+    if (!CryptoLib::AesEncrypt(vault_keyset.reset_seed(), blobs.vkk_key.value(),
                                reset_iv, &wrapped_reset_seed)) {
       LOG(ERROR) << "AES encryption of Reset seed failed.";
       return false;
@@ -1328,7 +1348,8 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
       return false;
     }
 
-    if (!EncryptAuthorizationData(serialized, blobs.vkk_key, blobs.auth_iv)) {
+    if (!EncryptAuthorizationData(serialized, blobs.vkk_key.value(),
+                                  blobs.auth_iv.value())) {
       return false;
     }
   } else if (vault_keyset.IsSignatureChallengeProtected()) {
@@ -1363,7 +1384,8 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
         return false;
       }
 
-      if (!EncryptAuthorizationData(serialized, blobs.vkk_key, blobs.auth_iv)) {
+      if (!EncryptAuthorizationData(serialized, blobs.vkk_key.value(),
+                                    blobs.auth_iv.value())) {
         return false;
       }
     }
