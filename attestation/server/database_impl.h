@@ -10,9 +10,6 @@
 #include <memory>
 #include <string>
 
-#include <base/callback_forward.h>
-#include <base/threading/thread_checker.h>
-
 #include "attestation/common/crypto_utility.h"
 
 namespace attestation {
@@ -65,10 +62,6 @@ class DatabaseImpl : public Database, public DatabaseIO {
   CryptoUtility* crypto_;
   std::string database_key_;
   std::string sealed_database_key_;
-  // TODO(b/146420255): Since we don't have file watcher anymore, let's simplify
-  // the threading constraint for those currently enforced by |thread_check_|.
-  // For now the checker does virtually no harm.
-  base::ThreadChecker thread_checker_;
 };
 
 }  // namespace attestation

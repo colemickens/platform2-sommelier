@@ -38,7 +38,6 @@ DatabaseImpl::~DatabaseImpl() {
 }
 
 bool DatabaseImpl::Initialize() {
-  DCHECK(thread_checker_.CalledOnValidThread());
   if (!Reload()) {
     LOG(WARNING) << "Creating new attestation database.";
     return false;
@@ -47,17 +46,14 @@ bool DatabaseImpl::Initialize() {
 }
 
 const AttestationDatabase& DatabaseImpl::GetProtobuf() const {
-  DCHECK(thread_checker_.CalledOnValidThread());
   return protobuf_;
 }
 
 AttestationDatabase* DatabaseImpl::GetMutableProtobuf() {
-  DCHECK(thread_checker_.CalledOnValidThread());
   return &protobuf_;
 }
 
 bool DatabaseImpl::SaveChanges() {
-  DCHECK(thread_checker_.CalledOnValidThread());
   std::string buffer;
   if (!EncryptProtobuf(&buffer)) {
     return false;
@@ -66,7 +62,6 @@ bool DatabaseImpl::SaveChanges() {
 }
 
 bool DatabaseImpl::Reload() {
-  DCHECK(thread_checker_.CalledOnValidThread());
   LOG(INFO) << "Loading attestation database.";
   std::string buffer;
   if (!io_->Read(&buffer)) {
