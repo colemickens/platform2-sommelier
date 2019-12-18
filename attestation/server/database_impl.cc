@@ -26,11 +26,6 @@ const char kDatabasePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 const mode_t kDatabasePermissions = 0600;
 
-// A base::FilePathWatcher::Callback that just relays to |callback|.
-void FileWatcherCallback(const base::Closure& callback, const FilePath&, bool) {
-  callback.Run();
-}
-
 }  // namespace
 
 namespace attestation {
@@ -44,8 +39,6 @@ DatabaseImpl::~DatabaseImpl() {
 
 bool DatabaseImpl::Initialize() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  io_->Watch(base::Bind(base::IgnoreResult(&DatabaseImpl::Reload),
-                        base::Unretained(this)));
   if (!Reload()) {
     LOG(WARNING) << "Creating new attestation database.";
     return false;
@@ -133,14 +126,6 @@ bool DatabaseImpl::Write(const std::string& data) {
     return false;
   }
   return true;
-}
-
-void DatabaseImpl::Watch(const base::Closure& callback) {
-  if (!file_watcher_) {
-    file_watcher_.reset(new base::FilePathWatcher());
-    file_watcher_->Watch(FilePath(kDatabasePath), false,
-                         base::Bind(&FileWatcherCallback, callback));
-  }
 }
 
 bool DatabaseImpl::EncryptProtobuf(std::string* encrypted_output) {

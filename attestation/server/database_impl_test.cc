@@ -51,11 +51,6 @@ class DatabaseImplTest : public testing::Test, public DatabaseIO {
     return fake_persistent_data_writable_;
   }
 
-  // Fake DatabaseIO::Watch.
-  void Watch(const base::Closure& callback) override {
-    fake_watch_callback_ = callback;
-  }
-
   // Initializes fake_persistent_data_ with a default value.
   void InitializeFakeData() {
     AttestationDatabase proto;
@@ -67,7 +62,6 @@ class DatabaseImplTest : public testing::Test, public DatabaseIO {
   std::string fake_persistent_data_;
   bool fake_persistent_data_readable_{true};
   bool fake_persistent_data_writable_{true};
-  base::Closure fake_watch_callback_;
   NiceMock<MockCryptoUtility> mock_crypto_utility_;
   std::unique_ptr<DatabaseImpl> database_;
 };
@@ -135,17 +129,6 @@ TEST_F(DatabaseImplTest, Reload) {
   EXPECT_EQ(std::string(),
             database_->GetProtobuf().credentials().endorsement_credential());
   EXPECT_TRUE(database_->Reload());
-  EXPECT_EQ(std::string(kFakeCredential),
-            database_->GetProtobuf().credentials().endorsement_credential());
-}
-
-TEST_F(DatabaseImplTest, AutoReload) {
-  AttestationDatabase proto;
-  proto.mutable_credentials()->set_endorsement_credential(kFakeCredential);
-  proto.SerializeToString(&fake_persistent_data_);
-  EXPECT_EQ(std::string(),
-            database_->GetProtobuf().credentials().endorsement_credential());
-  fake_watch_callback_.Run();
   EXPECT_EQ(std::string(kFakeCredential),
             database_->GetProtobuf().credentials().endorsement_credential());
 }

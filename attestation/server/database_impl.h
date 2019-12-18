@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/callback_forward.h>
-#include <base/files/file_path_watcher.h>
 #include <base/threading/thread_checker.h>
 
 #include "attestation/common/crypto_utility.h"
@@ -25,8 +24,6 @@ class DatabaseIO {
   virtual bool Read(std::string* data) = 0;
   // Writes the persistent database blob.
   virtual bool Write(const std::string& data) = 0;
-  // Watch for external changes to the database.
-  virtual void Watch(const base::Closure& callback) = 0;
 };
 
 // An implementation of Database backed by an ordinary file. Not thread safe.
@@ -51,7 +48,6 @@ class DatabaseImpl : public Database, public DatabaseIO {
   // DatabaseIO methods.
   bool Read(std::string* data) override;
   bool Write(const std::string& data) override;
-  void Watch(const base::Closure& callback) override;
 
   // Useful for testing.
   void set_io(DatabaseIO* io) { io_ = io; }
@@ -69,7 +65,9 @@ class DatabaseImpl : public Database, public DatabaseIO {
   CryptoUtility* crypto_;
   std::string database_key_;
   std::string sealed_database_key_;
-  std::unique_ptr<base::FilePathWatcher> file_watcher_;
+  // TODO(b/146420255): Since we don't have file watcher anymore, let's simplify
+  // the threading constraint for those currently enforced by |thread_check_|.
+  // For now the checker does virtually no harm.
   base::ThreadChecker thread_checker_;
 };
 
