@@ -246,8 +246,8 @@ void EcEventService::ShutDownMonitoringThread() {
   // descriptor we must write any 8-byte value greater than 0 except
   // |0xffffffffffffffff|.
   uint64_t counter = 1;
-  if (HANDLE_EINTR(write(shutdown_fd_.get(), &counter, sizeof(counter)) !=
-                   sizeof(counter))) {
+  if (HANDLE_EINTR(write(shutdown_fd_.get(), &counter, sizeof(counter))) !=
+      sizeof(counter)) {
     PLOG(ERROR)
         << "Unable to write data in fake fd to shutdown EC event service";
   }
