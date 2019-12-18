@@ -827,8 +827,25 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
   }
 
   entry->family = message.family();
-  entry->table = route_status.table;
   entry->invert_rule = !!(route_status.flags & FIB_RULE_INVERT);
+
+  // The rtmsg structure [0] has a table id field that is only a single
+  // byte. Prior to Linux v2.6, routing table IDs were of type u8. v2.6 changed
+  // this so that table IDs were u32s, but the uapi here couldn't
+  // change. Instead, a separate FRA_TABLE attribute is used to be able to send
+  // a full 32-bit table ID. When the table ID is greater than 255, the
+  // rtm_table field is set to RT_TABLE_COMPAT.
+  //
+  // 0) elixir.bootlin.com/linux/v5.0/source/include/uapi/linux/rtnetlink.h#L206
+  uint32_t table;
+  if (message.HasAttribute(FRA_TABLE)) {
+    message.GetAttribute(FRA_TABLE).ConvertToCPUUInt32(&table);
+  } else {
+    table = route_status.table;
+    LOG_IF(WARNING, table == RT_TABLE_COMPAT)
+        << "Received RT_TABLE_COMPAT, but message has no FRA_TABLE attribute";
+  }
+  entry->SetTable(table);
 
   if (message.HasAttribute(FRA_PRIORITY)) {
     // Rule 0 (local table) doesn't have a priority attribute.
