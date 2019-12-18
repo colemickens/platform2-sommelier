@@ -149,7 +149,7 @@ void DBusWrapperStub::NotifyServiceAvailable(dbus::ObjectProxy* proxy,
   if (it == service_availability_callbacks_.end())
     return;
 
-  for (auto cb : it->second)
+  for (auto& cb : it->second)
     std::move(cb).Run(available);
   service_availability_callbacks_.erase(it);
 }
