@@ -56,8 +56,6 @@ const char WiFiService::kStorageSecurity[] = "WiFi.Security";
 const char WiFiService::kStorageSecurityClass[] = "WiFi.SecurityClass";
 const char WiFiService::kStorageSSID[] = "SSID";
 const char WiFiService::kStoragePreferredDevice[] = "WiFi.PreferredDevice";
-const char WiFiService::kStorageRoamThreshold[] = "WiFi.RoamThreshold";
-const char WiFiService::kStorageRoamThresholdSet[] = "WiFi.RoamThresholdSet";
 // This property is now unused, but was used briefly (M68-M71) and might still
 // exist in some profiles.
 const char WiFiService::kStorageFTEnabled[] = "WiFi.FTEnabled";
@@ -85,8 +83,6 @@ WiFiService::WiFiService(Manager* manager,
       ieee80211w_required_(false),
       expecting_disconnect_(false),
       certificate_file_(new CertificateFile()),
-      roam_threshold_db_(0),
-      roam_threshold_db_set_(false),
       provider_(provider) {
   PropertyStore* store = this->mutable_store();
   store->RegisterConstString(kModeProperty, &mode_);
@@ -115,9 +111,6 @@ WiFiService::WiFiService(Manager* manager,
   HelpRegisterDerivedString(kWifiPreferredDeviceProperty,
                             &WiFiService::GetPreferredDevice,
                             &WiFiService::SetPreferredDevice);
-  HelpRegisterDerivedUint16(
-      kWifiRoamThresholdProperty, &WiFiService::GetRoamThreshold,
-      &WiFiService::SetRoamThreshold, &WiFiService::ClearRoamThreshold);
 
   string ssid_string(reinterpret_cast<const char*>(ssid_.data()), ssid_.size());
   WiFi::SanitizeSSID(&ssid_string);
@@ -365,13 +358,6 @@ bool WiFiService::Load(StoreInterface* storage) {
   storage->GetString(id, kStoragePreferredDevice, &preferred_device);
   SetPreferredDevice(preferred_device, nullptr);
 
-  uint64_t stored_roam_threshold_temp;
-  storage->GetUint64(id, kStorageRoamThreshold, &stored_roam_threshold_temp);
-  // Storing a uint64_t in a uint16_t is safe here since we know that we only
-  // set this storage value to a uint16_t value in WiFiService::Save.
-  roam_threshold_db_ = static_cast<uint16_t>(stored_roam_threshold_temp);
-  storage->GetBool(id, kStorageRoamThresholdSet, &roam_threshold_db_set_);
-
   expecting_disconnect_ = false;
   return true;
 }
@@ -391,9 +377,6 @@ bool WiFiService::Save(StoreInterface* storage) {
   storage->SetString(id, kStorageSecurityClass,
                      ComputeSecurityClass(security_));
   storage->SetString(id, kStorageSSID, hex_ssid_);
-  storage->SetUint64(id, kStorageRoamThreshold,
-                     static_cast<uint64_t>(roam_threshold_db_));
-  storage->SetBool(id, kStorageRoamThresholdSet, roam_threshold_db_set_);
   Service::SaveString(storage, id, kStoragePreferredDevice, preferred_device_,
                       false, false);
 
@@ -417,8 +400,6 @@ bool WiFiService::Unload() {
   Error unused_error;
   ClearPassphrase(&unused_error);
   preferred_device_.clear();
-  roam_threshold_db_ = 0;
-  roam_threshold_db_set_ = false;
   return provider_->OnServiceUnloaded(this);
 }
 
@@ -1203,22 +1184,6 @@ void WiFiService::SetWiFi(const WiFiRefPtr& new_wifi) {
         kDeviceProperty, control_interface()->NullRpcIdentifier());
   }
   wifi_ = new_wifi;
-}
-
-uint16_t WiFiService::GetRoamThreshold(Error* /*error*/) {
-  return roam_threshold_db_;
-}
-
-bool WiFiService::SetRoamThreshold(const uint16_t& threshold,
-                                   Error* /*error*/) {
-  roam_threshold_db_ = threshold;
-  roam_threshold_db_set_ = true;
-  return true;
-}
-
-void WiFiService::ClearRoamThreshold(Error* /*error*/) {
-  roam_threshold_db_ = 0;
-  roam_threshold_db_set_ = false;
 }
 
 }  // namespace shill

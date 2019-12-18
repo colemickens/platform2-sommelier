@@ -165,12 +165,6 @@ class WiFiServiceTest : public PropertyStoreTest {
     service->Configure(args, &error);
     return error.type();
   }
-  bool SetRoamThreshold(WiFiServiceRefPtr service, uint16_t threshold) {
-    return service->SetRoamThreshold(threshold, nullptr);
-  }
-  uint16_t GetRoamThreshold(WiFiServiceRefPtr service) const {
-    return service->GetRoamThreshold(nullptr);
-  }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
   MockManager* mock_manager() { return &mock_manager_; }
   MockWiFiProvider* provider() { return &provider_; }
@@ -2108,58 +2102,6 @@ TEST_F(WiFiServiceTest, ChooseDevice) {
   EXPECT_CALL(*mock_manager(), GetEnabledDeviceWithTechnology(_)).Times(0);
   EXPECT_EQ(wifi2, service->ChooseDevice());
   Mock::VerifyAndClearExpectations(mock_manager());
-}
-
-TEST_F(WiFiServiceTest, RoamThresholdProperty) {
-  WiFiServiceRefPtr service = MakeGenericService();
-  static const uint16_t kRoamThreshold16 = 16;
-  static const uint16_t kRoamThreshold32 = 32;
-
-  EXPECT_TRUE(SetRoamThreshold(service, kRoamThreshold16));
-  EXPECT_EQ(GetRoamThreshold(service), kRoamThreshold16);
-
-  // Try a different number
-  EXPECT_TRUE(SetRoamThreshold(service, kRoamThreshold32));
-  EXPECT_EQ(GetRoamThreshold(service), kRoamThreshold32);
-}
-
-TEST_F(WiFiServiceTest, SaveLoadRoamThreshold) {
-  WiFiServiceRefPtr service = MakeGenericService();
-  NiceMock<MockStore> mock_store;
-  const uint16_t kRoamThreshold = 10;
-  const string kStorageId = service->GetStorageIdentifier();
-  EXPECT_CALL(mock_store, ContainsGroup(StrEq(kStorageId)))
-      .WillRepeatedly(Return(true));
-  set<string> groups;
-  groups.insert(kStorageId);
-  EXPECT_CALL(mock_store, GetGroupsWithProperties(ContainsWiFiProperties(
-                              simple_ssid(), kModeManaged, kSecurityWep)))
-      .WillRepeatedly(Return(groups));
-  EXPECT_CALL(mock_store, GetBool(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(mock_store, SetBool(_, _, _)).Times(AnyNumber());
-
-  // First, save these values.
-  service->roam_threshold_db_ = kRoamThreshold;
-  service->roam_threshold_db_set_ = true;
-  EXPECT_CALL(mock_store,
-              SetUint64(StrEq(kStorageId), WiFiService::kStorageRoamThreshold,
-                        kRoamThreshold));
-  EXPECT_CALL(mock_store, SetBool(StrEq(kStorageId),
-                                  WiFiService::kStorageRoamThresholdSet, true));
-  EXPECT_TRUE(service->Save(&mock_store));
-
-  // Then, load these values into the WiFiService members.
-  service->roam_threshold_db_ = 0;
-  service->roam_threshold_db_set_ = false;
-  EXPECT_CALL(mock_store, GetUint64(StrEq(kStorageId),
-                                    WiFiService::kStorageRoamThreshold, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kRoamThreshold), Return(true)));
-  EXPECT_CALL(mock_store, GetBool(StrEq(kStorageId),
-                                  WiFiService::kStorageRoamThresholdSet, _))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  EXPECT_TRUE(service->Load(&mock_store));
-  EXPECT_EQ(kRoamThreshold, service->roam_threshold_db_);
-  EXPECT_TRUE(service->roam_threshold_db_set_);
 }
 
 }  // namespace shill

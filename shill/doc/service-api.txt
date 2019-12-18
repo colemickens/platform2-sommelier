@@ -1635,14 +1635,3 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 				vendor-specific IEs that were neither the
 				Microsoft nor Epigram identifiers (the former
 				two are used for platform-neutral information).
-
-		uint16 WiFi.RoamThreshold [readwrite]
-
-			(WiFi only) The roam threshold is the AP
-			signal-to-noise value (in dB) below which
-			wpa_supplicant will attempt to roam to a new AP.
-			This per-service RoamThreshold property overrides
-			the WiFi device-wide RoamThreshold set through the
-			device DBus API. Changes to this property will only
-			take effect on the next time the WiFi device connects
-			to this service.

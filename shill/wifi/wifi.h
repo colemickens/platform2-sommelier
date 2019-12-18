@@ -354,9 +354,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   }
   // These methods can't be 'const' because they are passed to
   // HelpRegisterDerivedUint16 which don't take const methods.
-  uint16_t GetRoamThreshold(Error* /* error */) /*const*/ {
-    return roam_threshold_db_;
-  }
   uint16_t GetScanInterval(Error* /* error */) /*const*/ {
     return scan_interval_seconds_;
   }
@@ -370,7 +367,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool SetBgscanMethod(const std::string& method, Error* error);
   bool SetBgscanShortInterval(const uint16_t& seconds, Error* error);
   bool SetBgscanSignalThreshold(const int32_t& dbm, Error* error);
-  bool SetRoamThreshold(const uint16_t& threshold, Error* /*error*/);
   bool SetScanInterval(const uint16_t& seconds, Error* error);
   void ClearBgscanMethod(Error* error);
 
@@ -688,7 +684,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::string bgscan_method_;
   uint16_t bgscan_short_interval_seconds_;
   int32_t bgscan_signal_threshold_dbm_;
-  uint16_t roam_threshold_db_;
   uint16_t scan_interval_seconds_;
 
   NetlinkManager* netlink_manager_;

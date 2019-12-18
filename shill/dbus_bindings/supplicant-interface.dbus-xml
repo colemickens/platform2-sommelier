@@ -80,7 +80,6 @@
     <property name="BSSs" type="ao" access="read"/>
     <property name="Networks" type="ao" access="read"/>
     <property name="FastReauth" type="b" access="readwrite"/>
-    <property name="RoamThreshold" type="q" access="readwrite"/>
     <property name="ScanInterval" type="i" access="readwrite"/>
     <property name="SchedScan" type="b" access="readwrite"/>
     <property name="Scan" type="b" access="readwrite"/>

@@ -41,7 +41,6 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD(bool, Scan, (const KeyValueStore&), (override));
   MOCK_METHOD(bool, SelectNetwork, (const RpcIdentifier&), (override));
   MOCK_METHOD(bool, SetFastReauth, (bool), (override));
-  MOCK_METHOD(bool, SetRoamThreshold, (uint16_t), (override));
   MOCK_METHOD(bool, SetScanInterval, (int32_t), (override));
   MOCK_METHOD(bool, SetScan, (bool), (override));
   MOCK_METHOD(bool, TDLSDiscover, (const std::string&), (override));

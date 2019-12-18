@@ -58,7 +58,6 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   // The below set functions will always return true, since PropertySet::Set
   // is an async method. Any failures will be logged in the callback.
   bool SetFastReauth(bool enabled) override;
-  bool SetRoamThreshold(uint16_t threshold) override;
   bool SetScanInterval(int seconds) override;
   bool SetScan(bool enable) override;
 
@@ -69,7 +68,6 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
     brillo::dbus_utils::Property<bool> fast_reauth;
-    brillo::dbus_utils::Property<uint16_t> roam_threshold;
     brillo::dbus_utils::Property<bool> scan;
     brillo::dbus_utils::Property<int32_t> scan_interval;
     brillo::dbus_utils::Property<bool> sched_scan;
@@ -82,7 +80,6 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
 
   static const char kInterfaceName[];
   static const char kPropertyFastReauth[];
-  static const char kPropertyRoamThreshold[];
   static const char kPropertyScan[];
   static const char kPropertyScanInterval[];
   static const char kPropertySchedScan[];

@@ -27,7 +27,6 @@ static string ObjectID(const dbus::ObjectPath* p) {
 const char SupplicantInterfaceProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1.Interface";
 const char SupplicantInterfaceProxy::kPropertyFastReauth[] = "FastReauth";
-const char SupplicantInterfaceProxy::kPropertyRoamThreshold[] = "RoamThreshold";
 const char SupplicantInterfaceProxy::kPropertyScan[] = "Scan";
 const char SupplicantInterfaceProxy::kPropertyScanInterval[] = "ScanInterval";
 const char SupplicantInterfaceProxy::kPropertySchedScan[] = "SchedScan";
@@ -40,7 +39,6 @@ SupplicantInterfaceProxy::PropertySet::PropertySet(
     const PropertyChangedCallback& callback)
     : dbus::PropertySet(object_proxy, interface_name, callback) {
   RegisterProperty(kPropertyFastReauth, &fast_reauth);
-  RegisterProperty(kPropertyRoamThreshold, &roam_threshold);
   RegisterProperty(kPropertyScan, &scan);
   RegisterProperty(kPropertyScanInterval, &scan_interval);
   RegisterProperty(kPropertySchedScan, &sched_scan);
@@ -390,15 +388,6 @@ bool SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
   if (!properties_->fast_reauth.SetAndBlock(enabled)) {
     LOG(ERROR) << __func__ << " failed: " << enabled;
-    return false;
-  }
-  return true;
-}
-
-bool SupplicantInterfaceProxy::SetRoamThreshold(uint16_t threshold) {
-  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << threshold;
-  if (!properties_->roam_threshold.SetAndBlock(threshold)) {
-    LOG(ERROR) << __func__ << " failed: " << threshold;
     return false;
   }
   return true;

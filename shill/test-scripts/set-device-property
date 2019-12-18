@@ -18,7 +18,7 @@ if len(sys.argv) < 4:
 
 flim = flimflam.FlimFlam()
 device = flim.FindElementByNameSubstring('Device', name)
-if property_key in ['BgscanShortInterval', 'RoamThreshold', 'ScanInterval']:
+if property_key in ['BgscanShortInterval', 'ScanInterval']:
     device.SetProperty(property_key, dbus.UInt16(value))
 elif property_key in ['BgscanSignalThreshold', ]:
     device.SetProperty(property_key, dbus.Int32(value))

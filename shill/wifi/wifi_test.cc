@@ -674,16 +674,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_EQ(method, wifi_->scan_method_);
   }
 
-  void SetRoamThresholdMember(uint16_t threshold) {
-    wifi_->roam_threshold_db_ = threshold;
-  }
-
-  bool SetRoamThreshold(uint16_t threshold) {
-    return wifi_->SetRoamThreshold(threshold, nullptr);
-  }
-
-  uint16_t GetRoamThreshold() const { return wifi_->GetRoamThreshold(nullptr); }
-
  protected:
   using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
 
@@ -1210,7 +1200,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   static const char kNetworkModeInfrastructure[];
   static const RpcIdentifier kBSSName;
   static const char kSSIDName[];
-  static const uint16_t kRoamThreshold;
 
   MockSupplicantProcessProxy* supplicant_process_proxy_;
   unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
@@ -1249,7 +1238,6 @@ const char WiFiObjectTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiObjectTest::kNetworkModeInfrastructure[] = "infrastructure";
 const RpcIdentifier WiFiObjectTest::kBSSName("bss0");
 const char WiFiObjectTest::kSSIDName[] = "ssid0";
-const uint16_t WiFiObjectTest::kRoamThreshold = 32;  // Arbitrary value.
 
 void WiFiObjectTest::RemoveBSS(const RpcIdentifier& bss_path) {
   wifi_->BSSRemovedTask(bss_path);
@@ -1374,45 +1362,15 @@ TEST_F(WiFiMainTest, SupplicantPresent) {
   EXPECT_FALSE(GetSupplicantPresent());
 }
 
-TEST_F(WiFiMainTest, RoamThresholdProperty) {
-  static const uint16_t kRoamThreshold16 = 16;
-  static const uint16_t kRoamThreshold32 = 32;
-
-  StartWiFi(false);  // No supplicant present.
-  OnSupplicantAppear();
-
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-              SetRoamThreshold(kRoamThreshold16));
-  EXPECT_TRUE(SetRoamThreshold(kRoamThreshold16));
-  EXPECT_EQ(GetRoamThreshold(), kRoamThreshold16);
-
-  // Try a different number
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-              SetRoamThreshold(kRoamThreshold32));
-  EXPECT_TRUE(SetRoamThreshold(kRoamThreshold32));
-  EXPECT_EQ(GetRoamThreshold(), kRoamThreshold32);
-
-  // Do not set supplicant's roam threshold property immediately if the
-  // current WiFi service has its own roam threshold property set.
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
-  service->roam_threshold_db_set_ = true;
-  SetCurrentService(service);
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetRoamThreshold(_)).Times(0);
-  EXPECT_TRUE(SetRoamThreshold(kRoamThreshold16));
-  EXPECT_EQ(kRoamThreshold16, GetRoamThreshold());
-}
-
 TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   StartWiFi(false);  // No supplicant present.
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
-  SetRoamThresholdMember(kRoamThreshold);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllNetworks());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), FlushBSS(0));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetFastReauth(false));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetRoamThreshold(kRoamThreshold));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetScanInterval(_));
 
   OnSupplicantAppear();

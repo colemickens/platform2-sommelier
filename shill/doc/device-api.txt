@@ -639,20 +639,6 @@ Properties	string Address [readonly]
 			these counters from all interfaces every 60 seconds
 			so this value returned might be slightly old.
 
-		uint16 RoamThreshold [readwrite]
-
-			(Defined in WiFi)
-
-			The roam threshold is the AP signal-to-noise value (in
-			dB) below which wpa_supplicant will attempt to roam to
-			a new AP. This property applies to all WiFi services
-			except those that have their per-service RoamThreshold
-			set. Changes to this property will take effect immediately
-			if the current service does not have its RoamThreshold
-			property set. Otherwise, it will take effect the next time
-			we connect to a WiFi service that does not have its
-			RoamThreshold property set.
-
 		uint16 ScanInterval [readwrite]
 
 			(Defined in WiFi and Cellular)

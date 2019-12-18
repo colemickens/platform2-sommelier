@@ -104,7 +104,6 @@ const std::vector<unsigned char> WiFi::kRandomMacMask{255, 255, 255, 0, 0, 0};
 namespace {
 const uint16_t kDefaultBgscanShortIntervalSeconds = 64;
 const int32_t kDefaultBgscanSignalThresholdDbm = -72;
-const uint16_t kDefaultRoamThresholdDb = 18;  // Supplicant's default.
 // Delay between scans when supplicant finds "No suitable network".
 const time_t kRescanIntervalSeconds = 1;
 const int kPendingTimeoutSeconds = 15;
@@ -145,7 +144,6 @@ WiFi::WiFi(Manager* manager,
       eap_state_handler_(new SupplicantEAPStateHandler()),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
-      roam_threshold_db_(kDefaultRoamThresholdDb),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
       netlink_manager_(NetlinkManager::GetInstance()),
       random_mac_supported_(false),
@@ -197,8 +195,6 @@ WiFi::WiFi(Manager* manager,
   HelpRegisterConstDerivedBool(store, kScanningProperty, &WiFi::GetScanPending);
   HelpRegisterConstDerivedUint16s(store, kWifiSupportedFrequenciesProperty,
                                   &WiFi::GetAllScanFrequencies);
-  HelpRegisterDerivedUint16(store, kRoamThresholdProperty,
-                            &WiFi::GetRoamThreshold, &WiFi::SetRoamThreshold);
   HelpRegisterDerivedUint16(store, kScanIntervalProperty,
                             &WiFi::GetScanInterval, &WiFi::SetScanInterval);
   wake_on_wifi_->InitPropertyStore(store);
@@ -680,14 +676,6 @@ bool WiFi::SetBgscanSignalThreshold(const int32_t& dbm, Error* /*error*/) {
   return true;
 }
 
-bool WiFi::SetRoamThreshold(const uint16_t& threshold, Error* /*error*/) {
-  roam_threshold_db_ = threshold;
-  if (!current_service_ || !current_service_->roam_threshold_db_set()) {
-    supplicant_interface_proxy_->SetRoamThreshold(threshold);
-  }
-  return true;
-}
-
 bool WiFi::SetScanInterval(const uint16_t& seconds, Error* /*error*/) {
   if (scan_interval_seconds_ == seconds) {
     return false;
@@ -1136,14 +1124,6 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss) {
     current_service_ = service;
     SetScanState(kScanConnected, scan_method_, __func__);
     SetPendingService(nullptr);
-    // Use WiFi service-specific roam threshold if it is set, otherwise use WiFi
-    // device-wide roam threshold.
-    if (current_service_->roam_threshold_db_set()) {
-      supplicant_interface_proxy_->SetRoamThreshold(
-          current_service_->roam_threshold_db());
-    } else {
-      supplicant_interface_proxy_->SetRoamThreshold(roam_threshold_db_);
-    }
     return;
   }
 
@@ -2601,11 +2581,6 @@ void WiFi::ConnectToSupplicant() {
   // crbug.com/208561
   if (!supplicant_interface_proxy_->SetFastReauth(false)) {
     LOG(ERROR) << "Failed to disable fast_reauth. "
-               << "May be running an older version of wpa_supplicant.";
-  }
-
-  if (!supplicant_interface_proxy_->SetRoamThreshold(roam_threshold_db_)) {
-    LOG(ERROR) << "Failed to set roam_threshold. "
                << "May be running an older version of wpa_supplicant.";
   }
 

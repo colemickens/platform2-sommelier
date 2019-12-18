@@ -192,7 +192,6 @@ Device::Device(Manager* manager,
   HelpRegisterConstDerivedUint64(kLinkMonitorResponseTimeProperty,
                                  &Device::GetLinkMonitorResponseTime);
 
-  // kRoamThresholdProperty: Registered in WiFi
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
   // kWakeOnWiFiFeaturesEnabledProperty: Registered in WiFi
