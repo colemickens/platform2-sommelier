@@ -259,24 +259,6 @@ void ServiceDistributed::AttestationInitialize() {
   auto method = base::Bind(&AttestationInterface::Initialize,
                            base::Unretained(attestation_interface_));
   PostAndWait(method);
-
-  if (system_salt_.empty()) {
-    LOG(FATAL) << "Failed to get system salt";
-    return;
-  }
-  attestation::SetSystemSaltRequest request;
-  request.set_system_salt(system_salt_.char_data(), system_salt_.size());
-  attestation::SetSystemSaltReply reply;
-  auto set_salt = base::Bind(&AttestationInterface::SetSystemSalt,
-                             base::Unretained(attestation_interface_), request);
-  if (!SendRequestAndWait(set_salt, &reply)) {
-    LOG(FATAL) << "Failed to send SetSystemSalt";
-    return;
-  }
-  if (reply.status() != AttestationStatus::STATUS_SUCCESS) {
-    LOG(FATAL) << "SetSystemSalt error: " << reply.status();
-    return;
-  }
 }
 
 void ServiceDistributed::AttestationInitializeTpm() {
