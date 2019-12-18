@@ -12,7 +12,6 @@
 #include <base/logging.h>
 #include <base/optional.h>
 #include <dbus/cros_healthd/dbus-constants.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "diagnostics/cros_healthd/utils/battery_utils.h"

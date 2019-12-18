@@ -8,9 +8,9 @@
 
 #include <base/logging.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_handle.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/public/cpp/system/invitation.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/wilco_dtc_supportd/system/bluetooth_client_impl.h"
@@ -38,11 +38,12 @@ CoreDelegateImpl::BindMojoServiceFactory(
     base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_pipe_fd.is_valid());
 
-  mojo::edk::SetParentPipeHandle(mojo::edk::ScopedPlatformHandle(
-      mojo::edk::PlatformHandle(mojo_pipe_fd.release())));
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(mojo_pipe_fd))));
 
   mojo::ScopedMessagePipeHandle mojo_pipe_handle =
-      mojo::edk::CreateChildMessagePipe(
+      invitation.ExtractMessagePipe(
           kWilcoDtcSupportdMojoConnectionChannelToken);
   if (!mojo_pipe_handle.is_valid()) {
     LOG(ERROR) << "Failed to create Mojo child message pipe";

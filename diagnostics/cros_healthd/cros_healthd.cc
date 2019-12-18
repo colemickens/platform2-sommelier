@@ -18,6 +18,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/pending_process_connection.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_service_impl.h"
@@ -115,11 +116,12 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
   chromeos::cros_healthd::mojom::CrosHealthdServiceRequest request;
   if (is_chrome) {
     // Connect to mojo in the requesting process.
-    mojo::edk::SetParentPipeHandle(mojo::edk::ScopedPlatformHandle(
-        mojo::edk::PlatformHandle(mojo_fd_copy.release())));
+    mojo::IncomingInvitation invitation =
+        mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
+            mojo::PlatformHandle(std::move(mojo_fd_copy))));
     request =
         mojo::MakeRequest<chromeos::cros_healthd::mojom::CrosHealthdService>(
-            mojo::edk::CreateChildMessagePipe(
+            invitation.ExtractMessagePipe(
                 kCrosHealthdMojoConnectionChannelToken));
   } else {
     // Create a unique token which will allow the requesting process to connect

@@ -18,8 +18,8 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
+#include <mojo/public/cpp/platform/platform_channel.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 namespace diagnostics {
 namespace {
@@ -216,7 +216,7 @@ CrosHealthdMojoAdapter::GetRoutineUpdate(
 }
 
 void CrosHealthdMojoAdapter::Connect() {
-  mojo::edk::PlatformChannelPair channel;
+  mojo::PlatformChannel channel;
   std::string token;
 
   // Pass the other end of the pipe to cros_healthd. Wait for this task to run,
@@ -225,17 +225,20 @@ void CrosHealthdMojoAdapter::Connect() {
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   dbus_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&DoDBusBootstrap, channel.PassClientHandle().release().handle,
-                 &event, &token));
+      base::Bind(
+          &DoDBusBootstrap,
+          channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD().release(),
+          &event, &token));
   event.Wait();
 
-  mojo::edk::SetParentPipeHandle(channel.PassServerHandle());
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());
 
   // Bind our end of |pipe| to our CrosHealthdServicePtr. The daemon
   // should bind its end to a CrosHealthdService implementation.
   cros_healthd_service_.Bind(
       chromeos::cros_healthd::mojom::CrosHealthdServicePtrInfo(
-          mojo::edk::CreateChildMessagePipe(token), 0u /* version */));
+          invitation.ExtractMessagePipe(token), 0u /* version */));
 }
 
 }  // namespace diagnostics

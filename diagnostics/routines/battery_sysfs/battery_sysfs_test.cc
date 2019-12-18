@@ -12,7 +12,7 @@
 #include <base/strings/string_split.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_utils.h"
@@ -66,9 +66,7 @@ std::string ConstructOutput() {
 
 class BatterySysfsRoutineTest : public testing::Test {
  protected:
-  BatterySysfsRoutineTest() {
-    mojo::edk::Init();
-  }
+  BatterySysfsRoutineTest() { mojo::core::Init(); }
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
