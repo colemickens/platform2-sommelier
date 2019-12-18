@@ -236,7 +236,7 @@ class CryptoLib {
   //
   // Parameters
   //   passkey - The User Passkey, from which to derive the secrets.
-  //   salt - The salt used when deriving the secrests.
+  //   salt - The salt used when deriving the secrets.
   //   gen_secrets (IN-OUT) - Vector containing resulting secrets.
   //                          The caller allocates each blob in |gen_secrets|
   //                          to the appropriate size.
@@ -244,6 +244,25 @@ class CryptoLib {
   static bool DeriveSecretsSCrypt(const brillo::SecureBlob& passkey,
                                   const brillo::SecureBlob& salt,
                                   std::vector<brillo::SecureBlob*> gen_secrets);
+
+  // This wraps the |crypto_scrypt| function so that it always called
+  // |malloc_trim| after to free the used heap space.
+  //
+  // |passkey| - The User Passkey, from which to derive the secrets.
+  // |salt| - The salt used when deriving the secrets.
+  // |work_factor| - The work factor passed to crypto_scrypt.
+  // |block_size| - The block size passed to crypto_scrypt.
+  // |parallel_factor| - The parallel factor passed to crypto_scrypt.
+  // |result| - The blob, allocated by the caller to the correct size,
+  //            containing the result secret.
+  //
+  //  Returns 0 on success.
+  static int SCrypt(const brillo::SecureBlob& passkey,
+                    const brillo::SecureBlob& salt,
+                    int work_factor,
+                    int block_size,
+                    int parallel_factor,
+                    brillo::SecureBlob* result);
 };
 
 }  // namespace cryptohome

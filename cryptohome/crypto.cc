@@ -10,7 +10,6 @@
 
 #include <crypto/sha2.h>
 #include <limits>
-#include <malloc.h>
 #include <map>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -25,7 +24,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 extern "C" {
-#include <scrypt/crypto_scrypt.h>
 #include <scrypt/scryptenc.h>
 }
 
@@ -257,23 +255,15 @@ bool Crypto::PasskeyToTokenAuthData(const brillo::SecureBlob& passkey,
     LOG(ERROR) << "Failed to get authorization data salt.";
     return false;
   }
+
   SecureBlob local_auth_data;
   local_auth_data.resize(kAuthDataSizeBytes);
-  if (0 != crypto_scrypt(passkey.data(),
-                         passkey.size(),
-                         salt.data(),
-                         salt.size(),
-                         kScryptParameterN,
-                         kScryptParameterR,
-                         kScryptParameterP,
-                         local_auth_data.data(),
-                         kAuthDataSizeBytes)) {
+  if (0 != CryptoLib::SCrypt(passkey, salt, kScryptParameterN,
+                             kScryptParameterR, kScryptParameterP,
+                             &local_auth_data)) {
     LOG(ERROR) << "Scrypt key derivation failed.";
     return false;
   }
-  // Release unused heap space after crypto_scrypt.
-  // See crbug.com/899065 for details.
-  malloc_trim(0);
 
   auth_data->swap(local_auth_data);
   return true;

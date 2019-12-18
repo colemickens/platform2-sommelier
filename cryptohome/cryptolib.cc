@@ -1026,16 +1026,11 @@ bool CryptoLib::DeriveSecretsSCrypt(
   }
 
   SecureBlob generated(total_len);
-  if (crypto_scrypt(passkey.data(), passkey.size(), salt.data(), salt.size(),
-                    kUPScryptWorkFactor, kUPScryptBlockSize,
-                    kUPScryptParallelFactor, generated.data(),
-                    generated.size())) {
+  if (SCrypt(passkey, salt, kUPScryptWorkFactor, kUPScryptBlockSize,
+             kUPScryptParallelFactor, &generated)) {
     LOG(ERROR) << "Failed to derive scrypt keys from passkey.";
     return false;
   }
-  // Release unused heap space after crypto_scrypt.
-  // See crbug.com/899065 for details.
-  malloc_trim(0);
 
   uint8_t* data = generated.data();
   for (auto& value : gen_secrets) {
@@ -1044,6 +1039,24 @@ bool CryptoLib::DeriveSecretsSCrypt(
   }
 
   return true;
+}
+
+// static
+int CryptoLib::SCrypt(const brillo::SecureBlob& passkey,
+                      const brillo::SecureBlob& salt,
+                      int work_factor,
+                      int block_size,
+                      int parallel_factor,
+                      brillo::SecureBlob* result) {
+  int rc = crypto_scrypt(passkey.data(), passkey.size(), salt.data(),
+                         salt.size(), work_factor, block_size, parallel_factor,
+                         result->data(), result->size());
+
+  // Release unused heap space after crypto_scrypt.
+  // See crbug.com/899065 for details.
+  malloc_trim(0);
+
+  return rc;
 }
 
 }  // namespace cryptohome
