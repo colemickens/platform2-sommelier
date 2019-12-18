@@ -110,23 +110,6 @@ class DlcServiceTest : public testing::Test {
           manifest_path_.Append(id).Append(kPackage).Append(kManifestName));
     }
 
-    // Create DLC content sub-directories and empty images.
-    base::FilePath image_a_path = utils::GetDlcImagePath(
-        content_path_, kFirstDlc, kPackage, BootSlot::Slot::A);
-    base::CreateDirectory(image_a_path.DirName());
-    base::File image_a(image_a_path,
-                       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
-
-    base::FilePath image_b_path = utils::GetDlcImagePath(
-        content_path_, kFirstDlc, kPackage, BootSlot::Slot::B);
-    base::CreateDirectory(image_b_path.DirName());
-    base::File image_b(image_b_path,
-                       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
-
-    base::FilePath metadata_path_dlc =
-        utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage);
-    base::CreateDirectory(metadata_path_dlc);
-
     // Create mocks with default behaviors.
     mock_boot_device_ = std::make_unique<MockBootDevice>();
     EXPECT_CALL(*(mock_boot_device_.get()), GetBootDevice())
@@ -144,8 +127,37 @@ class DlcServiceTest : public testing::Test {
     EXPECT_CALL(*mock_update_engine_proxy_ptr_,
                 RegisterStatusUpdateAdvancedSignalHandler(_, _))
         .Times(1);
+  }
 
-    // Use the mocks to create |DlcService|.
+  // Will create |path|/|id|/|package|/dlc.img file.
+  void SetUpDlcWithoutSlots(const base::FilePath& path,
+                            const string& id,
+                            const string& package) {
+    base::FilePath image_path =
+        path.Append(id).Append(package).Append(utils::kDlcImageFileName);
+    base::CreateDirectory(image_path.DirName());
+    base::File image(image_path,
+                     base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
+  }
+  // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.
+  void SetUpDlcWithSlots(const base::FilePath& path,
+                         const string& id,
+                         const string& package) {
+    // Create DLC content sub-directories and empty images.
+    for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
+      base::FilePath image_path =
+          utils::GetDlcImagePath(path, id, package, slot);
+      base::CreateDirectory(image_path.DirName());
+      base::File image(image_path,
+                       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
+    }
+    // Create DLC metadata directory.
+    base::FilePath metadata_path_dlc =
+        utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage);
+    base::CreateDirectory(metadata_path_dlc);
+  }
+
+  void ConstructDlcService() {
     dlc_service_ = std::make_unique<DlcService>(
         move(mock_image_loader_proxy_), move(mock_update_engine_proxy_),
         std::make_unique<BootSlot>(move(mock_boot_device_)), manifest_path_,
@@ -156,6 +168,8 @@ class DlcServiceTest : public testing::Test {
   }
 
   void SetUp() override {
+    SetUpDlcWithSlots(content_path_, kFirstDlc, kPackage);
+    ConstructDlcService();
     EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
         .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
     dlc_service_->LoadDlcModuleImages();
@@ -194,9 +208,17 @@ class DlcServiceTest : public testing::Test {
 
 class DlcServiceSkipLoadTest : public DlcServiceTest {
  public:
+  // Need this to skip calling |LoadDlcModuleImages()|.
   void SetUp() override {
-    // Need this to skip calling |LoadDlcModuleImages()|.
+    SetUpDlcWithSlots(content_path_, kFirstDlc, kPackage);
+    ConstructDlcService();
   }
+};
+
+class DlcServiceSkipConstructionTest : public DlcServiceTest {
+ public:
+  // Need this to skip construction of |DlcService|.
+  void SetUp() override {}
 };
 
 TEST_F(DlcServiceSkipLoadTest, StartUpMountSuccessTest) {

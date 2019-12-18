@@ -21,6 +21,8 @@ namespace dlcservice {
 
 namespace utils {
 
+constexpr char kDlcImageFileName[] = "dlc.img";
+
 template <typename BindedCallback>
 class ScopedCleanups {
  public:

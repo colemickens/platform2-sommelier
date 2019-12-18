@@ -21,7 +21,6 @@ namespace {
 
 constexpr char kDlcDirAName[] = "dlc_a";
 constexpr char kDlcDirBName[] = "dlc_b";
-constexpr char kDlcImageFileName[] = "dlc.img";
 constexpr char kManifestName[] = "imageloader.json";
 
 // The directory inside a DLC module that contains all the DLC files.
