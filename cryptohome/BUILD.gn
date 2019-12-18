@@ -16,6 +16,7 @@ group("all") {
     ":cryptohome-path",
     ":cryptohome-proxy",
     ":cryptohomed",
+    ":homedirs_initializer",
     ":lockbox-cache",
     ":mount-encrypted",
     ":mount_encrypted_lib",
@@ -310,6 +311,28 @@ executable("tpm-manager") {
     ]
     pkg_deps += [ "vboot_host" ]
   }
+}
+
+executable("homedirs_initializer") {
+  configs += [ "libs:target_defaults" ]
+  sources = [
+    "homedirs_initializer.cc",
+  ]
+  deps = [
+    "libs:libcrostpm",
+    "libs:libcryptohome",
+  ]
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "openssl",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
 }
 
 if (use.cert_provision) {
