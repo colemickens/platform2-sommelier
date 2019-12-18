@@ -45,7 +45,7 @@ class CameraHal : public mojom::IpCameraConnectionListener {
   void OnDeviceDisconnected(int32_t id) override;
 
   void InitOnIpcThread(scoped_refptr<Future<int>> return_val);
-  void DestroyOnIpcThread();
+  void DestroyOnIpcThread(scoped_refptr<Future<void>> return_val);
   void OnConnectionError();
 
   base::AtomicFlag initialized_;

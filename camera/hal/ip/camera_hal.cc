@@ -29,7 +29,13 @@ CameraHal::CameraHal()
   mojo_channel_ = CameraMojoChannelManager::CreateInstance();
 }
 
-CameraHal::~CameraHal() {}
+CameraHal::~CameraHal() {
+  auto return_val = Future<void>::Create(nullptr);
+  mojo::edk::GetIOTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce(&CameraHal::DestroyOnIpcThread,
+                                base::Unretained(this), return_val));
+  return_val->Wait();
+}
 
 CameraHal& CameraHal::GetInstance() {
   static CameraHal camera_hal;
@@ -132,7 +138,7 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
   return_val->Set(0);
 }
 
-void CameraHal::DestroyOnIpcThread() {
+void CameraHal::DestroyOnIpcThread(scoped_refptr<Future<void>> return_val) {
   binding_.Close();
   detector_.reset();
 
@@ -142,6 +148,8 @@ void CameraHal::DestroyOnIpcThread() {
   }
 
   mojo::edk::ClosePeerConnection(peer_token_);
+  mojo_channel_.reset();
+  return_val->Set();
 }
 
 void CameraHal::OnConnectionError() {

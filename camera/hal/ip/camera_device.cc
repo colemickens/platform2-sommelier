@@ -185,6 +185,7 @@ CameraDevice::~CameraDevice() {
   if (jpeg_thread_.IsRunning()) {
     jpeg_thread_.Stop();
   }
+  jda_.reset();
 
   ip_device_.reset();
   binding_.Close();
