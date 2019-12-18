@@ -265,12 +265,12 @@ TEST_F(BatterySysfsRoutineTest, CapacityExceedsDesignCapacity) {
   constexpr int kNotWornPercentage = 0;
   CreateRoutine(kMaximumCycleCount, kNotWornPercentage);
   // Set the capacity to anything higher than the design capacity.
-  constexpr int kLargerCapacity = 100;
-  constexpr int kSmallDesignCapacity = 20;
+  constexpr int kHigherCapacity = 100;
+  constexpr int kLowerDesignCapacity = 20;
   WriteFileContents(kBatterySysfsChargeFullPath,
-                    std::to_string(kLargerCapacity));
+                    std::to_string(kHigherCapacity));
   WriteFileContents(kBatterySysfsChargeFullDesignPath,
-                    std::to_string(kSmallDesignCapacity));
+                    std::to_string(kLowerDesignCapacity));
   EXPECT_TRUE(WriteFileAndCreateParentDirs(
       temp_dir_path().AppendASCII(kFullCycleCountPath),
       std::to_string(kLowCycleCount)));
@@ -297,13 +297,13 @@ TEST_F(BatterySysfsRoutineTest, InvalidFileContents) {
                              kBatterySysfsFailedReadingCycleCountMessage);
 }
 
-// Test that calling resume does nothing.
+// Test that calling resume doesn't crash.
 TEST_F(BatterySysfsRoutineTest, Resume) {
   CreateRoutine();
   routine()->Resume();
 }
 
-// Test that calling cancel does nothing.
+// Test that calling cancel doesn't crash.
 TEST_F(BatterySysfsRoutineTest, Cancel) {
   CreateRoutine();
   routine()->Cancel();
