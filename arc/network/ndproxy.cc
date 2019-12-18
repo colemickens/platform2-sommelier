@@ -270,19 +270,21 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
       icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
     return;
 
-  // Notify DeviceManager on receiving guest NA with unicast IPv6 address so
-  // a /128 route to the guest can be added on the host
-  if ((ip6->ip6_src.s6_addr[0] & 0xe0) == 0x20  // Global Unicast
-      && icmp6->icmp6_type == ND_NEIGHBOR_ADVERT &&
+  // Notify DeviceManager on receiving NA from guest, so a /128 route to the
+  // guest can be added on the host.
+  if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT &&
       IsGuestInterface(dst_addr.sll_ifindex) &&
       !guest_discovery_handler_.is_null()) {
-    char ifname[IFNAMSIZ];
-    if_indextoname(dst_addr.sll_ifindex, ifname);
-    char ipv6_addr_str[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &(ip6->ip6_src.s6_addr), ipv6_addr_str,
-              INET6_ADDRSTRLEN);
-    guest_discovery_handler_.Run(std::string(ifname),
-                                 std::string(ipv6_addr_str));
+    nd_neighbor_advert* na = reinterpret_cast<nd_neighbor_advert*>(icmp6);
+    if ((na->nd_na_target.s6_addr[0] & 0xe0) == 0x20) {  // Global Unicast
+      char ifname[IFNAMSIZ];
+      if_indextoname(dst_addr.sll_ifindex, ifname);
+      char ipv6_addr_str[INET6_ADDRSTRLEN];
+      inet_ntop(AF_INET6, &(na->nd_na_target.s6_addr), ipv6_addr_str,
+                INET6_ADDRSTRLEN);
+      guest_discovery_handler_.Run(std::string(ifname),
+                                   std::string(ipv6_addr_str));
+    }
   }
 
   auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
