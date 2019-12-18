@@ -69,6 +69,7 @@ class TerminaVm final : public VmInterface {
   static std::unique_ptr<TerminaVm> Create(
       base::FilePath kernel,
       base::FilePath rootfs,
+      int32_t cpus,
       std::vector<Disk> disks,
       uint32_t vsock_cid,
       std::unique_ptr<patchpanel::Client> network_client,
@@ -219,6 +220,7 @@ class TerminaVm final : public VmInterface {
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel,
              base::FilePath rootfs,
+             int32_t cpus,
              std::vector<Disk> disks);
 
   // Runs a crosvm subcommend.

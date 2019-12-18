@@ -125,6 +125,7 @@ TerminaVm::~TerminaVm() {
 std::unique_ptr<TerminaVm> TerminaVm::Create(
     base::FilePath kernel,
     base::FilePath rootfs,
+    int32_t cpus,
     std::vector<TerminaVm::Disk> disks,
     uint32_t vsock_cid,
     std::unique_ptr<patchpanel::Client> network_client,
@@ -138,7 +139,8 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
       std::move(seneschal_server_proxy), std::move(runtime_dir),
       std::move(rootfs_device), std::move(stateful_device), features));
 
-  if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(disks))) {
+  if (!vm->Start(std::move(kernel), std::move(rootfs), cpus,
+                 std::move(disks))) {
     vm.reset();
   }
 
@@ -151,6 +153,7 @@ std::string TerminaVm::GetVmSocketPath() const {
 
 bool TerminaVm::Start(base::FilePath kernel,
                       base::FilePath rootfs,
+                      int32_t cpus,
                       std::vector<TerminaVm::Disk> disks) {
   // Get the network interface.
   patchpanel::IPv4Subnet container_subnet;
@@ -177,7 +180,7 @@ bool TerminaVm::Start(base::FilePath kernel,
   // clang-format off
   std::vector<string> args = {
       kCrosvmBin,       "run",
-      "--cpus",         std::to_string(base::SysInfo::NumberOfProcessors()),
+      "--cpus",         std::to_string(cpus),
       "--mem",          GetVmMemoryMiB(),
       "--tap-fd",       std::to_string(tap_fd.get()),
       "--cid",          std::to_string(vsock_cid_),

@@ -919,6 +919,15 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
+  // Check the CPU count.
+  // TODO(yusukes): Also fail if cpus() is zero.
+  if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
+    LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
+    response.set_failure_reason("Invalid CPU count");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Make sure the VM has a name.
   if (request.name().empty()) {
     LOG(ERROR) << "Ignoring request with empty name";
@@ -1185,10 +1194,15 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .software_tpm = request.software_tpm(),
       .audio_capture = request.enable_audio_capture(),
   };
+
+  // TODO(yusukes): Remove the workaround and just use request.cpus().
+  const int32_t cpus = request.cpus() == 0 ? base::SysInfo::NumberOfProcessors()
+                                           : request.cpus();
+
   auto vm = TerminaVm::Create(
-      std::move(kernel), std::move(rootfs), std::move(disks),
-      vsock_cid, std::move(network_client),
-      std::move(server_proxy), std::move(runtime_dir), std::move(rootfs_device),
+      std::move(kernel), std::move(rootfs), cpus, std::move(disks), vsock_cid,
+      std::move(network_client), std::move(server_proxy),
+      std::move(runtime_dir), std::move(rootfs_device),
       std::move(stateful_device), features);
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
