@@ -26,6 +26,9 @@ namespace dlcservice {
 
 constexpr size_t kUECheckTimeout = 5;
 
+constexpr char kDlcPreloadedImageRootpath[] =
+    "/mnt/stateful_partition/var_overlay/cache/dlc-images";
+
 // DlcService manages life-cycles of DLCs (Downloadable Content) and provides an
 // API for the rest of the system to install/uninstall DLCs.
 class DlcService {
@@ -45,6 +48,7 @@ class DlcService {
                  update_engine_proxy,
              std::unique_ptr<BootSlot> boot_slot,
              const base::FilePath& manifest_dir,
+             const base::FilePath& preloaded_content_dir,
              const base::FilePath& content_dir,
              const base::FilePath& metadata_dir);
   ~DlcService();

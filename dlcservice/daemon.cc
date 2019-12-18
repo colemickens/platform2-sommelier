@@ -45,6 +45,7 @@ void Daemon::RegisterDBusObjectsAsync(
           bus_for_proxies_),
       std::make_unique<BootSlot>(std::make_unique<BootDevice>()),
       base::FilePath(imageloader::kDlcManifestRootpath),
+      base::FilePath(dlcservice::kDlcPreloadedImageRootpath),
       base::FilePath(imageloader::kDlcImageRootpath),
       base::FilePath(imageloader::kDlcMetadataRootpath));
 

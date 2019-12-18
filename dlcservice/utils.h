@@ -22,6 +22,7 @@ namespace dlcservice {
 namespace utils {
 
 constexpr char kDlcImageFileName[] = "dlc.img";
+constexpr char kDlcPreloadAllowedName[] = "preload_allowed";
 
 template <typename BindedCallback>
 class ScopedCleanups {

@@ -56,6 +56,7 @@ DlcService::DlcService(
         update_engine_proxy,
     unique_ptr<BootSlot> boot_slot,
     const FilePath& manifest_dir,
+    const FilePath& preloaded_content_dir,
     const FilePath& content_dir,
     const FilePath& metadata_dir)
     : update_engine_proxy_(std::move(update_engine_proxy)),
@@ -63,7 +64,7 @@ DlcService::DlcService(
       weak_ptr_factory_(this) {
   dlc_manager_ = std::make_unique<DlcManager>(
       std::move(image_loader_proxy), std::move(boot_slot), manifest_dir,
-      content_dir, metadata_dir);
+      preloaded_content_dir, content_dir, metadata_dir);
 
   // Register D-Bus signal callbacks.
   update_engine_proxy_->RegisterStatusUpdateAdvancedSignalHandler(

@@ -55,9 +55,7 @@ bool CreateImageFile(const FilePath& path, int64_t image_size) {
   if (!CreateDirWithDlcPermissions(path.DirName())) {
     return false;
   }
-  constexpr uint32_t file_flags =
-      File::FLAG_CREATE | File::FLAG_READ | File::FLAG_WRITE;
-  File file(path, file_flags);
+  File file(path, File::FLAG_CREATE | File::FLAG_WRITE);
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to create image file '" << path.value()
                << "': " << File::ErrorToString(file.error_details());
@@ -71,6 +69,33 @@ bool CreateImageFile(const FilePath& path, int64_t image_size) {
   return true;
 }
 
+bool ResizeFile(const base::FilePath& path, int64_t new_size) {
+  base::File f(path, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+  if (!f.IsValid()) {
+    LOG(ERROR) << "Failed to open image file to resize '" << path.value()
+               << "': " << File::ErrorToString(f.error_details());
+    return false;
+  }
+  if (!f.SetLength(new_size)) {
+    PLOG(ERROR) << "Failed to set length (" << new_size << ") for "
+                << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool CopyAndResizeFile(const base::FilePath& from,
+                       const base::FilePath& to,
+                       int64_t new_size) {
+  if (!base::CopyFile(from, to)) {
+    PLOG(ERROR) << "Failed to copy from (" << from.value() << ") to ("
+                << to.value() << ").";
+    return false;
+  }
+  ResizeFile(to, new_size);
+  return true;
+}
+
 }  // namespace
 
 class DlcManager::DlcManagerImpl {
@@ -80,10 +105,12 @@ class DlcManager::DlcManagerImpl {
           image_loader_proxy,
       std::unique_ptr<BootSlot> boot_slot,
       const FilePath& manifest_dir,
+      const FilePath& preloaded_content_dir,
       const FilePath& content_dir,
       const FilePath& metadata_dir)
       : image_loader_proxy_(std::move(image_loader_proxy)),
         manifest_dir_(manifest_dir),
+        preloaded_content_dir_(preloaded_content_dir),
         content_dir_(content_dir),
         metadata_dir_(metadata_dir) {
     string boot_disk_name;
@@ -116,6 +143,8 @@ class DlcManager::DlcManagerImpl {
     }
     return installed_with_good_images;
   }
+
+  void PreloadDlcModuleImages() { RefreshPreloaded(); }
 
   void LoadDlcModuleImages() { RefreshInstalled(); }
 
@@ -264,6 +293,19 @@ class DlcManager::DlcManagerImpl {
  private:
   string GetDlcPackage(const string& id) {
     return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
+  }
+
+  // Returns true if the DLC module has a boolean true for 'preload-allowed'
+  // attribute in the manifest for the given |id| and |package|.
+  bool IsDlcPreloadAllowed(const base::FilePath& dlc_manifest_path,
+                           const std::string& id) {
+    imageloader::Manifest manifest;
+    if (!utils::GetDlcManifest(dlc_manifest_path, id, GetDlcPackage(id),
+                               &manifest)) {
+      // Failing to read the manifest will be considered a preloading blocker.
+      return false;
+    }
+    return manifest.preload_allowed();
   }
 
   bool CreateMetadata(const std::string& id,
@@ -440,6 +482,113 @@ class DlcManager::DlcManagerImpl {
     return true;
   }
 
+  // Helper used by |RefreshPreload()| to load in (copy + cleanup) preloadable
+  // files for the given DLC ID.
+  bool RefreshPreloadedCopier(const string& id) {
+    const string& package = GetDlcPackage(id);
+    FilePath image_preloaded_path =
+        preloaded_content_dir_.Append(id).Append(package).Append(
+            utils::kDlcImageFileName);
+    FilePath image_a_path =
+        utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::A);
+    FilePath image_b_path =
+        utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::B);
+
+    // Check the size of file to copy is valid.
+    imageloader::Manifest manifest;
+    if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id, package,
+                                           &manifest)) {
+      LOG(ERROR) << "Failed to get DLC(" << id << " module manifest.";
+      return false;
+    }
+    int64_t max_allowed_image_size = manifest.preallocated_size();
+    // Scope the |image_preloaded| file so it always closes before deleting.
+    {
+      int64_t image_preloaded_size;
+      if (!base::GetFileSize(image_preloaded_path, &image_preloaded_size)) {
+        LOG(ERROR) << "Failed to get preloaded DLC(" << id << ") size.";
+        return false;
+      }
+      if (image_preloaded_size > max_allowed_image_size) {
+        LOG(ERROR) << "Preloaded DLC(" << id << ") is (" << image_preloaded_size
+                   << ") larger than the preallocated size("
+                   << max_allowed_image_size << ") in manifest.";
+        return false;
+      }
+    }
+
+    // Based on |current_boot_slot_|, copy the preloadable image.
+    FilePath image_boot_path, image_non_boot_path;
+    switch (current_boot_slot_) {
+      case BootSlot::Slot::A:
+        image_boot_path = image_a_path;
+        image_non_boot_path = image_b_path;
+        break;
+      case BootSlot::Slot::B:
+        image_boot_path = image_b_path;
+        image_non_boot_path = image_a_path;
+        break;
+      default:
+        NOTREACHED();
+    }
+    // TODO(kimjae): when preloaded images are place into unencrypted, this
+    // operation can be a move.
+    if (!CopyAndResizeFile(image_preloaded_path, image_boot_path,
+                           max_allowed_image_size)) {
+      LOG(ERROR) << "Failed to preload DLC(" << id << ") into boot slot.";
+      return false;
+    }
+
+    return true;
+  }
+
+  // Loads the preloadable DLC(s) from |preloaded_content_dir_| by scanning the
+  // preloaded DLC(s) and verifying the validity to be preloaded before doing
+  // so.
+  void RefreshPreloaded() {
+    string err_code, err_msg;
+    // Load all preloaded DLC modules into |content_dir_| one by one.
+    for (auto id : utils::ScanDirectory(preloaded_content_dir_)) {
+      if (!IsDlcPreloadAllowed(manifest_dir_, id)) {
+        LOG(ERROR) << "Preloading for DLC(" << id << ") is not allowed.";
+        continue;
+      }
+
+      DlcRootMap dlc_root_map = {{id, ""}};
+      if (!InitInstall(dlc_root_map, &err_code, &err_msg)) {
+        LOG(ERROR) << "Failed to create DLC(" << id << ") for preloading.";
+        continue;
+      }
+
+      if (!RefreshPreloadedCopier(id)) {
+        LOG(ERROR) << "Something went wrong during preloading DLC(" << id
+                   << "), please check for previous errors.";
+        CancelInstall(&err_code, &err_msg);
+        continue;
+      }
+
+      // When the copying is successful, go ahead and finish installation.
+      if (!FinishInstall(&dlc_root_map, &err_code, &err_msg)) {
+        LOG(ERROR) << "Failed to |FinishInstall()| preloaded DLC(" << id << ") "
+                   << "because: " << err_code << "|" << err_msg;
+        continue;
+      }
+
+      // Delete the preloaded DLC only after both copies into A and B succeed as
+      // well as mounting.
+      FilePath image_preloaded_path = preloaded_content_dir_.Append(id)
+                                          .Append(GetDlcPackage(id))
+                                          .Append(utils::kDlcImageFileName);
+      if (!base::DeleteFile(image_preloaded_path.DirName().DirName(), true)) {
+        LOG(ERROR) << "Failed to delete preloaded DLC(" << id << ").";
+        continue;
+      }
+    }
+  }
+
+  // A refresh mechanism that keeps installed DLC(s), |installed_|, in check.
+  // Provides correction to DLC(s) that may have been altered by non-internal
+  // actions.
   void RefreshInstalled() {
     // Recheck installed DLC modules.
     for (auto installed_dlc_id : utils::ScanDirectory(content_dir_))
@@ -484,6 +633,7 @@ class DlcManager::DlcManagerImpl {
       image_loader_proxy_;
 
   FilePath manifest_dir_;
+  FilePath preloaded_content_dir_;
   FilePath content_dir_;
   FilePath metadata_dir_;
 
@@ -500,11 +650,12 @@ DlcManager::DlcManager(
         image_loader_proxy,
     unique_ptr<BootSlot> boot_slot,
     const FilePath& manifest_dir,
+    const FilePath& preloaded_content_dir,
     const FilePath& content_dir,
     const FilePath& metadata_dir) {
-  impl_ = std::make_unique<DlcManagerImpl>(std::move(image_loader_proxy),
-                                           std::move(boot_slot), manifest_dir,
-                                           content_dir, metadata_dir);
+  impl_ = std::make_unique<DlcManagerImpl>(
+      std::move(image_loader_proxy), std::move(boot_slot), manifest_dir,
+      preloaded_content_dir, content_dir, metadata_dir);
 }
 
 DlcManager::~DlcManager() = default;
@@ -519,6 +670,7 @@ DlcModuleList DlcManager::GetInstalled() {
 }
 
 void DlcManager::LoadDlcModuleImages() {
+  impl_->PreloadDlcModuleImages();
   impl_->LoadDlcModuleImages();
 }
 

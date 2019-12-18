@@ -44,6 +44,8 @@ constexpr char kThirdDlc[] = "Third-Dlc";
 constexpr char kPackage[] = "Package";
 
 constexpr char kManifestName[] = "imageloader.json";
+constexpr char kManifestWithPreloadAllowedName[] =
+    "imageloader-preload-allowed.json";
 
 MATCHER_P(ProtoHasUrl,
           url,
@@ -92,22 +94,24 @@ class DlcServiceTest : public testing::Test {
     // Initialize DLC path.
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     manifest_path_ = scoped_temp_dir_.GetPath().Append("rootfs");
+    preloaded_content_path_ =
+        scoped_temp_dir_.GetPath().Append("preloaded_stateful");
     content_path_ = scoped_temp_dir_.GetPath().Append("stateful");
     mount_path_ = scoped_temp_dir_.GetPath().Append("mount");
     metadata_path_ = scoped_temp_dir_.GetPath().Append("metadata");
     base::FilePath mount_root_path = mount_path_.Append("root");
     base::CreateDirectory(manifest_path_);
+    base::CreateDirectory(preloaded_content_path_);
     base::CreateDirectory(content_path_);
     base::CreateDirectory(mount_root_path);
     base::CreateDirectory(metadata_path_);
-    base::FilePath testdata_dir =
-        base::FilePath(getenv("SRC")).Append("testdata");
+    testdata_path_ = base::FilePath(getenv("SRC")).Append("testdata");
 
     // Create DLC manifest sub-directories.
     for (auto&& id : {kFirstDlc, kSecondDlc, kThirdDlc}) {
       base::CreateDirectory(manifest_path_.Append(id).Append(kPackage));
       base::CopyFile(
-          testdata_dir.Append(id).Append(kPackage).Append(kManifestName),
+          testdata_path_.Append(id).Append(kPackage).Append(kManifestName),
           manifest_path_.Append(id).Append(kPackage).Append(kManifestName));
     }
 
@@ -146,6 +150,16 @@ class DlcServiceTest : public testing::Test {
     file.SetLength(image_size);
   }
 
+  // Will modify DLC with |id| and |package| manifest file to allow preloading.
+  void SetUpDlcPreloadAllowed(const string& id, const string& package) {
+    auto from = testdata_path_.Append(id).Append(kPackage).Append(
+        kManifestWithPreloadAllowedName);
+    auto to = manifest_path_.Append(id).Append(kPackage).Append(kManifestName);
+    EXPECT_TRUE(base::PathExists(from));
+    EXPECT_TRUE(base::PathExists(to));
+    EXPECT_TRUE(base::CopyFile(from, to));
+  }
+
   // Will create |path|/|id|/|package|/dlc.img file.
   void SetUpDlcWithoutSlots(const base::FilePath& path,
                             const string& id,
@@ -176,7 +190,7 @@ class DlcServiceTest : public testing::Test {
     dlc_service_ = std::make_unique<DlcService>(
         move(mock_image_loader_proxy_), move(mock_update_engine_proxy_),
         std::make_unique<BootSlot>(move(mock_boot_device_)), manifest_path_,
-        content_path_, metadata_path_);
+        preloaded_content_path_, content_path_, metadata_path_);
 
     dlc_service_test_observer_ = std::make_unique<DlcServiceTestObserver>();
     dlc_service_->AddObserver(dlc_service_test_observer_.get());
@@ -202,7 +216,9 @@ class DlcServiceTest : public testing::Test {
 
   base::ScopedTempDir scoped_temp_dir_;
 
+  base::FilePath testdata_path_;
   base::FilePath manifest_path_;
+  base::FilePath preloaded_content_path_;
   base::FilePath content_path_;
   base::FilePath mount_path_;
   base::FilePath metadata_path_;
@@ -285,6 +301,33 @@ TEST_F(DlcServiceSkipLoadTest, StartUpInactiveImageDoesntExistTest) {
   dlc_service_->LoadDlcModuleImages();
 
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
+TEST_F(DlcServiceSkipLoadTest, PreloadAllowedDlcTest) {
+  SetUpDlcPreloadAllowed(kFirstDlc, kPackage);
+  SetUpDlcWithoutSlots(preloaded_content_path_, kFirstDlc, kPackage);
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+
+  dlc_service_->LoadDlcModuleImages();
+
+  DlcModuleList dlc_module_list;
+  EXPECT_TRUE(dlc_service_->GetInstalled(&dlc_module_list, nullptr));
+  EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
+
+  DlcModuleInfo dlc_module = dlc_module_list.dlc_module_infos(0);
+  EXPECT_EQ(dlc_module.dlc_id(), kFirstDlc);
+  EXPECT_FALSE(dlc_module.dlc_root().empty());
+}
+
+TEST_F(DlcServiceSkipLoadTest, PreloadNotAllowedDlcTest) {
+  SetUpDlcWithoutSlots(preloaded_content_path_, kFirstDlc, kPackage);
+
+  dlc_service_->LoadDlcModuleImages();
+
+  DlcModuleList dlc_module_list;
+  EXPECT_TRUE(dlc_service_->GetInstalled(&dlc_module_list, nullptr));
+  EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 0);
 }
 
 TEST_F(DlcServiceTest, GetInstalledTest) {

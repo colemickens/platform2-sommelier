@@ -32,6 +32,7 @@ class DlcManager {
                  image_loader_proxy,
              std::unique_ptr<BootSlot> boot_slot,
              const base::FilePath& manifest_dir,
+             const base::FilePath& preloaded_content_dir,
              const base::FilePath& content_dir,
              const base::FilePath& metadata_dir);
   ~DlcManager();
