@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 
 #include <base/guid.h>
 #include <base/time/time.h>
@@ -263,7 +264,7 @@ void RegisterVmToolsChangedCallbacks(
   proxy->ConnectToSignal(
       vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName,
       vm_tools::plugin_dispatcher::kVmToolsStateChangedSignal, cb,
-      on_connected_cb);
+      std::move(on_connected_cb));
 }
 
 bool ParseVmToolsChangedSignal(dbus::Signal* signal,
