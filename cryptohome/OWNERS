@@ -2,6 +2,7 @@ set noparent
 apronin@chromium.org
 gwendal@chromium.org
 hashimoto@chromium.org
+mnissler@chromium.org
 zuan@chromium.org
 
 per-file *homedirs*=oka@chromium.org
