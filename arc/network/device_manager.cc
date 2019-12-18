@@ -341,8 +341,8 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     opts.use_default_interface = true;
     opts.is_sticky = true;
     guest = AddressManager::Guest::VM_TERMINA;
-    lxd_subnet = std::move(
-        addr_mgr_->AllocateIPv4Subnet(AddressManager::Guest::CONTAINER));
+    lxd_subnet =
+        addr_mgr_->AllocateIPv4Subnet(AddressManager::Guest::CONTAINER);
     if (!lxd_subnet) {
       LOG(ERROR) << "lxd subnet already in use or unavailable."
                  << " Cannot make device: " << name;
