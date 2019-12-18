@@ -83,6 +83,7 @@ if (use.test) {
     sources = [
       "battery/battery_test.cc",
       "battery_sysfs/battery_sysfs_test.cc",
+      "routine_test_utils.cc",
       "smartctl_check/smartctl_check_utils.cc",
       "smartctl_check/smartctl_check_utils_test.cc",
       "subproc_routine_test.cc",

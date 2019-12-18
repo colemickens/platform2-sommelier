@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/routines/diag_process_adapter.h"
+#include "diagnostics/routines/routine_test_utils.h"
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -32,12 +33,8 @@ void CheckRoutineUpdate(int progress_percent,
                         mojo_ipc::DiagnosticRoutineStatusEnum status,
                         const mojo_ipc::RoutineUpdate& update) {
   EXPECT_EQ(update.progress_percent, progress_percent);
-  const auto& update_union = update.routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message, status_message);
-  EXPECT_EQ(noninteractive_update->status, status);
+  VerifyNonInteractiveUpdate(update.routine_update_union, status,
+                             status_message);
 }
 
 class MockDiagProcessAdapter : public DiagProcessAdapter {

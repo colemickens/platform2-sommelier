@@ -17,6 +17,7 @@
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
+#include "diagnostics/routines/routine_test_utils.h"
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
@@ -136,14 +137,9 @@ TEST_F(BatterySysfsRoutineTest, HighCycleCount) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kHighCycleCount));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsExcessiveCycleCountMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailed);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                             kBatterySysfsExcessiveCycleCountMessage);
 }
 
 // Test that the battery_sysfs routine fails if cycle_count is not present.
@@ -154,14 +150,9 @@ TEST_F(BatterySysfsRoutineTest, NoCycleCount) {
   WriteFileContents(kBatterySysfsChargeFullDesignPath,
                     std::to_string(kFakeBatteryChargeFullDesign));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsFailedReadingCycleCountMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             kBatterySysfsFailedReadingCycleCountMessage);
 }
 
 // Test that the battery_sysfs routine fails if the wear percentage is too
@@ -175,14 +166,9 @@ TEST_F(BatterySysfsRoutineTest, HighWearPercentage) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kLowCycleCount));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsExcessiveWearMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailed);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                             kBatterySysfsExcessiveWearMessage);
 }
 
 // Test that the battery_sysfs routine fails if neither charge_full nor
@@ -192,14 +178,10 @@ TEST_F(BatterySysfsRoutineTest, NoWearPercentage) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kLowCycleCount));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsFailedCalculatingWearPercentageMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
+  VerifyNonInteractiveUpdate(
+      update()->routine_update_union,
+      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      kBatterySysfsFailedCalculatingWearPercentageMessage);
 }
 
 // Test that the battery_sysfs routine passes if the cycle count and wear
@@ -214,14 +196,10 @@ TEST_F(BatterySysfsRoutineTest, GoodParameters) {
                     std::to_string(kLowCycleCount));
   WriteFilesReadByLog();
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsRoutinePassedMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             kBatterySysfsRoutinePassedMessage);
+
   base::StringPairs expected_output_pairs;
   base::StringPairs actual_output_pairs;
   ASSERT_TRUE(base::SplitStringIntoKeyValuePairs(ConstructOutput(), ':', '\n',
@@ -247,14 +225,9 @@ TEST_F(BatterySysfsRoutineTest, EnergyReportingBattery) {
   WriteFileContents(kBatterySysfsCycleCountPath,
                     std::to_string(kLowCycleCount));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsRoutinePassedMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             kBatterySysfsRoutinePassedMessage);
 }
 
 // Test that the battery_sysfs routine uses the expected full path to
@@ -269,14 +242,9 @@ TEST_F(BatterySysfsRoutineTest, FullCycleCountPath) {
       temp_dir_path().AppendASCII(kFullCycleCountPath),
       std::to_string(kLowCycleCount)));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsRoutinePassedMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             kBatterySysfsRoutinePassedMessage);
 }
 
 // Test that the battery_sysfs routine catches invalid parameters.
@@ -284,14 +252,9 @@ TEST_F(BatterySysfsRoutineTest, InvalidParameters) {
   constexpr int kInvalidMaximumWearPercentage = 101;
   CreateRoutine(kMaximumCycleCount, kInvalidMaximumWearPercentage);
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsInvalidParametersMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             kBatterySysfsInvalidParametersMessage);
 }
 
 // Test that the battery_sysfs routine handles a battery whose capacity exceeds
@@ -312,14 +275,9 @@ TEST_F(BatterySysfsRoutineTest, CapacityExceedsDesignCapacity) {
       temp_dir_path().AppendASCII(kFullCycleCountPath),
       std::to_string(kLowCycleCount)));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsRoutinePassedMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             kBatterySysfsRoutinePassedMessage);
 }
 
 // Test that the battery_sysfs routine fails when invalid file contents are
@@ -334,14 +292,9 @@ TEST_F(BatterySysfsRoutineTest, InvalidFileContents) {
   EXPECT_TRUE(WriteFileAndCreateParentDirs(
       temp_dir_path().AppendASCII(kFullCycleCountPath), kInvalidUnsignedInt));
   RunRoutineAndWaitForExit();
-  const auto& update_union = update()->routine_update_union;
-  ASSERT_FALSE(update_union.is_null());
-  ASSERT_TRUE(update_union->is_noninteractive_update());
-  const auto& noninteractive_update = update_union->get_noninteractive_update();
-  EXPECT_EQ(noninteractive_update->status_message,
-            kBatterySysfsFailedReadingCycleCountMessage);
-  EXPECT_EQ(noninteractive_update->status,
-            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             kBatterySysfsFailedReadingCycleCountMessage);
 }
 
 // Test that calling resume does nothing.
