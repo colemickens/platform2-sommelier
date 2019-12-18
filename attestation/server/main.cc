@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/cryptohome.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/minijail/minijail.h>
@@ -138,6 +139,10 @@ int main(int argc, char* argv[]) {
   brillo::SecureBlob abe_data;
   if (!GetAttestationEnrollmentData(abe_data_hex, &abe_data)) {
     LOG(ERROR) << "Invalid attestation-based enterprise enrollment data.";
+  }
+  // Reads the system salt before we init minijail.
+  if (!brillo::cryptohome::home::EnsureSystemSaltIsLoaded()) {
+    LOG(FATAL) << "Failed to ensure system salt to be loaded into memory.";
   }
   PLOG_IF(FATAL, daemon(0, 0) == -1) << "Failed to daemonize";
   AttestationDaemon daemon(abe_data);
