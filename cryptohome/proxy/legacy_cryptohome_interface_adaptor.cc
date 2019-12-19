@@ -2632,6 +2632,15 @@ void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceIdOnSuccess(
   response->Return(result);
 }
 
+void LegacyCryptohomeInterfaceAdaptor::CheckHealth(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
+    const cryptohome::CheckHealthRequest& in_request) {
+  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                           DBUS_ERROR_NOT_SUPPORTED,
+                           "Method unimplemented yet");
+}
+
 void LegacyCryptohomeInterfaceAdaptor::OnDircryptoMigrationProgressSignal(
     const user_data_auth::DircryptoMigrationProgress& progress) {
   VirtualSendDircryptoMigrationProgressSignal(

@@ -3881,6 +3881,24 @@ void Service::DoLockToSingleUserMountUntilReboot(
   SendReply(context, reply);
 }
 
+gboolean Service::CheckHealth(const GArray* request,
+                              DBusGMethodInvocation* context) {
+  CheckHealthRequest request_pb;
+  if (!request_pb.ParseFromArray(request->data, request->len)) {
+    SendInvalidArgsReply(context, "Bad CheckHealthRequest.");
+    return FALSE;
+  }
+
+  BaseReply reply;
+  CheckHealthReply* reply_extension =
+      reply.MutableExtension(CheckHealthReply::reply);
+  const bool is_powerwash_required = !crypto_->CanUnsealWithUserAuth();
+  reply_extension->set_requires_powerwash(is_powerwash_required);
+
+  SendReply(context, reply);
+  return TRUE;
+}
+
 void Service::PreMountCallback() {
 #if USE_TPM2
   // Lock NVRamBootLockbox

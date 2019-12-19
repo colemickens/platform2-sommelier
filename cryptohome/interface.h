@@ -463,6 +463,10 @@ gboolean cryptohome_get_rsu_device_id(Cryptohome* self,
                                       GArray* request,
                                       DBusGMethodInvocation* error);
 
+gboolean cryptohome_check_health(Cryptohome* self,
+                                 GArray* request,
+                                 DBusGMethodInvocation* error);
+
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

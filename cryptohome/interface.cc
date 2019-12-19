@@ -799,6 +799,12 @@ gboolean cryptohome_get_rsu_device_id(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(GetRsuDeviceId, request);
 }
 
+gboolean cryptohome_check_health(Cryptohome* self,
+                                 GArray* request,
+                                 DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(CheckHealth, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

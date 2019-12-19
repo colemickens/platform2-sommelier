@@ -718,6 +718,9 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
       const std::string& obfuscated_username,
       DBusGMethodInvocation* context);
 
+  virtual gboolean CheckHealth(const GArray* request,
+                               DBusGMethodInvocation* context);
+
   void PostTaskToEventLoop(base::OnceClosure task);
  protected:
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
