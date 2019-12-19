@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 
 #include <libmems/iio_channel.h>
@@ -31,6 +32,11 @@ struct ImuVpdCalibrationEntry {
 struct LightVpdCalibrationEntry {
   std::string vpd_name;
   std::string iio_name;
+};
+
+struct LightColorCalibrationEntry {
+  std::string iio_name;
+  base::Optional<double> value;
 };
 
 constexpr char kCalibrationBias[] = "bias";
@@ -93,6 +99,53 @@ bool Configuration::CopyLightCalibrationFromVpd() {
                  << calib_attribute.iio_name;
   }
 
+  /*
+   * RGB sensors may need per channel calibration.
+   */
+  std::vector<LightColorCalibrationEntry> calib_color_entries = {
+      {"in_illuminance_red_calibscale", base::nullopt },
+      {"in_illuminance_green_calibscale", base::nullopt },
+      {"in_illuminance_blue_calibscale", base::nullopt },
+  };
+  auto attrib_value = delegate_->ReadVpdValue("als_cal_slope_color");
+
+  if (attrib_value.has_value()) {
+    /*
+     * Split the attributes in 3 doubles.
+     */
+    std::vector<std::string> attrs = base::SplitString(
+        attrib_value.value(), " ",
+        base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_NONEMPTY);
+
+    if (attrs.size() == 3) {
+      for (int i = 0; i < 3; i++) {
+        double value;
+        if (!base::StringToDouble(attrs[i], &value)) {
+          LOG(ERROR) << "VPD_entry " << i << " of als_cal_slope_color "
+                     << "is not a float: " << attrs[i];
+          break;
+        }
+        calib_color_entries[i].value = value;
+      }
+
+      for (auto& color_entry : calib_color_entries) {
+        if (!color_entry.value) {
+           LOG(ERROR) << "No value set for " << color_entry.iio_name;
+           continue;
+        }
+        LOG(ERROR) << "writing " << *color_entry.value;
+        if (!sensor_->WriteDoubleAttribute(color_entry.iio_name,
+                                           *color_entry.value))
+            LOG(WARNING) << "failed to to set calibration value "
+                         << color_entry.iio_name
+                         << " to " << *color_entry.value;
+      }
+    } else {
+      LOG(ERROR) << "VPD_entry als_cal_slope_color is malformed : "
+                 << attrib_value.value();
+    }
+  }
   return true;
 }
 

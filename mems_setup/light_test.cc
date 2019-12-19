@@ -36,7 +36,7 @@ TEST_F(LightTest, PartialVpd) {
   EXPECT_TRUE(mock_device_->ReadDoubleAttribute("in_illuminance_calibbias")
                   .has_value());
   EXPECT_EQ(100, mock_device_->ReadDoubleAttribute("in_illuminance_calibbias")
-                     .value_or(0));
+                     .value());
   EXPECT_FALSE(mock_device_->ReadDoubleAttribute("in_illuminance_calibscale")
                    .has_value());
 }
@@ -60,11 +60,70 @@ TEST_F(LightTest, ValidVpd) {
   EXPECT_TRUE(mock_device_->ReadDoubleAttribute("in_illuminance_calibbias")
                   .has_value());
   EXPECT_EQ(1.25, mock_device_->ReadDoubleAttribute("in_illuminance_calibbias")
-                     .value_or(0));
+                     .value());
   EXPECT_TRUE(mock_device_->ReadDoubleAttribute("in_illuminance_calibscale")
                   .has_value());
   EXPECT_EQ(12.5, mock_device_->ReadDoubleAttribute("in_illuminance_calibscale")
-                    .value_or(0));
+                    .value());
+}
+
+TEST_F(LightTest, VpdCalSlopeColorGood) {
+  ConfigureVpd({{"als_cal_slope_color", "1.1 1.2 1.3"}});
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_TRUE(mock_device_->ReadDoubleAttribute("in_illuminance_red_calibscale")
+                  .has_value());
+  EXPECT_EQ(1.1,
+      mock_device_->ReadDoubleAttribute("in_illuminance_red_calibscale")
+                  .value());
+  EXPECT_TRUE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_green_calibscale")
+                  .has_value());
+  EXPECT_EQ(1.2,
+      mock_device_->ReadDoubleAttribute("in_illuminance_green_calibscale")
+                  .value());
+  EXPECT_TRUE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_blue_calibscale")
+                  .has_value());
+  EXPECT_EQ(1.3,
+      mock_device_->ReadDoubleAttribute("in_illuminance_blue_calibscale")
+                  .value());
+}
+
+TEST_F(LightTest, VpdCalSlopeColorCorrupted) {
+  ConfigureVpd({{"als_cal_slope_color", "1.1 no 1.3"}});
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_TRUE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_red_calibscale")
+                  .has_value());
+  EXPECT_EQ(1.1,
+      mock_device_->ReadDoubleAttribute("in_illuminance_red_calibscale")
+                  .value());
+  EXPECT_FALSE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_green_calibscale")
+                  .has_value());
+  EXPECT_FALSE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_blue_calibscale")
+                  .has_value());
+}
+
+TEST_F(LightTest, VpdCalSlopeColorIncomplete) {
+  ConfigureVpd({{"als_cal_slope_color", "1.1"}});
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_FALSE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_red_calibscale")
+                  .has_value());
+  EXPECT_FALSE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_green_calibscale")
+                  .has_value());
+  EXPECT_FALSE(
+      mock_device_->ReadDoubleAttribute("in_illuminance_blue_calibscale")
+                  .has_value());
 }
 
 }  // namespace

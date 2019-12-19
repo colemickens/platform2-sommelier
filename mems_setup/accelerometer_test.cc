@@ -46,7 +46,7 @@ TEST_F(AccelerometerTest, MissingVpd) {
       mock_device_->ReadNumberAttribute("in_accel_x_calibbias").has_value());
   EXPECT_EQ(
       100,
-      mock_device_->ReadNumberAttribute("in_accel_x_calibbias").value_or(0));
+      mock_device_->ReadNumberAttribute("in_accel_x_calibbias").value());
   EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_accel_y_calibbias").has_value());
   EXPECT_FALSE(
@@ -108,13 +108,39 @@ TEST_F(AccelerometerTest, CalibscaleData) {
 
   EXPECT_EQ(
       5,
-      mock_device_->ReadNumberAttribute("in_accel_x_calibscale").value_or(0));
+      mock_device_->ReadNumberAttribute("in_accel_x_calibscale").value());
   EXPECT_EQ(
       6,
-      mock_device_->ReadNumberAttribute("in_accel_y_calibscale").value_or(0));
+      mock_device_->ReadNumberAttribute("in_accel_y_calibscale").value());
   EXPECT_EQ(
       7,
-      mock_device_->ReadNumberAttribute("in_accel_z_calibscale").value_or(0));
+      mock_device_->ReadNumberAttribute("in_accel_z_calibscale").value());
+}
+
+TEST_F(AccelerometerTest, CalibscaleZeroData) {
+  SetSingleSensor(kBaseSensorLocation);
+  ConfigureVpd({{"in_accel_x_base_calibscale", "5"},
+                {"in_accel_y_base_calibscale", "6"},
+                {"in_accel_z_base_calibscale", "0"}});
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_TRUE(
+      mock_device_->ReadNumberAttribute("in_accel_x_calibscale").has_value());
+  EXPECT_TRUE(
+      mock_device_->ReadNumberAttribute("in_accel_y_calibscale").has_value());
+  EXPECT_TRUE(
+      mock_device_->ReadNumberAttribute("in_accel_z_calibscale").has_value());
+
+  EXPECT_EQ(
+      5,
+      mock_device_->ReadNumberAttribute("in_accel_x_calibscale").value());
+  EXPECT_EQ(
+      6,
+      mock_device_->ReadNumberAttribute("in_accel_y_calibscale").value());
+  EXPECT_EQ(
+      0,
+      mock_device_->ReadNumberAttribute("in_accel_z_calibscale").value());
 }
 
 TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
