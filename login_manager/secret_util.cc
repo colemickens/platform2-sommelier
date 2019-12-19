@@ -67,7 +67,7 @@ base::ScopedFD SharedMemoryUtil::WriteDataToSharedMemory(
     return base::ScopedFD();
   memcpy(shared_memory.memory(), data.data(), data.size());
   base::SharedMemoryHandle read_only_handle = shared_memory.GetReadOnlyHandle();
-  if (read_only_handle.IsValid())
+  if (!read_only_handle.IsValid())
     return base::ScopedFD();
   return base::ScopedFD(read_only_handle.Release());
 }
