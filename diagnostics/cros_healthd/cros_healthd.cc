@@ -42,7 +42,8 @@ CrosHealthd::CrosHealthd()
   battery_fetcher_ = std::make_unique<BatteryFetcher>(debugd_proxy_.get(),
                                                       power_manager_proxy_);
 
-  routine_service_ = std::make_unique<CrosHealthdRoutineServiceImpl>();
+  routine_service_ =
+      std::make_unique<CrosHealthdRoutineServiceImpl>(&routine_factory_impl_);
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
       battery_fetcher_.get(), routine_service_.get());

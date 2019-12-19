@@ -20,6 +20,7 @@
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
+#include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "mojo/cros_healthd.mojom.h"
@@ -69,6 +70,9 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
   // and regular) by using the available D-Bus proxies.
   std::unique_ptr<BatteryFetcher> battery_fetcher_;
 
+  // Production implementation of the CrosHealthdRoutineFactory interface. Will
+  // be injected into |routine_service_|.
+  CrosHealthdRoutineFactoryImpl routine_factory_impl_;
   // Creates new diagnostic routines and controls existing diagnostic routines.
   std::unique_ptr<CrosHealthdRoutineService> routine_service_;
   // Maintains the Mojo connection with cros_healthd clients.

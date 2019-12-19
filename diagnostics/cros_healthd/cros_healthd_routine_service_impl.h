@@ -11,6 +11,7 @@
 
 #include <base/macros.h>
 
+#include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/routines/diag_routine.h"
 #include "mojo/cros_healthd.mojom.h"
@@ -20,7 +21,8 @@ namespace diagnostics {
 // Production implementation of the CrosHealthdRoutineService interface.
 class CrosHealthdRoutineServiceImpl final : public CrosHealthdRoutineService {
  public:
-  CrosHealthdRoutineServiceImpl();
+  explicit CrosHealthdRoutineServiceImpl(
+      CrosHealthdRoutineFactory* routine_factory);
   ~CrosHealthdRoutineServiceImpl() override;
 
   // CrosHealthdRoutineService overrides:
@@ -70,6 +72,10 @@ class CrosHealthdRoutineServiceImpl final : public CrosHealthdRoutineService {
               kBatteryCapacity,
           chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryHealth,
           chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck};
+
+  // Responsible for making the routines. Unowned pointer that should outlive
+  // this instance.
+  CrosHealthdRoutineFactory* routine_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosHealthdRoutineServiceImpl);
 };

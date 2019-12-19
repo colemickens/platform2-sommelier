@@ -10,11 +10,6 @@
 
 #include <base/logging.h>
 
-#include "diagnostics/routines/battery/battery.h"
-#include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
-#include "diagnostics/routines/smartctl_check/smartctl_check.h"
-#include "diagnostics/routines/urandom/urandom.h"
-
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
@@ -32,7 +27,12 @@ void SetErrorRoutineUpdate(const std::string& status_message,
 
 }  // namespace
 
-CrosHealthdRoutineServiceImpl::CrosHealthdRoutineServiceImpl() = default;
+CrosHealthdRoutineServiceImpl::CrosHealthdRoutineServiceImpl(
+    CrosHealthdRoutineFactory* routine_factory)
+    : routine_factory_(routine_factory) {
+  DCHECK(routine_factory_);
+}
+
 CrosHealthdRoutineServiceImpl::~CrosHealthdRoutineServiceImpl() = default;
 
 std::vector<mojo_ipc::DiagnosticRoutineEnum>
@@ -45,7 +45,8 @@ void CrosHealthdRoutineServiceImpl::RunBatteryCapacityRoutine(
     uint32_t high_mah,
     int32_t* id,
     mojo_ipc::DiagnosticRoutineStatusEnum* status) {
-  RunRoutine(std::make_unique<BatteryRoutine>(low_mah, high_mah), id, status);
+  RunRoutine(routine_factory_->MakeBatteryCapacityRoutine(low_mah, high_mah),
+             id, status);
 }
 
 void CrosHealthdRoutineServiceImpl::RunBatteryHealthRoutine(
@@ -53,7 +54,7 @@ void CrosHealthdRoutineServiceImpl::RunBatteryHealthRoutine(
     uint32_t percent_battery_wear_allowed,
     int32_t* id,
     mojo_ipc::DiagnosticRoutineStatusEnum* status) {
-  RunRoutine(std::make_unique<BatterySysfsRoutine>(
+  RunRoutine(routine_factory_->MakeBatteryHealthRoutine(
                  maximum_cycle_count, percent_battery_wear_allowed),
              id, status);
 }
@@ -62,12 +63,12 @@ void CrosHealthdRoutineServiceImpl::RunUrandomRoutine(
     uint32_t length_seconds,
     int32_t* id,
     mojo_ipc::DiagnosticRoutineStatusEnum* status) {
-  RunRoutine(CreateUrandomRoutine(length_seconds), id, status);
+  RunRoutine(routine_factory_->MakeUrandomRoutine(length_seconds), id, status);
 }
 
 void CrosHealthdRoutineServiceImpl::RunSmartctlCheckRoutine(
     int32_t* id, mojo_ipc::DiagnosticRoutineStatusEnum* status) {
-  RunRoutine(CreateSmartctlCheckRoutine(), id, status);
+  RunRoutine(routine_factory_->MakeSmartctlCheckRoutine(), id, status);
 }
 
 void CrosHealthdRoutineServiceImpl::GetRoutineUpdate(
