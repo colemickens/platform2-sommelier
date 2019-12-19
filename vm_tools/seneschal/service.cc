@@ -840,6 +840,10 @@ std::unique_ptr<dbus::Response> Service::SharePath(
                     {"crostini", owner_id.value(), "termina", "penguin"}, "_"));
       dst = dst.Append("LinuxFiles");
       break;
+    case SharePathRequest::FONTS:
+      src = base::FilePath("/usr/share/fonts");
+      dst = dst.Append("fonts");
+      break;
     default:
       LOG(ERROR) << "Unknown storage location: " << request.storage_location();
       response.set_failure_reason("Unknown storage location");
