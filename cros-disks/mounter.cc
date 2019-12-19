@@ -39,13 +39,22 @@ MounterCompat::MounterCompat(const std::string& filesystem_type,
 
 MounterCompat::~MounterCompat() = default;
 
-MountErrorType MounterCompat::Mount() {
+MountErrorType MounterCompat::MountOld() {
   MountErrorType error = MOUNT_ERROR_NONE;
-  mountpoint_ = Mount({}, {}, {}, &error);
-  if (mountpoint_) {
+  std::unique_ptr<MountPoint> mount_point =
+      Mount(source_, target_path_, mount_options().options(), &error);
+  if (mount_point) {
     LOG(INFO) << "Mounted " << quote(source_) << " to " << quote(target_path_)
               << " as filesystem " << quote(filesystem_type())
               << " with options " << quote(mount_options_.ToString());
+    // Release ownership of the filesystem so that it isn't unmounted when
+    // |mount_point| goes out of scope. MountOld() is used in places that have
+    // not been converted to track MountPoint objects. In these cases, ownership
+    // of the mount point is implicitly transferred to the caller, which is
+    // required to unmount when necessary. In most cases, ownership will bubble
+    // down to MountManager, which will then create a new MountPoint object
+    // holding the mount point.
+    mount_point->Release();
   } else {
     LOG(ERROR) << "Cannot mount " << quote(source_) << " to "
                << quote(target_path_) << " as filesystem "
@@ -60,13 +69,8 @@ std::unique_ptr<MountPoint> MounterCompat::Mount(
     const base::FilePath& target_path,
     std::vector<std::string> options,
     MountErrorType* error) const {
-  *error = MountImpl();
-  if (*error != MOUNT_ERROR_NONE) {
-    return nullptr;
-  }
-
-  // Makes mountpoint that won't unmount for compatibility with old behavior.
-  return std::make_unique<MountPoint>(target_path_, nullptr);
+  CHECK(mounter_) << "Method must be overridden if mounter is not set";
+  return mounter_->Mount(source, target_path, options, error);
 }
 
 bool MounterCompat::CanMount(const std::string& source,
@@ -74,21 +78,6 @@ bool MounterCompat::CanMount(const std::string& source,
                              base::FilePath* suggested_dir_name) const {
   *suggested_dir_name = base::FilePath("dir");
   return true;
-}
-
-MountErrorType MounterCompat::MountImpl() const {
-  MountErrorType error = MOUNT_ERROR_NONE;
-  // This default implementation implies using a new passed mounter to perform
-  // the mounting. For legacy signature mounter is null, but this method is
-  // overridden and this code is never called.
-  CHECK(mounter_) << "Method must be overridden if mounter is not set";
-  auto mountpoint = mounter_->Mount(source(), target_path(),
-                                    mount_options().options(), &error);
-  if (mountpoint) {
-    // Leak the mountpoint.
-    mountpoint->Release();
-  }
-  return error;
 }
 
 }  // namespace cros_disks

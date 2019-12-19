@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
 
@@ -188,7 +189,11 @@ TEST(FUSEMounterTest, Sandboxing_Unprivileged) {
   EXPECT_CALL(platform, SetPermissions(kMountDir, _)).Times(0);
   EXPECT_CALL(platform, Unmount(_, _)).Times(0);
 
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
+  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  auto mount_point =
+      mounter.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
+  EXPECT_TRUE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
 }
 
 TEST(FUSEMounterTest, AppFailed) {
@@ -203,7 +208,11 @@ TEST(FUSEMounterTest, AppFailed) {
   EXPECT_CALL(platform, RemoveEmptyDirectory(_)).WillOnce(Return(true));
   EXPECT_CALL(mounter, InvokeMountTool(_)).WillOnce(Return(1));
 
-  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
+  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  auto mount_point =
+      mounter.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
+  EXPECT_FALSE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, error);
 }
 
 TEST(FUSEMounterTest, AppFailed_NoMountDirectory) {
@@ -218,7 +227,11 @@ TEST(FUSEMounterTest, AppFailed_NoMountDirectory) {
   EXPECT_CALL(platform, RemoveEmptyDirectory(_)).Times(0);
   EXPECT_CALL(mounter, InvokeMountTool(_)).WillOnce(Return(1));
 
-  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
+  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  auto mount_point =
+      mounter.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
+  EXPECT_FALSE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, error);
 }
 
 }  // namespace cros_disks

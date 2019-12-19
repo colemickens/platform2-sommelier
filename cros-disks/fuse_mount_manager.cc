@@ -102,7 +102,7 @@ MountErrorType FUSEMountManager::DoMount(
     return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
   }
 
-  return mounter->Mount();
+  return mounter->MountOld();
 }
 
 MountErrorType FUSEMountManager::DoUnmount(const std::string& path) {

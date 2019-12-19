@@ -22,11 +22,12 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
+using testing::_;
 using testing::ByMove;
 using testing::DoAll;
 using testing::Return;
 using testing::SetArgPointee;
-using testing::_;
+using testing::WithArg;
 
 namespace cros_disks {
 
@@ -96,7 +97,13 @@ class MockMounter : public FUSEMounter {
                     "",
                     {},
                     false) {}
-  MOCK_METHOD(MountErrorType, MountImpl, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<MountPoint>,
+              Mount,
+              (const std::string&,
+               const base::FilePath&,
+               std::vector<std::string>,
+               MountErrorType*),
+              (const, override));
 };
 
 }  // namespace
@@ -226,7 +233,12 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
       .WillOnce(DoAll(SetArgPointee<2>("/blah"), Return(true)));
   EXPECT_CALL(platform_, SetPermissions("/blah", 0755)).WillOnce(Return(true));
   MockMounter* mounter = new MockMounter(&platform_, &process_reaper_);
-  EXPECT_CALL(*mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(*mounter, Mount("foobar", base::FilePath(kSomeMountpoint), _, _))
+      .WillOnce(WithArg<3>([](MountErrorType* error) {
+        *error = MOUNT_ERROR_NONE;
+        return std::make_unique<MountPoint>(base::FilePath(kSomeMountpoint),
+                                            nullptr);
+      }));
   std::unique_ptr<FUSEMounter> ptr(mounter);
   EXPECT_CALL(*bar_, CreateMounter(base::FilePath("/blah"), kSomeSource,
                                    base::FilePath(kSomeMountpoint), _))

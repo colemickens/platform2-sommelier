@@ -26,6 +26,7 @@
 #include <brillo/process_reaper.h>
 
 #include "cros-disks/error_logger.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/sandboxed_process.h"
@@ -232,13 +233,17 @@ FUSEMounter::FUSEMounter(const std::string& source_path,
       accessible_paths_(accessible_paths),
       permit_network_access_(permit_network_access) {}
 
-MountErrorType FUSEMounter::MountImpl() const {
+std::unique_ptr<MountPoint> FUSEMounter::Mount(
+    const std::string& source,
+    const base::FilePath& target_path,
+    std::vector<std::string> options,
+    MountErrorType* error) const {
   auto mount_process = CreateSandboxedProcess();
-  MountErrorType error = ConfigureCommonSandbox(
-      mount_process.get(), platform_, !permit_network_access_,
-      base::FilePath(seccomp_policy_));
-  if (error != MOUNT_ERROR_NONE) {
-    return error;
+  *error = ConfigureCommonSandbox(mount_process.get(), platform_,
+                                  !permit_network_access_,
+                                  base::FilePath(seccomp_policy_));
+  if (*error != MOUNT_ERROR_NONE) {
+    return nullptr;
   }
 
   uid_t mount_user_id;
@@ -246,11 +251,13 @@ MountErrorType FUSEMounter::MountImpl() const {
   if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
                                     &mount_group_id)) {
     LOG(ERROR) << "Cannot resolve user " << quote(mount_user_);
-    return MOUNT_ERROR_INTERNAL;
+    *error = MOUNT_ERROR_INTERNAL;
+    return nullptr;
   }
   if (!mount_group_.empty() &&
       !platform_->GetGroupId(mount_group_, &mount_group_id)) {
-    return MOUNT_ERROR_INTERNAL;
+    *error = MOUNT_ERROR_INTERNAL;
+    return nullptr;
   }
 
   mount_process->SetUserId(mount_user_id);
@@ -258,7 +265,8 @@ MountErrorType FUSEMounter::MountImpl() const {
 
   if (!platform_->PathExists(mount_program_path_)) {
     LOG(ERROR) << "Cannot find mount program " << quote(mount_program_path_);
-    return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
+    *error = MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
+    return nullptr;
   }
   mount_process->AddArgument(mount_program_path_);
 
@@ -269,15 +277,16 @@ MountErrorType FUSEMounter::MountImpl() const {
     LOG(ERROR) << "Unable to open FUSE device file. Error: "
                << fuse_file.error_details() << " "
                << base::File::ErrorToString(fuse_file.error_details());
-    return MOUNT_ERROR_INTERNAL;
+    *error = MOUNT_ERROR_INTERNAL;
+    return nullptr;
   }
 
-  error = MountFuseDevice(platform_, source(), filesystem_type(),
-                          base::FilePath(target_path()), fuse_file,
-                          mount_user_id, mount_group_id, mount_options());
-  if (error != MOUNT_ERROR_NONE) {
+  *error = MountFuseDevice(platform_, source, filesystem_type(), target_path,
+                           fuse_file, mount_user_id, mount_group_id,
+                           mount_options());
+  if (*error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Can't perform unprivileged FUSE mount: " << error;
-    return error;
+    return nullptr;
   }
 
   // The |fuse_failure_unmounter| closure runner is used to unmount the FUSE
@@ -303,30 +312,33 @@ MountErrorType FUSEMounter::MountImpl() const {
                       << quote(target_path);
         }
       },
-      platform_, target_path().value()));
+      platform_, target_path.value()));
 
   // Source might be an URI. Only try to re-own source if it looks like
   // an existing path.
-  if (!source().empty() && platform_->PathExists(source())) {
-    if (!platform_->SetOwnership(source(), getuid(), mount_group_id) ||
-        !platform_->SetPermissions(source(), kSourcePathPermissions)) {
+  if (!source.empty() && platform_->PathExists(source)) {
+    if (!platform_->SetOwnership(source, getuid(), mount_group_id) ||
+        !platform_->SetPermissions(source, kSourcePathPermissions)) {
       LOG(ERROR) << "Can't set up permissions on the source";
-      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      *error = MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return nullptr;
     }
   }
 
   // If a block device is being mounted, bind mount it into the sandbox.
-  if (base::StartsWith(source(), "/dev/", base::CompareCase::SENSITIVE)) {
-    if (!mount_process->BindMount(source(), source(), true, false)) {
-      LOG(ERROR) << "Cannot bind mount device " << quote(source());
-      return MOUNT_ERROR_INVALID_ARGUMENT;
+  if (base::StartsWith(source, "/dev/", base::CompareCase::SENSITIVE)) {
+    if (!mount_process->BindMount(source, source, true, false)) {
+      LOG(ERROR) << "Cannot bind mount device " << quote(source);
+      *error = MOUNT_ERROR_INVALID_ARGUMENT;
+      return nullptr;
     }
   }
 
   // TODO(crbug.com/933018): Remove when DriveFS helper is refactored.
   if (!mount_process->Mount("tmpfs", "/home", "tmpfs", "mode=0755,size=10M")) {
     LOG(ERROR) << "Can't mount /home";
-    return MOUNT_ERROR_INTERNAL;
+    *error = MOUNT_ERROR_INTERNAL;
+    return nullptr;
   }
 
   // This is for additional data dirs.
@@ -334,7 +346,8 @@ MountErrorType FUSEMounter::MountImpl() const {
     if (!mount_process->BindMount(path.path, path.path, path.writable,
                                   path.recursive)) {
       LOG(ERROR) << "Can't bind " << path.path;
-      return MOUNT_ERROR_INVALID_ARGUMENT;
+      *error = MOUNT_ERROR_INVALID_ARGUMENT;
+      return nullptr;
     }
   }
 
@@ -343,8 +356,8 @@ MountErrorType FUSEMounter::MountImpl() const {
     mount_process->AddArgument("-o");
     mount_process->AddArgument(options_string);
   }
-  if (!source().empty()) {
-    mount_process->AddArgument(source());
+  if (!source.empty()) {
+    mount_process->AddArgument(source);
   }
   mount_process->AddArgument(
       base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
@@ -360,7 +373,8 @@ MountErrorType FUSEMounter::MountImpl() const {
         LOG(ERROR) << line;
       }
     }
-    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+    *error = MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+    return nullptr;
   }
 
   // At this point, the FUSE daemon has successfully started, so repurpose
@@ -371,9 +385,10 @@ MountErrorType FUSEMounter::MountImpl() const {
   process_reaper_->WatchForChild(
       FROM_HERE, mount_process->pid(),
       base::BindOnce(CleanUpCallback, fuse_cleanup_runner.Release(),
-                     target_path()));
+                     target_path));
 
-  return MOUNT_ERROR_NONE;
+  *error = MOUNT_ERROR_NONE;
+  return std::make_unique<MountPoint>(target_path, nullptr);
 }
 
 std::unique_ptr<SandboxedProcess> FUSEMounter::CreateSandboxedProcess() const {

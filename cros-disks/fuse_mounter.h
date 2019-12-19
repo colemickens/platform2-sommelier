@@ -46,10 +46,13 @@ class FUSEMounter : public MounterCompat {
               bool permit_network_access,
               const std::string& mount_group = {});
 
- protected:
-  // Mounts a device file using the FUSE mount program at |mount_program_path_|.
-  MountErrorType MountImpl() const override;
+  // MounterCompat overrides.
+  std::unique_ptr<MountPoint> Mount(const std::string& source,
+                                    const base::FilePath& target_path,
+                                    std::vector<std::string> options,
+                                    MountErrorType* error) const override;
 
+ protected:
   // Protected for mocking out in testing.
   virtual std::unique_ptr<SandboxedProcess> CreateSandboxedProcess() const;
 

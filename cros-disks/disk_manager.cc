@@ -250,7 +250,7 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
       CreateMounter(disk, *filesystem, mount_path, options));
   CHECK(mounter) << "Failed to create a mounter";
 
-  MountErrorType error_type = mounter->Mount();
+  MountErrorType error_type = mounter->MountOld();
   if (error_type != MOUNT_ERROR_NONE) {
     // Try to mount the filesystem read-only if mounting it read-write failed.
     if (!mounter->mount_options().IsReadOnlyOptionSet()) {
@@ -259,7 +259,7 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
       ro_options.push_back("ro");
       mounter = CreateMounter(disk, *filesystem, mount_path, ro_options);
       CHECK(mounter) << "Failed to create a 'ro' mounter";
-      error_type = mounter->Mount();
+      error_type = mounter->MountOld();
     }
   }
 

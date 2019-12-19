@@ -157,7 +157,7 @@ MountErrorType ArchiveManager::DoMount(const std::string& source_path,
   MounterCompat mounter(std::make_unique<SystemMounter>("", platform()),
                         avfs_path, base::FilePath(mount_path), mount_options);
 
-  MountErrorType error_type = mounter.Mount();
+  MountErrorType error_type = mounter.MountOld();
   if (error_type != MOUNT_ERROR_NONE) {
     return error_type;
   }
@@ -406,7 +406,7 @@ MountErrorType ArchiveManager::MountAVFSPath(
       }),
       false /* permit_network_access */, kAVFSMountGroup);
 
-  MountErrorType mount_error = fuse_mounter->Mount();
+  MountErrorType mount_error = fuse_mounter->MountOld();
   if (mount_error != MOUNT_ERROR_NONE) {
     return mount_error;
   }

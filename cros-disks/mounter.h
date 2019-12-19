@@ -74,31 +74,28 @@ class MounterCompat : public Mounter {
                 const MountOptions& mount_options);
   ~MounterCompat() override;
 
-  MountErrorType Mount();
+  // Temporary legacy mount function for transitioning to new implementation.
+  MountErrorType MountOld();
 
-  const std::string& source() const { return source_; }
-  const base::FilePath& target_path() const { return target_path_; }
-  const MountOptions& mount_options() const { return mount_options_; }
-
- protected:
-  virtual MountErrorType MountImpl() const;
-
+  // Mounter overrides.
   std::unique_ptr<MountPoint> Mount(const std::string& source,
                                     const base::FilePath& target_path,
                                     std::vector<std::string> options,
                                     MountErrorType* error) const override;
-
   // Always returns true.
   bool CanMount(const std::string& source,
                 const std::vector<std::string>& options,
                 base::FilePath* suggested_dir_name) const override;
+
+  const std::string& source() const { return source_; }
+  const base::FilePath& target_path() const { return target_path_; }
+  const MountOptions& mount_options() const { return mount_options_; }
 
  private:
   const std::unique_ptr<Mounter> mounter_;
   const std::string source_;
   const base::FilePath target_path_;
   const MountOptions mount_options_;
-  std::unique_ptr<MountPoint> mountpoint_;
 
   DISALLOW_COPY_AND_ASSIGN(MounterCompat);
 };

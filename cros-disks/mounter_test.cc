@@ -17,6 +17,7 @@
 
 using testing::_;
 using testing::Return;
+using testing::WithArg;
 
 namespace cros_disks {
 
@@ -75,7 +76,13 @@ class MounterCompatForTest : public MounterCompat {
                        const MountOptions& mount_options)
       : MounterCompat(filesystem_type, source, target_path, mount_options) {}
 
-  MOCK_METHOD(MountErrorType, MountImpl, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<MountPoint>,
+              Mount,
+              (const std::string&,
+               const base::FilePath&,
+               std::vector<std::string>,
+               MountErrorType*),
+              (const, override));
 };
 
 }  // namespace
@@ -118,15 +125,29 @@ TEST(MounterCompatTest, Properties) {
 }
 
 TEST(MounterCompatTest, MountSuccess) {
-  MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
+  const base::FilePath kMountPath = base::FilePath("/mnt");
+  const std::vector<std::string> options;
+
+  MounterCompatForTest mounter("fstype", "foo", kMountPath, {});
+  EXPECT_CALL(mounter, Mount("foo", kMountPath, options, _))
+      .WillOnce(WithArg<3>([kMountPath](MountErrorType* error) {
+        *error = MOUNT_ERROR_NONE;
+        return std::make_unique<MountPoint>(kMountPath, nullptr);
+      }));
+  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.MountOld());
 }
 
 TEST(MounterCompatTest, MountFail) {
-  MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_UNKNOWN));
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mounter.Mount());
+  const base::FilePath kMountPath = base::FilePath("/mnt");
+  const std::vector<std::string> options;
+
+  MounterCompatForTest mounter("fstype", "foo", kMountPath, {});
+  EXPECT_CALL(mounter, Mount("foo", kMountPath, options, _))
+      .WillOnce(WithArg<3>([](MountErrorType* error) {
+        *error = MOUNT_ERROR_UNKNOWN;
+        return nullptr;
+      }));
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mounter.MountOld());
 }
 
 }  // namespace cros_disks
