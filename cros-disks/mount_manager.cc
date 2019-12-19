@@ -242,19 +242,18 @@ MountErrorType MountManager::MountNewSource(
   // ShouldReserveMountPathOnError() is called to check if the mount path
   // should be reserved.
   MountOptions applied_options;
-  MountErrorType error_type =
-      DoMount(source_path, filesystem_type, updated_options, actual_mount_path,
-              &applied_options);
-  std::unique_ptr<MountPoint> mount_point;
+  MountErrorType error_type = MOUNT_ERROR_UNKNOWN;
+  std::unique_ptr<MountPoint> mount_point = DoMountNew(
+      source_path, filesystem_type, updated_options,
+      base::FilePath(actual_mount_path), &applied_options, &error_type);
   if (error_type == MOUNT_ERROR_NONE) {
     LOG(INFO) << "Path " << quote(source_path) << " is mounted to "
               << quote(actual_mount_path);
-    mount_point =
-        std::make_unique<MountPoint>(base::FilePath(actual_mount_path),
-                                     std::make_unique<LegacyUnmounter>(this));
+    DCHECK(mount_point);
   } else if (ShouldReserveMountPathOnError(error_type)) {
     LOG(INFO) << "Reserving mount path " << quote(actual_mount_path) << " for "
               << quote(source_path);
+    DCHECK(!mount_point);
     ReserveMountPath(actual_mount_path, error_type);
     mount_point = std::make_unique<MountPoint>(
         base::FilePath(actual_mount_path), nullptr);
@@ -268,6 +267,36 @@ MountErrorType MountManager::MountNewSource(
                              applied_options.IsReadOnlyOptionSet());
   *mount_path = actual_mount_path;
   return error_type;
+}
+
+MountErrorType MountManager::DoMount(const std::string& source_path,
+                                     const std::string& filesystem_type,
+                                     const std::vector<std::string>& options,
+                                     const std::string& mount_path,
+                                     MountOptions* applied_options) {
+  // This function will never be called by classes that override DoMountNew().
+  // Classes that do not implement DoMountNew() must override this function.
+  NOTREACHED();
+  return MOUNT_ERROR_UNKNOWN;
+}
+
+std::unique_ptr<MountPoint> MountManager::DoMountNew(
+    const std::string& source_path,
+    const std::string& filesystem_type,
+    const std::vector<std::string>& options,
+    const base::FilePath& mount_path,
+    MountOptions* applied_options,
+    MountErrorType* error) {
+  *error = DoMount(source_path, filesystem_type, options, mount_path.value(),
+                   applied_options);
+  if (*error != MOUNT_ERROR_NONE) {
+    return nullptr;
+  }
+  // Temporary default implementation that wraps a mount point using
+  // LegacyUnmounter. It is expected that all mounters implement this and return
+  // a MountPoint themselves.
+  return std::make_unique<MountPoint>(mount_path,
+                                      std::make_unique<LegacyUnmounter>(this));
 }
 
 MountErrorType MountManager::Unmount(const std::string& path) {

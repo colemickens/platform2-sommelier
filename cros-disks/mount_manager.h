@@ -199,11 +199,22 @@ class MountManager {
   // as |filesystem_type| with |options|. An implementation may change the
   // options to mount command, and should store all options to
   // |applied_options|.
+  // DEPRECATED.
   virtual MountErrorType DoMount(const std::string& source_path,
                                  const std::string& filesystem_type,
                                  const std::vector<std::string>& options,
                                  const std::string& mount_path,
-                                 MountOptions* applied_options) = 0;
+                                 MountOptions* applied_options);
+
+  // A new version of DoMount() that returns a MountPoint on success.
+  // Subclasses must override one of DoMount() or DoMountNew().
+  virtual std::unique_ptr<MountPoint> DoMountNew(
+      const std::string& source_path,
+      const std::string& filesystem_type,
+      const std::vector<std::string>& options,
+      const base::FilePath& mount_path,
+      MountOptions* applied_options,
+      MountErrorType* error);
 
   // Implemented by a derived class to unmount |path|.
   virtual MountErrorType DoUnmount(const std::string& path) = 0;
