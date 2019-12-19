@@ -404,9 +404,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   const DhcpProperties& dhcp_properties() const { return *dhcp_properties_; }
 
-  // Writes the service |to_update| to persistant storage.  If the service's is
-  // ephemeral, it is moved to the current profile.
-  void SaveServiceToProfile(const ServiceRefPtr& to_update);
+  // Writes the Service |to_update| to persistent storage. If the Service is
+  // ephemeral, it is moved to the current Profile.
+  void PersistService(const ServiceRefPtr& to_update);
 
   // Adds a closure to be executed when ChromeOS suspends or shill terminates.
   // |name| should be unique; otherwise, a previous closure by the same name

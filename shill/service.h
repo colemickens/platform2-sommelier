@@ -779,9 +779,9 @@ class Service : public base::RefCounted<Service> {
   // WiFiService is an example of this being potentially false.
   virtual bool IsDisconnectable(Error* error) const { return true; }
 
-  // Saves settings to profile, if we have one. Unlike
-  // SaveServiceToProfile, SaveToProfile never assigns this service
-  // into a profile.
+  // Saves settings to current Profile, if we have one. Unlike
+  // Manager::PersistService, SaveToProfile never assigns this Service to a
+  // Profile.
   void SaveToProfile();
 
   // Make note of the fact that there was a problem connecting / staying

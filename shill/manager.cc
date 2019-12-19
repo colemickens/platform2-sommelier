@@ -1413,8 +1413,9 @@ void Manager::UpdateService(const ServiceRefPtr& to_update) {
   SLOG(this, 2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
     to_update->EnableAndRetainAutoConnect();
-    // Persists the updated auto_connect setting in the profile.
-    SaveServiceToProfile(to_update);
+    // Ensure that a connected Service is not ephemeral (i.e., we actually
+    // persist its settings).
+    PersistService(to_update);
   }
   SortServices();
 }
@@ -1459,7 +1460,7 @@ void Manager::UpdateWiFiProvider() {
 }
 #endif  // DISABLE_WIFI
 
-void Manager::SaveServiceToProfile(const ServiceRefPtr& to_update) {
+void Manager::PersistService(const ServiceRefPtr& to_update) {
   if (IsServiceEphemeral(to_update)) {
     if (profiles_.empty()) {
       LOG(ERROR) << "Cannot assign profile to service: no profiles exist!";
