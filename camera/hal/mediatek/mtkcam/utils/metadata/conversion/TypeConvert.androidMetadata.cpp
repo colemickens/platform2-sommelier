@@ -20,6 +20,7 @@
 #include <MetadataConverter.h>
 #include <mtkcam/utils/metadata/IMetadataTagSet.h>
 #include <mtkcam/utils/metadata/mtk_metadata_types.h>
+#include <mtkcam/utils/metadata/client/mtk_metadata_tag.h>
 #include <system/camera_metadata.h>
 #include <vector>
 
@@ -141,15 +142,18 @@ MetadataConverter::convert(const IMetadata& rMetadata,
     // (1) get tag by index, and skip it if it doesn't exist in
     // android-metadata-tag list.
     MUINT32 mtk_tag = rMetadata.entryAt(i).tag();
-
     // (2) map to tag defined by android; return if undefined.
 #if (PLATFORM_SDK_VERSION >= 21)
     MUINT32 android_tag = getTagInfo()->getAndroidTag((MUINT32)mtk_tag);
 #else
     MUINT32 android_tag = 0;
 #endif
+
+    if (mtk_tag == MTK_SENSOR_SYNC_TIMESTAMP) {
+        MY_LOGI("find the tag MTK_SENSOR_SYNC_TIMESTAMP: 0x%x,android_tag:0x%x",MTK_SENSOR_SYNC_TIMESTAMP,android_tag);
+    }
     if (android_tag == IMetadata::IEntry::BAD_TAG) {
-      CAM_LOGD("%s: Tag 0x%x not found in Android Metadata", __FUNCTION__,
+      CAM_LOGW("%s: Tag 0x%x not found in Android Metadata", __FUNCTION__,
                mtk_tag);
       continue;
     }
@@ -157,7 +161,6 @@ MetadataConverter::convert(const IMetadata& rMetadata,
     // (3) get android tag's type
     int android_type = get_camera_metadata_tag_type(android_tag);
     int mtk_type = getTagInfo()->getType(mtk_tag);
-
     CAM_LOGD(
         "mtk (tag: 0x%x, name: %s, type: %d), android (tag: 0x%x, type: %d), "
         "data_count:%d",

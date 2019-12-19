@@ -514,6 +514,17 @@ void MetadataProvider::updateData(IMetadata* rMetadata) {
     }
   }
 #endif
+  // update sensor sync timestamp Type
+  {
+    IMetadata::IEntry timestampEntry(MTK_SENSOR_SYNC_TIMESTAMP);
+    timestampEntry.push_back(1, Type2Type<MINT32>());
+    rMetadata->update(MTK_SENSOR_SYNC_TIMESTAMP, timestampEntry);
+    for (size_t i = 0; i < timestampEntry.count(); i += 4) {
+      MY_LOGI("MTK_SENSOR_SYNC_TIMESTAMP i:%d,value:%d", i,
+              timestampEntry.itemAt(i, Type2Type<MINT32>()));
+    }
+  }
+
   // update multi-cam feature mode to static metadata
   // vendor tag
   {

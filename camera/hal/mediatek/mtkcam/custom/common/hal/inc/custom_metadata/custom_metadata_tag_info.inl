@@ -48,5 +48,6 @@ _IMP_SECTION_INFO_(CUSTOM_CAPTURE_METADATA, "custom.capture.metadata")
  ******************************************************************************/
 _IMP_TAG_INFO_(ANDROID_HW_SENSOR_WB_RANGE, MINT32,     "sensorWbRange")
 _IMP_TAG_INFO_(ANDROID_HW_SENSOR_WB_VALUE, MINT32,     "sensorWbValue")
+_IMP_TAG_INFO_(MTK_SENSOR_SYNC_TIMESTAMP, MINT32,     "sensorsyncTimestamp")
 
 #undef  _IMP_TAG_INFO_

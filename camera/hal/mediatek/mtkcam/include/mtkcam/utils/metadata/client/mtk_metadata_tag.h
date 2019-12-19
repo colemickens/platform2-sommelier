@@ -51,6 +51,7 @@ typedef enum mtk_camera_metadata_section {
   MTK_SECTION_COUNT,
 
   // vendor tag
+  CUSTOMER_VENDOR_TAG_SECTION = 0x8000,
   MTK_VENDOR_TAG_SECTION = 0x9000,
   MTK_FACE_FEATURE = 0,
   MTK_NR_FEATURE = 1,
@@ -127,6 +128,7 @@ typedef enum mtk_camera_metadata_section_start {
                                 << 16,
   MTK_CONFIGURE_SETTING_START = (MTK_CONFIGURE_SETTING + MTK_VENDOR_TAG_SECTION)
                                 << 16,
+  CUSTOMER_SENSOR_SYNC_TIMESTAMP_START = (CUSTOMER_VENDOR_TAG_SECTION + 1) << 16,
 } mtk_camera_metadata_section_start_t;
 
 /**
@@ -573,6 +575,7 @@ typedef enum mtk_camera_metadata_tag {
 
   MTK_CONFIGURE_SETTING_INIT_REQUEST = MTK_CONFIGURE_SETTING_START,
   MTK_CONFIGURE_SETTING_END,
+  MTK_SENSOR_SYNC_TIMESTAMP = (CUSTOMER_SENSOR_SYNC_TIMESTAMP_START + 4),
 } mtk_camera_metadata_tag_t;
 
 /**
