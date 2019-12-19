@@ -93,7 +93,7 @@ void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
       invitation.ExtractMessagePipe("arc-keymaster-pipe");
   mojo::MakeStrongBinding(
       std::make_unique<KeymasterServer>(),
-      mojo::MakeRequest<arc::mojom::KeymasterServer>(std::move(child_pipe)));
+      mojo::InterfaceRequest<arc::mojom::KeymasterServer>(std::move(child_pipe)));
   is_bound_ = true;
 }
 
