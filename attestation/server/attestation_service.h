@@ -19,7 +19,6 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
-#include <brillo/http/http_transport.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
@@ -150,11 +149,6 @@ class AttestationService : public AttestationInterface {
   }
 
   void set_database(Database* database) { database_ = database; }
-
-  void set_http_transport(
-      const std::shared_ptr<brillo::http::Transport>& transport) {
-    http_transport_ = transport;
-  }
 
   void set_key_store(KeyStore* key_store) { key_store_ = key_store; }
 
@@ -635,7 +629,6 @@ class AttestationService : public AttestationInterface {
   // worker thread.
   CryptoUtility* crypto_utility_{nullptr};
   Database* database_{nullptr};
-  std::shared_ptr<brillo::http::Transport> http_transport_;
   KeyStore* key_store_{nullptr};
   // |tpm_utility_| typically points to |default_tpm_utility_| created/destroyed
   // on the |worker_thread_|. As such, should not be accessed after that thread
