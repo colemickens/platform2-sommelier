@@ -17,9 +17,9 @@
 #include <base/logging.h>
 #include <base/task_runner_util.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <mojo/public/cpp/platform/socket_utils_posix.h>
 #include <mojo/public/cpp/system/invitation.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "hal/usb_v1/arc_camera_service.h"
 #include "hal/usb_v1/v4l2_camera_device.h"
@@ -107,13 +107,15 @@ bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
     message_pipe = invitation.ExtractMessagePipe(
         std::string(reinterpret_cast<const char*>(buf), message_length));
   } else {
-    mojo::edk::ScopedPlatformHandle handle(
-        mojo::edk::PlatformHandle(socket_fd.release()));
-    message_pipe = mojo::edk::ConnectToPeerProcess(std::move(handle));
+    isolated_connection_ = std::make_unique<mojo::IsolatedConnection>();
+    mojo::PlatformChannelEndpoint endpoint(
+        mojo::PlatformHandle(std::move(socket_fd)));
+    message_pipe = isolated_connection_->Connect(std::move(endpoint));
   }
 
   // This thread that calls Bind() will receive IPC functions.
-  binding_.Bind(std::move(message_pipe));
+  binding_.Bind(
+      mojo::InterfaceRequest<ArcCameraService>(std::move(message_pipe)));
   binding_.set_connection_error_handler(
       base::Bind(&ArcCameraServiceImpl::OnChannelClosed, base::Unretained(this),
                  "Triggered from binding"));
@@ -130,7 +132,8 @@ bool ArcCameraServiceImpl::StartWithTokenAndFD(const std::string& token,
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
 
   // This thread that calls Bind() will receive IPC functions.
-  binding_.Bind(invitation.ExtractMessagePipe(token));
+  binding_.Bind(mojo::InterfaceRequest<ArcCameraService>(
+      invitation.ExtractMessagePipe(token)));
   binding_.set_connection_error_handler(
       base::Bind(&ArcCameraServiceImpl::OnChannelClosed, base::Unretained(this),
                  "Triggered from binding"));
@@ -172,15 +175,7 @@ void ArcCameraServiceImpl::StreamOn(uint32_t width,
 
   std::vector<mojo::ScopedHandle> handles;
   for (const auto& fd : fds) {
-    MojoHandle wrapped_handle;
-    MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
-        mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd)),
-        &wrapped_handle);
-    if (wrap_result != MOJO_RESULT_OK) {
-      LOG(ERROR) << "Failed to wrap handles: " << wrap_result;
-      ret = -EIO;
-    }
-    handles.push_back(mojo::ScopedHandle(mojo::Handle(wrapped_handle)));
+    handles.push_back(mojo::WrapPlatformFile(fd));
   }
   if (ret) {
     handles.clear();

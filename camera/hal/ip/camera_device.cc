@@ -7,7 +7,7 @@
 #include <libyuv.h>
 #include <linux/videodev2.h>
 #include <memory>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <utility>
 
@@ -127,7 +127,7 @@ int CameraDevice::Init(mojom::IpCameraDevicePtr ip_device,
                        int32_t width,
                        int32_t height,
                        double fps) {
-  ipc_task_runner_ = mojo::edk::GetIOTaskRunner();
+  ipc_task_runner_ = mojo::core::GetIOTaskRunner();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   ip_device_ = std::move(ip_device);

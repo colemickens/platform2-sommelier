@@ -10,12 +10,14 @@
 #include <base/synchronization/atomic_flag.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
-#include <camera/camera_metadata.h>
+#include <mojo/public/cpp/system/isolated_connection.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <sys/types.h>
 
+#include "camera/camera_metadata.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 #include "hal/ip/camera_device.h"
@@ -49,10 +51,10 @@ class CameraHal : public mojom::IpCameraConnectionListener {
   void OnConnectionError();
 
   base::AtomicFlag initialized_;
+  std::unique_ptr<mojo::IsolatedConnection> isolated_connection_;
   std::unique_ptr<CameraMojoChannelManager> mojo_channel_;
   mojom::IpCameraDetectorPtr detector_;
   mojo::Binding<IpCameraConnectionListener> binding_;
-  std::string peer_token_;
 
   // The maps, as well as |next_camera_id_| are protected by this lock
   base::Lock camera_map_lock_;

@@ -15,6 +15,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/system/isolated_connection.h>
 
 #include "hal/usb_v1/arc_camera.mojom.h"
 #include "hal/usb_v1/camera_device_delegate.h"
@@ -66,6 +67,7 @@ class ArcCameraServiceImpl : public ArcCameraService {
   // Thread used in mojo to send and receive IPC messages.
   base::Thread ipc_thread_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+  std::unique_ptr<mojo::IsolatedConnection> isolated_connection_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcCameraServiceImpl);
 };

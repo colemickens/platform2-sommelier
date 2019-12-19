@@ -5,8 +5,8 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_connection.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/public/cpp/platform/platform_channel.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -98,7 +98,7 @@ int CameraHal::Init() {
   }
 
   auto return_val = Future<int>::Create(nullptr);
-  mojo::edk::GetIOTaskRunner()->PostTask(
+  mojo::core::GetIOTaskRunner()->PostTask(
       FROM_HERE, base::BindOnce(&CameraHal::InitOnIpcThread,
                                 base::Unretained(this), return_val));
   int ret = return_val->Get();
@@ -111,9 +111,9 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
   org::chromium::IpPeripheralServiceProxy proxy(
       dbus_connection.Connect(), "org.chromium.IpPeripheralService");
 
-  mojo::edk::PlatformChannelPair channel_pair;
+  mojo::PlatformChannel channel;
   brillo::dbus_utils::FileDescriptor handle(
-      channel_pair.PassClientHandle().get().handle);
+      channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD().release());
 
   if (!proxy.BootstrapMojoConnection(handle, nullptr)) {
     LOGF(ERROR) << "Failed to send handle over DBus";
@@ -121,9 +121,9 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
     return;
   }
 
-  peer_token_ = mojo::edk::GenerateRandomToken();
-  mojo::ScopedMessagePipeHandle pipe = mojo::edk::ConnectToPeerProcess(
-      channel_pair.PassServerHandle(), peer_token_);
+  isolated_connection_ = std::make_unique<mojo::IsolatedConnection>();
+  mojo::ScopedMessagePipeHandle pipe =
+      isolated_connection_->Connect(channel.TakeLocalEndpoint());
 
   detector_.Bind(mojom::IpCameraDetectorPtrInfo(std::move(pipe), 0u));
   detector_.set_connection_error_handler(
@@ -147,7 +147,7 @@ void CameraHal::DestroyOnIpcThread(scoped_refptr<Future<void>> return_val) {
     cameras_.clear();
   }
 
-  mojo::edk::ClosePeerConnection(peer_token_);
+  isolated_connection_ = nullptr;
   mojo_channel_.reset();
   return_val->Set();
 }
@@ -166,7 +166,7 @@ void CameraHal::OnConnectionError() {
     }
   }
 
-  mojo::edk::ClosePeerConnection(peer_token_);
+  isolated_connection_ = nullptr;
 
   LOGF(FATAL) << "Lost connection to IP peripheral server";
 }
