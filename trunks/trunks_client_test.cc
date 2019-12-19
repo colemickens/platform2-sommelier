@@ -1191,13 +1191,12 @@ void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
   modulus->resize(RSA_size(rsa.get()), 0);
   const BIGNUM* n;
   RSA_get0_key(rsa.get(), &n, nullptr, nullptr);
-  CHECK(BN_bn2bin(n,
-      reinterpret_cast<unsigned char*>(base::string_as_array(modulus))));
+  CHECK(BN_bn2bin(n, reinterpret_cast<unsigned char*>(base::data(*modulus))));
   const BIGNUM* p;
   RSA_get0_factors(rsa.get(), &p, nullptr);
   prime_factor->resize(BN_num_bytes(p), 0);
   CHECK(BN_bn2bin(p,
-      reinterpret_cast<unsigned char*>(base::string_as_array(prime_factor))));
+                  reinterpret_cast<unsigned char*>(base::data(*prime_factor))));
   if (public_key) {
     unsigned char* buffer = NULL;
     int length = i2d_RSAPublicKey(rsa.get(), &buffer);
@@ -1217,8 +1216,8 @@ bool TrunksClientTest::VerifyRSASignature(const std::string& public_key,
   std::string digest = crypto::SHA256HashString(data);
   auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
   std::string mutable_signature(signature);
-  unsigned char* signature_buffer = reinterpret_cast<unsigned char*>(
-      base::string_as_array(&mutable_signature));
+  unsigned char* signature_buffer =
+      reinterpret_cast<unsigned char*>(base::data(mutable_signature));
   return (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
                      signature.size(), rsa.get()) == 1);
 }
@@ -1300,7 +1299,7 @@ bool TrunksClientTest::GetRSAPublicKeyFromHandle(
   }
   public_key->resize(der_length);
   unsigned char* der_buffer =
-      reinterpret_cast<unsigned char*>(base::string_as_array(public_key));
+      reinterpret_cast<unsigned char*>(base::data(*public_key));
   der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";

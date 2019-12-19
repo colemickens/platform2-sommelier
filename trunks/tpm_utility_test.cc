@@ -138,8 +138,7 @@ class TpmUtilityTest : public testing::Test {
     std::string unencrypted_private(private_data.size, 0);
     AES_cfb128_encrypt(
         reinterpret_cast<const unsigned char*>(private_data.buffer),
-        reinterpret_cast<unsigned char*>(
-            base::string_as_array(&unencrypted_private)),
+        reinterpret_cast<unsigned char*>(base::data(unencrypted_private)),
         private_data.size, &key, iv, &iv_in, AES_DECRYPT);
     TPM2B_DIGEST inner_integrity;
     EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_DIGEST(&unencrypted_private,

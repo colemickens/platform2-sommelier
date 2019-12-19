@@ -81,8 +81,8 @@ std::string TpmSimulatorHandle::SendCommandAndWait(const std::string& command) {
   unsigned int response_size;
   unsigned char* response;
   std::string mutable_command(command);
-  ExecuteCommand(command.size(), reinterpret_cast<unsigned char*>(
-                                     base::string_as_array(&mutable_command)),
+  ExecuteCommand(command.size(),
+                 reinterpret_cast<unsigned char*>(base::data(mutable_command)),
                  &response_size, &response);
   return std::string(reinterpret_cast<char*>(response), response_size);
 #else
