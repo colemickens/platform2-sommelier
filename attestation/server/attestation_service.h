@@ -177,10 +177,6 @@ class AttestationService : public AttestationInterface {
   friend class AttestationServiceTest;
 
   typedef std::map<std::string, std::string> CertRequestMap;
-  enum ACARequestType {
-    kEnroll,          // Enrolls a device, certifying an identity key.
-    kGetCertificate,  // Issues a certificate for a TPM-backed key.
-  };
 
   // Attestation service worker thread class that cleans up after stopping.
   class ServiceWorkerThread : public base::Thread {
