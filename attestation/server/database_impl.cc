@@ -39,8 +39,7 @@ DatabaseImpl::DatabaseImpl(CryptoUtility* crypto)
     : io_(this), crypto_(crypto) {}
 
 DatabaseImpl::~DatabaseImpl() {
-  brillo::SecureMemset(base::data(database_key_), 0,
-                       database_key_.size());
+  brillo::SecureMemset(base::data(database_key_), 0, database_key_.size());
 }
 
 bool DatabaseImpl::Initialize() {
