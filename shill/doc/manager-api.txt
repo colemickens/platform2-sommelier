@@ -317,7 +317,7 @@ Methods
 			in priority ordering.
 
 			For example, the default ordering would be returned as:
-				"ethernet,bluetooth,wifi,cellular"
+				"ethernet,wifi,cellular"
 
 		void SetServiceOrder(string mask)
 
@@ -326,7 +326,7 @@ Methods
 			priority to lowest.
 
 			The list may contain the following services:
-				{ ethernet, wifi, bluetooth, cellular }
+				{ ethernet, wifi, cellular }
 			Technologies not included are assigned the lowest
 			priority.
 

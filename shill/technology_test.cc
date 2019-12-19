@@ -25,7 +25,6 @@ TEST(TechnologyTest, CreateFromName) {
   EXPECT_EQ(Technology::kPPP, Technology::CreateFromName("ppp"));
   EXPECT_EQ(Technology::kGuestInterface,
             Technology::CreateFromName("guest_interface"));
-  EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName("bluetooth"));
   EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName("foo"));
   EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName(""));
 }

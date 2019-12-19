@@ -1514,7 +1514,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			The service type; one of:
 			  "ethernet"    (802.3 wired Ethernet),
 			  "wifi"        (IEEE 802.11),
-			  "bluetooth"   (Bluetooth PAN),
 			  "cellular"    (3G Cellular),
 			  "vpn"         (Virtual Private Network), or
 			  "pppoe"       (Point-to-Point Protocol over Ethernet).
