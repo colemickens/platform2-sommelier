@@ -9,10 +9,9 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <dbus/attestation/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
-
-#include "attestation-client/attestation/dbus-constants.h"
 
 using brillo::dbus_utils::DBusMethodResponse;
 

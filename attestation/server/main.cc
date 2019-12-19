@@ -19,10 +19,10 @@
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
+#include <dbus/attestation/dbus-constants.h>
 
 #include "attestation/server/attestation_service.h"
 #include "attestation/server/dbus_service.h"
-#include "attestation-client/attestation/dbus-constants.h"
 
 #include <chromeos/libminijail.h>
 

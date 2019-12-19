@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
+#include <dbus/attestation/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
@@ -13,7 +14,6 @@
 
 #include "attestation/common/mock_attestation_interface.h"
 #include "attestation/server/dbus_service.h"
-#include "attestation-client/attestation/dbus-constants.h"
 
 using testing::_;
 using testing::Invoke;

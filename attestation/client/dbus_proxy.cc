@@ -6,8 +6,7 @@
 
 #include <base/bind.h>
 #include <brillo/dbus/dbus_method_invoker.h>
-
-#include "attestation-client/attestation/dbus-constants.h"
+#include <dbus/attestation/dbus-constants.h>
 
 namespace {
 
