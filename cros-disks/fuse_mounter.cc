@@ -345,6 +345,8 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   // filesystem if any part of starting the FUSE helper process fails.
   base::ScopedClosureRunner fuse_cleanup_runner(base::BindOnce(
       [](const Platform* platform, const std::string& target_path) {
+        LOG(INFO) << "FUSE cleanup on start failure for " << quote(target_path);
+
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
         LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
             << "Cannot unmount FUSE mount point " << quote(target_path)
@@ -352,19 +354,16 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
       },
       platform_, target_path.value()));
 
-  // Source might be an URI. Only try to re-own source if it looks like
-  // an existing path.
-  if (!source.empty() && platform_->PathExists(source)) {
+  // If a block device is being mounted, bind mount it into the sandbox.
+  if (base::StartsWith(source, "/dev/", base::CompareCase::SENSITIVE)) {
+    // Re-own source.
     if (!platform_->SetOwnership(source, getuid(), mount_group_id) ||
         !platform_->SetPermissions(source, kSourcePathPermissions)) {
-      LOG(ERROR) << "Can't set up permissions on the source";
+      LOG(ERROR) << "Can't set up permissions on " << quote(source);
       *error = MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
       return nullptr;
     }
-  }
 
-  // If a block device is being mounted, bind mount it into the sandbox.
-  if (base::StartsWith(source, "/dev/", base::CompareCase::SENSITIVE)) {
     if (!mount_process->BindMount(source, source, true, false)) {
       LOG(ERROR) << "Cannot bind mount device " << quote(source);
       *error = MOUNT_ERROR_INVALID_ARGUMENT;
@@ -383,7 +382,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   for (const auto& path : accessible_paths_) {
     if (!mount_process->BindMount(path.path, path.path, path.writable,
                                   path.recursive)) {
-      LOG(ERROR) << "Can't bind " << path.path;
+      LOG(ERROR) << "Can't bind " << quote(path.path);
       *error = MOUNT_ERROR_INVALID_ARGUMENT;
       return nullptr;
     }

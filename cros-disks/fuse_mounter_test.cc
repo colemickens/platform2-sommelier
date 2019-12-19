@@ -37,7 +37,7 @@ const uid_t kFilesAccessGID = 1501;
 const char kMountUser[] = "fuse-fuse";
 const char kFUSEType[] = "fuse";
 const char kMountProgram[] = "dummy";
-const char kSomeSource[] = "/some/src";
+const char kSomeSource[] = "/dev/dummy";
 const char kMountDir[] = "/mnt";
 
 // Mock Platform implementation for testing.
@@ -181,7 +181,6 @@ class FUSEMounterTest : public ::testing::Test {
                               kSomeSource, StartsWith("/dev/fd/"))))
         .WillOnce(Return(0));
     EXPECT_CALL(platform_, PathExists(kMountProgram)).WillOnce(Return(true));
-    EXPECT_CALL(platform_, PathExists(kSomeSource)).WillOnce(Return(true));
     EXPECT_CALL(platform_, SetOwnership(kSomeSource, getuid(), kMountGID))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, SetPermissions(kSomeSource, S_IRUSR | S_IWUSR |
