@@ -176,8 +176,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
     adaptor()->EmitBoolChanged(kLinkUpProperty, link_up_);
-    DestroyIPConfig();
-    SelectService(nullptr);
+    DropConnection();
     manager()->UpdateService(service_);
     service_->OnVisibilityChanged();
 #if !defined(DISABLE_WIRED_8021X)
