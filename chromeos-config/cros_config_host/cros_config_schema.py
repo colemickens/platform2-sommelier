@@ -617,8 +617,9 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
   """
   whitelabels = {}
   for config in json_config['chromeos']['configs']:
-    whitelabel_tag = config.get('identity', {}).get('whitelabel-tag', None)
-    if whitelabel_tag:
+    if 'whitelabel-tag' in config.get('identity', {}):
+      if 'bobba' in config['name']: # Remove after crbug.com/1036381 resolved
+        continue
       name = '%s - %s' % (config['name'], config['identity'].get('sku-id', 0))
       config_list = whitelabels.get(name, [])
 
@@ -630,33 +631,33 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
 
       hw_props = wl_minus_brand.get('hardware-properties', None)
       if hw_props:
-        stylus = hw_props.get('stylus-category', None)
-        if not stylus or stylus == EXTERNAL_STYLUS:
+        stylus = hw_props.get('stylus-category', 'none')
+        if stylus == 'none' or stylus == EXTERNAL_STYLUS:
           hw_props.pop('stylus-category', None)
 
       config_list.append(wl_minus_brand)
       whitelabels[name] = config_list
 
-    # whitelabels now contains a map by device name with all whitelabel
-    # configs that have had their branding data stripped.
-    for device_name, configs in whitelabels.items():
-      base_config = configs[0]
-      compare_index = 1
-      while compare_index < len(configs):
-        compare_config = configs[compare_index]
-        compare_index = compare_index + 1
-        base_str = str(base_config)
-        compare_str = str(compare_config)
-        if base_str != compare_str:
-          raise ValidationError(
-              'Whitelabel configs can only change branding attributes '
-              'or use an external stylus for (%s).\n'
-              'However, the device %s differs by other attributes.\n'
-              'Example 1: %s\n'
-              'Example 2: %s' % (device_name,
-                                 ', '.join(BRAND_ELEMENTS),
-                                 base_str,
-                                 compare_str))
+  # whitelabels now contains a map by device name with all whitelabel
+  # configs that have had their branding data stripped.
+  for device_name, configs in whitelabels.items():
+    base_config = configs[0]
+    compare_index = 1
+    while compare_index < len(configs):
+      compare_config = configs[compare_index]
+      compare_index = compare_index + 1
+      base_str = str(base_config)
+      compare_str = str(compare_config)
+      if base_str != compare_str:
+        raise ValidationError(
+            'Whitelabel configs can only change branding attributes '
+            'or use an external stylus for (%s).\n'
+            'However, the device %s differs by other attributes.\n'
+            'Example 1: %s\n'
+            'Example 2: %s' % (device_name,
+                               ', '.join(BRAND_ELEMENTS),
+                               base_str,
+                               compare_str))
 
 
 def _ValidateHardwarePropertiesAreValidType(json_config):

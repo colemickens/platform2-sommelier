@@ -258,12 +258,19 @@ chromeos:
   devices:
     - $name: 'whitelabel'
       products:
+        - $key-id: 'DEFAULT'
+          $wallpaper: 'DEFAULT_WALLPAPER'
+          $regulatory-label: 'DEFAULT_LABEL'
+          $whitelabel-tag: ''
+          $brand-code: 'DEFAULT_BRAND_CODE'
+          $stylus-category: 'none'
+          $powerd-prefs: 'DEFAULT_POWERD_PREFS'
         - $key-id: 'WL1'
           $wallpaper: 'WL1_WALLPAPER'
           $regulatory-label: 'WL1_LABEL'
           $whitelabel-tag: 'WL1_TAG'
           $brand-code: 'WL1_BRAND_CODE'
-          $stylus-category: ''
+          $stylus-category: 'none'
           $powerd-prefs: 'WL1_POWERD_PREFS'
         - $key-id: 'WL2'
           $wallpaper: 'WL2_WALLPAPER'
@@ -341,11 +348,10 @@ chromeos:
               key-id: '{{$key-id}}'
               signature-id: '{{$name}}'
 """
-    try:
+    with self.assertRaises(cros_config_schema.ValidationError) as ctx:
       cros_config_schema.ValidateConfig(
           cros_config_schema.TransformConfig(config))
-    except cros_config_schema.ValidationError as err:
-      self.assertIn('Identities are not unique', err.__str__())
+    self.assertIn('Identities are not unique', str(ctx.exception))
 
   def testWhitelabelWithExternalStylus(self):
     config = WHITELABEL_CONFIG
@@ -354,11 +360,10 @@ chromeos:
 
   def testWhitelabelWithOtherThanBrandChanges(self):
     config = WHITELABEL_CONFIG + INVALID_WHITELABEL_CONFIG
-    try:
+    with self.assertRaises(cros_config_schema.ValidationError) as ctx:
       cros_config_schema.ValidateConfig(
           cros_config_schema.TransformConfig(config))
-    except cros_config_schema.ValidationError as err:
-      self.assertIn('Whitelabel configs can only', err.__str__())
+    self.assertIn('Whitelabel configs can only', str(ctx.exception))
 
   def testHardwarePropertiesInvalid(self):
     config = \
