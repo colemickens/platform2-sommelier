@@ -243,6 +243,15 @@ void DlcService::PeriodicInstallCheck() {
 }
 
 void DlcService::SchedulePeriodicInstallCheck(bool retry) {
+  if (scheduled_period_ue_check_id_ != MessageLoop::kTaskIdNull) {
+    LOG(ERROR) << "Scheduling logic is internally not handled correctly, this "
+               << "requires a scheduling logic update.";
+    if (!brillo::MessageLoop::current()->CancelTask(
+            scheduled_period_ue_check_id_)) {
+      LOG(ERROR) << "Failed to cancel previous delayed update_engine check "
+                 << "when scheduling.";
+    }
+  }
   scheduled_period_ue_check_id_ =
       brillo::MessageLoop::current()->PostDelayedTask(
           FROM_HERE,
@@ -266,6 +275,8 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
           scheduled_period_ue_check_id_)) {
     LOG(ERROR) << "Failed to cancel delayed update_engine check when signal "
                   "was received from update_engine, so letting it run.";
+  } else {
+    scheduled_period_ue_check_id_ = MessageLoop::kTaskIdNull;
   }
 
   // This situation is reached if update_engine crashes during an install and
