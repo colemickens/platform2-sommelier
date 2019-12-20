@@ -367,7 +367,7 @@ class ArcMounterImpl : public ArcMounter {
 
     const base::FilePath device_path = GetLoopDevicePath(device_num);
     base::ScopedFD scoped_loop_fd(open(device_path.value().c_str(), O_RDWR));
-    if (!scoped_loop_fd.is_valid() < 0) {
+    if (!scoped_loop_fd.is_valid()) {
       PLOG(ERROR) << "Failed to open " << device_path.value();
       return false;
     }
@@ -375,14 +375,14 @@ class ArcMounterImpl : public ArcMounter {
     const bool is_readonly_mount = mount_flags & MS_RDONLY;
     base::ScopedFD scoped_source_fd(
         open(source.c_str(), is_readonly_mount ? O_RDONLY : O_RDWR));
-    if (!scoped_source_fd.is_valid() < 0) {
+    if (!scoped_source_fd.is_valid()) {
       // If the open failed because we tried to open a read only file as RW
       // we fallback to opening it with O_RDONLY
       if (!is_readonly_mount && (errno == EROFS || errno == EACCES)) {
         LOG(WARNING) << source << " is write-protected, using read-only";
         scoped_source_fd.reset(open(source.c_str(), O_RDONLY));
       }
-      if (!scoped_source_fd.is_valid() < 0) {
+      if (!scoped_source_fd.is_valid()) {
         PLOG(ERROR) << "Failed to open " << source;
         return false;
       }
