@@ -57,6 +57,7 @@ restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+rt_sigtimedwait: 1
 send: 1
 sendto: 1
 sendmsg: 1
