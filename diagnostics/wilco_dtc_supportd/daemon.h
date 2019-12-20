@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/macros.h>
+#include <base/timer/timer.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
@@ -29,9 +30,15 @@ class Daemon final : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
   void OnShutdown(int* error_code) override;
 
+  // Forces shutting down the whole process if the graceful shutdown wasn't
+  // done within timeout.
+  void ForceShutdown();
+
   CoreDelegateImpl wilco_dtc_supportd_core_delegate_impl_{this /* daemon */};
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   Core wilco_dtc_supportd_core_;
+
+  base::OneShotTimer force_shutdown_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

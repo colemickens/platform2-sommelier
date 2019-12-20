@@ -7,15 +7,22 @@
 #include <cstdlib>
 
 #include <base/callback.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <mojo/core/embedder/embedder.h>
 
 #include "diagnostics/constants/grpc_constants.h"
 
 namespace diagnostics {
+
+// The time (in TimeDelta) after which ForceShutdown will be called if graceful
+// shutdown wasn't done within that time.
+constexpr base::TimeDelta kForceShutdownDelayTimeDelta =
+    base::TimeDelta::FromSeconds(2);
 
 Daemon::Daemon()
     : DBusServiceDaemon(kWilcoDtcSupportdServiceName /* service_name */),
@@ -64,9 +71,18 @@ void Daemon::OnShutdown(int* error_code) {
 
   base::RunLoop run_loop;
   wilco_dtc_supportd_core_.ShutDown(run_loop.QuitClosure());
+  // Allow time for Core to gracefully shut down all threads.
+  force_shutdown_timer_.Start(FROM_HERE, kForceShutdownDelayTimeDelta, this,
+                              &Daemon::ForceShutdown);
   run_loop.Run();
 
   VLOG(0) << "Shutting down with code " << *error_code;
+}
+
+void Daemon::ForceShutdown() {
+  LOG(ERROR) << "ForceShutdown's the whole process due to a failure while "
+                "gracefully shutting down";
+  std::exit(EXIT_FAILURE);
 }
 
 }  // namespace diagnostics
