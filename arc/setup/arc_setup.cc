@@ -2000,8 +2000,10 @@ void ArcSetup::SetUpTestharness(bool is_dev_mode) {
 }
 
 void ArcSetup::StartNetworking() {
-  if (!patchpanel::Client::New()->NotifyArcStartup(config_.GetIntOrDie("CONTAINER_PID")))
+  if (!patchpanel::Client::New()->NotifyArcStartup(
+          config_.GetIntOrDie("CONTAINER_PID"))) {
     LOG(ERROR) << "Failed to notify network service";
+  }
 }
 
 void ArcSetup::StopNetworking() {
