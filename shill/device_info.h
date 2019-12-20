@@ -16,6 +16,7 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <base/optional.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/byte_string.h"
@@ -197,9 +198,10 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   bool GetDeviceInfoSymbolicLink(const std::string& iface_name,
                                  const std::string& path_name,
                                  base::FilePath* path_out);
-  // Classify the device named |iface_name|, and return an identifier
-  // indicating its type.
-  virtual Technology GetDeviceTechnology(const std::string& iface_name);
+  // Classify the device named |iface_name| with RTNL kind |kind|, and return
+  // an identifier indicating its type.
+  virtual Technology GetDeviceTechnology(
+      const std::string& iface_name, const base::Optional<std::string>& kind);
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether / cdc_ncm driver.

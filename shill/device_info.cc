@@ -133,6 +133,15 @@ const char* const kIgnoredDeviceNamePrefixes[] = {
     // for now.
     "arc_", "rmnet_ipa", "veth"};
 
+// As of Linux v5.4, these "kinds" are not part of a UAPI header definition, so
+// we open-code them here, with some reference to where and when we found them
+// in the Linux kernel tree (version numbers are just a snapshot in time, not
+// necessarily when they were first supported). These strings are also usually
+// annotated in the kernel source tree via MODULE_ALIAS_RTNL_LINK() macros.
+const char* const kIgnoredDeviceKinds[] = {
+    "ifb",  // v5.4, drivers/net/ifb.c:289
+};
+
 // Modem drivers that we support.
 const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
 
@@ -311,7 +320,8 @@ int DeviceInfo::GetDeviceArpType(const string& iface_name) {
   return arp_type;
 }
 
-Technology DeviceInfo::GetDeviceTechnology(const string& iface_name) {
+Technology DeviceInfo::GetDeviceTechnology(const string& iface_name,
+                                           const base::Optional<string>& kind) {
   int arp_type = GetDeviceArpType(iface_name);
 
   if (IsGuestDevice(iface_name)) {
@@ -325,6 +335,18 @@ Technology DeviceInfo::GetDeviceTechnology(const string& iface_name) {
     LOG(INFO) << StringPrintf("%s: device %s has no uevent file", __func__,
                               iface_name.c_str());
     return Technology::kUnknown;
+  }
+
+  if (kind.has_value()) {
+    // Ignore certain KINDs of devices.
+    for (const char* ignoreKind : kIgnoredDeviceKinds) {
+      if (ignoreKind == kind.value()) {
+        SLOG(this, 2) << base::StringPrintf(
+            "%s: device %s ignored, kind \"%s\"", __func__, iface_name.c_str(),
+            ignoreKind);
+        return Technology::kUnknown;
+      }
+    }
   }
 
   // Special case for devices which should be ignored.
@@ -698,7 +720,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
         technology = Technology::kBlacklisted;
         AddDeviceToBlackList(link_name);
       } else {
-        technology = GetDeviceTechnology(link_name);
+        technology = GetDeviceTechnology(link_name, msg.link_status().kind);
       }
     }
     string address;
@@ -1200,7 +1222,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     DCHECK(!GetDevice(dev_index));
 
     const string& link_name = infos_[dev_index].name;
-    Technology technology = GetDeviceTechnology(link_name);
+    Technology technology = GetDeviceTechnology(link_name, base::nullopt);
 
     if (technology == Technology::kCDCEthernet) {
       LOG(INFO) << "In " << __func__ << ": device " << link_name

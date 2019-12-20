@@ -1273,7 +1273,10 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   }
 
   Technology GetDeviceTechnology() {
-    return device_info_.GetDeviceTechnology(test_device_name_);
+    return device_info_.GetDeviceTechnology(test_device_name_, base::nullopt);
+  }
+  Technology GetDeviceTechnology(const string& kind) {
+    return device_info_.GetDeviceTechnology(test_device_name_, kind);
   }
   FilePath GetInfoPath(const string& name);
   void CreateInfoFile(const string& name, const string& contents);
@@ -1325,7 +1328,7 @@ TEST_F(DeviceInfoTechnologyTest, IgnoredVeth) {
   // A new uevent file is needed since the device name has changed.
   CreateInfoFile("uevent", "xxx");
   // A device with a "veth" prefix should be ignored.
-  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology("veth"));
 }
 
 TEST_F(DeviceInfoTechnologyTest, IgnoredArcMultinetBridgeDevice) {
@@ -1333,7 +1336,7 @@ TEST_F(DeviceInfoTechnologyTest, IgnoredArcMultinetBridgeDevice) {
   // A new uevent file is needed since the device name has changed.
   CreateInfoFile("uevent", "xxx");
   // A device with a "arc_" prefix should be ignored.
-  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology("bridge"));
 }
 
 TEST_F(DeviceInfoTechnologyTest, Loopback) {
@@ -1362,9 +1365,15 @@ TEST_F(DeviceInfoTechnologyTest, WiFi) {
 
 TEST_F(DeviceInfoTechnologyTest, Bridge) {
   CreateInfoFile("uevent", "DEVTYPE=bridge");
-  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology("bridge"));
   CreateInfoFile("uevent", "bar\nDEVTYPE=bridge");
-  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology("bridge"));
+}
+
+TEST_F(DeviceInfoTechnologyTest, Ifb) {
+  test_device_name_ = "ifb0";
+  CreateInfoFile("uevent", "INTERFACE=ifb0");
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology("ifb"));
 }
 
 TEST_F(DeviceInfoTechnologyTest, Ethernet) {
@@ -1477,7 +1486,10 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
               CreateDevice,
               (const std::string&, const std::string&, int, Technology),
               (override));
-  MOCK_METHOD(Technology, GetDeviceTechnology, (const string&), (override));
+  MOCK_METHOD(Technology,
+              GetDeviceTechnology,
+              (const string&, const base::Optional<string>& kind),
+              (override));
 };
 
 class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
@@ -1495,7 +1507,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
 
   void AddDelayedDevice(Technology delayed_technology) {
     unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
-    EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName))
+    EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName, _))
         .WillOnce(Return(delayed_technology));
     EXPECT_CALL(
         test_device_info_,
@@ -1511,7 +1523,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
 
   void EnsureDelayedDevice(Technology reported_device_technology,
                            Technology created_device_technology) {
-    EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
+    EXPECT_CALL(test_device_info_, GetDeviceTechnology(_, _))
         .WillOnce(Return(reported_device_technology));
     EXPECT_CALL(test_device_info_,
                 CreateDevice(kTestDeviceName, _, kTestDeviceIndex,
@@ -1533,7 +1545,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
 
 TEST_F(DeviceInfoDelayedCreationTest, NoDevices) {
   EXPECT_TRUE(GetDelayedDevices().empty());
-  EXPECT_CALL(test_device_info_, GetDeviceTechnology(_)).Times(0);
+  EXPECT_CALL(test_device_info_, GetDeviceTechnology(_, _)).Times(0);
   DelayedDeviceCreationTask();
 }
 
