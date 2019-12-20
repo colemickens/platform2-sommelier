@@ -1465,7 +1465,7 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
 void Tpm2Impl::InitializeClientsOnTpmManagerThread(
     base::WaitableEvent* completion) {
   CHECK(completion);
-  CHECK(tpm_manager_thread_.task_runner()->RunsTasksOnCurrentThread());
+  CHECK(tpm_manager_thread_.task_runner()->RunsTasksInCurrentSequence());
 
   default_tpm_owner_ = std::make_unique<tpm_manager::TpmOwnershipDBusProxy>();
   default_tpm_nvram_ = std::make_unique<tpm_manager::TpmNvramDBusProxy>();

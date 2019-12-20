@@ -67,7 +67,7 @@ TPM2NVSpaceUtility::TPM2NVSpaceUtility(
 void TPM2NVSpaceUtility::InitializationTask(base::WaitableEvent* completion,
                                             bool* result) {
   CHECK(completion);
-  CHECK(tpm_manager_thread_.task_runner()->RunsTasksOnCurrentThread());
+  CHECK(tpm_manager_thread_.task_runner()->RunsTasksInCurrentSequence());
 
   if (!tpm_nvram_) {
     default_tpm_nvram_ = std::make_unique<tpm_manager::TpmNvramDBusProxy>();
