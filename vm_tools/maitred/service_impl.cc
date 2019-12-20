@@ -524,7 +524,7 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   }
 
   if (!init_->Spawn({"tremplin", "-lxd_subnet", request->lxd_ipv4_subnet()},
-                    kLxdEnv, true /*respawn*/, false /*use_console*/,
+                    kLxdEnv, true /*respawn*/, true /*use_console*/,
                     false /*wait_for_exit*/, &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn tremplin");
   }
