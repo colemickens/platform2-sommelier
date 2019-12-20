@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
+#include "diagnostics/common/mojo_test_utils.h"
 
 #include <sys/socket.h>
 #include <sys/stat.h>

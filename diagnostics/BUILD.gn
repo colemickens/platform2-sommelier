@@ -297,7 +297,7 @@ if (use.test) {
     deps = [
       ":libcros_healthd_utils",
       "../common-mk/testrunner:testrunner",
-      "//diagnostics/common:libcommon",
+      "//diagnostics/common:libcommon_test_utils",
     ]
     sources = [
       "cros_healthd/utils/battery_utils_test.cc",
@@ -323,6 +323,7 @@ if (use.test) {
       ":libwilco_dtc_supportd",
       "../common-mk/testrunner:testrunner",
       "//diagnostics/common:libcommon",
+      "//diagnostics/common:libcommon_test_utils",
     ]
     sources = [
       "wilco_dtc_supportd/core_test.cc",
@@ -334,7 +335,6 @@ if (use.test) {
       "wilco_dtc_supportd/grpc_service_test.cc",
       "wilco_dtc_supportd/mock_mojo_client.cc",
       "wilco_dtc_supportd/mojo_service_test.cc",
-      "wilco_dtc_supportd/mojo_test_utils.cc",
       "wilco_dtc_supportd/routine_service_test.cc",
       "wilco_dtc_supportd/system/bluetooth_client_impl_test.cc",
       "wilco_dtc_supportd/system/debugd_adapter_impl_test.cc",

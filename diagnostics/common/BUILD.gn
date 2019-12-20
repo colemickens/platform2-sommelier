@@ -15,12 +15,30 @@ pkg_config("libcommon_pkg_deps") {
 source_set("libcommon") {
   public_configs = [ ":libcommon_pkg_deps" ]
   sources = [
-    "file_test_utils.cc",
     "mojo_utils.cc",
   ]
 }
 
 if (use.test) {
+  # Library with common utilities only to be used during testing.
+  pkg_config("libcommon_test_utils_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libmojo-${libbase_ver}",
+    ]
+  }
+
+  source_set("libcommon_test_utils") {
+    deps = [
+      ":libcommon",
+    ]
+    all_dependent_configs = [ ":libcommon_test_utils_pkg_deps" ]
+    sources = [
+      "file_test_utils.cc",
+      "mojo_test_utils.cc",
+    ]
+  }
+
   pkg_config("libcommon_test_pkg_deps") {
     pkg_deps = [
       "libchrome-${libbase_ver}",

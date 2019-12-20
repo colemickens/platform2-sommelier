@@ -62,6 +62,22 @@ source_set("libdiag_routine") {
 
 if (use.test) {
   # Libraries for unit tests.
+  pkg_config("libroutine_test_utils_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libmojo-${libbase_ver}",
+    ]
+  }
+
+  source_set("libroutine_test_utils") {
+    configs += [
+      ":libroutine_test_utils_pkg_deps",
+      "//common-mk:test",
+    ]
+    sources = [
+      "routine_test_utils.cc",
+    ]
+  }
 
   pkg_config("routine_test_pkg_deps") {
     pkg_deps = [
@@ -77,13 +93,14 @@ if (use.test) {
     ]
     deps = [
       ":libdiag_routine",
+      ":libroutine_test_utils",
       "../../common-mk/testrunner:testrunner",
       "//diagnostics/common:libcommon",
+      "//diagnostics/common:libcommon_test_utils",
     ]
     sources = [
       "battery/battery_test.cc",
       "battery_sysfs/battery_sysfs_test.cc",
-      "routine_test_utils.cc",
       "smartctl_check/smartctl_check_utils.cc",
       "smartctl_check/smartctl_check_utils_test.cc",
       "subproc_routine_test.cc",
