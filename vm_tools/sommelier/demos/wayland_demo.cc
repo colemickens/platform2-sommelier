@@ -300,7 +300,7 @@ int main(int argc, char* argv[]) {
   data.shm_ptr = shared_mem.memory();
 
   struct wl_shm_pool* pool =
-      wl_shm_create_pool(data.shm, shared_mem.handle().fd, shm_size);
+      wl_shm_create_pool(data.shm, shared_mem.handle().GetHandle(), shm_size);
   data.buffer = wl_shm_pool_create_buffer(pool, 0, data.width, data.height,
                                           stride, WL_SHM_FORMAT_XRGB8888);
   wl_shm_pool_destroy(pool);

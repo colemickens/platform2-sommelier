@@ -174,10 +174,11 @@ struct PackageKitTransactionProperties : public dbus::PropertySet {
 // proper cleanup.
 class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
  public:
-  explicit PackageKitTransaction(scoped_refptr<dbus::Bus> bus,
-                                 PackageKitProxy* packagekit_proxy,
-                                 dbus::ObjectProxy* packagekit_service_proxy,
-                                 uint32_t signal_mask)
+  explicit PackageKitTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
+      uint32_t signal_mask)
       : bus_(bus),
         packagekit_proxy_(packagekit_proxy),
         packagekit_service_proxy_(packagekit_service_proxy),
@@ -477,7 +478,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
   scoped_refptr<dbus::Bus> bus_;
   dbus::ScopedDBusError dbus_error_;
   PackageKitProxy* packagekit_proxy_;            // Not owned.
-  dbus::ObjectProxy* packagekit_service_proxy_;  // Not owned.
+  scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy_;  // Not owned.
 
  private:
   uint32_t signal_mask_;
@@ -497,7 +498,7 @@ class GetDetailsTransaction : public PackageKitTransaction {
   GetDetailsTransaction(
       scoped_refptr<dbus::Bus> bus,
       PackageKitProxy* packagekit_proxy,
-      dbus::ObjectProxy* packagekit_service_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
       std::shared_ptr<PackageKitProxy::PackageInfoTransactionData> data)
       : PackageKitTransaction(
             bus,
@@ -584,11 +585,12 @@ class GetDetailsTransaction : public PackageKitTransaction {
 // information to a structure in order to return it on a different thread.
 class SearchFilesTransaction : public PackageKitTransaction {
  public:
-  SearchFilesTransaction(scoped_refptr<dbus::Bus> bus,
-                         PackageKitProxy* packagekit_proxy,
-                         dbus::ObjectProxy* packagekit_service_proxy,
-                         const base::FilePath& file_path,
-                         PackageKitProxy::PackageSearchCallback callback)
+  SearchFilesTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
+      const base::FilePath& file_path,
+      PackageKitProxy::PackageSearchCallback callback)
       : PackageKitTransaction(
             bus,
             packagekit_proxy,
@@ -678,7 +680,7 @@ class InstallTransaction : public PackageKitTransaction {
   InstallTransaction(
       scoped_refptr<dbus::Bus> bus,
       PackageKitProxy* packagekit_proxy,
-      dbus::ObjectProxy* packagekit_service_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
       PackageKitProxy::PackageKitObserver* observer,
       base::FilePath file_path,
       std::string command_uuid,
@@ -696,7 +698,7 @@ class InstallTransaction : public PackageKitTransaction {
   InstallTransaction(
       scoped_refptr<dbus::Bus> bus,
       PackageKitProxy* packagekit_proxy,
-      dbus::ObjectProxy* packagekit_service_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
       PackageKitProxy::PackageKitObserver* observer,
       std::string package_id,
       std::string command_uuid,
@@ -814,7 +816,7 @@ class UninstallPackagesTransaction : public PackageKitTransaction {
   UninstallPackagesTransaction(
       scoped_refptr<dbus::Bus> bus,
       PackageKitProxy* packagekit_proxy,
-      dbus::ObjectProxy* packagekit_service_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
       const std::string& package_id,
       std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer,
       PackageKitProxy::PackageKitObserver* observer)
@@ -923,10 +925,11 @@ class UninstallPackagesTransaction : public PackageKitTransaction {
 // Sublcass for handling UpdatePackages transaction.
 class UpdatePackagesTransaction : public PackageKitTransaction {
  public:
-  UpdatePackagesTransaction(scoped_refptr<dbus::Bus> bus,
-                            PackageKitProxy* packagekit_proxy,
-                            dbus::ObjectProxy* packagekit_service_proxy,
-                            std::vector<std::string> package_ids)
+  UpdatePackagesTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
+      std::vector<std::string> package_ids)
       : PackageKitTransaction(bus,
                               packagekit_proxy,
                               packagekit_service_proxy,
@@ -973,9 +976,10 @@ class UpdatePackagesTransaction : public PackageKitTransaction {
 // Sublcass for handling GetUpdates transaction.
 class GetUpdatesTransaction : public PackageKitTransaction {
  public:
-  GetUpdatesTransaction(scoped_refptr<dbus::Bus> bus,
-                        PackageKitProxy* packagekit_proxy,
-                        dbus::ObjectProxy* packagekit_service_proxy)
+  GetUpdatesTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy)
       : PackageKitTransaction(
             bus,
             packagekit_proxy,
@@ -1051,17 +1055,19 @@ class GetUpdatesTransaction : public PackageKitTransaction {
 // Sublcass for handling RefreshCache transaction.
 class RefreshCacheTransaction : public PackageKitTransaction {
  public:
-  RefreshCacheTransaction(scoped_refptr<dbus::Bus> bus,
-                          PackageKitProxy* packagekit_proxy,
-                          dbus::ObjectProxy* packagekit_service_proxy)
+  RefreshCacheTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy)
       : PackageKitTransaction(bus,
                               packagekit_proxy,
                               packagekit_service_proxy,
                               kErrorCodeSignalMask | kFinishedSignalMask) {}
 
-  static void RefreshCacheNow(scoped_refptr<dbus::Bus> bus,
-                              PackageKitProxy* packagekit_proxy,
-                              dbus::ObjectProxy* packagekit_service_proxy) {
+  static void RefreshCacheNow(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy) {
     bool disable_cros_updates;
     bool disable_security_updates;
     CheckDisabledUpdates(&disable_cros_updates, &disable_security_updates);
@@ -1138,7 +1144,7 @@ class ResolveTransaction : public PackageKitTransaction {
  public:
   ResolveTransaction(scoped_refptr<dbus::Bus> bus,
                      PackageKitProxy* packagekit_proxy,
-                     dbus::ObjectProxy* packagekit_service_proxy,
+                     scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy,
                      const std::string& package_name,
                      PackageKitProxy::PackageSearchCallback callback)
       : PackageKitTransaction(

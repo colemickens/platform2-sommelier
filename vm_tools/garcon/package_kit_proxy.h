@@ -234,7 +234,8 @@ class PackageKitProxy {
       const std::string& error);
 
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* packagekit_service_proxy_;  // Owned by |bus_|.
+  // Owned by |bus_|, but adds refcount to PostTask
+  scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy_;
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   PackageKitObserver* observer_;  // Not owned.
