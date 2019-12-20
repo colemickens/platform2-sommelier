@@ -45,21 +45,22 @@ const unsigned kMaxNumMountTrials = 100;
 
 }  // namespace
 
-class MountManager::LegacyUnmounter : public Unmounter {
+class MountManager::LegacyMountPoint : public MountPoint {
  public:
-  explicit LegacyUnmounter(MountManager* mount_manager)
-      : mount_manager_(mount_manager) {}
+  LegacyMountPoint(const base::FilePath& path, MountManager* mount_manager)
+      : MountPoint(path), mount_manager_(mount_manager) {}
 
-  ~LegacyUnmounter() override = default;
+  ~LegacyMountPoint() override { DestructorUnmount(); }
 
-  MountErrorType Unmount(const MountPoint& mountpoint) override {
-    return mount_manager_->DoUnmount(mountpoint.path().value());
+ protected:
+  MountErrorType UnmountImpl() override {
+    return mount_manager_->DoUnmount(path().value());
   }
 
  private:
   MountManager* const mount_manager_;
 
-  DISALLOW_IMPLICIT_CONSTRUCTORS(LegacyUnmounter);
+  DISALLOW_IMPLICIT_CONSTRUCTORS(LegacyMountPoint);
 };
 
 MountManager::MountManager(const std::string& mount_root,
@@ -254,8 +255,7 @@ MountErrorType MountManager::MountNewSource(
               << quote(source_path);
     DCHECK(!mount_point);
     ReserveMountPath(actual_mount_path, error_type);
-    mount_point = std::make_unique<MountPoint>(
-        base::FilePath(actual_mount_path), nullptr);
+    mount_point = MountPoint::CreateLeaking(base::FilePath(actual_mount_path));
   } else {
     LOG(ERROR) << "Cannot mount " << quote(source_path) << "': " << error_type;
     platform_->RemoveEmptyDirectory(actual_mount_path);
@@ -292,10 +292,9 @@ std::unique_ptr<MountPoint> MountManager::DoMountNew(
     return nullptr;
   }
   // Temporary default implementation that wraps a mount point using
-  // LegacyUnmounter. It is expected that all mounters implement this and return
-  // a MountPoint themselves.
-  return std::make_unique<MountPoint>(mount_path,
-                                      std::make_unique<LegacyUnmounter>(this));
+  // LegacyMountPoint. It is expected that all mounters implement this and
+  // return a MountPoint themselves.
+  return std::make_unique<LegacyMountPoint>(mount_path, this);
 }
 
 MountErrorType MountManager::Unmount(const std::string& path) {

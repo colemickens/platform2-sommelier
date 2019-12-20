@@ -110,7 +110,7 @@ class MountManagerTest : public ::testing::Test {
   }
 
   std::unique_ptr<MountPoint> MakeMountPoint(const std::string& mount_path) {
-    return std::make_unique<MountPoint>(base::FilePath(mount_path), nullptr);
+    return MountPoint::CreateLeaking(base::FilePath(mount_path));
   }
 
  protected:

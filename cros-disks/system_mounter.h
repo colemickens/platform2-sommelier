@@ -18,22 +18,6 @@ namespace cros_disks {
 
 class Platform;
 
-// A class that uses umount() syscall for unmounting.
-class SystemUnmounter : public Unmounter {
- public:
-  enum class UnmountType { kNormal, kLazy, kLazyFallback };
-  SystemUnmounter(const Platform* platform, UnmountType unmount_type);
-  ~SystemUnmounter() override;
-
-  MountErrorType Unmount(const MountPoint& mountpoint) override;
-
- private:
-  const Platform* const platform_;
-  const UnmountType unmount_type_;
-
-  DISALLOW_COPY_AND_ASSIGN(SystemUnmounter);
-};
-
 // A class for mounting a device file using the system mount() call.
 class SystemMounter : public Mounter {
  public:

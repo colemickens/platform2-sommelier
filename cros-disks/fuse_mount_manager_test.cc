@@ -236,8 +236,7 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   EXPECT_CALL(*mounter, Mount("foobar", base::FilePath(kSomeMountpoint), _, _))
       .WillOnce(WithArg<3>([](MountErrorType* error) {
         *error = MOUNT_ERROR_NONE;
-        return std::make_unique<MountPoint>(base::FilePath(kSomeMountpoint),
-                                            nullptr);
+        return MountPoint::CreateLeaking(base::FilePath(kSomeMountpoint));
       }));
   std::unique_ptr<FUSEMounter> ptr(mounter);
   EXPECT_CALL(*bar_, CreateMounter(base::FilePath("/blah"), kSomeSource,

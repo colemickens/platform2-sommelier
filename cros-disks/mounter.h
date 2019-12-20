@@ -19,13 +19,6 @@ namespace cros_disks {
 
 class MountPoint;
 
-// Interface that provides unmounting functionality.
-class Unmounter {
- public:
-  virtual ~Unmounter() = default;
-  virtual MountErrorType Unmount(const MountPoint& mountpoint) = 0;
-};
-
 // Interface for mounting a given filesystem.
 class Mounter {
  public:

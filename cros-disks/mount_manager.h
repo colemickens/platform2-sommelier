@@ -266,8 +266,8 @@ class MountManager {
   brillo::ProcessReaper* process_reaper() const { return process_reaper_; }
 
  private:
-  // Unmounter subclass that forwards Unmount() calls to DoUnmount().
-  class LegacyUnmounter;
+  // MountPoint subclass that forwards Unmount() calls to DoUnmount().
+  class LegacyMountPoint;
 
   // The root directory under which mount directories are created.
   const base::FilePath mount_root_;

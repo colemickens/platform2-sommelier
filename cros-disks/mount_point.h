@@ -18,10 +18,12 @@ class Unmounter;
 // Class representing a mount created by a mounter.
 class MountPoint {
  public:
-  MountPoint(const base::FilePath& path, std::unique_ptr<Unmounter> unmounter);
+  // Creates a MountPoint that does nothing on unmount and 'leaks' the mount
+  // point.
+  static std::unique_ptr<MountPoint> CreateLeaking(const base::FilePath& path);
 
-  // The destructor calls unmounter to unmount the mount point.
-  ~MountPoint();
+  // Unmounts the mount point. Subclasses MUST call DestructorUnmount().
+  virtual ~MountPoint();
 
   // Releases (leaks) the ownership of the mount point.
   // Until all places handle ownership of mount points properly
@@ -33,9 +35,23 @@ class MountPoint {
 
   const base::FilePath& path() const { return path_; }
 
+ protected:
+  // Protected constructor for subclasses.
+  explicit MountPoint(const base::FilePath& path);
+
+  // Unmounts the point point and logs errors as appropriate. MUST be called in
+  // the destructor.
+  void DestructorUnmount();
+
+  // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be
+  // called once, regardless of the number of times Unmount() is called. If
+  // Release() is called, this function will not be called.
+  virtual MountErrorType UnmountImpl() = 0;
+
  private:
   const base::FilePath path_;
-  std::unique_ptr<Unmounter> unmounter_;
+  bool released_ = false;
+  bool unmounted_on_destruction_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(MountPoint);
 };

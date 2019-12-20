@@ -6,36 +6,76 @@
 
 #include <utility>
 
+#include <base/logging.h>
+
 #include "cros-disks/error_logger.h"
 #include "cros-disks/mounter.h"
 #include "cros-disks/quote.h"
 
 namespace cros_disks {
 
-MountPoint::MountPoint(const base::FilePath& path,
-                       std::unique_ptr<Unmounter> unmounter)
-    : path_(path), unmounter_(std::move(unmounter)) {}
+namespace {
+
+class LeakingMountPoint : public MountPoint {
+ public:
+  explicit LeakingMountPoint(const base::FilePath& path) : MountPoint(path) {}
+  ~LeakingMountPoint() override { DestructorUnmount(); }
+
+ protected:
+  // MountPoint overrides.
+  MountErrorType UnmountImpl() override { return MOUNT_ERROR_PATH_NOT_MOUNTED; }
+
+  DISALLOW_COPY_AND_ASSIGN(LeakingMountPoint);
+};
+
+}  // namespace
+
+// static
+std::unique_ptr<MountPoint> MountPoint::CreateLeaking(
+    const base::FilePath& path) {
+  return std::make_unique<LeakingMountPoint>(path);
+}
+
+MountPoint::MountPoint(const base::FilePath& path) : path_(path) {
+  DCHECK(!path_.empty());
+}
 
 MountPoint::~MountPoint() {
-  Unmount();
+  // Verify that subclasses call DestructorUnmount().
+  DCHECK(unmounted_on_destruction_)
+      << "MountPoint subclasses MUST call DestructorUnmount() in their "
+      << "destructor";
 }
 
 void MountPoint::Release() {
-  unmounter_.reset();
+  released_ = true;
 }
 
 MountErrorType MountPoint::Unmount() {
-  if (!unmounter_) {
+  if (released_) {
+    // TODO(amistry): "not mounted" and "already unmounted" are logically
+    // different and should be treated differently. Introduce a new error code
+    // to represent this distinction.
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
-  MountErrorType error = unmounter_->Unmount(*this);
-  if (error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Cannot unmount " << quote(path_) << ": " << error;
-    // Leave |unmounter_| as we might want to retry later.
-  } else {
-    unmounter_.reset();
+  MountErrorType error = UnmountImpl();
+  if (error == MOUNT_ERROR_NONE) {
+    released_ = true;
   }
   return error;
+}
+
+void MountPoint::DestructorUnmount() {
+  if (unmounted_on_destruction_) {
+    return;
+  }
+  unmounted_on_destruction_ = true;
+
+  MountErrorType error = Unmount();
+  if (error != MOUNT_ERROR_NONE && error != MOUNT_ERROR_PATH_NOT_MOUNTED) {
+    LOG(WARNING) << "Unmount error while destroying MountPoint("
+                 << quote(path()) << "): " << error;
+  }
 }
 
 }  // namespace cros_disks

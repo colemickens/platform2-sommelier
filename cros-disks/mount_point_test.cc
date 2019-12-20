@@ -9,8 +9,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cros-disks/mounter.h"
-
 namespace cros_disks {
 
 namespace {
@@ -18,39 +16,46 @@ namespace {
 using testing::_;
 using testing::Return;
 
-class MockUnmounter : public Unmounter {
+constexpr char kMountPath[] = "/mount/path";
+
+class MockMountPoint : public MountPoint {
  public:
-  MountErrorType Unmount(const MountPoint& mountpoint) override {
-    return UnmountImpl(mountpoint.path());
-  }
-  MOCK_METHOD(MountErrorType, UnmountImpl, (const base::FilePath&));
+  explicit MockMountPoint(const base::FilePath& path) : MountPoint(path) {}
+  ~MockMountPoint() override { DestructorUnmount(); }
+
+  MOCK_METHOD(MountErrorType, UnmountImpl, (), (override));
 };
 
 }  // namespace
 
 TEST(MountPointTest, Unmount) {
-  auto unmounter = std::make_unique<MockUnmounter>();
-  EXPECT_CALL(*unmounter, UnmountImpl(base::FilePath("/mnt/path")))
+  const auto mount_path = base::FilePath(kMountPath);
+  auto mount_point = std::make_unique<MockMountPoint>(mount_path);
+
+  EXPECT_CALL(*mount_point, UnmountImpl())
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountPoint mp(base::FilePath("/mnt/path"), std::move(unmounter));
-  EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mp.Unmount());
-  EXPECT_EQ(MOUNT_ERROR_NONE, mp.Unmount());
-  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mp.Unmount());
+  EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mount_point->Unmount());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
+  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_point->Unmount());
 }
 
 TEST(MountPointTest, UnmountOnDestroy) {
-  auto unmounter = std::make_unique<MockUnmounter>();
-  EXPECT_CALL(*unmounter, UnmountImpl(base::FilePath("/mnt/path")))
+  const auto mount_path = base::FilePath(kMountPath);
+  auto mount_point = std::make_unique<MockMountPoint>(mount_path);
+
+  EXPECT_CALL(*mount_point, UnmountImpl())
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE));
-  MountPoint mp(base::FilePath("/mnt/path"), std::move(unmounter));
 }
 
 TEST(MountPointTest, LeakMount) {
-  auto unmounter = std::make_unique<MockUnmounter>();
-  EXPECT_CALL(*unmounter, UnmountImpl(_)).Times(0);
-  MountPoint mp(base::FilePath("/mnt/path"), std::move(unmounter));
-  mp.Release();
+  auto mount_point =
+      std::make_unique<MockMountPoint>(base::FilePath(kMountPath));
+
+  EXPECT_CALL(*mount_point, UnmountImpl()).Times(0);
+
+  mount_point->Release();
+  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_point->Unmount());
 }
 
 }  // namespace cros_disks

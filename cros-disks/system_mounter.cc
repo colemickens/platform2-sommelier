@@ -20,33 +20,32 @@ namespace cros_disks {
 
 namespace {
 
-MountErrorType UnmountImpl(const Platform* platform,
-                           const base::FilePath& path,
-                           bool lazy) {
-  CHECK(!path.empty());
-  const int flags = lazy ? MNT_DETACH : 0;
-  return platform->Unmount(path.value(), flags);
-}
+// A MountPoint that uses the umount() syscall for unmounting.
+class SystemMountPoint : public MountPoint {
+ public:
+  SystemMountPoint(const base::FilePath& path, const Platform* platform)
+      : MountPoint(path), platform_(platform) {}
+
+  ~SystemMountPoint() override { DestructorUnmount(); }
+
+ protected:
+  MountErrorType UnmountImpl() override {
+    MountErrorType error = platform_->Unmount(path().value(), 0);
+    if (error == MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
+      LOG(WARNING) << "Device is busy, trying lazy unmount on "
+                   << path().value();
+      error = platform_->Unmount(path().value(), MNT_DETACH);
+    }
+    return error;
+  }
+
+ private:
+  const Platform* platform_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(SystemMountPoint);
+};
 
 }  // namespace
-
-SystemUnmounter::SystemUnmounter(const Platform* platform,
-                                 UnmountType unmount_type)
-    : platform_(platform), unmount_type_(unmount_type) {}
-
-SystemUnmounter::~SystemUnmounter() = default;
-
-MountErrorType SystemUnmounter::Unmount(const MountPoint& mountpoint) {
-  MountErrorType error = UnmountImpl(platform_, mountpoint.path(),
-                                     unmount_type_ == UnmountType::kLazy);
-  if (error == MOUNT_ERROR_PATH_ALREADY_MOUNTED &&
-      unmount_type_ == UnmountType::kLazyFallback) {
-    LOG(WARNING) << "Device is busy, trying lazy unmount on "
-                 << mountpoint.path().value();
-    error = UnmountImpl(platform_, mountpoint.path(), true);
-  }
-  return error;
-}
 
 SystemMounter::SystemMounter(const std::string& filesystem_type,
                              const Platform* platform)
@@ -74,9 +73,7 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
     return nullptr;
   }
 
-  return std::make_unique<MountPoint>(
-      target_path, std::make_unique<SystemUnmounter>(
-                       platform_, SystemUnmounter::UnmountType::kLazyFallback));
+  return std::make_unique<SystemMountPoint>(target_path, platform_);
 }
 
 bool SystemMounter::CanMount(const std::string& source,

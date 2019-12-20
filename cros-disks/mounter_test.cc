@@ -50,17 +50,20 @@ class MounterForTest : public Mounter {
       return nullptr;
     }
 
-    return std::make_unique<MountPoint>(target_path,
-                                        std::make_unique<MockUnmounter>(this));
+    return std::make_unique<MockMountPoint>(target_path, this);
   }
 
  private:
-  class MockUnmounter : public Unmounter {
+  class MockMountPoint : public MountPoint {
    public:
-    explicit MockUnmounter(const MounterForTest* mounter) : mounter_(mounter) {}
+    explicit MockMountPoint(const base::FilePath& path,
+                            const MounterForTest* mounter)
+        : MountPoint(path), mounter_(mounter) {}
+    ~MockMountPoint() override { DestructorUnmount(); }
 
-    MountErrorType Unmount(const MountPoint& mountpoint) override {
-      return mounter_->UnmountImpl(mountpoint.path());
+   protected:
+    MountErrorType UnmountImpl() override {
+      return mounter_->UnmountImpl(path());
     }
 
    private:
@@ -132,7 +135,7 @@ TEST(MounterCompatTest, MountSuccess) {
   EXPECT_CALL(mounter, Mount("foo", kMountPath, options, _))
       .WillOnce(WithArg<3>([kMountPath](MountErrorType* error) {
         *error = MOUNT_ERROR_NONE;
-        return std::make_unique<MountPoint>(kMountPath, nullptr);
+        return MountPoint::CreateLeaking(kMountPath);
       }));
   EXPECT_EQ(MOUNT_ERROR_NONE, mounter.MountOld());
 }

@@ -388,7 +388,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
                      target_path));
 
   *error = MOUNT_ERROR_NONE;
-  return std::make_unique<MountPoint>(target_path, nullptr);
+  return MountPoint::CreateLeaking(target_path);
 }
 
 std::unique_ptr<SandboxedProcess> FUSEMounter::CreateSandboxedProcess() const {
