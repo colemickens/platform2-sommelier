@@ -95,8 +95,8 @@ bool ShutdownArcVm(int cid) {
     return false;
 
   const std::string command("poweroff");
-  if (HANDLE_EINTR(write(vsock.get(), command.c_str(), command.size()) !=
-                   command.size())) {
+  if (HANDLE_EINTR(write(vsock.get(), command.c_str(), command.size())) !=
+      command.size()) {
     PLOG(WARNING) << "Failed to write to ARCVM VSOCK";
     return false;
   }

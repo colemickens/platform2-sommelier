@@ -163,8 +163,8 @@ bool TerminaVm::Start(base::FilePath kernel,
     LOG(ERROR) << "No network devices available";
     return false;
   }
-  subnet_ = std::move(MakeSubnet(network_device_.ipv4_subnet()));
-  container_subnet_ = std::move(MakeSubnet(container_subnet));
+  subnet_ = MakeSubnet(network_device_.ipv4_subnet());
+  container_subnet_ = MakeSubnet(container_subnet);
 
   // Open the tap device.
   base::ScopedFD tap_fd =

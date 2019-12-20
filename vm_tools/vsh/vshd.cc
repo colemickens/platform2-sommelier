@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
 
     if (HANDLE_EINTR(connect(sock_fd.get(),
                              reinterpret_cast<struct sockaddr*>(&addr),
-                             sizeof(addr)) < 0)) {
+                             sizeof(addr))) < 0) {
       PLOG(ERROR) << "Failed to connect to vsh client";
       return EXIT_FAILURE;
     }
