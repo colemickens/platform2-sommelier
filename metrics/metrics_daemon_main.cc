@@ -70,9 +70,9 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Metrics Daemon");
 
-  // Also log to stderr when not running as daemon.
+  // Also log to stderr when not running as daemon on a TTY.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
-                  (FLAGS_daemon ? 0 : brillo::kLogToStderr));
+                  (FLAGS_daemon ? 0 : brillo::kLogToStderrIfTty));
 
   if (FLAGS_daemon && daemon(0, 0) != 0) {
     return errno;
