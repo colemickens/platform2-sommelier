@@ -508,7 +508,7 @@ void DBusService::HandleGetCertifiedNvIndex(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         const GetCertifiedNvIndexReply&>> response,
     const GetCertifiedNvIndexRequest& request) {
-  LOG(ERROR) << __func__;
+  VLOG(1) << __func__;
   // Convert |response| to a shared_ptr so |service_| can safely copy the
   // callback.
   using SharedResponsePointer =
