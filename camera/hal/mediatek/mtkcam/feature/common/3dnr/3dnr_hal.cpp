@@ -485,7 +485,7 @@ static void dumpVIPIBuffer(NSCam::IImageBuffer* pIMGBufferVIPI,
 
 std::shared_ptr<hal3dnrBase> Hal3dnr::getInstance() {
   clientCnt++;
-  MY_LOGD("clientCnt:%d \n", clientCnt);
+  MY_LOGD("clientCnt:%d", clientCnt);
 
   if (pHal3dnr == NULL) {
     pHal3dnr = std::make_shared<Hal3dnr>();

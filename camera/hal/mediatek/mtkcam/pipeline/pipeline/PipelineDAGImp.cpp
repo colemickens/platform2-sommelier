@@ -282,7 +282,7 @@ PipelineDAGImp::addEdge(NodeId_T id_src, NodeId_T id_dst) {
   auto itsrcIdx = mNodesVec.find(id_src);
   auto itdstIdx = mNodesVec.find(id_dst);
   if (itsrcIdx == mNodesVec.end() || itdstIdx == mNodesVec.end()) {
-    MY_LOGE("Node does not exist\nSrc ID:%" PRIxPTR "  Dst ID:%" PRIxPTR "\n",
+    MY_LOGE("Node does not exist\nSrc ID:%" PRIxPTR "  Dst ID:%" PRIxPTR,
             id_src, id_dst);
     pthread_rwlock_unlock(&mRWLock);
     return NAME_NOT_FOUND;
@@ -312,8 +312,8 @@ PipelineDAGImp::removeEdge(NodeId_T id_src, NodeId_T id_dst) {
   auto itsrcIdx = mNodesVec.find(id_src);
   auto itdstIdx = mNodesVec.find(id_dst);
   if (itsrcIdx == mNodesVec.end() || itdstIdx == mNodesVec.end()) {
-    MY_LOGE("Node does not exist\nSrc ID:%" PRIxPTR " Dst ID:%" PRIxPTR " \n",
-            id_src, id_dst);
+    MY_LOGE("Node does not exist\nSrc ID:%" PRIxPTR " Dst ID:%" PRIxPTR, id_src,
+            id_dst);
     pthread_rwlock_unlock(&mRWLock);
     return NAME_NOT_FOUND;
   }

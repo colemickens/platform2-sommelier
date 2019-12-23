@@ -27,7 +27,7 @@
 #define CAMHAL_PREFIX "CAMHAL_"
 #define CAMHAL_TAG CAMHAL_PREFIX LOG_TAG
 
-#define LOG_HEADER "%s %s: pid:%d"
+#define LOG_HEADER "(%d)%s %s "
 
 #include <mtkcam/utils/property_service/property.h>
 #include <mtkcam/utils/property_service/property_lib.h>
@@ -74,53 +74,53 @@
 #endif
 
 #define LOGE(...)                                                          \
-  LOG(ERROR) << base::StringPrintf(LOG_HEADER, "E/", CAMHAL_TAG, gettid()) \
+  LOG(ERROR) << base::StringPrintf(LOG_HEADER, gettid(), "E/", CAMHAL_TAG) \
              << base::StringPrintf(__VA_ARGS__)
 #define LOGW(...)                                                            \
-  LOG(WARNING) << base::StringPrintf(LOG_HEADER, "W/", CAMHAL_TAG, gettid()) \
+  LOG(WARNING) << base::StringPrintf(LOG_HEADER, gettid(), "W/", CAMHAL_TAG) \
                << base::StringPrintf(__VA_ARGS__)
 #define LOGI(...)                                                       \
-  VLOG(1) << base::StringPrintf(LOG_HEADER, "I/", CAMHAL_TAG, gettid()) \
+  VLOG(1) << base::StringPrintf(LOG_HEADER, gettid(), "I/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 #define LOGV(...)                                                       \
-  VLOG(2) << base::StringPrintf(LOG_HEADER, "V/", CAMHAL_TAG, gettid()) \
+  VLOG(2) << base::StringPrintf(LOG_HEADER, gettid(), "V/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 #define LOGD(...)                                                       \
-  VLOG(3) << base::StringPrintf(LOG_HEADER, "D/", CAMHAL_TAG, gettid()) \
+  VLOG(3) << base::StringPrintf(LOG_HEADER, gettid(), "D/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 
 #define ALOGE(...)                                                         \
-  LOG(ERROR) << base::StringPrintf(LOG_HEADER, "E/", CAMHAL_TAG, gettid()) \
+  LOG(ERROR) << base::StringPrintf(LOG_HEADER, gettid(), "E/", CAMHAL_TAG) \
              << base::StringPrintf(__VA_ARGS__)
 #define ALOGW(...)                                                           \
-  LOG(WARNING) << base::StringPrintf(LOG_HEADER, "W/", CAMHAL_TAG, gettid()) \
+  LOG(WARNING) << base::StringPrintf(LOG_HEADER, gettid(), "W/", CAMHAL_TAG) \
                << base::StringPrintf(__VA_ARGS__)
 
 #define ALOGI(...)                                                      \
-  VLOG(1) << base::StringPrintf(LOG_HEADER, "I/", CAMHAL_TAG, gettid()) \
+  VLOG(1) << base::StringPrintf(LOG_HEADER, gettid(), "I/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 #define ALOGV(...)                                                      \
-  VLOG(2) << base::StringPrintf(LOG_HEADER, "V/", CAMHAL_TAG, gettid()) \
+  VLOG(2) << base::StringPrintf(LOG_HEADER, gettid(), "V/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 #define ALOGD(...)                                                      \
-  VLOG(3) << base::StringPrintf(LOG_HEADER, "D/", CAMHAL_TAG, gettid()) \
+  VLOG(3) << base::StringPrintf(LOG_HEADER, gettid(), "D/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 
 #define CAM_LOGE(...)                                                      \
-  LOG(ERROR) << base::StringPrintf(LOG_HEADER, "E/", CAMHAL_TAG, gettid()) \
+  LOG(ERROR) << base::StringPrintf(LOG_HEADER, gettid(), "E/", CAMHAL_TAG) \
              << base::StringPrintf(__VA_ARGS__)
 #define CAM_LOGW(...)                                                        \
-  LOG(WARNING) << base::StringPrintf(LOG_HEADER, "W/", CAMHAL_TAG, gettid()) \
+  LOG(WARNING) << base::StringPrintf(LOG_HEADER, gettid(), "W/", CAMHAL_TAG) \
                << base::StringPrintf(__VA_ARGS__)
 
 #define CAM_LOGI(...)                                                   \
-  VLOG(1) << base::StringPrintf(LOG_HEADER, "I/", CAMHAL_TAG, gettid()) \
+  VLOG(1) << base::StringPrintf(LOG_HEADER, gettid(), "I/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 #define CAM_LOGV(...)                                                   \
-  VLOG(2) << base::StringPrintf(LOG_HEADER, "V/", CAMHAL_TAG, gettid()) \
+  VLOG(2) << base::StringPrintf(LOG_HEADER, gettid(), "V/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 #define CAM_LOGD(...)                                                   \
-  VLOG(3) << base::StringPrintf(LOG_HEADER, "D/", CAMHAL_TAG, gettid()) \
+  VLOG(3) << base::StringPrintf(LOG_HEADER, gettid(), "D/", CAMHAL_TAG) \
           << base::StringPrintf(__VA_ARGS__)
 
 //

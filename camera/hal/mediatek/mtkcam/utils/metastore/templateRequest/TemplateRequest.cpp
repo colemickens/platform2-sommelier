@@ -156,9 +156,8 @@ status_t TemplateRequest::constructRequestMetadata(int const requestType,
   // get static informtation from customization (with camera_metadata format)
   // calculate its entry count and data count
   if (OK != (status = impConstructRequestMetadata(rMtkMetadata, requestType))) {
-    MY_LOGE(
-        "Unable evaluate the size for camera static info - status[%s(%d)]\n",
-        ::strerror(-status), -status);
+    MY_LOGE("Unable evaluate the size for camera static info - status[%s(%d)]",
+            ::strerror(-status), -status);
     return status;
   }
   MY_LOGD("Allocating %d entries from customization", rMtkMetadata->count());
@@ -174,7 +173,7 @@ status_t TemplateRequest::constructRequestMetadata(int const requestType,
   MBOOL ret =
       pConverter->get_data_count(*rMtkMetadata, &entryCount, &dataCount);
   if (ret != OK) {
-    MY_LOGE("get Imetadata count error\n");
+    MY_LOGE("get Imetadata count error");
     return UNKNOWN_ERROR;
   }
   MY_LOGD("Allocating %zu entries, %zu extra bytes from HAL modules",

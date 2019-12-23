@@ -248,10 +248,10 @@ int V4L2LensMgr::getSubDevice(size_t i2c_idx, int* p_r_sdev_fd) {
       continue;
     }
 
-    CAM_LOGD("get mdev_info.driver   : %s\n", mdev_info.driver);
-    CAM_LOGD("get mdev_info.model    : %s\n", mdev_info.model);
-    CAM_LOGD("get mdev_info.serial   : %s\n", mdev_info.serial);
-    CAM_LOGD("get mdev_info.bus_info : %s\n", mdev_info.bus_info);
+    CAM_LOGD("get mdev_info.driver   : %s", mdev_info.driver);
+    CAM_LOGD("get mdev_info.model    : %s", mdev_info.model);
+    CAM_LOGD("get mdev_info.serial   : %s", mdev_info.serial);
+    CAM_LOGD("get mdev_info.bus_info : %s", mdev_info.bus_info);
 
     /* traverse all entities */
     int next_entity_id = 1;
@@ -270,7 +270,7 @@ int V4L2LensMgr::getSubDevice(size_t i2c_idx, int* p_r_sdev_fd) {
         continue;
       }
 
-      CAM_LOGD("entity name %s, type 0x%x, group id %d, major %d minor %d\n",
+      CAM_LOGD("entity name %s, type 0x%x, group id %d, major %d minor %d",
                entity.name, entity.type, entity.group_id, entity.dev.major,
                entity.dev.minor);
 

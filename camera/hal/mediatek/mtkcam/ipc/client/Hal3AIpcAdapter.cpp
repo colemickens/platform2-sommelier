@@ -55,7 +55,7 @@ IHal3A* Hal3AIpcAdapter::getInstance(MINT32 const i4SensorOpenIndex,
       return _singleton_1;
     }
     default:
-      CAM_LOGE("Unsupport sensor Index: %d\n", i4SensorOpenIndex);
+      CAM_LOGE("Unsupport sensor Index: %d", i4SensorOpenIndex);
       return NULL;
   }
 }

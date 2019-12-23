@@ -184,7 +184,7 @@ int findsensor(std::string entity_name, int* id) {
           find_cnt - 1, 1);  // get i2c num, one char in entity_name before "-"
       ret = atoi(entity_name.c_str());  // return i2c num
       *id = getSensorListId(i);
-      CAM_LOGI("%d 0x%x\n", ret, *id);
+      CAM_LOGI("%d 0x%x", ret, *id);
       break;
     }
   }
@@ -205,7 +205,7 @@ int HalSensorList::findSubdev(void) {
   int id;
   int i2c_num;
 
-  CAM_LOGI("[%s] start \n", __FUNCTION__);
+  CAM_LOGI("[%s] start ", __FUNCTION__);
 
   const base::FilePath path("/dev/media?");
   base::FileEnumerator enumerator(path.DirName(), false,
@@ -222,11 +222,11 @@ int HalSensorList::findSubdev(void) {
     const std::string name = info.GetName().value();
     const base::FilePath target_path = path.DirName().Append(name);
 
-    CAM_LOGI("[%s] media dev name [%s] \n", __FUNCTION__,
+    CAM_LOGI("[%s] media dev name [%s] ", __FUNCTION__,
              target_path.value().c_str());
     dev_fd = open(target_path.value().c_str(), O_RDWR | O_NONBLOCK);
     if (dev_fd < 0) {
-      CAM_LOGE("[%s] Open %s error, %d %s\n", __FUNCTION__,
+      CAM_LOGE("[%s] Open %s error, %d %s", __FUNCTION__,
                target_path.value().c_str(), errno, strerror(errno));
       rc = -1;
       continue;
@@ -234,7 +234,7 @@ int HalSensorList::findSubdev(void) {
 
     rc = ioctl(dev_fd, MEDIA_IOC_DEVICE_INFO, &mdev_info);
     if (rc < 0) {
-      CAM_LOGD("MEDIA_IOC_DEVICE_INFO error, rc %d\n", rc);
+      CAM_LOGD("MEDIA_IOC_DEVICE_INFO error, rc %d", rc);
       close(dev_fd);
       continue;
     }
@@ -260,7 +260,7 @@ int HalSensorList::findSubdev(void) {
         snprintf(subdev_name, sizeof(subdev_name), "/dev/char/%d:%d",
                  entity.dev.major, entity.dev.minor);
         p1NodeName = subdev_name;
-        CAM_LOGI("camio subdevname[%s]-(%d)\n", p1NodeName.c_str(), entity.id);
+        CAM_LOGI("camio subdevname[%s]-(%d)", p1NodeName.c_str(), entity.id);
         findcamio = 1;
         p1NodeEntId = entity.id;
       }
@@ -275,7 +275,7 @@ int HalSensorList::findSubdev(void) {
         snprintf(subdev_name, sizeof(subdev_name), "/dev/char/%d:%d",
                  entity.dev.major, entity.dev.minor);
         sensorSubdevName[index] = subdev_name;
-        CAM_LOGI("sensor 0 subdevname[%s]-(%d) 0x%x\n",
+        CAM_LOGI("sensor 0 subdevname[%s]-(%d) 0x%x",
                  sensorSubdevName[0].c_str(), entity.id, id);
         sensor_nums++;
         sensorEntId[index] = entity.id;
@@ -285,7 +285,7 @@ int HalSensorList::findSubdev(void) {
         snprintf(subdev_name, sizeof(subdev_name), "/dev/char/%d:%d",
                  entity.dev.major, entity.dev.minor);
         seninfSubdevName = subdev_name;
-        CAM_LOGI("seninf subdevname[%s]-(%d)\n", seninfSubdevName.c_str(),
+        CAM_LOGI("seninf subdevname[%s]-(%d)", seninfSubdevName.c_str(),
                  entity.id);
         devName = target_path.value();
         CAM_LOGI("devName %s", devName.c_str());
@@ -299,7 +299,7 @@ int HalSensorList::findSubdev(void) {
     }
   }
 
-  CAM_LOGI("[%s] end \n", __FUNCTION__);
+  CAM_LOGI("[%s] end ", __FUNCTION__);
 
   return rc;
 }
@@ -310,17 +310,17 @@ HalSensorList::searchSensors() {
 
   CAM_LOGI("searchSensors");
   findSubdev();
-  CAM_LOGI("sensor_nums %d\n", sensor_nums);
+  CAM_LOGI("sensor_nums %d", sensor_nums);
 
   if (sensor_nums == 0)
     return 0;
 
 #ifdef MTK_SUB_IMGSENSOR
-  CAM_LOGD("impSearchSensor search to sub\n");
+  CAM_LOGD("impSearchSensor search to sub");
   for (MUINT i = IMGSENSOR_SENSOR_IDX_MIN_NUM; i <= IMGSENSOR_SENSOR_IDX_SUB;
        i++) {
 #else
-  CAM_LOGD("impSearchSensor search to main\n");
+  CAM_LOGD("impSearchSensor search to main");
   for (MUINT i = IMGSENSOR_SENSOR_IDX_MIN_NUM; i < IMGSENSOR_SENSOR_IDX_SUB;
        i++) {
 #endif
@@ -499,7 +499,7 @@ HalSensorList::closeSensor(HalSensor* pHalSensor, char const* szCallerName) {
   for (; it != mOpenSensorList.end(); ++it) {
     if (pHalSensor == it->mpHalSensor) {
 #ifdef DEBUG_SENSOR_OPEN_CLOSE
-      CAM_LOGD("closeSensor mpHalSensor : %p, pHalSensor = %p, refcnt= %d\n",
+      CAM_LOGD("closeSensor mpHalSensor : %p, pHalSensor = %p, refcnt= %d",
                it->mpHalSensor, pHalSensor, it->miRefCount);
 #endif
       //  Last one reference ?
@@ -538,7 +538,7 @@ HalSensor* HalSensorList::openSensor(vector<MUINT> const& vSensorIndex,
       //  just increment reference count and return the instance.
       it->miRefCount++;
 #ifdef DEBUG_SENSOR_OPEN_CLOSE
-      CAM_LOGD("openSensor mpHalSensor : %p,idx %d, %d, %d, refcnt %d\n",
+      CAM_LOGD("openSensor mpHalSensor : %p,idx %d, %d, %d, refcnt %d",
                it->mpHalSensor, vSensorIndex[0], vSensorIndex[1],
                vSensorIndex[2], it->miRefCount);
 #endif
@@ -547,8 +547,7 @@ HalSensor* HalSensorList::openSensor(vector<MUINT> const& vSensorIndex,
   }
 #ifdef DEBUG_SENSOR_OPEN_CLOSE
   CAM_LOGD(
-      "new created vSensorIdx[0] = %d, vSensorIdx[1] = %d, vSensorIdx[2] = "
-      "%d\n",
+      "new created vSensorIdx[0] = %d, vSensorIdx[1] = %d, vSensorIdx[2] = %d",
       vSensorIndex[0], vSensorIndex[1], vSensorIndex[2]);
 #endif
 
@@ -690,11 +689,11 @@ struct imgsensor_info_struct* HalSensorList::getSensorInfo(
   }
   sensor_id = sensorId[idx];
   num = getNumOfSupportSensor();
-  CAM_LOGI("Support sensor num %d\n", num);
+  CAM_LOGI("Support sensor num %d", num);
   for (i = 0; i < num; i++) {
     info = getImgsensorInfo(i);
     if (sensor_id == info->sensor_id) {
-      CAM_LOGI("info %d %d 0x%x\n", idx, i, sensor_id);
+      CAM_LOGI("info %d %d 0x%x", idx, i, sensor_id);
       return info;
     }
   }
@@ -715,7 +714,7 @@ MUINT32 HalSensorList::getSensorType(IMGSENSOR_SENSOR_IDX idx) {
   for (i = 0; i < num; i++) {
     info = getImgsensorInfo(i);
     if (sensor_id == info->sensor_id) {
-      CAM_LOGI("type %d %d 0x%x\n", idx, i, sensor_id);
+      CAM_LOGI("type %d %d 0x%x", idx, i, sensor_id);
       return getImgsensorType(i);
     }
   }
@@ -735,7 +734,7 @@ const char* HalSensorList::getSensorName(IMGSENSOR_SENSOR_IDX idx) {
   for (i = 0; i < num; i++) {
     psensor_list = getSensorList(i);
     if (sensor_id == psensor_list->id) {
-      CAM_LOGI("sensorName %d %d %s\n", idx, i, psensor_list->name);
+      CAM_LOGI("sensorName %d %d %s", idx, i, psensor_list->name);
       return reinterpret_cast<char*>(psensor_list->name);
     }
   }
@@ -756,7 +755,7 @@ SENSOR_WINSIZE_INFO_STRUCT* HalSensorList::getWinSizeInfo(
   for (i = 0; i < num; i++) {
     info = getImgsensorInfo(i);
     if (sensor_id == info->sensor_id) {
-      CAM_LOGI("win size %d %d 0x%x\n", idx, i, sensor_id);
+      CAM_LOGI("win size %d %d 0x%x", idx, i, sensor_id);
       return getImgWinSizeInfo(i, scenario);
     }
   }
@@ -775,7 +774,7 @@ MVOID HalSensorList::querySensorInfo(IMGSENSOR_SENSOR_IDX idx) {
 
   struct imgsensor_info_struct* pImgsensorInfo = getSensorInfo(idx);
   if (pImgsensorInfo == NULL) {
-    CAM_LOGE("querySensorInfo fail, cannot get sensor info\n");
+    CAM_LOGE("querySensorInfo fail, cannot get sensor info");
     return;
   }
 
@@ -1024,7 +1023,7 @@ MVOID HalSensorList::buildSensorMetadata(IMGSENSOR_SENSOR_IDX idx) {
   MUINT8 u8Para = 0;
   MINT32 s32Para = 0;
 
-  CAM_LOGD("impBuildSensorInfo start!\n");
+  CAM_LOGD("impBuildSensorInfo start!");
 
   IMetadata metadataA;
   SensorStaticInfo* pSensorStaticInfo = &sensorStaticInfo[idx];
@@ -1282,7 +1281,7 @@ MVOID HalSensorList::buildSensorMetadata(IMGSENSOR_SENSOR_IDX idx) {
   }
   metadataA.sort();
 
-  CAM_LOGD("impBuildSensorInfo end!\n");
+  CAM_LOGD("impBuildSensorInfo end!");
 }
 
 /******************************************************************************
@@ -1430,7 +1429,7 @@ HalSensorList::buildStaticInfo(Info const& rInfo, IMetadata* pMetadata) const {
       memcpy(&rSensorCropInfo, reinterpret_cast<void*>(ptr),
              sizeof(SENSOR_WINSIZE_INFO_STRUCT));
     }
-    CAM_LOGD("Pixel arry: device id %d full_w %d full_h %d\n",
+    CAM_LOGD("Pixel arry: device id %d full_w %d full_h %d",
              rInfo.getDeviceId(), rSensorCropInfo.full_w,
              rSensorCropInfo.full_h);
 

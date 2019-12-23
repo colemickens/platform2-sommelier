@@ -143,7 +143,7 @@ P1ConnectLMV::enableOIS(std::shared_ptr<IHal3A_T> p3A) {
   std::lock_guard<std::mutex> autoLock(mLock);
   if (EIS_MODE_IS_CALIBRATION_ENABLED(mEisMode) && mpLMV && p3A) {
     // Enable OIS
-    MY_LOGD("[LMVHal] mEisMode:%d => Enable OIS \n", mEisMode);
+    MY_LOGD("[LMVHal] mEisMode:%d => Enable OIS ", mEisMode);
     P1_TRACE_S_BEGIN(SLG_R, "P1Connect:LMV-SetEnableOIS");
     p3A->send3ACtrl(NS3Av3::E3ACtrl_SetEnableOIS, 1, 0);
     P1_TRACE_C_END(SLG_R);  // "P1Connect:LMV-SetEnableOIS"
@@ -415,7 +415,7 @@ P1ConnectLMV::processResult(MBOOL isBinEn,
       entry.push_back(0, Type2Type<MINT32>());  // MAX_GMV
       entry.push_back(isBinEn, Type2Type<MBOOL>());
       rOutputLMV->update(MTK_EIS_REGION, entry);
-      MY_LOGD("[LMVHal] eisMode: %d, iExpTime: %d, BinEn: %d\n", mEisMode,
+      MY_LOGD("[LMVHal] eisMode: %d, iExpTime: %d, BinEn: %d", mEisMode,
               iExpTime, isBinEn);
     }
   }

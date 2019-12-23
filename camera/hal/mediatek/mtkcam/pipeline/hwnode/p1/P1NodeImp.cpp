@@ -3778,7 +3778,7 @@ P1NodeImp::hardwareOps_start() {
     if (err < 0 || !count || !version) {
       MY_LOGE(
           "[%d] INormalPipeModule::get_sub_module_api_version - err:%#x "
-          "count:%zu version:%p\n",
+          "count:%zu version:%p",
           getOpenId(), err, count, version);
     } else {
       selectedVersion = *(version + count - 1);  // Select max. version

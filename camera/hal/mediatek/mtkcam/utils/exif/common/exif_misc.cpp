@@ -194,7 +194,7 @@ unsigned int ExifUtils::exifIFDValueSizeof(uint16_t type, unsigned int count) {
       size = count << 3;
       break;
     default:
-      MEXIF_LOGE("Unsupport tag, type(%d), err = %x\n", type,
+      MEXIF_LOGE("Unsupport tag, type(%d), err = %x", type,
                  LIBEXIF_IFD_ERR0002);
       break;
   }
@@ -210,32 +210,31 @@ void ExifUtils::exifErrPrint(unsigned char* pname, unsigned int err) {
     case EXIF_NO_ERROR:
       break;
     case LIBEXIF_FILE_ERR0001:
-      MEXIF_LOGE("Error in %s() call, Unsupport file format, err  = %x\n",
-                 pname, err);
+      MEXIF_LOGE("Error in %s() call, Unsupport file format, err  = %x", pname,
+                 err);
       break;
 
     case LIBEXIF_APP1_ERR0001:
-      MEXIF_LOGE("Error in %s() call, THumbnail not found, err = %x\n", pname,
+      MEXIF_LOGE("Error in %s() call, THumbnail not found, err = %x", pname,
                  err);
       break;
     case LIBEXIF_APP1_ERR0002:
-      MEXIF_LOGE("Error in %s() call, TIFF header error, err  =%x\n", pname,
-                 err);
+      MEXIF_LOGE("Error in %s() call, TIFF header error, err  =%x", pname, err);
       break;
     case LIBEXIF_DQT_ERR0001:
-      MEXIF_LOGE("Error in %s() call, Too many DQT found, err  =%x\n", pname,
+      MEXIF_LOGE("Error in %s() call, Too many DQT found, err  =%x", pname,
                  err);
       break;
 #ifdef EXIF_WARNING_DEBUG
     case LIBEXIF_SOI_ERR0001:
-      MEXIF_LOGE("Error in %s() call, SOI not found, err =%x\n", pname, err);
+      MEXIF_LOGE("Error in %s() call, SOI not found, err =%x", pname, err);
       break;
     case LIBEXIF_EOI_ERR0001:
-      MEXIF_LOGE("Error in %s() call, EOI not found, err = %x\n", pname, err);
+      MEXIF_LOGE("Error in %s() call, EOI not found, err = %x", pname, err);
       break;
 #endif
     case LIBEXIF_DQT_ERR0002:
-      MEXIF_LOGE("Error in %s() call, DQT not found!, err = %x\n", pname, err);
+      MEXIF_LOGE("Error in %s() call, DQT not found!, err = %x", pname, err);
       break;
     case LIBEXIF_DQT_ERR0003:
     case LIBEXIF_DHT_ERR0002:
@@ -243,45 +242,44 @@ void ExifUtils::exifErrPrint(unsigned char* pname, unsigned int err) {
     case LIBEXIF_DHT_ERR0003:
     case LIBEXIF_DHT_ERR0005:
     case LIBEXIF_DHT_ERR0006:
-      MEXIF_LOGE("Error in %s() call, Unsupport DHT found, err = %x\n", pname,
+      MEXIF_LOGE("Error in %s() call, Unsupport DHT found, err = %x", pname,
                  err);
       break;
     case LIBEXIF_SOF_ERR0001:
-      MEXIF_LOGE("Error in %s() call, SOF not found, err = %x\n", pname, err);
+      MEXIF_LOGE("Error in %s() call, SOF not found, err = %x", pname, err);
       break;
     case LIBEXIF_SOF_ERR0002:
-      MEXIF_LOGE("Error in %s() call, Support SOF length, err = %x\n", pname,
+      MEXIF_LOGE("Error in %s() call, Support SOF length, err = %x", pname,
                  err);
       break;
     case LIBEXIF_SOF_ERR0003:
-      MEXIF_LOGE("Error in %s() call, Unsupport data format, err = %x\n", pname,
+      MEXIF_LOGE("Error in %s() call, Unsupport data format, err = %x", pname,
                  err);
       break;
     case LIBEXIF_SOS_ERR0001:
-      MEXIF_LOGE("Error in %s() call, SOS not found, err = %x\n", pname, err);
+      MEXIF_LOGE("Error in %s() call, SOS not found, err = %x", pname, err);
       break;
     case LIBEXIF_SOS_ERR0002:
-      MEXIF_LOGE("Error in %s() call, Support SOS length, err = %x\n", pname,
+      MEXIF_LOGE("Error in %s() call, Support SOS length, err = %x", pname,
                  err);
       break;
     case LIBEXIF_MISC_ERR0001:
-      MEXIF_LOGE("Error in %s() call, Unknow Maker!, err = %x\n", pname, err);
+      MEXIF_LOGE("Error in %s() call, Unknow Maker!, err = %x", pname, err);
       break;
     case LIBEXIF_MISC_ERR0002:
-      MEXIF_LOGE("Error in %s() call, file size overflow!, err = %x\n", pname,
+      MEXIF_LOGE("Error in %s() call, file size overflow!, err = %x", pname,
                  err);
       break;
     case LIBEXIF_IFD_ERR0001:
-      MEXIF_LOGE(" Error in %s() call, not support IFD list!, err = %x\n",
-                 pname, err);
+      MEXIF_LOGE(" Error in %s() call, not support IFD list!, err = %x", pname,
+                 err);
       break;
     case LIBEXIF_IFD_ERR0002:
-      MEXIF_LOGE("Error in %s() call, Unsupport tag!, err = %x\n", pname, err);
+      MEXIF_LOGE("Error in %s() call, Unsupport tag!, err = %x", pname, err);
       break;
     case LIBEXIF_IFD_ERR0005:
       break;
     default:
-      MEXIF_LOGE("Error in %s() call, Unknow err code!, err = %x\n", pname,
-                 err);
+      MEXIF_LOGE("Error in %s() call, Unknow err code!, err = %x", pname, err);
   }
 }

@@ -817,12 +817,12 @@ void halFDVT::dumpFDParam(MTKFDFTInitInfo const& FDFTInitInfo) {
   for (int i = 0; i < FD_SCALES; i++) {
     MY_LOGD("%d, ", FDFTInitInfo.FDImageWidthArray[i]);
   }
-  MY_LOGD("\n");
+  MY_LOGD("");
   MY_LOGD("FDImageHeightArray = ");
   for (int i = 0; i < FD_SCALES; i++) {
     MY_LOGD("%d, ", FDFTInitInfo.FDImageHeightArray[i]);
   }
-  MY_LOGD("\n");
+  MY_LOGD("");
   MY_LOGD("FDMinFaceLevel = %d", FDFTInitInfo.FDMinFaceLevel);
   MY_LOGD("FDMaxFaceLevel = %d", FDFTInitInfo.FDMaxFaceLevel);
   MY_LOGD("FDImgFmtCH1 = %d", FDFTInitInfo.FDImgFmtCH1);

@@ -255,11 +255,11 @@ HalSensor::setupLink(int sensorIdx, int flag) {
   struct media_link_desc linkDesc;
   struct media_pad_desc srcPadDesc, sinkPadDesc;
 
-  CAM_LOGD("setupLink %s (%d %d %d)\n", dev_name, srcEntId, sinkEntId,
+  CAM_LOGD("setupLink %s (%d %d %d)", dev_name, srcEntId, sinkEntId,
            p1NodeEntId);
   dev_fd = open(dev_name, O_RDWR | O_NONBLOCK);
   if (dev_fd < 0) {
-    CAM_LOGD("Open media device error, fd %d\n", dev_fd);
+    CAM_LOGD("Open media device error, fd %d", dev_fd);
     return MFALSE;
   }
 
@@ -293,7 +293,7 @@ HalSensor::powerOn(char const* szCallerName,
                    MUINT const uCountOfIndex,
                    MUINT const* pArrayOfIndex) {
   if (pArrayOfIndex == NULL) {
-    CAM_LOGE("powerOn fail, pArrayOfIndex == NULL\n");
+    CAM_LOGE("powerOn fail, pArrayOfIndex == NULL");
     return MFALSE;
   }
 
@@ -310,18 +310,18 @@ HalSensor::powerOn(char const* szCallerName,
   int sensor_fd = 0;
   int seninf_fd = 0;
 
-  CAM_LOGI("powerOn %d %d\n", *pArrayOfIndex, sensorIdx);
+  CAM_LOGI("powerOn %d %d", *pArrayOfIndex, sensorIdx);
 
   sensor_fd = open(sensorSubdevName, O_RDWR);
   if (sensor_fd < 0) {
-    CAM_LOGE("[%s] open v4l2 sensor subdev fail\n", __FUNCTION__);
+    CAM_LOGE("[%s] open v4l2 sensor subdev fail", __FUNCTION__);
     HalSensorList::singleton()->setSensorFd(sensor_fd, sensorIdx);
     return MFALSE;
   }
 
   seninf_fd = open(seninfSubdevName, O_RDWR);
   if (sensor_fd < 0) {
-    CAM_LOGE("[%s] open v4l2 seninf subdev fail\n", __FUNCTION__);
+    CAM_LOGE("[%s] open v4l2 seninf subdev fail", __FUNCTION__);
     HalSensorList::singleton()->setSeninfFd(seninf_fd);
     return MFALSE;
   }
@@ -368,7 +368,7 @@ HalSensor::powerOff(char const* szCallerName,
   int sensor_fd = HalSensorList::singleton()->querySensorFd(sensorIdx);
   int seninf_fd = HalSensorList::singleton()->querySeninfFd();
 
-  CAM_LOGI("powerOff %d %d\n", *pArrayOfIndex, sensorIdx);
+  CAM_LOGI("powerOff %d %d", *pArrayOfIndex, sensorIdx);
 
   if (sensor_fd >= 0) {
     close(sensor_fd);
@@ -398,7 +398,7 @@ HalSensor::powerOff(char const* szCallerName,
 MBOOL HalSensor::querySensorDynamicInfo(MUINT32 indexDual,
                                         SensorDynamicInfo* pSensorDynamicInfo) {
   if (pSensorDynamicInfo == NULL) {
-    CAM_LOGE("querySensorDynamicInfo fail, pSensorDynamicInfo is NULL\n");
+    CAM_LOGE("querySensorDynamicInfo fail, pSensorDynamicInfo is NULL");
     return MFALSE;
   }
   memcpy(pSensorDynamicInfo, &mSensorDynamicInfo, sizeof(SensorDynamicInfo));
@@ -414,7 +414,7 @@ MBOOL HalSensor::configure(MUINT const uCountOfParam,
   MINT32 ret = MFALSE;
 
   if (pConfigParam == NULL) {
-    CAM_LOGE("configure fail, pConfigParam is NULL\n");
+    CAM_LOGE("configure fail, pConfigParam is NULL");
     return MFALSE;
   }
 
@@ -436,17 +436,17 @@ MBOOL HalSensor::configure(MUINT const uCountOfParam,
   (void)uCountOfParam;
   std::unique_lock<std::mutex> lk(mMutex);
 
-  CAM_LOGI("configure sensorIdx (%d)\n", sensorIdx);
+  CAM_LOGI("configure sensorIdx (%d)", sensorIdx);
 
   struct imgsensor_info_struct* pImgsensorInfo =
       HalSensorList::singleton()->getSensorInfo(sensorIdx);
   if (pImgsensorInfo == NULL) {
-    CAM_LOGE("configure fail, cannot get sensor info\n");
+    CAM_LOGE("configure fail, cannot get sensor info");
     return MFALSE;
   }
 
   if (mSensorIdx == IMGSENSOR_SENSOR_IDX_NONE || mSensorIdx != sensorIdx) {
-    CAM_LOGE("configure fail. mSensorIdx = %d, sensorIdx = %d\n", mSensorIdx,
+    CAM_LOGE("configure fail. mSensorIdx = %d, sensorIdx = %d", mSensorIdx,
              sensorIdx);
     return MFALSE;
   }
@@ -459,7 +459,7 @@ MBOOL HalSensor::configure(MUINT const uCountOfParam,
       pSensorDynamicInfo->PDAFInfo = CAM_TG_NONE;
 
   mScenarioId = pConfigParam->scenarioId;
-  CAM_LOGE("pConfigParam->scenarioId %d\n", pConfigParam->scenarioId);
+  CAM_LOGE("pConfigParam->scenarioId %d", pConfigParam->scenarioId);
 
   switch (mScenarioId) {
     case SENSOR_SCENARIO_ID_NORMAL_CAPTURE:
@@ -520,20 +520,20 @@ MBOOL HalSensor::configure(MUINT const uCountOfParam,
   aFormat.format.height = height;
   ret = ioctl(sensor_fd, VIDIOC_SUBDEV_S_FMT, &aFormat);
   if (ret < 0) {
-    CAM_LOGE("set sensor format fail\n");
+    CAM_LOGE("set sensor format fail");
     return MFALSE;
   }
   // set seninf format the same as sensor format to avoid link invalid
   ret = ioctl(sensor_fd, VIDIOC_SUBDEV_G_FMT, &aFormat);
   if (ret < 0) {
-    CAM_LOGE("get sensor format fail\n");
+    CAM_LOGE("get sensor format fail");
     return MFALSE;
   }
 
   aFormat.pad = sensorIdx;
   ret = ioctl(seninf_fd, VIDIOC_SUBDEV_S_FMT, &aFormat);
   if (ret < 0) {
-    CAM_LOGE("set seninf format fail\n");
+    CAM_LOGE("set seninf format fail");
     return MFALSE;
   }
 
@@ -576,7 +576,7 @@ MINT HalSensor::sendCommand(MUINT indexDual,
           (arg3_size == sizeof(MUINT32))) {
         *reinterpret_cast<MUINT32*>(arg3) = mSensorDynamicInfo.pixelMode;
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -588,7 +588,7 @@ MINT HalSensor::sendCommand(MUINT indexDual,
         *(reinterpret_cast<MUINT32*>(arg1)) =
             (mSensorIdx != IMGSENSOR_SENSOR_IDX_NONE) ? 1 << mSensorIdx : 0;
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -606,7 +606,7 @@ MINT HalSensor::sendCommand(MUINT indexDual,
                  sizeof(SENSOR_WINSIZE_INFO_STRUCT));
         }
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -624,13 +624,13 @@ MINT HalSensor::sendCommand(MUINT indexDual,
                             : m_vblank;
         ret = ioctl(sensor_fd, VIDIOC_S_CTRL, &control);
         if (ret < 0) {
-          CAM_LOGE("[%s] set max framerate fail %d\n", __FUNCTION__,
+          CAM_LOGE("[%s] set max framerate fail %d", __FUNCTION__,
                    control.value);
         }
-        CAM_LOGE("set max framerate %d, mFramerate %d control.value %d\n",
+        CAM_LOGE("set max framerate %d, mFramerate %d control.value %d",
                  *(MUINT32*)arg2, mFramerate, control.value);
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -641,15 +641,14 @@ MINT HalSensor::sendCommand(MUINT indexDual,
         control.id = V4L2_CID_ANALOGUE_GAIN;
         u32temp = *reinterpret_cast<MUINT32*>(arg1);
         control.value = u32temp >> m_SensorGainFactor;
-        CAM_LOGD("SENSOR_GAIN %d(%d) m_SensorGainFactor %d\n", control.value,
+        CAM_LOGD("SENSOR_GAIN %d(%d) m_SensorGainFactor %d", control.value,
                  u32temp, m_SensorGainFactor);
         ret = ioctl(sensor_fd, VIDIOC_S_CTRL, &control);
         if (ret < 0) {
-          CAM_LOGE("[%s] set SENSOR GAIN fail %d\n", __FUNCTION__,
-                   control.value);
+          CAM_LOGE("[%s] set SENSOR GAIN fail %d", __FUNCTION__, control.value);
         }
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -666,20 +665,20 @@ MINT HalSensor::sendCommand(MUINT indexDual,
                             : m_vblank;
         ret = ioctl(sensor_fd, VIDIOC_S_CTRL, &control);
         if (ret < 0) {
-          CAM_LOGE("[%s] set SENSOR VBLANK fail %d\n", __FUNCTION__,
+          CAM_LOGE("[%s] set SENSOR VBLANK fail %d", __FUNCTION__,
                    control.value);
         }
         control.id = V4L2_CID_EXPOSURE;
         control.value = u32temp;
-        CAM_LOGD("EXP_TIME %d(%d) m_LineTimeInus %d vblank %d\n", u32temp,
+        CAM_LOGD("EXP_TIME %d(%d) m_LineTimeInus %d vblank %d", u32temp,
                  *(MUINT32*)arg1, m_LineTimeInus, m_vblank);
         ret = ioctl(sensor_fd, VIDIOC_S_CTRL, &control);
         if (ret < 0) {
-          CAM_LOGE("[%s] set SENSOR EXPOSURE fail %d\n", __FUNCTION__,
+          CAM_LOGE("[%s] set SENSOR EXPOSURE fail %d", __FUNCTION__,
                    control.value);
         }
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -689,7 +688,7 @@ MINT HalSensor::sendCommand(MUINT indexDual,
           (arg1_size == sizeof(MUINT32))) {
         *reinterpret_cast<MUINT32*>(arg1) = m_pixClk;
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -700,7 +699,7 @@ MINT HalSensor::sendCommand(MUINT indexDual,
         *reinterpret_cast<MUINT32*>(arg1) =
             (m_framelength << 16) + m_linelength;
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -716,18 +715,17 @@ MINT HalSensor::sendCommand(MUINT indexDual,
           control.value = u32temp;
         }
         if (control.value < 0) {
-          CAM_LOGE("[%s] invalid pattern mode %d\n", __FUNCTION__,
-                   control.value);
+          CAM_LOGE("[%s] invalid pattern mode %d", __FUNCTION__, control.value);
           break;
         }
         control.id = V4L2_CID_TEST_PATTERN;
         ret = ioctl(sensor_fd, VIDIOC_S_CTRL, &control);
         if (ret < 0) {
-          CAM_LOGE("[%s] set SENSOR TEST PATTERN fail 0x%x\n", __FUNCTION__,
+          CAM_LOGE("[%s] set SENSOR TEST PATTERN fail 0x%x", __FUNCTION__,
                    control.value);
         }
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -740,7 +738,7 @@ MINT HalSensor::sendCommand(MUINT indexDual,
             HalSensorList::singleton()->getWinSizeInfo(sensorIdx, mScenarioId);
         if (!cropInfo) {
           *reinterpret_cast<MINT64*>(arg1) = 0;
-          CAM_LOGE("Null cropInfo\n");
+          CAM_LOGE("Null cropInfo");
         } else if (m_pixClk != 0) {
           MINT64 tg_size = cropInfo->h2_tg_size;
           *reinterpret_cast<MINT64*>(arg1) =
@@ -749,10 +747,10 @@ MINT HalSensor::sendCommand(MUINT indexDual,
           ret = MTRUE;
         } else {
           *reinterpret_cast<MINT64*>(arg1) = 0;
-          CAM_LOGE("Wrong pixel clock\n");
+          CAM_LOGE("Wrong pixel clock");
         }
       } else {
-        CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
+        CAM_LOGE("%s(0x%x) wrong input params", __FUNCTION__, cmd);
         ret = MFALSE;
       }
       break;
@@ -762,12 +760,12 @@ MINT HalSensor::sendCommand(MUINT indexDual,
     case SENSOR_CMD_GET_DEFAULT_FRAME_RATE_BY_SCENARIO:
     case SENSOR_CMD_GET_SENSOR_PDAF_CAPACITY:
     case SENSOR_CMD_GET_VERTICAL_BLANKING:
-      CAM_LOGD("TODO sendCommand(0x%x)\n", cmd);
+      CAM_LOGD("TODO sendCommand(0x%x)", cmd);
       ret = MFALSE;
       break;
 
     default:
-      CAM_LOGE("Unsupported sendCommand(0x%x)\n", cmd);
+      CAM_LOGE("Unsupported sendCommand(0x%x)", cmd);
       ret = MFALSE;
       break;
   }

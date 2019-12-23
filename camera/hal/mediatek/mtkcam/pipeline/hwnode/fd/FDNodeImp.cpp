@@ -535,14 +535,14 @@ FdNodeImp::init(InitParams const& rParams) {
   NSCam::IImageBufferAllocator::ExtraParam extraParam(GRALLOC_USAGE_HW_TEXTURE);
   mDupImage.pImg = mAllocator->alloc("FDTempBuf", imgParam, extraParam);
   if (mDupImage.pImg == nullptr) {
-    MY_LOGE("NULL Buffer\n");
+    MY_LOGE("NULL Buffer");
     return MFALSE;
   }
   if (!mDupImage.pImg->lockBuf(
           "FDTempBuf",
           NSCam::eBUFFER_USAGE_HW_CAMERA_READ | NSCam::eBUFFER_USAGE_SW_MASK)) {
     mAllocator->free(mDupImage.pImg);
-    MY_LOGE("lock Buffer failed\n");
+    MY_LOGE("lock Buffer failed");
     return MFALSE;
   }
   MY_LOGD("allocator buffer : %" PRIXPTR "", mDupImage.pImg->getBufVA(0));

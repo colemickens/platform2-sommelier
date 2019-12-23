@@ -215,7 +215,7 @@ MINT32 FDVT_CloseDriverWithUserCount() {
 
   --g_UserCount;
   if (g_UserCount == 0) {
-    MY_LOGI("FDVT_Uninit, HW FD Close CLK\n");
+    MY_LOGI("FDVT_Uninit, HW FD Close CLK");
     FDVT_Close_Driver();
   }
 

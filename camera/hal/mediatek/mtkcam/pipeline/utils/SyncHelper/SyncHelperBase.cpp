@@ -102,19 +102,19 @@ NSCam::MERROR NSCam::v3::Utils::Imp::SyncHelperBase::syncEnqHW(
   if (searchCamIdByTargetInSyncQueue.size() != sParam.mSyncCams.size()) {
     // this cam needs to other cam ready.
     mSyncQueue.push_back(sParam.mCamId);
-    MY_LOGD("CamID = %d wait+ q:t(%zu:%zu)\n", sParam.mCamId,
+    MY_LOGD("CamID = %d wait+ q:t(%zu:%zu)", sParam.mCamId,
             sParam.mSyncCams.size(), searchCamIdByTargetInSyncQueue.size());
     mSyncQLock.unlock();
     auto context = mContextMap.at(sParam.mCamId);
     sem_wait(&(context->mSyncSem));
-    MY_LOGD("CamID = %d wait-\n", sParam.mCamId);
+    MY_LOGD("CamID = %d wait-", sParam.mCamId);
   } else {
     mSyncQLock.unlock();
     // all camera is ready.
     for (auto& camId : searchCamIdByTargetInSyncQueue) {
       auto targetContext = mContextMap.at(camId);
       sem_post(&(targetContext->mSyncSem));
-      MY_LOGD("all cam ready CamID = %d, postCamID = %d!\n", sParam.mCamId,
+      MY_LOGD("all cam ready CamID = %d, postCamID = %d!", sParam.mCamId,
               camId);
       mSyncQLock.lock();
       // clear camId that in sync queue
@@ -166,12 +166,12 @@ NSCam::MERROR NSCam::v3::Utils::Imp::SyncHelperBase::syncResultCheck(
     }
   }
   if (searchCamIdByTargetInResultQueue.size() != sParam->mSyncCams.size()) {
-    MY_LOGD("CamID = %d wait+ q:t(%zu:%zu)\n", sParam->mCamId,
+    MY_LOGD("CamID = %d wait+ q:t(%zu:%zu)", sParam->mCamId,
             sParam->mSyncCams.size(), searchCamIdByTargetInResultQueue.size());
     mResultQueue.push_back(sParam->mCamId);
     mResultQLock.unlock();
     sem_wait(&(context1->mResultSem));
-    MY_LOGD("CamID = %d wait-\n", sParam->mCamId);
+    MY_LOGD("CamID = %d wait-", sParam->mCamId);
 
     for (auto& syncTargetCamId : sParam->mSyncCams) {
       context2 = mContextMap.at(syncTargetCamId);
@@ -181,7 +181,7 @@ NSCam::MERROR NSCam::v3::Utils::Imp::SyncHelperBase::syncResultCheck(
 
       MY_LOGD("CamID = %d, time1=%" PRId64
               "ns, ret = %d, synID = %d, time2=%" PRId64
-              "ns, tolerance=%" PRId64 "us\n",
+              "ns, tolerance=%" PRId64 "us",
               sParam->mCamId, context1->mResultTimeStamp, syncResult,
               syncTargetCamId, context2->mResultTimeStamp,
               sParam->mSyncTolerance);
@@ -198,7 +198,7 @@ NSCam::MERROR NSCam::v3::Utils::Imp::SyncHelperBase::syncResultCheck(
 
       MY_LOGD("CamID = %d, time1=%" PRId64
               "ns, ret = %d, synID = %d, time2=%" PRId64 "ns tolerance=%" PRId64
-              "us\n",
+              "us",
               sParam->mCamId, context1->mResultTimeStamp, syncResult, camId,
               context2->mResultTimeStamp, sParam->mSyncTolerance);
       mResultQLock.lock();

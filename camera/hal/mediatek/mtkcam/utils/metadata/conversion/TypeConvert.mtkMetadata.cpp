@@ -89,7 +89,7 @@ MetadataConverter::convert(const camera_metadata* pMetadata,
 
     // (2) get mtk tag
     if (getTagInfo() == NULL) {
-      MY_LOGD("get TagConvert fail\n");
+      MY_LOGD("get TagConvert fail");
       return false;
     }
 #if (PLATFORM_SDK_VERSION >= 21)

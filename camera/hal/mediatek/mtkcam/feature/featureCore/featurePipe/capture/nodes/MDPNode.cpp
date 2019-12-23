@@ -121,12 +121,12 @@ MBOOL MDPNode::onInit() {
         }
         MY_LOGD("video %d", i);
 #ifdef DEBUG_MDP_CAP
-        MY_LOGD("\nVIDOOC_QUERYCAP\n");
-        MY_LOGD("the mdp driver is %s\n", cap.driver);
-        MY_LOGD("the mdp card is %s\n", cap.card);
-        MY_LOGD("the mdp bus info is %s\n", cap.bus_info);
-        MY_LOGD("the version is %d\n", cap.version);
-        MY_LOGD("the capabilities is %u (%x)\n", cap.capabilities,
+        MY_LOGD("\nVIDOOC_QUERYCAP");
+        MY_LOGD("the mdp driver is %s", cap.driver);
+        MY_LOGD("the mdp card is %s", cap.card);
+        MY_LOGD("the mdp bus info is %s", cap.bus_info);
+        MY_LOGD("the version is %d", cap.version);
+        MY_LOGD("the capabilities is %u (%x)", cap.capabilities,
                 cap.device_caps);
 #endif
         mV4l2MdpInfo.device_name = dev_name;

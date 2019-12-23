@@ -121,7 +121,7 @@ MetadataConverter::convert(const IMetadata& rMetadata,
   size_t dataCount = 0;
   MBOOL ret = get_data_count(rMetadata, &entryCount, &dataCount);
   if (ret != OK) {
-    MY_LOGE("get Imetadata count error\n");
+    MY_LOGE("get Imetadata count error");
     return MFALSE;
   }
   MY_LOGD("Allocating %zu entries, %zu extra bytes from HAL modules",
@@ -131,7 +131,7 @@ MetadataConverter::convert(const IMetadata& rMetadata,
   if (!*pDstMetadata) {
     MY_LOGE(
         "Unable to allocate camera static info (%zu entries, %zu bytes extra "
-        "data)\n",
+        "data)",
         entryCount, dataCount);
     return MFALSE;
   }
@@ -209,7 +209,7 @@ MetadataConverter::convertWithoutAllocate(
     // allocate
     MBOOL ret = get_data_count(rMetadata, &entryCount, &dataCount);
     if (ret != OK) {
-      MY_LOGE("get Imetadata count error\n");
+      MY_LOGE("get Imetadata count error");
       return MFALSE;
     }
     MY_LOGD("Allocating %zu entries, %zu extra bytes from HAL modules",
@@ -219,7 +219,7 @@ MetadataConverter::convertWithoutAllocate(
     if (!*pDstMetadata) {
       MY_LOGE(
           "Unable to allocate camera static info (%zu entries, %zu bytes extra "
-          "data)\n",
+          "data)",
           entryCount, dataCount);
       return MFALSE;
     }
@@ -241,7 +241,7 @@ MetadataConverter::convertWithoutAllocate(
     if (!*pDstMetadata) {
       MY_LOGE(
           "Unable to allocate camera static info (%zu entries, %zu bytes extra "
-          "data)\n",
+          "data)",
           entryCount, dataCount);
       return MFALSE;
     }

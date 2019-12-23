@@ -189,11 +189,11 @@ MVOID IOControl<Node_T, ReqInfo_T>::printNode(
     std::set<std::shared_ptr<Node_T>>* visited) {
   TRACE_FUNC_ENTER();
   if (node == NULL || outMap->find(node) == outMap->end()) {
-    MY_LOGD("%s%s[]\n", depth.c_str(), edge.c_str());
+    MY_LOGD("%s%s[]", depth.c_str(), edge.c_str());
     return;
   }
 
-  MY_LOGD("%s%s[%s]\n", depth.c_str(), edge.c_str(), node->getName());
+  MY_LOGD("%s%s[%s]", depth.c_str(), edge.c_str(), node->getName());
 
   if (visited->find(node) != visited->end()) {
     return;

@@ -239,7 +239,7 @@ GbmImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
     mvHeapInfo.clear();
     mvBufInfo.clear();
   }
-  MY_LOGD_IF(getLogCond(), "- ret:%d\n", ret);
+  MY_LOGD_IF(getLogCond(), "- ret:%d", ret);
   return ret;
 }
 

@@ -822,7 +822,6 @@ StdExif::sendCommand(MINT32 cmd, MINT32 parg1, MUINTPTR parg2, MINT32 parg3) {
   MBOOL ret = MTRUE;
 
   // 1.Special command
-  // MY_LOGI("[sendCommand] cmd: 0x%x \n", cmd);
   switch (cmd) {
     case CMD_REGISTER: {
       MUINT32 registerName = (MUINT32)parg1;

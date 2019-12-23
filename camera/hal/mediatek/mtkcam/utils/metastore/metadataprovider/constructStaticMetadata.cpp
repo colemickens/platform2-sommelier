@@ -111,7 +111,7 @@ status_t MetadataProvider::constructStaticMetadata(
     std::shared_ptr<IMetadataConverter> pConverter,
     camera_metadata** rpDstMetadata,
     IMetadata* mtkMetadata) {
-  MY_LOGD("construct static metadata\n");
+  MY_LOGD("construct static metadata");
 
   status_t status = OK;
 
@@ -119,9 +119,8 @@ status_t MetadataProvider::constructStaticMetadata(
   // get static informtation from customization (with camera_metadata format)
   // calculate its entry count and data count
   if (OK != (status = impConstructStaticMetadata(mtkMetadata))) {
-    MY_LOGE(
-        "Unable evaluate the size for camera static info - status[%s(%d)]\n",
-        ::strerror(-status), -status);
+    MY_LOGE("Unable evaluate the size for camera static info - status[%s(%d)]",
+            ::strerror(-status), -status);
     return status;
   }
   MY_LOGD("Allocating %d entries from customization", mtkMetadata->count());
@@ -433,13 +432,13 @@ void MetadataProvider::updateData(IMetadata* rMetadata) {
 
     IMetadata::IEntry entry(MTK_MFNR_FEATURE_AVAILABLE_MFB_MODES);
     entry.push_back(MTK_MFNR_FEATURE_MFB_OFF, Type2Type<MINT32>());
-#if (MTKCAM_HAVE_MFB_SUPPORT == 1)
+#if MTKCAM_HAVE_MFB_SUPPORT == 1
     entry.push_back(MTK_MFNR_FEATURE_MFB_MFLL, Type2Type<MINT32>());
     entry.push_back(MTK_MFNR_FEATURE_MFB_AUTO, Type2Type<MINT32>());
-#elif (MTKCAM_HAVE_MFB_SUPPORT == 2)
+#elif MTKCAM_HAVE_MFB_SUPPORT == 2
     entry.push_back(MTK_MFNR_FEATURE_MFB_AIS, Type2Type<MINT32>());
     entry.push_back(MTK_MFNR_FEATURE_MFB_AUTO, Type2Type<MINT32>());
-#elif (MTKCAM_HAVE_MFB_SUPPORT == 3)
+#elif MTKCAM_HAVE_MFB_SUPPORT == 3
     entry.push_back(MTK_MFNR_FEATURE_MFB_MFLL, Type2Type<MINT32>());
     entry.push_back(MTK_MFNR_FEATURE_MFB_AIS, Type2Type<MINT32>());
     entry.push_back(MTK_MFNR_FEATURE_MFB_AUTO, Type2Type<MINT32>());

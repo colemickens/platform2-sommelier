@@ -324,10 +324,10 @@ int Hal3aIpcServerAdapter::setIsp(void* addr, int dataSize) {
   inMeta.PreSetKey = params->control.PreSetKey;
   ssize_t inAppSize = inMeta.appMeta.unflatten(&params->inAppMetaBuffer,
                                                sizeof(params->inAppMetaBuffer));
-  LOG1("%s server: inAppSize = %zd\n", __func__, inAppSize);
+  LOG1("%s server: inAppSize = %zd", __func__, inAppSize);
   ssize_t inHalSize = inMeta.halMeta.unflatten(&params->inHalMetaBuffer,
                                                sizeof(params->inHalMetaBuffer));
-  LOG1("%s server: inHalSize = %zd\n", __func__, inHalSize);
+  LOG1("%s server: inHalSize = %zd", __func__, inHalSize);
   if (inAppSize < 0 || inHalSize < 0) {
     if (inAppSize < 0)
       IPC_LOGE("inAppMeta data unflatten failed");
@@ -430,10 +430,10 @@ int Hal3aIpcServerAdapter::setIsp(void* addr, int dataSize) {
   params->metaSetResult.PreSetKey = outMeta.PreSetKey;
   ssize_t outAppSize = outMeta.appMeta.flatten(
       &params->outAppMetaBuffer, sizeof(params->outAppMetaBuffer));
-  LOG1("%s server: outAppSize = %zd\n", __func__, outAppSize);
+  LOG1("%s server: outAppSize = %zd", __func__, outAppSize);
   ssize_t outHalSize = outMeta.halMeta.flatten(
       &params->outHalMetaBuffer, sizeof(params->outHalMetaBuffer));
-  LOG1("%s server: outHalSize = %zd\n", __func__, outHalSize);
+  LOG1("%s server: outHalSize = %zd", __func__, outHalSize);
   if (outAppSize < 0 || outHalSize < 0) {
     if (outAppSize < 0)
       IPC_LOGE("outAppMeta data unflatten failed");
@@ -680,7 +680,7 @@ MINT32 Hal3aIpcServerAdapter::notifyCallBack(void* addr, int dataSize) {
             IPC_LOGE("%s Meta data flatten failed", __func__);
             return -1;
           }
-          LOG1("flatten IPC_Param_3AProc_Finish, metaSize size = %zd\n",
+          LOG1("flatten IPC_Param_3AProc_Finish, metaSize size = %zd",
                metaSize);
         }
       }
@@ -1106,10 +1106,9 @@ MINT32 Hal3aIpcServerAdapter::send3ACtrl(void* addr, int dataSize) {
           params->arg1.ipcSensorStatic.deviceId,
           params->arg1.ipcSensorStatic.sensorStaticInfo);
 
-      LOG1(
-          "E3ACtrl_IPC_SetStaticInfo idx:0x%x, type:0x%x, deviceId:0x%x \n\n\n",
-          params->arg1.ipcSensorStatic.idx, params->arg1.ipcSensorStatic.type,
-          params->arg1.ipcSensorStatic.deviceId);
+      LOG1("E3ACtrl_IPC_SetStaticInfo idx:0x%x, type:0x%x, deviceId:0x%x",
+           params->arg1.ipcSensorStatic.idx, params->arg1.ipcSensorStatic.type,
+           params->arg1.ipcSensorStatic.deviceId);
 
       break;
 

@@ -52,12 +52,12 @@ CAM_CAPABILITY* CAM_CAPABILITY::getInstance(
       num = 0;
       break;
     default:
-      ALOGE(LOG_TAG "[%s]ERR(%5d):user:%s out of module range,%d\n",
-            __FUNCTION__, __LINE__, szCallerName.c_str(), module);
+      ALOGE(LOG_TAG "[%s]ERR(%5d):user:%s out of module range,%d", __FUNCTION__,
+            __LINE__, szCallerName.c_str(), module);
       return NULL;
   }
   if (num >= NSCam::NSIoPipe::NSCamIOPipe::ENPipe_CAM_MAX) {
-    ALOGE(LOG_TAG "[%s]ERR(%5d):user:%s out of module range,%d\n", __FUNCTION__,
+    ALOGE(LOG_TAG "[%s]ERR(%5d):user:%s out of module range,%d", __FUNCTION__,
           __LINE__, szCallerName.c_str(), module);
     return NULL;
   }
@@ -192,7 +192,7 @@ MBOOL CAM_CAPABILITY::GetCapability(
 #endif
     }
   } else {
-    ALOGE(LOG_TAG "[%s]ERR(%5d):user:%s query fail(module:%d)\n", __FUNCTION__,
+    ALOGE(LOG_TAG "[%s]ERR(%5d):user:%s query fail(module:%d)", __FUNCTION__,
           __LINE__, m_Name.c_str(), m_hwModule);
   }
 

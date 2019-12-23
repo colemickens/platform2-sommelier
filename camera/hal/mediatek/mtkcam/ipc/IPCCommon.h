@@ -24,17 +24,17 @@
 #include "mtkcam/def/common.h"
 #include "mtkcam/utils/imgbuf/IDummyImageBufferHeap.h"
 
-#define LOG1(fmt, arg...)                              \
-  do {                                                 \
-    CAM_LOGD("[%s] " fmt "\t\n", __FUNCTION__, ##arg); \
+#define LOG1(fmt, arg...)                            \
+  do {                                               \
+    CAM_LOGD("[%s] " fmt "\t", __FUNCTION__, ##arg); \
   } while (0)
-#define LOG2(fmt, arg...)                              \
-  do {                                                 \
-    CAM_LOGI("[%s] " fmt "\t\n", __FUNCTION__, ##arg); \
+#define LOG2(fmt, arg...)                            \
+  do {                                               \
+    CAM_LOGI("[%s] " fmt "\t", __FUNCTION__, ##arg); \
   } while (0)
-#define IPC_LOGE(fmt, arg...)                          \
-  do {                                                 \
-    CAM_LOGE("[%s] " fmt "\t\n", __FUNCTION__, ##arg); \
+#define IPC_LOGE(fmt, arg...)                        \
+  do {                                               \
+    CAM_LOGE("[%s] " fmt "\t", __FUNCTION__, ##arg); \
   } while (0)
 
 /**

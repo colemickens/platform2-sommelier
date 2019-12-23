@@ -730,7 +730,7 @@ NormalStream::init(char const* szCallerName,
       return MFALSE;
     }
   }
-  LOGD("stream[%d], mInStreams = %d, mOutStreams = %d\n", streamTag,
+  LOGD("stream[%d], mInStreams = %d, mOutStreams = %d", streamTag,
        config.mInStreams.size(), config.mOutStreams.size());
 
   mPortIdxToFmt.clear();

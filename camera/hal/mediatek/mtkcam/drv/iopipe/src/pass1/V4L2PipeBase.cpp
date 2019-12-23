@@ -949,7 +949,7 @@ MBOOL V4L2PipeFactory::query(MUINT32 port_idx,
 
     if (pinfo->GetCapability(port_idx, static_cast<ENPipeQueryCmd>(cmd),
                              qryInput, query_info) == MFALSE) {
-      MY_LOGE("some query op fail\n");
+      MY_LOGE("some query op fail");
       ret = MFALSE;
     }
   } else {
@@ -977,7 +977,7 @@ MBOOL V4L2PipeFactory::query(MUINT32 port_idx,
 
     if (pinfo->GetCapability(port_idx, static_cast<ENPipeQueryCmd>(cmd),
                              qryInput, query_info) == MFALSE) {
-      MY_LOGE("some query op fail\n");
+      MY_LOGE("some query op fail");
       ret = MFALSE;
     }
   } else {

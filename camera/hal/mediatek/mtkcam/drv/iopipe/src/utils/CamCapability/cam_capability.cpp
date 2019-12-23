@@ -118,7 +118,7 @@ MBOOL capability::GetCapability(
 
   if (e_Op & (~(valid_cmd_cap | valid_cmd_constraint))) {
     ret = MFALSE;
-    MY_LOGE("some query cmd(0x%x) is not supported. valid cmd(0x%x)\n", e_Op,
+    MY_LOGE("some query cmd(0x%x) is not supported. valid cmd(0x%x)", e_Op,
             (valid_cmd_cap | valid_cmd_constraint));
   }
 
@@ -128,7 +128,7 @@ MBOOL capability::GetCapability(
 MUINT32 capability::GetFormat(MUINT32 portID, CamQueryOut* p_query_output) {
   CamQueryOut& query_output = *p_query_output;
   if (query_output.Queue_fmt.size()) {
-    MY_LOGE("current portID(0x%x) Queue_fmt need init\n", portID);
+    MY_LOGE("current portID(0x%x) Queue_fmt need init", portID);
     return MFALSE;
   }
 
@@ -155,7 +155,7 @@ MUINT32 capability::GetFormat(MUINT32 portID, CamQueryOut* p_query_output) {
       break;
     }
     default:
-      MY_LOGE("current portID(0x%x) are not supported in query\n", portID);
+      MY_LOGE("current portID(0x%x) are not supported in query", portID);
       return MFALSE;
   }
   return MTRUE;
@@ -168,7 +168,7 @@ MUINT32 capability::GetRatio(MUINT32 portID) {
     case NSImageio::NSIspio::EPortIndex_RRZO:
       return MAX_SCALING_DOWN_RATIO;
     default:
-      MY_LOGE("curent portID(0x%x) are no scaler\n", portID);
+      MY_LOGE("curent portID(0x%x) are no scaler", portID);
       break;
   }
   return 100;
@@ -210,7 +210,7 @@ MUINT32 capability::GetPipeSize() {
       value = CAM_B_MAX_LINE_BUFFER_IN_PIXEL;
       break;
     default:
-      MY_LOGE("need to assign a hw module, like CAM_A ...etc.\n");
+      MY_LOGE("need to assign a hw module, like CAM_A ...etc.");
       value = 0;
       break;
   }
@@ -275,7 +275,7 @@ MUINT32 capability::GetMaxSenNum() {
       return CAMSV_TG_NUM;
       break;
     default:
-      MY_LOGE("need to assign a hw module, like CAM_X,CAM_SV_X..etc.\n");
+      MY_LOGE("need to assign a hw module, like CAM_X,CAM_SV_X..etc.");
       break;
   }
   return 0;
@@ -532,9 +532,9 @@ static MUINT32 _calculateAlignedXsize(MUINT32 xsize, E_CamPixelMode pix_mode) {
     MUINT32 aligned = _query_pix_mode_align_size(xsize, pix_mode);
 
     if (_query_p2_constraint(aligned)) {
-      MY_LOGD("constraint: align xsize(%d/%d)\n", xsize, aligned);
+      MY_LOGD("constraint: align xsize(%d/%d)", xsize, aligned);
     } else {
-      MY_LOGW("constraint: cannot pass p2 constraint(%d)\n", xsize);
+      MY_LOGW("constraint: cannot pass p2 constraint(%d)", xsize);
     }
     return aligned;
   } else {
@@ -612,7 +612,7 @@ static MBOOL _queryXsize_rrzo(NSCam::EImageFormat imgFmt,
       if (!_query_fg_constraint(xsize[0])) {
         MUINT32 aligned = _query_fg_align_size(xsize[0]);
 
-        MY_LOGI("constraint: align fg xsize(%d/%d)\n", xsize[0], aligned);
+        MY_LOGI("constraint: align fg xsize(%d/%d)", xsize[0], aligned);
         xsize[0] = aligned;
       }
       break;
@@ -625,7 +625,7 @@ static MBOOL _queryXsize_rrzo(NSCam::EImageFormat imgFmt,
       if (!_query_fg_constraint(xsize[0])) {
         MUINT32 aligned = _query_fg_align_size(xsize[0]);
 
-        MY_LOGI("constraint: align fg xsize(%d/%d)\n", xsize[0], aligned);
+        MY_LOGI("constraint: align fg xsize(%d/%d)", xsize[0], aligned);
         xsize[0] = aligned;
       }
       break;
@@ -638,7 +638,7 @@ static MBOOL _queryXsize_rrzo(NSCam::EImageFormat imgFmt,
       if (!_query_fg_constraint(xsize[0])) {
         MUINT32 aligned = _query_fg_align_size(xsize[0]);
 
-        MY_LOGI("constraint: align fg xsize(%d/%d)\n", xsize[0], aligned);
+        MY_LOGI("constraint: align fg xsize(%d/%d)", xsize[0], aligned);
         xsize[0] = aligned;
       }
       break;
@@ -700,7 +700,7 @@ MUINT32 capability::GetConstrainedSize(
       if (e_Op & NSCam::NSIoPipe::NSCamIOPipe::ENPipeQueryCmd_CROP_START_X) {
         if (_queryCropStart(portId, inputInfo.format, inputInfo.width,
                             &query_output, inputInfo.pixelMode) == MFALSE) {
-          MY_LOGE("unsupported format:0x%x\n", inputInfo.format);
+          MY_LOGE("unsupported format:0x%x", inputInfo.format);
         }
       }
     } break;
@@ -736,12 +736,12 @@ MUINT32 capability::GetConstrainedSize(
       if (e_Op & NSCam::NSIoPipe::NSCamIOPipe::ENPipeQueryCmd_CROP_START_X) {
         if (_queryCropStart(portId, inputInfo.format, inputInfo.width,
                             &query_output, inputInfo.pixelMode) == MFALSE) {
-          MY_LOGE("unsupported format:0x%x\n", inputInfo.format);
+          MY_LOGE("unsupported format:0x%x", inputInfo.format);
         }
       }
     } break;
     default:
-      MY_LOGE("current portID(0x%x) r not supported in query\n", portId);
+      MY_LOGE("current portID(0x%x) r not supported in query", portId);
       query_output.x_pix = query_output.stride_pix =
           query_output.stride_byte[0] = 0;
       return MFALSE;

@@ -788,7 +788,7 @@ status_t V4L2StreamNode::enque(BufInfo const& buf,
   CheckError(ret != NO_ERROR, ret, "PutFrame failed");
   LOGD(
       "put port=%d, name=%s, vb(index=%d, magic_num=%d, request_api=%#x) "
-      "imgbuf(fd=%d, %p)\n",
+      "imgbuf(fd=%d, %p)",
       buf.mPortID.index, mName.c_str(), vb->Index(), buf.magic_num,
       buf.mRequestFD, vb->Fd(0), b);
 
