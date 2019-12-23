@@ -14,6 +14,7 @@
 
 #include <base/bind.h>
 #include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/invitation.h>
 
@@ -26,6 +27,8 @@ CameraAlgorithmAdapter::CameraAlgorithmAdapter()
     : algo_impl_(CameraAlgorithmOpsImpl::GetInstance()),
       algo_dll_handle_(nullptr),
       ipc_thread_("IPC thread") {}
+
+CameraAlgorithmAdapter::~CameraAlgorithmAdapter() = default;
 
 void CameraAlgorithmAdapter::Run(std::string mojo_token,
                                  base::ScopedFD channel,
@@ -56,10 +59,8 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(channel))));
-  mojo::ScopedMessagePipeHandle child_pipe =
-      invitation.ExtractMessagePipe(mojo_token);
-  mojom::CameraAlgorithmOpsRequest request;
-  request.Bind(std::move(child_pipe));
+  mojom::CameraAlgorithmOpsRequest request(
+      invitation.ExtractMessagePipe(mojo_token));
 
   VLOGF_ENTER();
   algo_dll_handle_ = dlopen(algo_lib_name.c_str(), RTLD_NOW);

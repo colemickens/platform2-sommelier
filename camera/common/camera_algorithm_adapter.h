@@ -25,6 +25,7 @@ namespace cros {
 class CameraAlgorithmAdapter {
  public:
   CameraAlgorithmAdapter();
+  ~CameraAlgorithmAdapter();
 
   // Build up IPC and load the camera algorithm library. This method returns
   // when the IPC connection is lost.
