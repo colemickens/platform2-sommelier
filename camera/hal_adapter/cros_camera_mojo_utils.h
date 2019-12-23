@@ -215,7 +215,7 @@ class MojoBinding : public T {
                     const base::Closure& connection_error_handler) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
-    binding_.Bind(std::move(handle));
+    binding_.Bind(mojo::InterfaceRequest<T>(std::move(handle)));
     binding_.set_connection_error_handler(connection_error_handler);
   }
 

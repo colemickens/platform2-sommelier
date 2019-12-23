@@ -156,8 +156,9 @@ void CameraHalServerImpl::RegisterCameraHal() {
   VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  camera_mojo_channel_manager_->RegisterServer(
-      binding_.CreateInterfacePtrAndBind());
+  mojom::CameraHalServerPtr server_ptr;
+  binding_.Bind(mojo::MakeRequest(&server_ptr));
+  camera_mojo_channel_manager_->RegisterServer(std::move(server_ptr));
   LOGF(INFO) << "Registered camera HAL";
 }
 
