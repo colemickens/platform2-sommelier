@@ -183,8 +183,6 @@ class OpenVPNDriverTest
 
   VPNServiceRefPtr GetService() { return driver_->service(); }
 
-  void OnConnectionDisconnected() { driver_->OnConnectionDisconnected(); }
-
   void OnConnectTimeout() { driver_->OnConnectTimeout(); }
 
   void StartConnectTimeout(int timeout_seconds) {

@@ -105,7 +105,6 @@ class OpenVPNDriver : public VPNDriver,
                       int interface_index) override;
   void Disconnect() override;
   std::string GetProviderType() const override;
-  void OnConnectionDisconnected() override;
   void OnConnectTimeout() override;
 
  private:

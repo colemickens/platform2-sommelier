@@ -170,11 +170,6 @@ void L2TPIPSecDriver::Disconnect() {
   IdleService();
 }
 
-void L2TPIPSecDriver::OnConnectionDisconnected() {
-  LOG(INFO) << "Underlying connection disconnected.";
-  IdleService();
-}
-
 void L2TPIPSecDriver::OnConnectTimeout() {
   VPNDriver::OnConnectTimeout();
   FailService(Service::kFailureConnect);

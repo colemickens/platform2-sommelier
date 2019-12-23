@@ -978,10 +978,6 @@ void OpenVPNDriver::Disconnect() {
   IdleService();
 }
 
-void OpenVPNDriver::OnConnectionDisconnected() {
-  LOG(INFO) << "Underlying connection disconnected.";
-}
-
 void OpenVPNDriver::OnConnectTimeout() {
   VPNDriver::OnConnectTimeout();
   Service::ConnectFailure failure =

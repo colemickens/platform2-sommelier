@@ -69,7 +69,6 @@ class ThirdPartyVpnDriver : public VPNDriver, public DefaultServiceObserver {
   void Connect(const VPNServiceRefPtr& service, Error* error) override;
   std::string GetProviderType() const override;
   void Disconnect() override;
-  void OnConnectionDisconnected() override;
 
   // Implements DefaultServiceObserver.
   void OnDefaultServiceChanged(const ServiceRefPtr& logical_service,

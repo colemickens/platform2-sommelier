@@ -601,13 +601,6 @@ TEST_F(L2TPIPSecDriverTest, Disconnect) {
   EXPECT_FALSE(GetService());
 }
 
-TEST_F(L2TPIPSecDriverTest, OnConnectionDisconnected) {
-  SetService(service_);
-  EXPECT_CALL(*service_, SetState(Service::kStateIdle));
-  driver_->OnConnectionDisconnected();
-  EXPECT_FALSE(GetService());
-}
-
 TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
   StartConnectTimeout(0);
   SetService(service_);

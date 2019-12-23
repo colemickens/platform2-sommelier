@@ -40,9 +40,6 @@ class VPNDriver {
   virtual void Disconnect() = 0;
   virtual std::string GetProviderType() const = 0;
 
-  // Invoked by VPNService when the underlying connection disconnects.
-  virtual void OnConnectionDisconnected() = 0;
-
   virtual void InitPropertyStore(PropertyStore* store);
 
   virtual bool Load(StoreInterface* storage, const std::string& storage_id);

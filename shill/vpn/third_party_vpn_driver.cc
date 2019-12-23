@@ -563,10 +563,6 @@ std::string ThirdPartyVpnDriver::GetProviderType() const {
   return std::string(kProviderThirdPartyVpn);
 }
 
-void ThirdPartyVpnDriver::OnConnectionDisconnected() {
-  SLOG(this, 2) << __func__;
-}
-
 void ThirdPartyVpnDriver::TriggerReconnect(const ServiceRefPtr& new_service) {
   StartConnectTimeout(kConnectTimeoutSeconds);
   SLOG(this, 2) << __func__ << " - requesting reconnection via "

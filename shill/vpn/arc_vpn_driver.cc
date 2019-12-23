@@ -138,10 +138,6 @@ void ArcVpnDriver::Disconnect() {
   Cleanup();
 }
 
-void ArcVpnDriver::OnConnectionDisconnected() {
-  SLOG(this, 2) << __func__;
-}
-
 std::string ArcVpnDriver::GetProviderType() const {
   return std::string(kProviderArcVpn);
 }

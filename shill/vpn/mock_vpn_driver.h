@@ -21,7 +21,6 @@ class MockVPNDriver : public VPNDriver {
   MOCK_METHOD(bool, ClaimInterface, (const std::string&, int), (override));
   MOCK_METHOD(void, Connect, (const VPNServiceRefPtr&, Error*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
-  MOCK_METHOD(void, OnConnectionDisconnected, (), (override));
   MOCK_METHOD(bool, Load, (StoreInterface*, const std::string&), (override));
   MOCK_METHOD(bool,
               Save,

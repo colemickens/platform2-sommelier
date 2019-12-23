@@ -129,7 +129,6 @@ class Connection : public base::RefCounted<Connection> {
   friend class ConnectionTest;
   FRIEND_TEST(ConnectionTest, FixGatewayReachability);
   FRIEND_TEST(ConnectionTest, InitState);
-  FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
   FRIEND_TEST(ConnectionTest, SetMTU);
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
 

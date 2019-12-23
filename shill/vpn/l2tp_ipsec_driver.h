@@ -42,7 +42,6 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   void Connect(const VPNServiceRefPtr& service, Error* error) override;
   void Disconnect() override;
   std::string GetProviderType() const override;
-  void OnConnectionDisconnected() override;
   void OnConnectTimeout() override;
 
  private:
@@ -62,7 +61,6 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(L2TPIPSecDriverTest, Notify);
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyWithExistingDevice);
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyDisconnected);
-  FRIEND_TEST(L2TPIPSecDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPNInMinijail);
