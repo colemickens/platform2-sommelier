@@ -182,7 +182,7 @@ MUINT32 MDPNode::formatTrans(MUINT32 format) {
       transFormat = V4L2_PIX_FMT_VYUY;
       break;
     case eImgFmt_NV12:
-      transFormat = V4L2_PIX_FMT_NV12;
+      transFormat = V4L2_PIX_FMT_NV12M;
       break;
     case eImgFmt_NV21:
       transFormat = V4L2_PIX_FMT_NV21;
