@@ -35,7 +35,7 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
     {CKA_COEFFICIENT, true, {false, false, true}, false},
     // ECC-specific attributes.
     {CKA_EC_PARAMS, false, {false, false, true}, false},
-    {CKA_VALUE, false, {false, false, true}, false},
+    {CKA_VALUE, true, {false, false, true}, false},
     // TPM backed key attributes.
     {kKeyBlobAttribute, true, {false, true, true}, false},
     {kAuthDataAttribute, true, {false, true, true}, false},
