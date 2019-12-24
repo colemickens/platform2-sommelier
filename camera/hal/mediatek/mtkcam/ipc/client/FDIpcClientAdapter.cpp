@@ -97,7 +97,8 @@ FDIpcClientAdapter::FDIpcClientAdapter(int openId)
 
 FDIpcClientAdapter::~FDIpcClientAdapter() {
   TRACE_FUNC_ENTER();
-  mCommon.deregisterBuffer(mFDBufferHandler);
+  if (mFDBufferHandler)
+    mCommon.deregisterBuffer(mFDBufferHandler);
   mCommon.releaseAllShmMems(&mMems);
   TRACE_FUNC_EXIT();
 }
