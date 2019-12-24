@@ -31,7 +31,7 @@ CameraHal::CameraHal()
 
 CameraHal::~CameraHal() {
   auto return_val = Future<void>::Create(nullptr);
-  mojo::edk::GetIOTaskRunner()->PostTask(
+  mojo::core::GetIOTaskRunner()->PostTask(
       FROM_HERE, base::BindOnce(&CameraHal::DestroyOnIpcThread,
                                 base::Unretained(this), return_val));
   return_val->Wait();
