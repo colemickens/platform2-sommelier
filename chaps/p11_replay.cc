@@ -770,13 +770,12 @@ void GetAttribute(CK_SESSION_HANDLE session,
   CK_RV ret = C_GetAttributeValue(session, object, attribute_template,
                                   arraysize(attribute_template));
   if (ret != CKR_OK) {
-    LOG(ERROR) << "Unable to access the attribute, error: "
-               << chaps::CK_RVToString(ret);
+    printf("Unable to access the attribute, error: %s\n",
+           chaps::CK_RVToString(ret));
     exit(-1);
   }
   if (attribute_template[0].ulValueLen == -1) {
-    LOG(ERROR)
-        << "Unable to access the attribute, got -1 for attribute length.";
+    printf("Unable to access the attribute, got -1 for attribute length.\n");
     exit(-1);
   }
 
@@ -794,8 +793,8 @@ void GetAttribute(CK_SESSION_HANDLE session,
   ret = C_GetAttributeValue(session, object, attribute_template,
                             arraysize(attribute_template));
   if (ret != CKR_OK) {
-    LOG(ERROR) << "Unable to read the attribute, error: "
-               << chaps::CK_RVToString(ret);
+    printf("Unable to read the attribute, error: %s\n",
+           chaps::CK_RVToString(ret));
     exit(-1);
   }
 
@@ -804,7 +803,7 @@ void GetAttribute(CK_SESSION_HANDLE session,
     printf("Attribute Data in hex: %s\n",
            base::HexEncode(base::data(buffer), buffer.size()).c_str());
   } else {
-    LOG(ERROR) << "Invalid output format: " << output_format;
+    printf("Invalid output format: %s\n", output_format.c_str());
     exit(-1);
   }
 }
@@ -826,11 +825,10 @@ void SetAttribute(CK_SESSION_HANDLE session,
   CK_RV ret = C_SetAttributeValue(session, object, attribute_template,
                                   arraysize(attribute_template));
   if (ret != CKR_OK) {
-    LOG(ERROR) << "Failed to set attribute, error: "
-               << chaps::CK_RVToString(ret);
+    printf("Failed to set attribute, error: %s\n", chaps::CK_RVToString(ret));
     exit(-1);
   }
-  LOG(INFO) << "Set attribute OK.";
+  printf("Set attribute OK.\n");
 }
 
 void CopyObject(
@@ -863,8 +861,8 @@ void CopyObject(
       reinterpret_cast<CK_ATTRIBUTE_PTR>(base::data(copy_template)),
       copy_template.size(), &new_object);
   if (result != CKR_OK) {
-    LOG(ERROR) << "Failed to copy the attribute, error: "
-               << chaps::CK_RVToString(result);
+    printf("Failed to copy the attribute, error: %s\n",
+           chaps::CK_RVToString(result));
     exit(-1);
   }
   printf("Operation completed successfully.\n");
