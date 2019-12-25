@@ -279,8 +279,8 @@ class HomeDirs {
   Platform* platform() { return platform_; }
   void set_shadow_root(const base::FilePath& value) { shadow_root_ = value; }
   const base::FilePath& shadow_root() const { return shadow_root_; }
-  void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
-  bool enterprise_owned() const { return enterprise_owned_; }
+  virtual void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
+  virtual bool enterprise_owned() const { return enterprise_owned_; }
   void set_policy_provider(policy::PolicyProvider* value) {
     policy_provider_ = value;
   }

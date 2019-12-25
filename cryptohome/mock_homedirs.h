@@ -90,6 +90,8 @@ class MockHomeDirs : public HomeDirs {
               (const, override));
 
   MOCK_METHOD(bool, SetLockedToSingleUser, (), (const, override));
+  MOCK_METHOD(void, set_enterprise_owned, (bool), (override));
+  MOCK_METHOD(bool, enterprise_owned, (), (const, override));
 
   // Some unit tests require that MockHomeDirs actually call the real
   // GetPlainOwner() function. In those cases, you can use this function

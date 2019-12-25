@@ -189,16 +189,16 @@ bool UserDataAuth::Initialize() {
   // Initialize ARC Disk Quota Service.
   arc_disk_quota_->Initialize();
 
-  // If the TPM is unowned or doesn't exist, it's safe for
-  // this function to be called again. However, it shouldn't
-  // be called across multiple threads in parallel.
-  InitializeInstallAttributes();
-
   if (!disable_threading_) {
     base::Thread::Options options;
     options.message_loop_type = base::MessageLoop::TYPE_IO;
     mount_thread_.StartWithOptions(options);
   }
+
+  // If the TPM is unowned or doesn't exist, it's safe for
+  // this function to be called again. However, it shouldn't
+  // be called across multiple threads in parallel.
+  InitializeInstallAttributes();
 
   // Clean up any unreferenced mountpoints at startup.
   PostTaskToMountThread(FROM_HERE,
@@ -820,9 +820,9 @@ void UserDataAuth::DetectEnterpriseOwnership() {
   brillo::Blob value;
   if (install_attrs_->Get("enterprise.owned", &value) && value == true_value) {
     // Update any active mounts with the state, have to be done on mount thread.
-    PostTaskToOriginThread(FROM_HERE,
-                           base::BindOnce(&UserDataAuth::SetEnterpriseOwned,
-                                          base::Unretained(this), true));
+    PostTaskToMountThread(FROM_HERE,
+                          base::BindOnce(&UserDataAuth::SetEnterpriseOwned,
+                                         base::Unretained(this), true));
   }
   // Note: Right now there's no way to convert an enterprise owned machine to a
   // non-enterprise owned machine without clearing the TPM, so we don't try

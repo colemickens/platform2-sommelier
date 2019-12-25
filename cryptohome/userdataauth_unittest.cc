@@ -2773,4 +2773,17 @@ TEST_F(UserDataAuthTestThreaded, UploadAlertsCallbackPeriodical) {
   base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(20));
 }
 
+TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
+  // If asked, this machine is enterprise owned.
+  static const std::string true_str = "true";
+  brillo::Blob true_value(true_str.begin(), true_str.end());
+  true_value.push_back(0);
+  EXPECT_CALL(attrs_, Get("enterprise.owned", _))
+      .WillOnce(DoAll(SetArgPointee<1>(true_value), Return(true)));
+
+  EXPECT_CALL(homedirs_, set_enterprise_owned(true)).WillOnce(Return());
+
+  InitializeUserDataAuth();
+}
+
 }  // namespace cryptohome
