@@ -11,7 +11,6 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -103,7 +102,7 @@ void Daemon::BootstrapMojoConnection(
           mojo::PlatformHandle(std::move(file_handle))));
 
   // Bind primordial message pipe to a MachineLearningService implementation.
-  machine_learning_service_ = base::MakeUnique<MachineLearningServiceImpl>(
+  machine_learning_service_ = std::make_unique<MachineLearningServiceImpl>(
       invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken),
       base::Bind(&Daemon::OnConnectionError, base::Unretained(this)));
 
