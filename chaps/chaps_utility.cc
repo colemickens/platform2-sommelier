@@ -407,6 +407,10 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
       return "kAuthDataAttribute";
     case kLegacyAttribute:
       return "kLegacyAttribute";
+    case kForceSoftwareAttribute:
+      return "kForceSoftwareAttribute";
+    case kKeyInSoftware:
+      return "kKeyInSoftware";
     default:
       stringstream ss;
       ss << attribute;

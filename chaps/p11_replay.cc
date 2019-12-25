@@ -300,7 +300,8 @@ string ecpoint2bin(EC_KEY* key) {
 void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
                          const vector<uint8_t>& object_id,
                          string label,
-                         RSA* rsa) {
+                         RSA* rsa,
+                         bool force_software) {
   CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_BBOOL false_value = CK_FALSE;
@@ -324,6 +325,7 @@ void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
   string dmp1 = bn2bin(rsa_dmp1);
   string dmq1 = bn2bin(rsa_dmq1);
   string iqmp = bn2bin(rsa_iqmp);
+  CK_BBOOL force_software_value = force_software ? CK_TRUE : CK_FALSE;
 
   CK_ATTRIBUTE private_attributes[] = {
       {CKA_CLASS, &priv_class, sizeof(priv_class)},
@@ -334,6 +336,8 @@ void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {chaps::kForceSoftwareAttribute, &force_software_value,
+       sizeof(force_software_value)},
       {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size()},
       {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
       {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length()},
@@ -432,11 +436,13 @@ void CreateECCPublicKey(CK_SESSION_HANDLE session,
 void CreateECCPrivateKey(CK_SESSION_HANDLE session,
                          const vector<uint8_t>& object_id,
                          string label,
-                         EC_KEY* ecc) {
+                         EC_KEY* ecc,
+                         bool force_software) {
   CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_EC;
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
+  CK_BBOOL force_software_value = force_software ? CK_TRUE : CK_FALSE;
 
   string d = bn2bin(EC_KEY_get0_private_key(ecc));
   string params = ecparameters2bin(ecc);
@@ -450,6 +456,8 @@ void CreateECCPrivateKey(CK_SESSION_HANDLE session,
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {chaps::kForceSoftwareAttribute, &force_software_value,
+       sizeof(force_software_value)},
       {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size()},
       {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
       {CKA_EC_PARAMS, const_cast<char*>(params.c_str()), params.length()},
@@ -603,18 +611,21 @@ bool ParseAndCreatePublicKey(CK_SESSION_HANDLE session,
 
 bool ParseAndCreatePrivateKey(CK_SESSION_HANDLE session,
                               const vector<uint8_t>& object_id,
-                              const string& object_data) {
+                              const string& object_data,
+                              bool force_software) {
   // Try RSA
   crypto::ScopedRSA rsa = ParseRSAPrivateKey(object_data);
   if (rsa != nullptr) {
-    CreateRSAPrivateKey(session, object_id, "testing_key", rsa.get());
+    CreateRSAPrivateKey(session, object_id, "testing_key", rsa.get(),
+                        force_software);
     return true;
   }
 
   // Try ECC
   crypto::ScopedEC_KEY ecc = ParseECCPrivateKey(object_data);
   if (ecc != nullptr) {
-    CreateECCPrivateKey(session, object_id, "testing_key", ecc.get());
+    CreateECCPrivateKey(session, object_id, "testing_key", ecc.get(),
+                        force_software);
     return true;
   }
 
@@ -635,7 +646,8 @@ bool ParseAndCreateCertificate(CK_SESSION_HANDLE session,
 void ReadInObject(CK_SESSION_HANDLE session,
                   const string& input_path,
                   const vector<uint8_t>& object_id,
-                  CryptoObjectType type) {
+                  CryptoObjectType type,
+                  bool force_software) {
   const base::FilePath path(input_path);
   string object_data;
   if (!base::ReadFileToString(path, &object_data)) {
@@ -655,7 +667,8 @@ void ReadInObject(CK_SESSION_HANDLE session,
       type_str = "Public key";
       break;
     case kPrivateKey:
-      result = ParseAndCreatePrivateKey(session, object_id, object_data);
+      result = ParseAndCreatePrivateKey(session, object_id, object_data,
+                                        force_software);
       type_str = "Private key";
       break;
   }
@@ -683,7 +696,7 @@ void InjectRSAKeyPair(CK_SESSION_HANDLE session,
   }
   vector<uint8_t> id(kKeyID, kKeyID + strlen(kKeyID));
   CreateRSAPublicKey(session, id, label, key_size_bits, rsa.get());
-  CreateRSAPrivateKey(session, id, label, rsa.get());
+  CreateRSAPrivateKey(session, id, label, rsa.get(), false);
 }
 
 // Deletes all test keys previously created.
@@ -1049,11 +1062,12 @@ int main(int argc, char** argv) {
     std::string type = cl->GetSwitchValueASCII("type");
     std::string path = cl->GetSwitchValueASCII("path");
     if (base::EqualsCaseInsensitiveASCII("cert", type)) {
-      ReadInObject(session, path, object_id, kCertificate);
+      ReadInObject(session, path, object_id, kCertificate, false);
     } else if (base::EqualsCaseInsensitiveASCII("privkey", type)) {
-      ReadInObject(session, path, object_id, kPrivateKey);
+      ReadInObject(session, path, object_id, kPrivateKey,
+                   cl->HasSwitch("force_software"));
     } else if (base::EqualsCaseInsensitiveASCII("pubkey", type)) {
-      ReadInObject(session, path, object_id, kPublicKey);
+      ReadInObject(session, path, object_id, kPublicKey, false);
     } else {
       LOG(ERROR) << "Invalid token type.";
       exit(-1);

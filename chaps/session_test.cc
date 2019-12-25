@@ -165,7 +165,8 @@ class TestSession : public ::testing::Test {
     int pubh = 0, privh = 0;
     ASSERT_EQ(CKR_OK,
               session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                        5, priv_attr, 3, &pubh, &privh));
+                                        arraysize(pub_attr), priv_attr,
+                                        arraysize(priv_attr), &pubh, &privh));
     ASSERT_TRUE(session_->GetObject(pubh, pub));
     ASSERT_TRUE(session_->GetObject(privh, priv));
   }
@@ -204,8 +205,9 @@ class TestSession : public ::testing::Test {
         {CKA_SIGN, &yes, sizeof(CK_BBOOL)}};
     int pubh = 0, privh = 0;
     ASSERT_EQ(CKR_OK,
-              session_->GenerateKeyPair(CKM_EC_KEY_PAIR_GEN, "", pub_attr, 4,
-                                        priv_attr, 3, &pubh, &privh));
+              session_->GenerateKeyPair(CKM_EC_KEY_PAIR_GEN, "", pub_attr,
+                                        arraysize(pub_attr), priv_attr,
+                                        arraysize(priv_attr), &pubh, &privh));
     ASSERT_TRUE(session_->GetObject(pubh, pub));
     ASSERT_TRUE(session_->GetObject(privh, priv));
   }
@@ -893,6 +895,7 @@ TEST_F(TestSession, Flush) {
 TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
   EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
   EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(tpm_, GetRSAPublicKey(_, _, _)).WillRepeatedly(Return(true));
 
@@ -911,7 +914,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      5, priv_attr, 3, &pubh, &privh));
+                                      arraysize(pub_attr), priv_attr,
+                                      arraysize(priv_attr), &pubh, &privh));
   // There are a few sensitive attributes that MUST not exist.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(privh, &object));
@@ -921,6 +925,14 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
+
+  // Check attributes that store TPM wrapped blob exists.
+  EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
@@ -946,7 +958,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      5, priv_attr, 3, &pubh, &privh));
+                                      arraysize(pub_attr), priv_attr,
+                                      arraysize(priv_attr), &pubh, &privh));
   const Object* public_object = NULL;
   const Object* private_object = NULL;
   ASSERT_TRUE(session_->GetObject(pubh, &public_object));
@@ -960,7 +973,10 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
 }
 
 TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
+  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
+  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).Times(0);
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -977,7 +993,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      5, priv_attr, 3, &pubh, &privh));
+                                      arraysize(pub_attr), priv_attr,
+                                      arraysize(priv_attr), &pubh, &privh));
   // For a software key, the sensitive attributes should exist.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(privh, &object));
@@ -987,6 +1004,57 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+
+  // Check attributes that store TPM wrapped blob doesn't exists.
+  EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
+}
+
+TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
+  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
+  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).Times(0);
+
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int size = 1024;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_ENCRYPT, &no, sizeof(no)},
+                             {CKA_VERIFY, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &size, sizeof(size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_DECRYPT, &no, sizeof(no)},
+                              {CKA_SIGN, &yes, sizeof(yes)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      arraysize(pub_attr), priv_attr,
+                                      arraysize(priv_attr), &pubh, &privh));
+  // For a software key, the sensitive attributes should exist.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(privh, &object));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+
+  // Check attributes that store TPM wrapped blob doesn't exists.
+  EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateECCWithTPM) {
@@ -1000,6 +1068,14 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithTPM) {
 
   // TPM backed key object doesn't have CKA_VALUE which stored ECC private key.
   EXPECT_FALSE(priv->IsAttributePresent(CKA_VALUE));
+
+  // Check attributes that store TPM wrapped blob exists.
+  EXPECT_TRUE(priv->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_TRUE(priv->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
+  EXPECT_FALSE(priv->GetAttributeBool(kKeyInSoftware, true));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateECCWithTPMInconsistentToken) {
@@ -1024,6 +1100,54 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithNoTPM) {
 
   // For a software key, the sensitive attributes should exist.
   EXPECT_TRUE(priv->IsAttributePresent(CKA_VALUE));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftware, false));
+
+  // Check attributes that store TPM wrapped blob doesn't exists.
+  EXPECT_FALSE(priv->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(priv->IsAttributePresent(kKeyBlobAttribute));
+}
+
+TEST_F(TestSessionWithRealObject, GenerateECCWithForceSoftware) {
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
+
+  const Object* priv = NULL;
+
+  // Create DER encoded OID of P-256 for CKA_EC_PARAMS (prime256v1 or
+  // secp256r1)
+  string ec_params = GetDERforNID(NID_X9_62_prime256v1);
+
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_ATTRIBUTE pub_attr[] = {
+      {CKA_TOKEN, &yes, sizeof(CK_BBOOL)},
+      {CKA_ENCRYPT, &no, sizeof(CK_BBOOL)},
+      {CKA_VERIFY, &yes, sizeof(CK_BBOOL)},
+      {CKA_EC_PARAMS, ConvertStringToByteBuffer(ec_params.data()),
+       ec_params.size()}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(CK_BBOOL)},
+                              {CKA_DECRYPT, &no, sizeof(CK_BBOOL)},
+                              {CKA_SIGN, &yes, sizeof(CK_BBOOL)},
+                              {kForceSoftwareAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK, session_->GenerateKeyPair(
+                        CKM_EC_KEY_PAIR_GEN, "", pub_attr, arraysize(pub_attr),
+                        priv_attr, arraysize(priv_attr), &pubh, &privh));
+  ASSERT_TRUE(session_->GetObject(privh, &priv));
+
+  // For a software key, the sensitive attributes should exist.
+  EXPECT_TRUE(priv->IsAttributePresent(CKA_VALUE));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftware, false));
+
+  // Check attributes that store TPM wrapped blob doesn't exists.
+  EXPECT_FALSE(priv->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(priv->IsAttributePresent(kKeyBlobAttribute));
 }
 
 TEST_F(TestSession, EcdsaSignWithTPM) {
@@ -1116,6 +1240,14 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
+
+  // Check attributes that store TPM wrapped blob exists.
+  EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
 }
 
 TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
@@ -1187,6 +1319,97 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
+
+  // Software key should not have TPM attributes.
+  EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+}
+
+TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
+  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
+  EXPECT_CALL(tpm_, WrapRSAKey(_, _, _, _, _, _, _)).Times(0);
+
+  crypto::ScopedBIGNUM exponent(BN_new());
+  CHECK(exponent);
+  EXPECT_TRUE(BN_set_word(exponent.get(), 0x10001));
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK(rsa);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr));
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_RSA;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  string id = "test_id";
+  string label = "test_label";
+  const BIGNUM* rsa_n;
+  const BIGNUM* rsa_e;
+  const BIGNUM* rsa_d;
+  const BIGNUM* rsa_p;
+  const BIGNUM* rsa_q;
+  const BIGNUM* rsa_dmp1;
+  const BIGNUM* rsa_dmq1;
+  const BIGNUM* rsa_iqmp;
+  RSA_get0_key(rsa.get(), &rsa_n, &rsa_e, &rsa_d);
+  RSA_get0_factors(rsa.get(), &rsa_p, &rsa_q);
+  RSA_get0_crt_params(rsa.get(), &rsa_dmp1, &rsa_dmq1, &rsa_iqmp);
+  string n = bn2bin(rsa_n);
+  string e = bn2bin(rsa_e);
+  string d = bn2bin(rsa_d);
+  string p = bn2bin(rsa_p);
+  string q = bn2bin(rsa_q);
+  string dmp1 = bn2bin(rsa_dmp1);
+  string dmq1 = bn2bin(rsa_dmq1);
+  string iqmp = bn2bin(rsa_iqmp);
+
+  CK_ATTRIBUTE private_attributes[] = {
+      {CKA_CLASS, &priv_class, sizeof(priv_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, base::data(id), id.length()},
+      {CKA_LABEL, base::data(label), label.length()},
+      {CKA_MODULUS, base::data(n), n.length()},
+      {CKA_PUBLIC_EXPONENT, base::data(e), e.length()},
+      {CKA_PRIVATE_EXPONENT, base::data(d), d.length()},
+      {CKA_PRIME_1, base::data(p), p.length()},
+      {CKA_PRIME_2, base::data(q), q.length()},
+      {CKA_EXPONENT_1, base::data(dmp1), dmp1.length()},
+      {CKA_EXPONENT_2, base::data(dmq1), dmq1.length()},
+      {CKA_COEFFICIENT, base::data(iqmp), iqmp.length()},
+      {kForceSoftwareAttribute, &true_value, sizeof(true_value)},
+  };
+
+  int handle = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->CreateObject(private_attributes,
+                                   arraysize(private_attributes), &handle));
+  // For a software key, the sensitive attributes should still exist.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(handle, &object));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
+
+  // Software key should not have TPM attributes.
+  EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
 }
 
 TEST_F(TestSessionWithRealObject, ImportECCWithTPM) {
@@ -1233,6 +1456,14 @@ TEST_F(TestSessionWithRealObject, ImportECCWithTPM) {
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_FALSE(object->IsAttributePresent(CKA_VALUE));
+
+  // Check attributes that store TPM wrapped blob exists.
+  EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
 }
 
 TEST_F(TestSessionWithRealObject, ImportECCWithNoTPM) {
@@ -1275,6 +1506,66 @@ TEST_F(TestSessionWithRealObject, ImportECCWithNoTPM) {
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_TRUE(object->IsAttributePresent(CKA_VALUE));
+
+  // Software key should not have TPM attributes.
+  EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+}
+
+TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, WrapECCKey(_, _, _, _, _, _, _, _)).Times(0);
+
+  crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_NE(key, nullptr);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_EC;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  string id = "test_id";
+  string label = "test_label";
+  string ec_params = GetECParametersAsString(key.get());
+  string private_value = bn2bin(EC_KEY_get0_private_key(key.get()));
+
+  CK_ATTRIBUTE private_attributes[] = {
+      {CKA_CLASS, &priv_class, sizeof(priv_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, base::data(id), id.length()},
+      {CKA_LABEL, base::data(label), label.length()},
+      {CKA_EC_PARAMS, base::data(ec_params), ec_params.length()},
+      {CKA_VALUE, base::data(private_value), private_value.length()},
+      {kForceSoftwareAttribute, &true_value, sizeof(true_value)},
+  };
+
+  int handle = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->CreateObject(private_attributes,
+                                   arraysize(private_attributes), &handle));
+
+  // For a software key, the sensitive attributes should still exist.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(handle, &object));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_VALUE));
+
+  // Software key should not have TPM attributes.
+  EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
 }
 
 TEST_F(TestSession, CreateObjectsNoPrivate) {

@@ -1349,11 +1349,6 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
   result = object->SetAttributes(attributes, num_attributes);
   if (result != CKR_OK)
     return result;
-  if (!copy_from_object) {
-    result = object->FinalizeNewObject();
-    if (result != CKR_OK)
-      return result;
-  }
 
   bool is_token_object = object->IsTokenObject();
   if (is_token_object) {
@@ -1362,11 +1357,14 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
       return result;
   }
 
+  // Finalize the object, whether it's new or copied.
   if (copy_from_object) {
     result = object->FinalizeCopyObject();
-    if (result != CKR_OK) {
-      return result;
-    }
+  } else {
+    result = object->FinalizeNewObject();
+  }
+  if (result != CKR_OK) {
+    return result;
   }
 
   ObjectPool* pool =
@@ -1417,7 +1415,8 @@ CK_RV SessionImpl::GenerateRSAKeyPair(Object* public_object,
   // Check if we are able to back this key with the TPM.
   if (tpm_utility_->IsTPMAvailable() && private_object->IsTokenObject() &&
       modulus_bits >= tpm_utility_->MinRSAKeyBits() &&
-      modulus_bits <= tpm_utility_->MaxRSAKeyBits()) {
+      modulus_bits <= tpm_utility_->MaxRSAKeyBits() &&
+      !private_object->GetAttributeBool(kForceSoftwareAttribute, false)) {
     // Use TPM to generate RSA key
     if (!GenerateRSAKeyPairTPM(modulus_bits, public_exponent, public_object,
                                private_object))
@@ -1538,9 +1537,10 @@ CK_RV SessionImpl::GenerateECCKeyPair(Object* public_object,
     return CKR_FUNCTION_FAILED;
   int curve_nid = EC_GROUP_get_curve_name(group);
 
-  bool is_using_tpm = tpm_utility_->IsTPMAvailable() &&
-                      private_object->IsTokenObject() &&
-                      tpm_utility_->IsECCurveSupported(curve_nid);
+  bool is_using_tpm =
+      tpm_utility_->IsTPMAvailable() && private_object->IsTokenObject() &&
+      tpm_utility_->IsECCurveSupported(curve_nid) &&
+      !private_object->GetAttributeBool(kForceSoftwareAttribute, false);
 
   bool result = false;
   if (is_using_tpm) {
@@ -2015,6 +2015,7 @@ CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
 
 CK_RV SessionImpl::WrapPrivateKey(Object* object) {
   if (!tpm_utility_->IsTPMAvailable() ||
+      object->GetAttributeBool(kForceSoftwareAttribute, false) ||
       object->GetObjectClass() != CKO_PRIVATE_KEY ||
       object->IsAttributePresent(kKeyBlobAttribute)) {
     // This object does not need to be wrapped.

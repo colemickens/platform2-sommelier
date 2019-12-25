@@ -39,6 +39,8 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
     // TPM backed key attributes.
     {kKeyBlobAttribute, true, {false, true, true}, false},
     {kAuthDataAttribute, true, {false, true, true}, false},
+    {kForceSoftwareAttribute, false, {false, true, true}, false},
+    {kKeyInSoftware, false, {true, true, true}, false},
 };
 
 ObjectPolicyPrivateKey::ObjectPolicyPrivateKey() {

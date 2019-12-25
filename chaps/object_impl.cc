@@ -69,11 +69,23 @@ CK_RV ObjectImpl::FinalizeNewObject() {
   policy_->SetDefaultAttributes();
   if (!policy_->IsObjectComplete())
     return CKR_TEMPLATE_INCOMPLETE;
+
+  if (GetObjectClass() == CKO_PRIVATE_KEY) {
+    // Set the kKeyInSoftware attribute to let the user know if it's stored in
+    // software or TPM.
+    SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
+  }
+
   stage_ = kModify;
   return CKR_OK;
 }
 
 CK_RV ObjectImpl::FinalizeCopyObject() {
+  if (GetObjectClass() == CKO_PRIVATE_KEY) {
+    // Set the kKeyInSoftware attribute to let the user know if it's stored in
+    // software or TPM.
+    SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
+  }
   stage_ = kModify;
   return CKR_OK;
 }
@@ -206,6 +218,11 @@ bool ObjectImpl::OnLoad() {
   if (!SetPolicyByClass()) {
     LOG(ERROR) << "Failed to set attribute access policy.";
     return false;
+  }
+  if (GetObjectClass() == CKO_PRIVATE_KEY) {
+    // Set the kKeyInSoftware attribute for private keys so that users knows
+    // whether the key is software backed or hardware backed.
+    SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
   }
   stage_ = kModify;
   return true;

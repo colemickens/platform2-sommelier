@@ -411,6 +411,7 @@ bool OpencryptokiImporter::ConvertToChapsFormat(AttributeMap* attributes) {
   attributes->erase(kOpencryptokiAuthData);
   (*attributes)[kKeyBlobAttribute] = tpm_wrapped_blob;
   (*attributes)[kAuthDataAttribute] = auth_data;
+  (*attributes)[kKeyInSoftware] = string(1, CK_FALSE);
   (*attributes)[kLegacyAttribute] = string(1, CK_TRUE);
   return true;
 }
