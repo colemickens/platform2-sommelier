@@ -115,7 +115,8 @@ void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
   mojo::ScopedMessagePipeHandle child_pipe =
       invitation.ExtractMessagePipe(kMidisPipe);
   midis_host_ = std::make_unique<MidisHostImpl>(
-      mojo::MakeRequest<arc::mojom::MidisHost>(std::move(child_pipe)), this);
+      mojo::InterfaceRequest<arc::mojom::MidisHost>(std::move(child_pipe)),
+      this);
 }
 
 bool ClientTracker::IsProxyConnected() {
