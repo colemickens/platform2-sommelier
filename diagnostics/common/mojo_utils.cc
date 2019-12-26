@@ -4,6 +4,8 @@
 
 #include "diagnostics/common/mojo_utils.h"
 
+#include <unistd.h>
+
 #include <cstring>
 #include <utility>
 
@@ -21,16 +23,23 @@ std::unique_ptr<base::SharedMemory> GetReadOnlySharedMemoryFromMojoHandle(
   if (result != MOJO_RESULT_OK) {
     return nullptr;
   }
-  auto shared_memory = std::make_unique<base::SharedMemory>(
-      base::SharedMemoryHandle(platform_file, true /* iauto_close */),
-      true /* read_only */);
 
-  base::SharedMemoryHandle dup_shared_memory_handle =
-      base::SharedMemory::DuplicateHandle(shared_memory->handle());
-  const int64_t file_size = base::File(dup_shared_memory_handle.fd).GetLength();
+  const int fd(HANDLE_EINTR(dup(platform_file)));
+  if (fd < 0) {
+    return nullptr;
+  }
+
+  const int64_t file_size = base::File(fd).GetLength();
   if (file_size <= 0) {
     return nullptr;
   }
+
+  auto shared_memory = std::make_unique<base::SharedMemory>(
+      base::SharedMemoryHandle(
+          base::FileDescriptor(platform_file, true /* iauto_close */),
+          file_size, base::UnguessableToken::Create()),
+      true /* read_only */);
+
   if (!shared_memory->Map(file_size)) {
     return nullptr;
   }
@@ -50,12 +59,11 @@ mojo::ScopedHandle CreateReadOnlySharedMemoryMojoHandle(
     return mojo::ScopedHandle();
   }
   memcpy(shared_memory.memory(), content.data(), content.length());
-  base::SharedMemoryHandle handle;
-  if (!shared_memory.GiveReadOnlyToProcess(base::GetCurrentProcessHandle(),
-                                           &handle)) {
+  base::SharedMemoryHandle handle = shared_memory.GetReadOnlyHandle();
+  if (!handle.IsValid()) {
     return mojo::ScopedHandle();
   }
-  return mojo::WrapPlatformFile(handle.fd);
+  return mojo::WrapPlatformFile(handle.GetHandle());
 }
 
 }  // namespace diagnostics
