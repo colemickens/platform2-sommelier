@@ -12,12 +12,12 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/unguessable_token.h>
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <dbus/power_manager/dbus-constants.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/pending_process_connection.h>
+#include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "debugd/dbus-proxies.h"
@@ -126,14 +126,14 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
   } else {
     // Create a unique token which will allow the requesting process to connect
     // to us via mojo.
-    mojo::edk::PendingProcessConnection pending_connection;
-    mojo::ScopedMessagePipeHandle pipe =
-        pending_connection.CreateMessagePipe(&token);
+    mojo::OutgoingInvitation invitation;
+    token = base::UnguessableToken::Create().ToString();
+    mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(token);
 
-    pending_connection.Connect(
-        base::kNullProcessHandle,
-        mojo::edk::ConnectionParams(mojo::edk::ScopedPlatformHandle(
-            mojo::edk::PlatformHandle(mojo_fd_copy.release()))));
+    mojo::OutgoingInvitation::Send(
+        std::move(invitation), base::kNullProcessHandle,
+        mojo::PlatformChannelEndpoint(
+            mojo::PlatformHandle(std::move(mojo_fd_copy))));
     request =
         mojo::MakeRequest<chromeos::cros_healthd::mojom::CrosHealthdService>(
             std::move(pipe));
