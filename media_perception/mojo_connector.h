@@ -20,7 +20,7 @@
 #include "media_perception/device_management.pb.h"
 #include "media_perception/media_perception_service_impl.h"
 #include "media_perception/producer_impl.h"
-#include "media_perception/receiver_impl.h"
+#include "media_perception/video_frame_handler_impl.h"
 #include "media_perception/rtanalytics.h"
 #include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception_service.mojom.h"
@@ -63,7 +63,7 @@ class MojoConnector {
   void OpenDevice(
       const std::string& device_id,
       bool force_reopen_with_settings,
-      std::shared_ptr<ReceiverImpl> receiver_impl,
+      std::shared_ptr<VideoFrameHandlerImpl> video_frame_handler_impl,
       const VideoStreamParams& capture_format,
       const VideoCaptureServiceClient::OpenDeviceCallback& callback);
 
@@ -110,7 +110,7 @@ class MojoConnector {
   void OpenDeviceOnIpcThread(
       const std::string& device_id,
       bool force_reopen_with_settings,
-      std::shared_ptr<ReceiverImpl> receiver_impl,
+      std::shared_ptr<VideoFrameHandlerImpl> video_frame_handler_impl,
       const VideoStreamParams& capture_format,
       const VideoCaptureServiceClient::OpenDeviceCallback& callback);
 

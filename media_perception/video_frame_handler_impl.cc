@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "media_perception/receiver_impl.h"
+#include "media_perception/video_frame_handler_impl.h"
 
 #include <utility>
 
@@ -10,31 +10,31 @@
 
 namespace mri {
 
-bool ReceiverImpl::HasValidCaptureFormat() {
+bool VideoFrameHandlerImpl::HasValidCaptureFormat() {
   return capture_format_.width_in_pixels() > 0
       && capture_format_.height_in_pixels() > 0;
 }
 
-void ReceiverImpl::SetCaptureFormat(const VideoStreamParams& params) {
+void VideoFrameHandlerImpl::SetCaptureFormat(const VideoStreamParams& params) {
   capture_format_ = params;
 }
 
-bool ReceiverImpl::CaptureFormatsMatch(const VideoStreamParams& params) {
+bool VideoFrameHandlerImpl::CaptureFormatsMatch(const VideoStreamParams& params) {
   return capture_format_.width_in_pixels() == params.width_in_pixels() &&
       capture_format_.height_in_pixels() == params.height_in_pixels() &&
       capture_format_.frame_rate_in_frames_per_second() ==
       params.frame_rate_in_frames_per_second();
 }
 
-VideoStreamParams ReceiverImpl::GetCaptureFormat() {
+VideoStreamParams VideoFrameHandlerImpl::GetCaptureFormat() {
   return capture_format_;
 }
 
-int ReceiverImpl::GetFrameHandlerCount() {
+int VideoFrameHandlerImpl::GetFrameHandlerCount() {
   return frame_handler_map_.size();
 }
 
-int ReceiverImpl::AddFrameHandler(
+int VideoFrameHandlerImpl::AddFrameHandler(
     VideoCaptureServiceClient::FrameHandler frame_handler) {
   frame_handler_id_counter_++;
   frame_handler_map_.insert(
@@ -42,7 +42,7 @@ int ReceiverImpl::AddFrameHandler(
   return frame_handler_id_counter_;
 }
 
-bool ReceiverImpl::RemoveFrameHandler(int frame_handler_id) {
+bool VideoFrameHandlerImpl::RemoveFrameHandler(int frame_handler_id) {
   std::map<int, VideoCaptureServiceClient::FrameHandler>::iterator it =
       frame_handler_map_.find(frame_handler_id);
   if (it == frame_handler_map_.end()) {
@@ -52,11 +52,11 @@ bool ReceiverImpl::RemoveFrameHandler(int frame_handler_id) {
   return true;
 }
 
-video_capture::mojom::ReceiverPtr ReceiverImpl::CreateInterfacePtr() {
+video_capture::mojom::VideoFrameHandlerPtr VideoFrameHandlerImpl::CreateInterfacePtr() {
   return binding_.CreateInterfacePtrAndBind();
 }
 
-void ReceiverImpl::OnNewBuffer(
+void VideoFrameHandlerImpl::OnNewBuffer(
     int32_t buffer_id, media::mojom::VideoBufferHandlePtr buffer_handle) {
   LOG(INFO) << "On new buffer";
   CHECK(buffer_handle->is_shared_memory_via_raw_file_descriptor());
@@ -75,7 +75,7 @@ void ReceiverImpl::OnNewBuffer(
       std::make_pair(buffer_id, std::move(shared_memory_provider)));
 }
 
-void ReceiverImpl::OnFrameReadyInBuffer(
+void VideoFrameHandlerImpl::OnFrameReadyInBuffer(
     int32_t buffer_id, int32_t frame_feedback_id,
     video_capture::mojom::ScopedAccessPermissionPtr permission,
     media::mojom::VideoFrameInfoPtr frame_info) {
@@ -95,31 +95,31 @@ void ReceiverImpl::OnFrameReadyInBuffer(
   }
 }
 
-void ReceiverImpl::OnFrameDropped(
+void VideoFrameHandlerImpl::OnFrameDropped(
     ::media::mojom::VideoCaptureFrameDropReason reason) {
   LOG(WARNING) << "Got call to OnFrameDropped: " << reason;
 }
 
-void ReceiverImpl::OnBufferRetired(int32_t buffer_id) {
+void VideoFrameHandlerImpl::OnBufferRetired(int32_t buffer_id) {
   incoming_buffer_id_to_buffer_map_.erase(buffer_id);
 }
 
 // The following methods are not needed to be implementated, as far as we know
 // now.
-void ReceiverImpl::OnError(::media::mojom::VideoCaptureError error) {
+void VideoFrameHandlerImpl::OnError(::media::mojom::VideoCaptureError error) {
   LOG(ERROR) << "Got call to OnError: " << error;
 }
 
-void ReceiverImpl::OnLog(const std::string& message) {
+void VideoFrameHandlerImpl::OnLog(const std::string& message) {
   LOG(INFO) << "Got call to OnLog: " << message;
 }
 
-void ReceiverImpl::OnStarted() { LOG(INFO) << "Got call to OnStarted"; }
+void VideoFrameHandlerImpl::OnStarted() { LOG(INFO) << "Got call to OnStarted"; }
 
-void ReceiverImpl::OnStartedUsingGpuDecode() {
+void VideoFrameHandlerImpl::OnStartedUsingGpuDecode() {
   LOG(INFO) << "Got call on OnStartedUsingGpuDecode";
 }
 
-void ReceiverImpl::OnStopped() { LOG(INFO) << "Got call to OnStopped"; }
+void VideoFrameHandlerImpl::OnStopped() { LOG(INFO) << "Got call to OnStopped"; }
 
 }  // namespace mri

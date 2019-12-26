@@ -15,7 +15,7 @@
 
 #include "media_perception/mojo_connector.h"
 #include "media_perception/producer_impl.h"
-#include "media_perception/receiver_impl.h"
+#include "media_perception/video_frame_handler_impl.h"
 #include "mojom/media_perception_service.mojom.h"
 
 namespace mri {
@@ -65,13 +65,13 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
 
   MojoConnector* mojo_connector_;
 
-  // Stores a map of device ids to receivers for receiving frame for the correct
+  // Stores a map of device ids to video_frame_handlers for receiving frame for the correct
   // mojo object associated with an open device.
-  std::map<std::string /*device_id*/, std::shared_ptr<ReceiverImpl>>
-      device_id_to_receiver_map_;
+  std::map<std::string /*device_id*/, std::shared_ptr<VideoFrameHandlerImpl>>
+      device_id_to_video_frame_handler_map_;
 
-  // Guards against concurrent changes to |device_id_to_receiver_map_|.
-  mutable std::mutex device_id_to_receiver_map_lock_;
+  // Guards against concurrent changes to |device_id_to_video_frame_handler_map_|.
+  mutable std::mutex device_id_to_video_frame_handler_map_lock_;
 
   // Stores a map of device ids to producers for pushing frames to the correct
   // mojo object when PushFrameToVirtualDevice is called.

@@ -47,10 +47,10 @@ void VideoCaptureServiceClientImpl::OpenDevice(
   VideoStreamParams format = Serialized<VideoStreamParams>(
       capture_format).Deserialize();
 
-  std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
-  std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
-      device_id_to_receiver_map_.find(device_id);
-  if (it != device_id_to_receiver_map_.end() &&
+  std::lock_guard<std::mutex> lock(device_id_to_video_frame_handler_map_lock_);
+  std::map<std::string, std::shared_ptr<VideoFrameHandlerImpl>>::iterator it =
+      device_id_to_video_frame_handler_map_.find(device_id);
+  if (it != device_id_to_video_frame_handler_map_.end() &&
       it->second->HasValidCaptureFormat()) {
     LOG(INFO) << "Device with " << device_id << " already open.";
     SerializedVideoStreamParams current_format =
@@ -73,16 +73,16 @@ void VideoCaptureServiceClientImpl::OpenDevice(
     return;
   }
 
-  std::shared_ptr<ReceiverImpl> receiver_impl;
-  if (it != device_id_to_receiver_map_.end()) {
-    receiver_impl = it->second;
-  } else {  // Create receiver if it doesn't exist.
-    receiver_impl = std::make_shared<ReceiverImpl>();
+  std::shared_ptr<VideoFrameHandlerImpl> video_frame_handler_impl;
+  if (it != device_id_to_video_frame_handler_map_.end()) {
+    video_frame_handler_impl = it->second;
+  } else {  // Create video_frame_handler if it doesn't exist.
+    video_frame_handler_impl = std::make_shared<VideoFrameHandlerImpl>();
   }
-  device_id_to_receiver_map_.insert(
-      std::make_pair(device_id, receiver_impl));
+  device_id_to_video_frame_handler_map_.insert(
+      std::make_pair(device_id, video_frame_handler_impl));
   mojo_connector_->OpenDevice(
-      device_id, force_reopen_with_settings, receiver_impl, format,
+      device_id, force_reopen_with_settings, video_frame_handler_impl, format,
       std::bind(&VideoCaptureServiceClientImpl::OnOpenDeviceCallback,
                 this, callback, std::placeholders::_1,
                 std::placeholders::_2, std::placeholders::_3));
@@ -96,10 +96,10 @@ void VideoCaptureServiceClientImpl::OnOpenDeviceCallback(
   VideoStreamParams format = Serialized<VideoStreamParams>(
       params).Deserialize();
   {
-    std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
-    std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
-        device_id_to_receiver_map_.find(device_id);
-    if (it != device_id_to_receiver_map_.end() &&
+    std::lock_guard<std::mutex> lock(device_id_to_video_frame_handler_map_lock_);
+    std::map<std::string, std::shared_ptr<VideoFrameHandlerImpl>>::iterator it =
+        device_id_to_video_frame_handler_map_.find(device_id);
+    if (it != device_id_to_video_frame_handler_map_.end() &&
         code != CreatePushSubscriptionResultCode::FAILED) {
       it->second->SetCaptureFormat(format);
     }
@@ -110,10 +110,10 @@ void VideoCaptureServiceClientImpl::OnOpenDeviceCallback(
 bool VideoCaptureServiceClientImpl::IsVideoCaptureStartedForDevice(
     const std::string& device_id,
     SerializedVideoStreamParams* capture_format) {
-  std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
-  std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
-      device_id_to_receiver_map_.find(device_id);
-  bool capture_started = it != device_id_to_receiver_map_.end() &&
+  std::lock_guard<std::mutex> lock(device_id_to_video_frame_handler_map_lock_);
+  std::map<std::string, std::shared_ptr<VideoFrameHandlerImpl>>::iterator it =
+      device_id_to_video_frame_handler_map_.find(device_id);
+  bool capture_started = it != device_id_to_video_frame_handler_map_.end() &&
       it->second->HasValidCaptureFormat();
   if (capture_started) {
     *capture_format = Serialized<VideoStreamParams>(
@@ -125,13 +125,13 @@ bool VideoCaptureServiceClientImpl::IsVideoCaptureStartedForDevice(
 int VideoCaptureServiceClientImpl::AddFrameHandler(
     const std::string& device_id,
     FrameHandler handler) {
-  std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
+  std::lock_guard<std::mutex> lock(device_id_to_video_frame_handler_map_lock_);
 
-  std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
-      device_id_to_receiver_map_.find(device_id);
-  if (it != device_id_to_receiver_map_.end()) {
+  std::map<std::string, std::shared_ptr<VideoFrameHandlerImpl>>::iterator it =
+      device_id_to_video_frame_handler_map_.find(device_id);
+  if (it != device_id_to_video_frame_handler_map_.end()) {
     if (it->second->GetFrameHandlerCount() == 0) {
-      // If no frame handlers exist for receiver, need to activate video
+      // If no frame handlers exist for video_frame_handler, need to activate video
       // device.
       if (!mojo_connector_->ActivateDevice(device_id)) {
         // Failed to activate the device.
@@ -145,21 +145,21 @@ int VideoCaptureServiceClientImpl::AddFrameHandler(
 
 bool VideoCaptureServiceClientImpl::RemoveFrameHandler(
     const std::string& device_id, int frame_handler_id) {
-  std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
-  std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
-      device_id_to_receiver_map_.find(device_id);
+  std::lock_guard<std::mutex> lock(device_id_to_video_frame_handler_map_lock_);
+  std::map<std::string, std::shared_ptr<VideoFrameHandlerImpl>>::iterator it =
+      device_id_to_video_frame_handler_map_.find(device_id);
 
-  if (it == device_id_to_receiver_map_.end()) {
-    // Receiver does not exist. Ensure that the device is removed as well.
+  if (it == device_id_to_video_frame_handler_map_.end()) {
+    // VideoFrameHandler does not exist. Ensure that the device is removed as well.
     mojo_connector_->StopVideoCapture(device_id);
     return false;
   }
 
-  // Receiver does exist.
+  // VideoFrameHandler does exist.
   bool success = it->second->RemoveFrameHandler(frame_handler_id);
   if (it->second->GetFrameHandlerCount() == 0) {
-    // Remove the receiver object.
-    device_id_to_receiver_map_.erase(device_id);
+    // Remove the video_frame_handler object.
+    device_id_to_video_frame_handler_map_.erase(device_id);
     // Stop video capture on the device.
     mojo_connector_->StopVideoCapture(device_id);
   }

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEDIA_PERCEPTION_RECEIVER_IMPL_H_
-#define MEDIA_PERCEPTION_RECEIVER_IMPL_H_
+#ifndef MEDIA_PERCEPTION_VIDEO_FRAME_HANDLER_IMPL_H_
+#define MEDIA_PERCEPTION_VIDEO_FRAME_HANDLER_IMPL_H_
 
 #include <base/memory/shared_memory.h>
 #include <map>
@@ -19,9 +19,9 @@
 
 namespace mri {
 
-class ReceiverImpl : public video_capture::mojom::Receiver {
+class VideoFrameHandlerImpl : public video_capture::mojom::VideoFrameHandler {
  public:
-  ReceiverImpl() :
+  VideoFrameHandlerImpl() :
     frame_handler_id_counter_(0),
     binding_(this) {}
 
@@ -34,10 +34,10 @@ class ReceiverImpl : public video_capture::mojom::Receiver {
   // Checks if the frame dimensions match the current dimensions.
   bool CaptureFormatsMatch(const VideoStreamParams& params);
 
-  // Creates a local proxy of the ReceiverPtr interface.
-  video_capture::mojom::ReceiverPtr CreateInterfacePtr();
+  // Creates a local proxy of the VideoFrameHandlerPtr interface.
+  video_capture::mojom::VideoFrameHandlerPtr CreateInterfacePtr();
 
-  // Returns the count of active frame handlers on this receiver.
+  // Returns the count of active frame handlers on this handler.
   int GetFrameHandlerCount();
 
   // Add a handler that will be called when new frames come from the associated
@@ -48,7 +48,7 @@ class ReceiverImpl : public video_capture::mojom::Receiver {
   // if the removal was successful.
   bool RemoveFrameHandler(int frame_handler_id);
 
-  // video_capture::mojom::Receiver overrides.
+  // video_capture::mojom::VideoFrameHandler overrides.
   void OnNewBuffer(int32_t buffer_id,
                    media::mojom::VideoBufferHandlePtr buffer_handle) override;
   void OnFrameReadyInBuffer(
@@ -72,7 +72,7 @@ class ReceiverImpl : public video_capture::mojom::Receiver {
   std::map<int, VideoCaptureServiceClient::FrameHandler> frame_handler_map_;
 
   // Binding of the Recevier interface to message pipe.
-  mojo::Binding<video_capture::mojom::Receiver> binding_;
+  mojo::Binding<video_capture::mojom::VideoFrameHandler> binding_;
 
   // Stores the capture format requested from the open device.
   VideoStreamParams capture_format_;
@@ -83,4 +83,4 @@ class ReceiverImpl : public video_capture::mojom::Receiver {
 
 }  // namespace mri
 
-#endif  // MEDIA_PERCEPTION_RECEIVER_IMPL_H_
+#endif  // MEDIA_PERCEPTION_VIDEO_FRAME_HANDLER_IMPL_H_
