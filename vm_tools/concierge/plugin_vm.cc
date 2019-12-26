@@ -679,7 +679,6 @@ bool PluginVm::Start(uint32_t cpus,
       "/dev/log:/dev/log:true",
       "/dev/udmabuf:/dev/udmabuf:true",
       "/lib64:/lib64:false",
-      "/proc:/proc:false",
       "/run/camera:/run/camera:true",
       "/run/cups_proxy:/run/cups:true",
       // TODO(b:127478233) replace with CRAS proxy socket directory when ready.
