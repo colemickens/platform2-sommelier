@@ -125,7 +125,7 @@ class DlcServiceTest : public testing::Test {
         std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>();
     mock_update_engine_proxy_ptr_ = mock_update_engine_proxy_.get();
     EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-                RegisterStatusUpdateAdvancedSignalHandler(_, _))
+                DoRegisterStatusUpdateAdvancedSignalHandler(_, _))
         .Times(1);
   }
 
