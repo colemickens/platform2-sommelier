@@ -117,13 +117,24 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                                 int /*timeout_ms*/) override {
     LOG(WARNING) << "AllTheWayUpToElevenAsync(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
   }
-  MOCK_METHOD2(RegisterCloserSignalHandler,
+  void RegisterCloserSignalHandler(
+    const base::Closure& signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    DoRegisterCloserSignalHandler(signal_callback, &on_connected_callback);
+  }
+  MOCK_METHOD2(DoRegisterCloserSignalHandler,
                void(const base::Closure& /*signal_callback*/,
-                    dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));
-  MOCK_METHOD2(RegisterTheCurseOfKaZarSignalHandler,
+                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+  void RegisterTheCurseOfKaZarSignalHandler(
+    const base::Callback<void(const std::vector<std::string>&,
+                              uint8_t)>& signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    DoRegisterTheCurseOfKaZarSignalHandler(signal_callback, &on_connected_callback);
+  }
+  MOCK_METHOD2(DoRegisterTheCurseOfKaZarSignalHandler,
                void(const base::Callback<void(const std::vector<std::string>&,
                                               uint8_t)>& /*signal_callback*/,
-                    dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));
+                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 

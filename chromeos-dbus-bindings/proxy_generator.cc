@@ -912,23 +912,42 @@ void ProxyGenerator::AddSignalHandlerRegistrationMock(
     const Interface::Signal& signal,
     IndentedText* text) {
   IndentedText callback_arg_text;
+  IndentedText callback_arg_real;
   AddSignalCallbackArg(signal, true, &callback_arg_text);
+  AddSignalCallbackArg(signal, false, &callback_arg_real);
   vector<string> arg_lines = callback_arg_text.GetLines();
 
-  IndentedText block;
-  block.AddLineAndPushOffsetTo(
-      StringPrintf("MOCK_METHOD2(Register%sSignalHandler,",
+  IndentedText wrapperBlock;
+  wrapperBlock.AddLine(
+      StringPrintf("void Register%sSignalHandler(", signal.name.c_str()));
+  wrapperBlock.PushOffset(2);
+  wrapperBlock.AddBlock(callback_arg_real);
+  wrapperBlock.AddLine(
+      "dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {");
+  wrapperBlock.PopOffset();
+  wrapperBlock.PushOffset(2);
+  wrapperBlock.AddLine(StringPrintf(
+      "DoRegister%sSignalHandler(signal_callback, &on_connected_callback);",
+      signal.name.c_str()));
+  wrapperBlock.PopOffset();
+  wrapperBlock.AddLine("}");
+
+  IndentedText mockBlock;
+  mockBlock.AddLineAndPushOffsetTo(
+      StringPrintf("MOCK_METHOD2(DoRegister%sSignalHandler,",
                    signal.name.c_str()),
       1, '(');
   for (size_t i = 0; i < arg_lines.size(); ++i) {
     if (i == 0)
-      block.AddLineAndPushOffsetTo("void(" + arg_lines[i], 1, '(');
+      mockBlock.AddLineAndPushOffsetTo("void(" + arg_lines[i], 1, '(');
     else
-      block.AddLine(arg_lines[i]);
+      mockBlock.AddLine(arg_lines[i]);
   }
-  block.AddLine(
-      "dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));");
-  text->AddBlock(block);
+  mockBlock.AddLine(
+      "dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));");
+
+  text->AddBlock(wrapperBlock);
+  text->AddBlock(mockBlock);
 }
 
 void ProxyGenerator::AddSignalCallbackArg(const Interface::Signal& signal,
