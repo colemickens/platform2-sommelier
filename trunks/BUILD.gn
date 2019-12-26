@@ -219,7 +219,10 @@ static_library("trunks_test") {
 
 if (use.test) {
   pkg_config("trunks_testrunner_pkg_deps") {
-    pkg_deps = [ "libpower_manager-client-test" ]
+    pkg_deps = [
+      "libpower_manager-client-test",
+      "libchrome-test-${libbase_ver}",
+    ]
   }
   executable("trunks_testrunner") {
     configs += [

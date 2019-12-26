@@ -5,15 +5,17 @@
 #include "trunks/power_manager.h"
 
 #include <string>
+#include <utility>
 
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/message_lite.h>
 #include <gtest/gtest.h>
 #include <power_manager/dbus-proxy-mocks.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
+#include "trunks/dbus_interface.h"
 #include "trunks/mock_command_transceiver.h"
-#include "trunks/mock_dbus_object_proxy.h"
 #include "trunks/mock_resource_manager.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -24,13 +26,13 @@ using testing::Return;
 using testing::StrictMock;
 
 using MessageCallback = base::Callback<void(const std::vector<uint8_t>&)>;
-using ConnectedCallback = base::Callback<void (const std::string&,
-                                               const std::string&, bool)>;
+using ConnectedCallback = dbus::ObjectProxy::OnConnectedCallback;
 using ErrorCallback = base::Callback<void(brillo::Error*)>;
 using SuccessCallback = base::Callback<void()>;
 using NameOwnerChangedCallback = base::Callback<void(const std::string&,
                                                      const std::string&)>;
-using ServiceAvailableCallback = base::Callback<void(bool)>;
+using ServiceAvailableCallback =
+    dbus::ObjectProxy::WaitForServiceToBeAvailableCallback;
 
 namespace {
 
@@ -79,34 +81,33 @@ class PowerManagerTest : public testing::Test {
   }
 
   void SetUp() override {
-    ON_CALL(proxy_, RegisterSuspendDoneSignalHandler(_, _))
+    ON_CALL(proxy_, DoRegisterSuspendDoneSignalHandler(_, _))
         .WillByDefault(Invoke(
-            [this](const MessageCallback& signal,
-                   const ConnectedCallback& connected) {
+            [this](MessageCallback signal, ConnectedCallback* connected) {
               suspend_done_.name = kSuspendDoneSignal;
               suspend_done_.on_signal = signal;
-              suspend_done_.on_connected = connected;
+              suspend_done_.on_connected = std::move(*connected);
             }));
-    ON_CALL(proxy_, RegisterSuspendImminentSignalHandler(_, _))
+    ON_CALL(proxy_, DoRegisterSuspendImminentSignalHandler(_, _))
+        .WillByDefault(Invoke([this](const MessageCallback& signal,
+                                     ConnectedCallback* connected) {
+          suspend_imminent_.name = kSuspendImminentSignal;
+          suspend_imminent_.on_signal = signal;
+          suspend_imminent_.on_connected = std::move(*connected);
+        }));
+    ON_CALL(proxy_, DoRegisterDarkSuspendImminentSignalHandler(_, _))
+        .WillByDefault(Invoke([this](const MessageCallback& signal,
+                                     ConnectedCallback* connected) {
+          dark_suspend_imminent_.name = kDarkSuspendImminentSignal;
+          dark_suspend_imminent_.on_signal = signal;
+          dark_suspend_imminent_.on_connected = std::move(*connected);
+        }));
+    ON_CALL(*object_proxy_, MIGRATE_WaitForServiceToBeAvailable(_))
         .WillByDefault(Invoke(
-            [this](const MessageCallback& signal,
-                   const ConnectedCallback& connected) {
-              suspend_imminent_.name = kSuspendImminentSignal;
-              suspend_imminent_.on_signal = signal;
-              suspend_imminent_.on_connected = connected;
-            }));
-    ON_CALL(proxy_, RegisterDarkSuspendImminentSignalHandler(_, _))
-        .WillByDefault(Invoke(
-            [this](const MessageCallback& signal,
-                   const ConnectedCallback& connected) {
-              dark_suspend_imminent_.name = kDarkSuspendImminentSignal;
-              dark_suspend_imminent_.on_signal = signal;
-              dark_suspend_imminent_.on_connected = connected;
-            }));
-    ON_CALL(*object_proxy_, WaitForServiceToBeAvailable(_))
-        .WillByDefault(Invoke(
-            [this](const ServiceAvailableCallback& cb) {
-              service_available_ = cb;
+            [this](
+                ServiceAvailableCallback MIGRATE_WrapObjectProxyCallback(cb)) {
+              service_available_ =
+                  std::move(MIGRATE_WrapObjectProxyCallback(cb));
             }));
     ON_CALL(*object_proxy_, SetNameOwnerChangedCallback(_))
         .WillByDefault(Invoke(
@@ -131,8 +132,9 @@ class PowerManagerTest : public testing::Test {
     Signal* signal = dark ? &dark_suspend_imminent_ : &suspend_imminent_;
     SendMessage(signal->on_signal, message);
   }
-  void ConnectSignal(const Signal* signal, bool success = true) {
-    signal->on_connected.Run(kPowerManagerInterface, signal->name, success);
+  void ConnectSignal(Signal* signal, bool success = true) {
+    std::move(signal->on_connected)
+        .Run(kPowerManagerInterface, signal->name, success);
   }
   void ConnectAllSignals() {
     ConnectSignal(&suspend_done_);
@@ -142,7 +144,7 @@ class PowerManagerTest : public testing::Test {
   void ServiceAvailable(bool available = true) {
     EXPECT_CALL(*object_proxy_, SetNameOwnerChangedCallback(_))
         .Times(available ? 1 : 0);
-    service_available_.Run(available);
+    std::move(service_available_).Run(available);
   }
   void ServiceLost() {
     name_owner_changed_.Run("some_owner", std::string());
@@ -225,13 +227,11 @@ class PowerManagerTest : public testing::Test {
   }
 
   void Init() {
-    EXPECT_CALL(proxy_, RegisterSuspendDoneSignalHandler(_, _))
+    EXPECT_CALL(proxy_, DoRegisterSuspendDoneSignalHandler(_, _)).Times(1);
+    EXPECT_CALL(proxy_, DoRegisterSuspendImminentSignalHandler(_, _)).Times(1);
+    EXPECT_CALL(proxy_, DoRegisterDarkSuspendImminentSignalHandler(_, _))
         .Times(1);
-    EXPECT_CALL(proxy_, RegisterSuspendImminentSignalHandler(_, _))
-        .Times(1);
-    EXPECT_CALL(proxy_, RegisterDarkSuspendImminentSignalHandler(_, _))
-        .Times(1);
-    EXPECT_CALL(*object_proxy_, WaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*object_proxy_, MIGRATE_WaitForServiceToBeAvailable(_))
         .Times(1);
     power_manager_.Init(ignored_bus_);
   }
@@ -264,9 +264,10 @@ class PowerManagerTest : public testing::Test {
   }
 
  protected:
-  using MockDBusObjectProxyType = StrictMock<MockDBusObjectProxy>;
+  using MockDBusObjectProxyType = StrictMock<dbus::MockObjectProxy>;
   scoped_refptr<MockDBusObjectProxyType> object_proxy_ =
-      new MockDBusObjectProxyType();
+      new MockDBusObjectProxyType(
+          nullptr, "", dbus::ObjectPath(trunks::kTrunksServicePath));
   org::chromium::PowerManagerProxyMock proxy_;
   TrunksFactoryForTest factory_;
   StrictMock<MockCommandTransceiver> transceiver_;

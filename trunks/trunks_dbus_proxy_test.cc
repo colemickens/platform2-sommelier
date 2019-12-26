@@ -6,13 +6,16 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/threading/thread.h>
+#include <dbus/mock_object_proxy.h>  // To introduce migrate macro only. TODO(crbug.com/909719): remove after libchrome uprev
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
 #include "trunks/interface.pb.h"
 #include "trunks/mock_dbus_bus.h"
@@ -25,7 +28,9 @@ namespace {
 
 class FakeObjectProxy : public dbus::ObjectProxy {
  public:
-  FakeObjectProxy() : dbus::ObjectProxy(nullptr, "", dbus::ObjectPath(), 0) {}
+  FakeObjectProxy()
+      : dbus::ObjectProxy(
+            nullptr, "", dbus::ObjectPath(trunks::kTrunksServicePath), 0) {}
 
   void CallMethodWithErrorCallback(
       dbus::MethodCall* method_call,
@@ -36,14 +41,14 @@ class FakeObjectProxy : public dbus::ObjectProxy {
     std::unique_ptr<dbus::Response> response =
         CallMethodAndBlockWithErrorDetails(method_call, timeout_ms, &error);
     if (response) {
-      callback.Run(response.get());
+      std::move(callback).Run(response.get());
     } else {
       method_call->SetSerial(1);
       std::unique_ptr<dbus::ErrorResponse> error_response =
           dbus::ErrorResponse::FromMethodCall(method_call,
                                               "org.MyError",
                                               "Error message");
-      error_callback.Run(error_response.get());
+      std::move(error_callback).Run(error_response.get());
     }
   }
 
