@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <limits>
+#include <map>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -20,6 +21,8 @@
 #include "mojo/cros_camera_enum.mojom.h"
 
 namespace {
+
+constexpr int32_t kMinFps = 1;
 
 class MetadataUpdater {
  public:
@@ -78,6 +81,17 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& static_metadata,
   // MetadataBase::operator= will make a copy of camera_metadata_t.
   static_metadata_ = &static_metadata;
   request_template_ = &request_template;
+
+  max_supported_fps_ = 0;
+  for (const auto& format : supported_formats) {
+    for (const float& frame_rate : format.frame_rates) {
+      // Since the |frame_rate| is a float, we need to round here.
+      int fps = std::round(frame_rate);
+      if (fps > max_supported_fps_) {
+        max_supported_fps_ = fps;
+      }
+    }
+  }
 
   // camera3_request_template_t starts at 1.
   for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
@@ -262,11 +276,9 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   std::vector<int64_t> stall_durations;
 
   // The min fps <= 15 must be supported in CTS.
-  const int32_t kMinFpsMax = 1;
   const int64_t kOneSecOfNanoUnit = 1000000000LL;
   int32_t max_fps = std::numeric_limits<int32_t>::min();
-  int32_t min_fps = kMinFpsMax;
-  int64_t max_frame_duration = kOneSecOfNanoUnit / min_fps;
+  int64_t max_frame_duration = kOneSecOfNanoUnit / kMinFps;
   std::set<int32_t> supported_fps;
 
   std::vector<int> hal_formats{HAL_PIXEL_FORMAT_BLOB,
@@ -373,7 +385,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   MetadataUpdater update_static(static_metadata);
   MetadataUpdater update_request(request_metadata);
 
-  // The document in aeAvailableTargetFpsRanges section says the min_fps should
+  // The document in aeAvailableTargetFpsRanges section says the min fps should
   // not be larger than 15.
   // We enumerate all possible fps and put (min, fps) as available fps range. If
   // the device support constant frame rate, put (fps, fps) into the list as
@@ -383,7 +395,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   std::vector<int32_t> available_fps_ranges;
 
   for (auto fps : supported_fps) {
-    available_fps_ranges.push_back(min_fps);
+    available_fps_ranges.push_back(kMinFps);
     available_fps_ranges.push_back(fps);
 
     if (support_constant_framerate) {
@@ -393,9 +405,6 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   }
   update_static(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
                 available_fps_ranges);
-  update_request(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
-                 std::vector<int32_t>{max_fps, max_fps});
-
   update_static(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
                 stream_configurations);
   update_static(ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
@@ -835,6 +844,8 @@ int MetadataHandler::FillDefaultPreviewSettings(
   // android.control
   update_request(ANDROID_CONTROL_CAPTURE_INTENT,
                  ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW);
+  update_request(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
+                 std::vector<int32_t>{kMinFps, max_supported_fps_});
 
   update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;
@@ -851,6 +862,8 @@ int MetadataHandler::FillDefaultStillCaptureSettings(
   // android.control
   update_request(ANDROID_CONTROL_CAPTURE_INTENT,
                  ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE);
+  update_request(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
+                 std::vector<int32_t>{kMinFps, max_supported_fps_});
 
   update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;
@@ -863,6 +876,8 @@ int MetadataHandler::FillDefaultVideoRecordSettings(
   // android.control
   update_request(ANDROID_CONTROL_CAPTURE_INTENT,
                  ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
+  update_request(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
+                 std::vector<int32_t>{max_supported_fps_, max_supported_fps_});
 
   update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;
@@ -875,6 +890,8 @@ int MetadataHandler::FillDefaultVideoSnapshotSettings(
   // android.control
   update_request(ANDROID_CONTROL_CAPTURE_INTENT,
                  ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT);
+  update_request(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
+                 std::vector<int32_t>{max_supported_fps_, max_supported_fps_});
 
   update_request(ANDROID_CONTROL_MODE, ANDROID_CONTROL_MODE_AUTO);
   return 0;

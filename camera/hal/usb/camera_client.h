@@ -247,6 +247,12 @@ class CameraClient {
     // Used to notify caller that all requests are handled.
     void FlushDone(const base::Callback<void(int)>& callback);
 
+    // Resolved to a supported frame rate within the given target fps range in
+    // |metadata|. If it fails, try the one that is closest to the target range.
+    // If there are two candidates, choose the larger one.
+    int ResolvedFrameRateFromMetadata(const android::CameraMetadata& metadata,
+                                      Size resolution);
+
     // Variables from CameraClient:
 
     const int device_id_;

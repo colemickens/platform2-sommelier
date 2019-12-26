@@ -106,6 +106,8 @@ class MetadataHandler {
 
   bool af_trigger_;
 
+  int max_supported_fps_;
+
   // Sensor handler to get sensor related metadata.
   std::unique_ptr<SensorHandler> sensor_handler_;
 };

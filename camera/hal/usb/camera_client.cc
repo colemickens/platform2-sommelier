@@ -5,6 +5,7 @@
 
 #include "hal/usb/camera_client.h"
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -20,17 +21,6 @@
 #include "hal/usb/camera_hal_device_ops.h"
 #include "hal/usb/quirks.h"
 #include "hal/usb/stream_format.h"
-
-namespace {
-int GetFrameRateFromMetadata(const android::CameraMetadata& metadata) {
-  if (!metadata.exists(ANDROID_CONTROL_AE_TARGET_FPS_RANGE)) {
-    return 0;
-  }
-  camera_metadata_ro_entry entry =
-      metadata.find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
-  return entry.data.i32[1];
-}
-}  // namespace
 
 namespace cros {
 
@@ -655,7 +645,8 @@ void CameraClient::RequestHandler::HandleRequest(
     }
   }
 
-  int target_frame_rate = GetFrameRateFromMetadata(*metadata);
+  int target_frame_rate =
+      ResolvedFrameRateFromMetadata(*metadata, new_resolution);
   bool should_update_frame_rate =
       target_frame_rate != device_->GetFrameRate() &&
       IsValidFrameRate(target_frame_rate);
@@ -1192,6 +1183,45 @@ void CameraClient::RequestHandler::FlushDone(
     base::AutoLock l(flush_lock_);
     flush_started_ = false;
   }
+}
+
+int CameraClient::RequestHandler::ResolvedFrameRateFromMetadata(
+    const android::CameraMetadata& metadata, Size resolution) {
+  DCHECK(metadata.exists(ANDROID_CONTROL_AE_TARGET_FPS_RANGE));
+
+  int resolved_fps = 0;
+
+  const SupportedFormat* format = FindFormatByResolution(
+      qualified_formats_, resolution.width, resolution.height);
+  if (format == nullptr) {
+    LOGFID(ERROR, device_id_)
+        << "Cannot find resolution in supported list: width "
+        << resolution.width << ", height " << resolution.height;
+    return resolved_fps;
+  }
+
+  camera_metadata_ro_entry entry =
+      metadata.find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
+  int target_min_fps = entry.data.i32[0];
+  int target_max_fps = entry.data.i32[1];
+  int min_diff = std::numeric_limits<int>::max();
+  for (const float& frame_rate : format->frame_rates) {
+    int fps = std::round(frame_rate);
+    int diff_to_max = std::max(0, fps - target_max_fps);
+    int diff_to_min = std::max(0, target_min_fps - fps);
+    int diff = diff_to_max > 0 ? diff_to_max : diff_to_min;
+    if (diff < min_diff || (diff == min_diff && fps > resolved_fps)) {
+      resolved_fps = fps;
+      min_diff = diff;
+    }
+  }
+  if (min_diff > 0) {
+    LOGFID(WARNING, device_id_)
+        << "Cannot resolve to a valid frame rate within the target range ("
+        << target_min_fps << ", " << target_max_fps
+        << "). Resolved to:  " << resolved_fps;
+  }
+  return resolved_fps;
 }
 
 }  // namespace cros
