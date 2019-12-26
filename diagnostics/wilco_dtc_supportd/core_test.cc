@@ -41,6 +41,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/bindings/interface_ptr.h>
+#include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "diagnostics/common/bind_utils.h"
 #include "diagnostics/common/file_test_utils.h"
@@ -369,7 +370,8 @@ class StartedCoreTest : public CoreTest {
               // |mojo_service_interface_ptr_|.
               auto mojo_service_factory_binding = std::make_unique<
                   mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>(
-                  mojo_service_factory, &mojo_service_factory_interface_ptr_);
+                  mojo_service_factory,
+                  mojo::MakeRequest(&mojo_service_factory_interface_ptr_));
               DCHECK(mojo_service_factory_interface_ptr_);
               return mojo_service_factory_binding.release();
             }));

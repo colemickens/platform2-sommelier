@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <mojo/core/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
@@ -51,7 +52,9 @@ CoreDelegateImpl::BindMojoServiceFactory(
   }
 
   return std::make_unique<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>(
-      mojo_service_factory, std::move(mojo_pipe_handle));
+      mojo_service_factory,
+      mojo::InterfaceRequest<MojomWilcoDtcSupportdServiceFactory>(
+          std::move(mojo_pipe_handle)));
 }
 
 void CoreDelegateImpl::BeginDaemonShutdown() {

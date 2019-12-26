@@ -17,6 +17,7 @@
 #include <dbus/object_path.h>
 #include <dbus/power_manager/dbus-constants.h>
 #include <mojo/core/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 #include <mojo/public/cpp/system/invitation.h>
 
@@ -119,10 +120,9 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
     mojo::IncomingInvitation invitation =
         mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
-    request =
-        mojo::MakeRequest<chromeos::cros_healthd::mojom::CrosHealthdService>(
-            invitation.ExtractMessagePipe(
-                kCrosHealthdMojoConnectionChannelToken));
+    request = mojo::InterfaceRequest<
+        chromeos::cros_healthd::mojom::CrosHealthdService>(
+        invitation.ExtractMessagePipe(kCrosHealthdMojoConnectionChannelToken));
   } else {
     // Create a unique token which will allow the requesting process to connect
     // to us via mojo.
@@ -134,9 +134,8 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
         std::move(invitation), base::kNullProcessHandle,
         mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
-    request =
-        mojo::MakeRequest<chromeos::cros_healthd::mojom::CrosHealthdService>(
-            std::move(pipe));
+    request = mojo::InterfaceRequest<
+        chromeos::cros_healthd::mojom::CrosHealthdService>(std::move(pipe));
   }
   mojo_service_->AddBinding(std::move(request));
 

@@ -18,6 +18,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/bindings/interface_ptr.h>
+#include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/buffer.h>
 
 #include "diagnostics/common/mojo_utils.h"
@@ -73,7 +74,7 @@ class MojoServiceTest : public testing::Test {
     MojomWilcoDtcSupportdClientPtr mojo_client_interface_ptr;
     mojo_client_binding_ =
         std::make_unique<mojo::Binding<MojomWilcoDtcSupportdClient>>(
-            &mojo_client_, &mojo_client_interface_ptr);
+            &mojo_client_, mojo::MakeRequest(&mojo_client_interface_ptr));
     DCHECK(mojo_client_interface_ptr);
 
     service_ = std::make_unique<MojoService>(
