@@ -90,8 +90,9 @@ void CheckContainerStartedSignalForPluginVm(dbus::Signal* signal) {
   CheckContainerStartedSignal(signal, "penguin");
 }
 
-dbus::Response* CheckSetHostnameIpMappingMethod(dbus::MethodCall* method_call,
-                                                int timeout_ms) {
+MIGRATE_WrapObjectProxyResponseType(dbus::Response)
+    CheckSetHostnameIpMappingMethod(dbus::MethodCall* method_call,
+                                    int timeout_ms) {
   CHECK_EQ(method_call->GetMessageType(), dbus::Message::MESSAGE_METHOD_CALL);
   CHECK_EQ(method_call->GetInterface(), crosdns::kCrosDnsInterfaceName);
   CHECK_EQ(method_call->GetMember(), crosdns::kSetHostnameIpMappingMethod);
@@ -110,7 +111,8 @@ dbus::Response* CheckSetHostnameIpMappingMethod(dbus::MethodCall* method_call,
 
   // MockObjectProxy will take ownership of the created Response object. See
   // comments in MockObjectProxy.
-  return dbus::Response::CreateEmpty().release();
+  return MIGRATE_WrapObjectProxyResponseConversion(
+      dbus::Response::CreateEmpty());
 }
 
 }  // namespace
@@ -179,11 +181,12 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
        {mock_vm_applications_service_proxy_, mock_url_handler_service_proxy_,
         mock_chunneld_service_proxy_, mock_crosdns_service_proxy_,
         mock_concierge_service_proxy_}) {
-    EXPECT_CALL(*object_proxy, MockCallMethodAndBlockWithErrorDetails(_, _, _))
+    EXPECT_CALL(*object_proxy,
+                MIGRATE_MockCallMethodAndBlockWithErrorDetails(_, _, _))
         .Times(0);
-    EXPECT_CALL(*object_proxy, MockCallMethodAndBlock(_, _)).Times(0);
-    EXPECT_CALL(*object_proxy, CallMethod(_, _, _)).Times(0);
-    EXPECT_CALL(*object_proxy, CallMethodWithErrorCallback(_, _, _, _))
+    EXPECT_CALL(*object_proxy, MIGRATE_MockCallMethodAndBlock(_, _)).Times(0);
+    EXPECT_CALL(*object_proxy, MIGRATE_CallMethod(_, _, _)).Times(0);
+    EXPECT_CALL(*object_proxy, MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
         .Times(0);
   }
 }
@@ -398,7 +401,7 @@ void ServiceTestingHelper::SetUpDefaultVmAndContainer() {
               SendSignal(HasMethodName(kContainerStartedSignal)))
       .WillOnce(Invoke(&CheckContainerStartedSignalForDefaultVm));
   EXPECT_CALL(*mock_crosdns_service_proxy_,
-              MockCallMethodAndBlock(
+              MIGRATE_MockCallMethodAndBlock(
                   HasMethodName(crosdns::kSetHostnameIpMappingMethod), _))
       .WillOnce(Invoke(&CheckSetHostnameIpMappingMethod));
 
@@ -537,9 +540,12 @@ bool ServiceTestingHelper::StoreDBusCallback(
 }
 
 void ServiceTestingHelper::CallServiceAvailableCallback(
-    dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) {
+    dbus::ObjectProxy::WaitForServiceToBeAvailableCallback
+        MIGRATE_WrapObjectProxyCallback(callback)) {
   CHECK(dbus_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(std::move(callback), true)));
+      FROM_HERE,
+      base::BindOnce(std::move(MIGRATE_WrapObjectProxyCallback(callback)),
+                     true)));
 }
 
 void ServiceTestingHelper::SetupDBus(MockType mock_type) {
@@ -552,47 +558,48 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
   CHECK(dbus_thread_.StartWithOptions(dbus_thread_options));
 
   dbus::Bus::Options opts;
+  constexpr char kFakeServicePath[] = "/fake/path";
   if (mock_type == NORMAL_MOCKS) {
     mock_bus_ = new dbus::MockBus(opts);
 
-    mock_exported_object_ =
-        new dbus::MockExportedObject(mock_bus_.get(), dbus::ObjectPath());
+    mock_exported_object_ = new dbus::MockExportedObject(
+        mock_bus_.get(), dbus::ObjectPath(kFakeServicePath));
 
-    mock_vm_applications_service_proxy_ =
-        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_vm_applications_service_proxy_ = new dbus::MockObjectProxy(
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
-    mock_url_handler_service_proxy_ =
-        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_url_handler_service_proxy_ = new dbus::MockObjectProxy(
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
-    mock_chunneld_service_proxy_ =
-        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_chunneld_service_proxy_ = new dbus::MockObjectProxy(
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
-    mock_crosdns_service_proxy_ =
-        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_crosdns_service_proxy_ = new dbus::MockObjectProxy(
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
-    mock_concierge_service_proxy_ =
-        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_concierge_service_proxy_ = new dbus::MockObjectProxy(
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
   } else {
     DCHECK_EQ(mock_type, NICE_MOCKS);
     mock_bus_ = new NiceMock<dbus::MockBus>(opts);
 
     mock_exported_object_ = new NiceMock<dbus::MockExportedObject>(
-        mock_bus_.get(), dbus::ObjectPath());
+        mock_bus_.get(), dbus::ObjectPath(kFakeServicePath));
 
     mock_vm_applications_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
-        mock_bus_.get(), "", dbus::ObjectPath());
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
     mock_url_handler_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
-        mock_bus_.get(), "", dbus::ObjectPath());
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
     mock_chunneld_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
-        mock_bus_.get(), "", dbus::ObjectPath());
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
     mock_crosdns_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
-        mock_bus_.get(), "", dbus::ObjectPath());
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
     mock_concierge_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
-        mock_bus_.get(), "", dbus::ObjectPath());
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
   }
 
   // Set up enough expectations so that Service::Init will succeed.
@@ -621,7 +628,8 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
               GetObjectProxy(vm_tools::concierge::kVmConciergeServiceName, _))
       .WillOnce(Return(mock_concierge_service_proxy_.get()));
 
-  EXPECT_CALL(*mock_crosdns_service_proxy_, WaitForServiceToBeAvailable(_))
+  EXPECT_CALL(*mock_crosdns_service_proxy_,
+              MIGRATE_WaitForServiceToBeAvailable(_))
       .WillOnce(
           Invoke(this, &ServiceTestingHelper::CallServiceAvailableCallback));
 

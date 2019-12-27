@@ -52,7 +52,8 @@ class PowerManagerClientTest : public ::testing::Test {
 
     // Sets an expectation that the mock proxy's CallMethodAndBlock() will use
     // CreateMockProxyResponse() to return responses.
-    EXPECT_CALL(*power_manager_proxy_.get(), MockCallMethodAndBlock(_, _))
+    EXPECT_CALL(*power_manager_proxy_.get(),
+                MIGRATE_MockCallMethodAndBlock(_, _))
         .WillRepeatedly(
             Invoke(this, &PowerManagerClientTest::CreateMockProxyResponse));
 
@@ -66,11 +67,11 @@ class PowerManagerClientTest : public ::testing::Test {
   }
 
  protected:
-  dbus::Response* CreateMockProxyResponse(dbus::MethodCall* method_call,
-                                          int timeout_ms) {
+  MIGRATE_WrapObjectProxyResponseType(dbus::Response)
+      CreateMockProxyResponse(dbus::MethodCall* method_call, int timeout_ms) {
     if (method_call->GetInterface() != power_manager::kPowerManagerInterface) {
       LOG(ERROR) << "Unexpected method call: " << method_call->ToString();
-      return nullptr;
+      return MIGRATE_WrapObjectProxyResponseEmpty;
     }
 
     std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
@@ -88,7 +89,7 @@ class PowerManagerClientTest : public ::testing::Test {
       power_manager::SuspendReadinessInfo info;
       if (!dbus::MessageReader(method_call).PopArrayOfBytesAsProto(&info)) {
         LOG(ERROR) << "Failed to decode SuspendReadinessInfo";
-        return nullptr;
+        return MIGRATE_WrapObjectProxyResponseEmpty;
       }
 
       reported_delay_id_ = info.delay_id();
@@ -98,7 +99,7 @@ class PowerManagerClientTest : public ::testing::Test {
       unregistered_ = true;
     }
 
-    return response.release();
+    return MIGRATE_WrapObjectProxyResponseConversion(response);
   }
 
   scoped_refptr<dbus::MockBus> mock_bus_;
