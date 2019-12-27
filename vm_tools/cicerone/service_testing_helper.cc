@@ -200,7 +200,7 @@ void ServiceTestingHelper::CallDBus(
   CHECK(!dbus_callbacks_[call].callback.is_null());
 
   // Actual callbacks need to happen on the dbus thread.
-  if (dbus_task_runner_->BelongsToCurrentThread()) {
+  if (dbus_task_runner_->RunsTasksInCurrentSequence()) {
     CallDBusOnDBusThread(call, &request, response, nullptr);
   } else {
     base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
@@ -252,7 +252,7 @@ void ServiceTestingHelper::SetTremplinStubOnDBusThread(
     std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
         mock_tremplin_stub,
     base::WaitableEvent* event) {
-  CHECK(dbus_task_runner_->BelongsToCurrentThread());
+  CHECK(dbus_task_runner_->RunsTasksInCurrentSequence());
   CHECK(service_->SetTremplinStubOfVmForTesting(owner_id, vm_name,
                                                 std::move(mock_tremplin_stub)));
   event->Signal();
@@ -265,7 +265,7 @@ void ServiceTestingHelper::SetTremplinStub(
         mock_tremplin_stub) {
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
-  CHECK(!dbus_task_runner_->BelongsToCurrentThread());
+  CHECK(!dbus_task_runner_->RunsTasksInCurrentSequence());
   CHECK(dbus_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&ServiceTestingHelper::SetTremplinStubOnDBusThread,
@@ -351,7 +351,7 @@ void ServiceTestingHelper::CreateContainerWithTokenForTesting(
     const std::string& vm_name,
     const std::string& container_name,
     const std::string& container_token) {
-  CHECK(!dbus_task_runner_->BelongsToCurrentThread());
+  CHECK(!dbus_task_runner_->RunsTasksInCurrentSequence());
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   CHECK(dbus_task_runner_->PostTask(
@@ -464,7 +464,7 @@ std::string ServiceTestingHelper::GetTremplinStubAddress() const {
 }
 
 void ServiceTestingHelper::AssertOnDBusThread() {
-  CHECK(dbus_task_runner_->BelongsToCurrentThread());
+  CHECK(dbus_task_runner_->RunsTasksInCurrentSequence());
 }
 
 void ServiceTestingHelper::IncrementQuitClosure() {
