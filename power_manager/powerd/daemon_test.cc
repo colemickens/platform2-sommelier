@@ -279,7 +279,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return std::move(passed_dark_resume_);
   }
   std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
-      system::DBusWrapperInterface* dbus_wrapper) override {
+      system::DBusWrapperInterface* dbus_wrapper,
+      const base::FilePath& run_dir) override {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_audio_client_);
   }

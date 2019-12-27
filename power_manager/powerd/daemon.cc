@@ -261,6 +261,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
                                          true /* is_repeating */),
       wakeup_count_path_(kDefaultWakeupCountPath),
       oobe_completed_path_(kDefaultOobeCompletedPath),
+      run_dir_(run_dir),
       suspended_state_path_(kDefaultSuspendedStatePath),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
@@ -412,7 +413,7 @@ void Daemon::Init() {
                           dbus_wrapper_.get(), power_source, lid_state);
 
   if (BoolPrefIsTrue(kUseCrasPref)) {
-    audio_client_ = delegate_->CreateAudioClient(dbus_wrapper_.get());
+    audio_client_ = delegate_->CreateAudioClient(dbus_wrapper_.get(), run_dir_);
     audio_client_->AddObserver(this);
   }
 

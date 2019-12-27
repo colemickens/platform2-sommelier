@@ -223,9 +223,10 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
-      system::DBusWrapperInterface* dbus_wrapper) override {
+      system::DBusWrapperInterface* dbus_wrapper,
+      const base::FilePath& run_dir) override {
     auto client = std::make_unique<system::AudioClient>();
-    client->Init(dbus_wrapper);
+    client->Init(dbus_wrapper, run_dir);
     return client;
   }
 

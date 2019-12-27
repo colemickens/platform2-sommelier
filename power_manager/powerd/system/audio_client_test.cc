@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
@@ -56,14 +58,19 @@ class AudioClientTest : public testing::Test {
                                                cras::kCrasServicePath);
     dbus_wrapper_.SetMethodCallback(
         base::Bind(&AudioClientTest::HandleMethodCall, base::Unretained(this)));
-    audio_client_.Init(&dbus_wrapper_);
+    CHECK(run_dir_.CreateUniqueTempDir());
+    CHECK(run_dir_.IsValid());
   }
   ~AudioClientTest() override {}
+
+  void Init() { audio_client_.Init(&dbus_wrapper_, run_dir_.GetPath()); }
 
  protected:
   DBusWrapperStub dbus_wrapper_;
   dbus::ObjectProxy* cras_proxy_ = nullptr;
   AudioClient audio_client_;
+  // Run directory passed to |audio_client_|.
+  base::ScopedTempDir run_dir_;
 
   // Number of output streams to report from GetNumberOfActiveOutputStreams.
   int num_output_streams_ = 0;
@@ -115,8 +122,8 @@ class AudioClientTest : public testing::Test {
     return response;
   }
 
-  // Helper method for HandleMethodCall() that writes |nodes_| to |response| as
-  // an array of dicts mapping from string to variant.
+  // Helper method for HandleMethodCall() that writes |nodes_| to |response|
+  // as an array of dicts mapping from string to variant.
   void WriteNodes(dbus::Response* response) {
     dbus::MessageWriter top_writer(response);
     for (const Node& node : nodes_) {
@@ -147,6 +154,8 @@ class AudioClientTest : public testing::Test {
 };
 
 TEST_F(AudioClientTest, AudioState) {
+  Init();
+
   // CRAS should be queried when it first becomes available.
   TestObserver observer(&audio_client_);
   num_output_streams_ = 1;
@@ -190,6 +199,8 @@ TEST_F(AudioClientTest, AudioState) {
 }
 
 TEST_F(AudioClientTest, GetNodes) {
+  Init();
+
   // With no connected nodes, nothing should be reported.
   dbus_wrapper_.NotifyNameOwnerChanged(cras::kCrasServiceName, "", ":0");
   base::RunLoop().RunUntilIdle();
@@ -233,10 +244,29 @@ TEST_F(AudioClientTest, GetNodes) {
 }
 
 TEST_F(AudioClientTest, SuspendAudio) {
+  Init();
+
+  auto audio_suspended_path =
+      run_dir_.GetPath().Append(AudioClient::kAudioSuspendedFile);
   EXPECT_FALSE(audio_suspended_);
+  EXPECT_FALSE(base::PathExists(audio_suspended_path));
   audio_client_.SetSuspended(true);
   EXPECT_TRUE(audio_suspended_);
+  EXPECT_TRUE(base::PathExists(audio_suspended_path));
   audio_client_.SetSuspended(false);
+  EXPECT_FALSE(audio_suspended_);
+  EXPECT_FALSE(base::PathExists(audio_suspended_path));
+}
+
+TEST_F(AudioClientTest, PowerdCrashAfterAudioSuspended) {
+  // Create |kAudioSuspendedFile| file in the |run_dir| which indicates the
+  // previous run of powerd crashed after suspending audio.
+  auto audio_suspended_path =
+      run_dir_.GetPath().Append(AudioClient::kAudioSuspendedFile);
+  ASSERT_EQ(base::WriteFile(audio_suspended_path, nullptr, 0), 0);
+  audio_suspended_ = true;
+  // audio_client_ Init() should un-suspend audio if it is suspended.
+  Init();
   EXPECT_FALSE(audio_suspended_);
 }
 

@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
@@ -26,10 +27,12 @@ constexpr base::TimeDelta kCrasDBusTimeout = base::TimeDelta::FromSeconds(3);
 
 }  // namespace
 
+// static
 constexpr char AudioClient::kTypeKey[];
 constexpr char AudioClient::kActiveKey[];
 constexpr char AudioClient::kHeadphoneNodeType[];
 constexpr char AudioClient::kHdmiNodeType[];
+constexpr char AudioClient::kAudioSuspendedFile[];
 
 AudioClient::AudioClient() : weak_ptr_factory_(this) {}
 
@@ -38,10 +41,12 @@ AudioClient::~AudioClient() {
     dbus_wrapper_->RemoveObserver(this);
 }
 
-void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
+void AudioClient::Init(DBusWrapperInterface* dbus_wrapper,
+                       const base::FilePath& run_dir) {
   DCHECK(dbus_wrapper);
   dbus_wrapper_ = dbus_wrapper;
   dbus_wrapper_->AddObserver(this);
+  audio_suspended_path_ = run_dir.Append(kAudioSuspendedFile);
 
   cras_proxy_ = dbus_wrapper_->GetObjectProxy(cras::kCrasServiceName,
                                               cras::kCrasServicePath);
@@ -64,6 +69,9 @@ void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
         cras_proxy_, cras::kCrasControlInterface, it.first,
         base::Bind(it.second, weak_ptr_factory_.GetWeakPtr()));
   }
+
+  if (base::PathExists(audio_suspended_path_))
+    SetSuspended(false);
 }
 
 bool AudioClient::GetHeadphoneJackPlugged() const {
@@ -90,6 +98,13 @@ void AudioClient::SetSuspended(bool suspended) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(suspended);
   dbus_wrapper_->CallMethodSync(cras_proxy_, &method_call, kCrasDBusTimeout);
+  if (suspended) {
+    if (base::WriteFile(audio_suspended_path_, nullptr, 0) < 0)
+      PLOG(ERROR) << "Couldn't create " << audio_suspended_path_.value();
+  } else {
+    if (!base::DeleteFile(audio_suspended_path_, false))
+      PLOG(ERROR) << "Couldn't delete " << audio_suspended_path_.value();
+  }
 }
 
 void AudioClient::OnDBusNameOwnerChanged(const std::string& service_name,

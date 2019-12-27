@@ -349,6 +349,9 @@ class Daemon : public policy::InputEventHandler::Delegate,
   // File that's created once the out-of-box experience has been completed.
   base::FilePath oobe_completed_path_;
 
+  // Directory under /run that holds run-time data related to powerd.
+  base::FilePath run_dir_;
+
   // Path to file that's touched before the system suspends and unlinked after
   // it resumes. Used by crash-reporter to avoid reporting unclean shutdowns
   // that occur while the system is suspended (i.e. probably due to the battery

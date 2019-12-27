@@ -136,7 +136,8 @@ class DaemonDelegate {
       system::WakeupSourceIdentifierInterface* wakeup_source_identifier) = 0;
 
   virtual std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
-      system::DBusWrapperInterface* dbus_wrapper) = 0;
+      system::DBusWrapperInterface* dbus_wrapper,
+      const base::FilePath& run_dir) = 0;
 
   virtual std::unique_ptr<system::LockfileCheckerInterface>
   CreateLockfileChecker(const base::FilePath& dir,

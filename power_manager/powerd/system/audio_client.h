@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
@@ -37,12 +38,16 @@ class AudioClient : public AudioClientInterface,
   static constexpr char kHeadphoneNodeType[] = "HEADPHONE";
   static constexpr char kHdmiNodeType[] = "HDMI";
 
+  // Basename appended to |run_dir| passed to Init() to produce
+  // |audio_suspended_path_|.
+  static constexpr char kAudioSuspendedFile[] = "audio_suspended";
+
   AudioClient();
   ~AudioClient() override;
 
   // Initializes the object. Ownership of |dbus_wrapper| remains with the
   // caller.
-  void Init(DBusWrapperInterface* dbus_wrapper);
+  void Init(DBusWrapperInterface* dbus_wrapper, const base::FilePath& run_dir);
 
   // AudioClientInterface:
   bool GetHeadphoneJackPlugged() const override;
@@ -103,6 +108,12 @@ class AudioClient : public AudioClientInterface,
   bool hdmi_active_ = false;
 
   base::ObserverList<AudioObserver> observers_;
+
+  // Path to a file that's touched when audio is suspended by sending D-Bus
+  // method to cras and unlinked when the un-suspended. Used to detect cases
+  // where powerd was restarted mid-suspend-attempt and didn't announce
+  // un-suspend.
+  base::FilePath audio_suspended_path_;
 
   base::WeakPtrFactory<AudioClient> weak_ptr_factory_;
 
