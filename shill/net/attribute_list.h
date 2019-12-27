@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/callback.h>
 
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
