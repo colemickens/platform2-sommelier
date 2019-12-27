@@ -130,7 +130,7 @@ class MockDBusMethodResponse
 
   MOCK_METHOD1(ReplyWithError, void(const brillo::Error*));
   MOCK_METHOD4(ReplyWithError,
-               void(const tracked_objects::Location&,
+               void(const base::Location&,
                     const std::string&,
                     const std::string&,
                     const std::string&));
