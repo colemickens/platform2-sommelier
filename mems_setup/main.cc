@@ -85,17 +85,12 @@ int main(int argc, char** argv) {
     }
   } else {
     auto devices = context->GetDevicesByName(FLAGS_device_name);
-    if (devices.size() > 1) {
+    if (devices.size() != 1) {
       LOG(ERROR) << devices.size() << " possible devices with name "
                  << FLAGS_device_name << " found";
       exit(1);
     }
     device = devices[0];
-
-    if (device == nullptr) {
-      LOG(ERROR) << "device with name: " << FLAGS_device_name << " not found";
-      exit(1);
-    }
   }
 
   std::unique_ptr<mems_setup::Configuration> config(
