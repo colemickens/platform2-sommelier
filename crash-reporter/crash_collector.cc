@@ -41,6 +41,7 @@
 #include <debugd/dbus-constants.h>
 #include <zlib.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
@@ -79,7 +80,6 @@ constexpr mode_t kSystemRunStateDirectoryMode = 0755;
 constexpr mode_t kCrashReporterStateDirectoryMode = 0700;
 
 constexpr gid_t kRootGroup = 0;
-constexpr char kCrashGroupName[] = "crash-access";
 constexpr char kCrashUserGroupName[] = "crash-user-access";
 
 // Directory mode of /run/metrics/external/crash-reporter. Anyone in "metrics"
@@ -730,8 +730,9 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
   } else {
     *mode = kSystemCrashDirectoryMode;
     *directory_owner = kRootUid;
-    if (!brillo::userdb::GetGroupInfo(kCrashGroupName, directory_group)) {
-      PLOG(ERROR) << "Couldn't look up group " << kCrashGroupName;
+    if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
+                                      directory_group)) {
+      PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
       return base::nullopt;
     }
     return system_crash_path_;
@@ -1255,8 +1256,9 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
       return false;
   } else {
     gid_t directory_group;
-    if (!brillo::userdb::GetGroupInfo(kCrashGroupName, &directory_group)) {
-      PLOG(ERROR) << "Group " << kCrashGroupName << " doesn't exist";
+    if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
+                                      &directory_group)) {
+      PLOG(ERROR) << "Group " << constants::kCrashGroupName << " doesn't exist";
       return false;
     }
     if (!CreateDirectoryWithSettings(FilePath(paths::kSystemCrashDirectory),

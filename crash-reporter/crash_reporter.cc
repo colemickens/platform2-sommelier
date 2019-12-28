@@ -19,6 +19,7 @@
 #include "crash-reporter/arc_service_failure_collector.h"
 #include "crash-reporter/bert_collector.h"
 #include "crash-reporter/chrome_collector.h"
+#include "crash-reporter/constants.h"
 #include "crash-reporter/crash_reporter_failure_collector.h"
 #include "crash-reporter/early_crash_meta_collector.h"
 #include "crash-reporter/ec_collector.h"
@@ -57,13 +58,31 @@ bool TouchFile(const FilePath& file_path) {
   return base::WriteFile(file_path, "", 0) == 0;
 }
 
+bool SetUpLockFile() {
+  base::FilePath lock_file = paths::Get(paths::kCrashSenderLockFile);
+  if (!TouchFile(lock_file)) {
+    LOG(ERROR) << "Could not touch lock file: " << lock_file.value();
+    return false;
+  }
+
+  // Allow crash-access group to read and write crash lock file.
+  return util::SetGroupAndPermissions(lock_file, constants::kCrashGroupName,
+                                      /*execute=*/false);
+}
+
+// Set up necessary crash reporter state.
+// This function will change ownership and permissions on many files (to allow
+// `crash` to read/write them) so it MUST run as root.
 int Initialize(UserCollector* user_collector,
                UdevCollector* udev_collector,
                bool early) {
   // Try to create the lock file for crash_sender. Creating this early ensures
   // that no one else can make a directory or such with this name. If the lock
   // file isn't a normal file, crash_sender will never work correctly.
-  TouchFile(paths::Get(paths::kCrashSenderLockFile));
+  if (!SetUpLockFile()) {
+    LOG(ERROR) << "Couldn't set up lock file";
+    return 1;
+  }
 
   // Set up all the common crash state directories first.  If we can't guarantee
   // these basic paths, just give up & don't turn on anything else.

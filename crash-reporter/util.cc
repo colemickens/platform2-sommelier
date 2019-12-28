@@ -16,6 +16,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
+#include <brillo/userdb_utils.h>
 #include <vboot/crossystem.h>
 #include <zlib.h>
 
@@ -80,6 +81,34 @@ bool IsOfficialImage() {
   }
 
   return description.find("Official") != std::string::npos;
+}
+
+bool SetGroupAndPermissions(const base::FilePath& file,
+                            const char* group,
+                            bool execute) {
+  gid_t gid;
+  if (!brillo::userdb::GetGroupInfo(group, &gid)) {
+    LOG(ERROR) << "Couldn't look up group " << group;
+    return false;
+  }
+  if (lchown(file.value().c_str(), -1, gid) != 0) {
+    PLOG(ERROR) << "Couldn't chown " << file.value();
+    return false;
+  }
+  int mode;
+  if (!base::GetPosixFilePermissions(file, &mode)) {
+    PLOG(ERROR) << "Couldn't get file permissions for " << file.value();
+    return false;
+  }
+  mode_t group_mode = S_IRGRP | S_IWGRP;
+  if (execute) {
+    group_mode |= S_IXGRP;
+  }
+  if (!base::SetPosixFilePermissions(file, mode | group_mode)) {
+    PLOG(ERROR) << "Couldn't chmod " << file.value();
+    return false;
+  }
+  return true;
 }
 
 base::Time GetOsTimestamp() {

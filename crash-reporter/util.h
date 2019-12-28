@@ -35,6 +35,11 @@ bool IsTestImage();
 // Returns true if running on an official image.
 bool IsOfficialImage();
 
+// Change group ownership of "file" to "group", and grant g+rw (optionally x).
+bool SetGroupAndPermissions(const base::FilePath& file,
+                            const char* group,
+                            bool execute);
+
 // Returns the timestamp for the OS version we are currently running. Returns
 // a null (zero-valued) base::Time if it is unable to calculate it for some
 // reason.
