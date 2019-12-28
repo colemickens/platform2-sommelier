@@ -98,7 +98,7 @@ bool IioDeviceTriggerImpl::WriteNumberAttribute(const std::string& name,
                                                 int64_t value) {
   int id = GetId();
   if ((id == -1 && name.compare(kAddTrigger) != 0) ||
-      name.compare(kSamplingFrequencyAttr) != 0)
+      (id != -1 && name.compare(kSamplingFrequencyAttr) != 0))
     return false;
 
   int error = iio_device_attr_write_longlong(trigger_, name.c_str(), value);
