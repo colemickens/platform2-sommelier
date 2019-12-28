@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#if USE_BLUETOOTH_SUSPEND_MANAGEMENT
 #include <memory>
 #include <string>
 #include <utility>
@@ -14,6 +13,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 
+#include "bluetooth/common/runtime_flags.h"
 #include "bluetooth/dispatcher/complete_mock_object_proxy.h"
 #include "bluetooth/dispatcher/suspend_manager.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -40,6 +40,11 @@ class SuspendManagerTest : public ::testing::Test {
   SuspendManagerTest() = default;
 
   void SetUp() override {
+    auto flags = new RuntimeFlags();
+    flags->Init();
+    if (!flags->Get("enable-suspend-management")) {
+      GTEST_SKIP();
+    }
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
@@ -155,6 +160,14 @@ class SuspendManagerTest : public ::testing::Test {
     // Other method calls are not implemented by this stub.
     FAIL() << "Stub doesn't implement method " << method_call->GetInterface()
            << "." << method_call->GetMember();
+  }
+
+  void StubPowerManagerCallMethodWithErrorCallback(
+      dbus::MethodCall* method_call,
+      int timeout_ms,
+      dbus::ObjectProxy::ResponseCallback callback,
+      dbus::ObjectProxy::ErrorCallback error_callback) {
+    StubPowerManagerCallMethod(method_call, timeout_ms, callback);
   }
 
  protected:
@@ -277,6 +290,8 @@ class SuspendManagerTest : public ::testing::Test {
 
 TEST_F(SuspendManagerTest, PowerManagerNotAvailable) {
   // There should be no calls to power manager.
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .Times(0);
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _)).Times(0);
   // Start without power manager available event.
 
@@ -294,6 +309,8 @@ TEST_F(SuspendManagerTest, PowerManagerNotAvailable) {
 
 TEST_F(SuspendManagerTest, PowerManagerAvailableFailure) {
   // There should be no calls to power manager.
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .Times(0);
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _)).Times(0);
   // Start with power manager available event, but it's a failure event.
   TriggerPowerManagerAvailable(false);
@@ -312,8 +329,10 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableFailure) {
 
 TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
-      .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(
+          this,
+          &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
   // Start with power manager available event.
   TriggerPowerManagerAvailable(true);
 
@@ -347,8 +366,10 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
 TEST_F(SuspendManagerTest, PowerManagerAvailableTwice) {
   // Power manager should receive one RegisterSuspendDelay after it's available
   // even though we receive double available signals.
-  EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
-      .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(
+          this,
+          &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
   // These two events could both happen.
   TriggerPowerManagerAvailable(true);
   TriggerPowerManagerNameOwnerChanged("", ":1.234");
@@ -356,8 +377,10 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableTwice) {
 
 TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
-      .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(
+          this,
+          &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
   // Start with power manager name owner changed callback with a new name.
   TriggerPowerManagerNameOwnerChanged("", ":1.234");
 
@@ -406,16 +429,20 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
 
   // Simulate power manager getting name ownership.
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
-      .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(
+          this,
+          &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
   TriggerPowerManagerNameOwnerChanged("", ":1.345");
 }
 
 // SignalDone happens while HandleSuspendImminent is still in progress.
 TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarly) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
-      .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(
+          this,
+          &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
   // Start with power manager available event.
   TriggerPowerManagerAvailable(true);
 
@@ -460,8 +487,10 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarly) {
 // progress.
 TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
-      .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
+  EXPECT_CALL(*power_manager_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(
+          this,
+          &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
   // Start with power manager available event.
   TriggerPowerManagerAvailable(true);
 
@@ -531,4 +560,3 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
 }
 
 }  // namespace bluetooth
-#endif
