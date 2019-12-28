@@ -11,6 +11,7 @@
 #include <limits>
 #include <memory>
 
+#include <base/at_exit.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -140,7 +141,7 @@ int RunChildMain(int argc, char* argv[]) {
 // should be very minimal. No need to delete temporary files manually in /tmp,
 // that's a unique tmpfs provided by minijail, that'll automatically go away
 // when the child process is terminated.
-void CleanUp() {
+void CleanUp(void*) {
   util::RecordCrashDone();
 }
 
@@ -150,7 +151,8 @@ int main(int argc, char* argv[]) {
   // Log to syslog (/var/log/messages), and stderr if stdin is a tty.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   // Register the cleanup function to be called at exit.
-  atexit(&CleanUp);
+  base::AtExitManager at_exit_manager;
+  base::AtExitManager::RegisterCallback(&CleanUp, nullptr);
 
   // Set up a sandbox, and jail the child process.
   ScopedMinijail jail(minijail_new());

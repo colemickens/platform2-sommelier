@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/file.h>
@@ -444,6 +445,7 @@ class CrashSenderUtilTest : public testing::Test {
   // Directory that the test executable lives in. We reset CommandLine during
   // TearDown, so we must grab this information early.
   static base::FilePath* build_directory_;
+  base::AtExitManager at_exit_manager_;
 
   std::unique_ptr<MetricsLibraryMock> metrics_lib_;
   base::ScopedTempDir temp_dir_;
