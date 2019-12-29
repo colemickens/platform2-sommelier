@@ -1405,8 +1405,8 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   if (request.guest_ipv4_address() == 0) {
     // subnet_index is 1-based and -1 indicates any free subnet is ok.
     int index = request.subnet_index() - 1;
-    ipv4_subnet = std::move(network_address_manager_.AllocateIPv4Subnet(
-      arc_networkd::AddressManager::Guest::VM_PLUGIN_EXT, index));
+    ipv4_subnet = network_address_manager_.AllocateIPv4Subnet(
+        arc_networkd::AddressManager::Guest::VM_PLUGIN_EXT, index);
     if (!ipv4_subnet) {
       LOG(ERROR) << "IPv4 subnet is unavailable";
       response.set_failure_reason("IPv4 subnet is unavailable");
@@ -1416,7 +1416,8 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     ipv4_gw = ipv4_subnet->AllocateAtOffset(0);
     if (!ipv4_gw) {
       LOG(ERROR) << "Failed to allocate IPv4 address for gateway";
-      response.set_failure_reason("Failed to allocate IPv4 address for gateway");
+      response.set_failure_reason(
+          "Failed to allocate IPv4 address for gateway");
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
@@ -1429,10 +1430,11 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     }
   } else {
     // Mark the ip address as in use.
-    ipv4_addr = std::move(plugin_subnet_->Allocate(request.guest_ipv4_address()));
+    ipv4_addr = plugin_subnet_->Allocate(request.guest_ipv4_address());
     if (!ipv4_addr) {
       LOG(ERROR) << "Invalid IP address or address already in use";
-      response.set_failure_reason("Invalid IP address or address already in use");
+      response.set_failure_reason(
+          "Invalid IP address or address already in use");
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
@@ -1553,19 +1555,19 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   VmId vm_id(request.owner_id(), request.name());
   std::unique_ptr<PluginVm> vm;
   if (ipv4_subnet) {
-    vm = std::move(PluginVm::Create(
-      vm_id, request.cpus(), std::move(params), std::move(mac_addr),
-      std::move(ipv4_subnet), std::move(ipv4_gw), std::move(ipv4_addr),
-      std::move(stateful_dir), std::move(iso_dir), root_dir.Take(),
-      runtime_dir.Take(), std::move(seneschal_server_proxy),
-      vmplugin_service_proxy_));
+    vm = PluginVm::Create(
+        vm_id, request.cpus(), std::move(params), std::move(mac_addr),
+        std::move(ipv4_subnet), std::move(ipv4_gw), std::move(ipv4_addr),
+        std::move(stateful_dir), std::move(iso_dir), root_dir.Take(),
+        runtime_dir.Take(), std::move(seneschal_server_proxy),
+        vmplugin_service_proxy_);
   } else {
-    vm = std::move(PluginVm::Create(
-      vm_id, request.cpus(), std::move(params), std::move(mac_addr),
-      std::move(ipv4_addr), plugin_subnet_->Netmask(),
-      plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
-      std::move(iso_dir), root_dir.Take(), runtime_dir.Take(),
-      std::move(seneschal_server_proxy), vmplugin_service_proxy_));
+    vm = PluginVm::Create(
+        vm_id, request.cpus(), std::move(params), std::move(mac_addr),
+        std::move(ipv4_addr), plugin_subnet_->Netmask(),
+        plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
+        std::move(iso_dir), root_dir.Take(), runtime_dir.Take(),
+        std::move(seneschal_server_proxy), vmplugin_service_proxy_);
   }
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
