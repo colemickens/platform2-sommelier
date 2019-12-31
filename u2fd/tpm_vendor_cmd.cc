@@ -99,7 +99,8 @@ std::string RequestToString(const Request& req) {
 
 template <>
 std::string RequestToString(const U2F_ATTEST_REQ& req) {
-  return std::string(reinterpret_cast<const char*>(&req), 2 + req.dataLen);
+  return std::string(reinterpret_cast<const char*>(&req),
+                     offsetof(U2F_ATTEST_REQ, data) + req.dataLen);
 }
 
 }  // namespace
