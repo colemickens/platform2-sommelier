@@ -90,6 +90,19 @@ static bool ReallocateGrallocFrameBuffer(
   return true;
 }
 
+static bool ValidateThumbnailSize(
+    const android::CameraMetadata& static_metadata, int width, int height) {
+  auto entry = static_metadata.find(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES);
+  DCHECK_GT(entry.count, 0);
+  DCHECK_EQ(entry.count % 2, 0);
+  for (size_t i = 0; i < entry.count; i += 2) {
+    if (width == entry.data.i32[i] && height == entry.data.i32[i + 1]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 CachedFrame::CachedFrame()
     : image_processor_(new ImageProcessor()),
       camera_metrics_(CameraMetrics::New()),
@@ -486,6 +499,11 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
     int thumbnail_height = entry.data.i32[1];
     if (thumbnail_width == 0 && thumbnail_height == 0) {
       LOGF(INFO) << "Thumbnail size = (0, 0), nothing will be generated";
+    } else if (!ValidateThumbnailSize(static_metadata, thumbnail_width,
+                                      thumbnail_height)) {
+      LOGF(ERROR) << "Invalid thumbnail size " << thumbnail_width << "x"
+                  << thumbnail_height;
+      return -EINVAL;
     } else {
       const uint8_t* i420_data;
       if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420) {
