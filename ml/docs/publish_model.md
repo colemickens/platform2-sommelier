@@ -15,6 +15,9 @@ to be a single file. The file format is a TFLite flat buffers (extension
 You can convert a TF model into a TFLite model using the [TensorFlow Lite
 Converter (Toco)][toco] tool.
 
+Google-specific: For resources about the overall Chrome OS ML model training &
+deployment lifecycle across google3, Chromium, and Chrome OS, see [go/ml-abc].
+
 ### TFLite runtime version
 
 You need to be aware what (minimum) version of the TFLite runtime your model
@@ -271,6 +274,7 @@ reviewer from the owners of histograms.xml. The owners can be found at
 [go/cros-ml-service-models]: http://go/cros-ml-service-models
 [go/dlc-service-proposal]: http://go/dlc-service-proposal
 [go/finch-best-practices]: http://go/finch-best-practices
+[go/ml-abc]: http://go/ml-abc
 [toco]: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco
 [hist-readme]: https://chromium.googlesource.com/chromium/src/tools/+/refs/heads/master/metrics/histograms/README.md
 [hist-one-pager]: https://chromium.googlesource.com/chromium/src/tools/+/refs/heads/master/metrics/histograms/one-pager.md
