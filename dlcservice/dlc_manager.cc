@@ -104,8 +104,20 @@ class DlcManager::DlcManagerImpl {
 
   DlcRootMap GetInstalled() {
     RefreshInstalled();
-    return installed_;
+    // Verify that all the images are correct before returning the list to
+    // update_engine. This will prevent update_engine from trying to update DLCs
+    // which have issues with their images.
+    DlcRootMap installed_with_good_images;
+    for (auto& installed_dlc_module : installed_) {
+      if (ValidateImageFiles(installed_dlc_module.first)) {
+        installed_with_good_images[installed_dlc_module.first] =
+            installed_dlc_module.second;
+      }
+    }
+    return installed_with_good_images;
   }
+
+  void LoadDlcModuleImages() { RefreshInstalled(); }
 
   bool InitInstall(const DlcRootMap& requested_install,
                    string* err_code,
@@ -295,26 +307,15 @@ class DlcManager::DlcManagerImpl {
     return true;
   }
 
-  bool Create(const string& id, string* err_code, string* err_msg) {
-    CHECK(err_code);
-    CHECK(err_msg);
-
-    if (supported_.find(id) == supported_.end()) {
-      *err_code = kErrorInvalidDlc;
-      *err_msg = "The DLC(" + id + ") provided is not supported.";
-      return false;
-    }
-
-    const string& package = GetDlcPackage(id);
+  // Create the DLC |id| and |package| directories if they don't exist.
+  bool CreateDlcPackagePath(const string& id,
+                            const string& package,
+                            string* err_code,
+                            string* err_msg) {
     FilePath content_path_local = utils::GetDlcPath(content_dir_, id);
     FilePath content_package_path =
         utils::GetDlcPackagePath(content_dir_, id, package);
 
-    if (base::PathExists(content_path_local)) {
-      *err_code = kErrorInternal;
-      *err_msg = "The DLC(" + id + ") is installed or duplicate.";
-      return false;
-    }
     // Create the DLC ID directory with correct permissions.
     if (!CreateDirWithDlcPermissions(content_path_local)) {
       *err_code = kErrorInternal;
@@ -327,6 +328,30 @@ class DlcManager::DlcManagerImpl {
       *err_msg = "Failed to create DLC(" + id + ") package directory";
       return false;
     }
+    return true;
+  }
+
+  bool Create(const string& id, string* err_code, string* err_msg) {
+    CHECK(err_code);
+    CHECK(err_msg);
+
+    if (supported_.find(id) == supported_.end()) {
+      *err_code = kErrorInvalidDlc;
+      *err_msg = "The DLC(" + id + ") provided is not supported.";
+      return false;
+    }
+
+    const string& package = GetDlcPackage(id);
+    FilePath content_path_local = utils::GetDlcPath(content_dir_, id);
+
+    if (base::PathExists(content_path_local)) {
+      *err_code = kErrorInternal;
+      *err_msg = "The DLC(" + id + ") is installed or duplicate.";
+      return false;
+    }
+
+    if (!CreateDlcPackagePath(id, package, err_code, err_msg))
+      return false;
 
     // Creates DLC module storage.
     // TODO(xiaochu): Manifest currently returns a signed integer, which means
@@ -368,6 +393,40 @@ class DlcManager::DlcManagerImpl {
     return true;
   }
 
+  // Validate that the inactive image for a |dlc_id| exists and create it if it
+  // doesn't.
+  bool ValidateImageFiles(const string& id) {
+    string mount_point;
+    const string& package = GetDlcPackage(id);
+    FilePath inactive_slot_img_path = utils::GetDlcImagePath(
+        content_dir_, id, package,
+        current_boot_slot_ == BootSlot::Slot::A ? BootSlot::Slot::B
+                                                : BootSlot::Slot::A);
+
+    imageloader::Manifest manifest;
+    if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id, package,
+                                           &manifest)) {
+      return false;
+    }
+    int64_t img_size_manifest = manifest.preallocated_size();
+
+    if (!base::PathExists(inactive_slot_img_path)) {
+      LOG(WARNING) << "The DLC image " << inactive_slot_img_path.value()
+                   << " does not exist.";
+      string err_code, err_msg;
+      if (!CreateDlcPackagePath(id, package, &err_code, &err_msg)) {
+        LOG(ERROR) << err_msg;
+        return false;
+      }
+      if (!CreateImageFile(inactive_slot_img_path, img_size_manifest)) {
+        LOG(ERROR) << "Failed to create DLC image:"
+                   << inactive_slot_img_path.value() << ".";
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool DeleteInternal(const string& id, string* err_code, string* err_msg) {
     for (const auto& path : {utils::GetDlcPath(content_dir_, id),
                              utils::GetDlcPath(metadata_dir_, id)}) {
@@ -404,9 +463,10 @@ class DlcManager::DlcManagerImpl {
       }
 
       string mount_point;
-      if (!Mount(installed_dlc_module_id, &mount_point, &err_code, &err_msg)) {
+      if (!ValidateImageFiles(installed_dlc_module_id) ||
+          !Mount(installed_dlc_module_id, &mount_point, &err_code, &err_msg)) {
         LOG(ERROR) << "Failed to mount DLC module during refresh: "
-                   << installed_dlc_module_id;
+                   << installed_dlc_module_id << ". " << err_msg;
         if (!DeleteInternal(installed_dlc_module_id, &err_code, &err_msg)) {
           LOG(ERROR) << "Failed to delete an unmountable DLC module: "
                      << installed_dlc_module_id;
@@ -458,6 +518,10 @@ DlcModuleList DlcManager::GetInstalled() {
                                 [](DlcId, DlcRoot) { return true; });
 }
 
+void DlcManager::LoadDlcModuleImages() {
+  impl_->LoadDlcModuleImages();
+}
+
 bool DlcManager::InitInstall(const DlcModuleList& dlc_module_list,
                              string* err_code,
                              string* err_msg) {
@@ -474,7 +538,7 @@ bool DlcManager::InitInstall(const DlcModuleList& dlc_module_list,
 
   if (dlc_root_map.size() != dlc_module_list.dlc_module_infos_size()) {
     *err_code = kErrorInvalidDlc;
-    *err_msg = "Must not pass in duplice DLC(s) to install.";
+    *err_msg = "Must not pass in duplicate DLC(s) to install.";
     return false;
   }
 

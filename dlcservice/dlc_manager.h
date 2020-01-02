@@ -44,6 +44,9 @@ class DlcManager {
   // Returns the list of fully installed + mounted DLC(s).
   DlcModuleList GetInstalled();
 
+  // Loads installed DLC module images.
+  void LoadDlcModuleImages();
+
   // DLC Installation Flow
 
   // Install Step 1:

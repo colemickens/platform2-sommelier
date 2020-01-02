@@ -14,6 +14,7 @@
 #include <brillo/message_loops/message_loop_utils.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <imageloader/dbus-proxy-mocks.h>
 #include <update_engine/dbus-constants.h>
@@ -116,6 +117,7 @@ class DlcServiceTest : public testing::Test {
         .WillOnce(Return("/dev/sdb5"));
     EXPECT_CALL(*(mock_boot_device_.get()), IsRemovableDevice(_))
         .WillOnce(Return(false));
+    current_slot_ = dlcservice::BootSlot::Slot::B;
 
     mock_image_loader_proxy_ =
         std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
@@ -129,6 +131,21 @@ class DlcServiceTest : public testing::Test {
         .Times(1);
   }
 
+  void CreateImageFileWithRightSize(const base::FilePath& image_path,
+                                    const base::FilePath& manifest_path,
+                                    const string& id,
+                                    const string& package) {
+    imageloader::Manifest manifest;
+    dlcservice::utils::GetDlcManifest(manifest_path, id, package, &manifest);
+    int64_t image_size = manifest.preallocated_size();
+
+    constexpr uint32_t file_flags = base::File::FLAG_WRITE |
+                                    base::File::FLAG_READ |
+                                    base::File::FLAG_CREATE;
+    base::File file(image_path, file_flags);
+    file.SetLength(image_size);
+  }
+
   // Will create |path|/|id|/|package|/dlc.img file.
   void SetUpDlcWithoutSlots(const base::FilePath& path,
                             const string& id,
@@ -136,8 +153,7 @@ class DlcServiceTest : public testing::Test {
     base::FilePath image_path =
         path.Append(id).Append(package).Append(utils::kDlcImageFileName);
     base::CreateDirectory(image_path.DirName());
-    base::File image(image_path,
-                     base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
+    CreateImageFileWithRightSize(image_path, manifest_path_, id, package);
   }
   // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.
   void SetUpDlcWithSlots(const base::FilePath& path,
@@ -148,8 +164,7 @@ class DlcServiceTest : public testing::Test {
       base::FilePath image_path =
           utils::GetDlcImagePath(path, id, package, slot);
       base::CreateDirectory(image_path.DirName());
-      base::File image(image_path,
-                       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
+      CreateImageFileWithRightSize(image_path, manifest_path_, id, package);
     }
     // Create DLC metadata directory.
     base::FilePath metadata_path_dlc =
@@ -193,6 +208,7 @@ class DlcServiceTest : public testing::Test {
   base::FilePath metadata_path_;
 
   std::unique_ptr<MockBootDevice> mock_boot_device_;
+  dlcservice::BootSlot::Slot current_slot_;
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyMock>
       mock_image_loader_proxy_;
   org::chromium::ImageLoaderInterfaceProxyMock* mock_image_loader_proxy_ptr_;
@@ -255,6 +271,20 @@ TEST_F(DlcServiceSkipLoadTest, StartUpImageLoaderFailureTest) {
 
   // Startup with image_loader failure.
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
+TEST_F(DlcServiceSkipLoadTest, StartUpInactiveImageDoesntExistTest) {
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>("/good/mount"), Return(true)));
+
+  base::FilePath inactive_image_path = utils::GetDlcImagePath(
+      content_path_, kFirstDlc, kPackage,
+      current_slot_ == BootSlot::Slot::A ? BootSlot::Slot::B
+                                         : BootSlot::Slot::A);
+  base::DeleteFile(inactive_image_path, false);
+  dlc_service_->LoadDlcModuleImages();
+
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceTest, GetInstalledTest) {
@@ -763,7 +793,6 @@ TEST_F(DlcServiceTest, StrongerInstalledDlcRefresh) {
   // Mimic a force deletion of DLC.
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(Return(false));
-  EXPECT_TRUE(base::DeleteFile(content_path_.Append(kFirstDlc), true));
   EXPECT_TRUE(base::DeleteFile(root_path, true));
   {
     DlcModuleList dlc_module_list;
@@ -775,7 +804,7 @@ TEST_F(DlcServiceTest, StrongerInstalledDlcRefresh) {
   // Mimic a force creation of DLC.
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(root_path.value()), Return(true)));
-  EXPECT_TRUE(base::CreateDirectory(content_path_.Append(kFirstDlc)));
+  SetUpDlcWithSlots(content_path_, kFirstDlc, kPackage);
   EXPECT_TRUE(base::CreateDirectory(root_path));
   {
     DlcModuleList dlc_module_list;

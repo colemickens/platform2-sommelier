@@ -67,7 +67,7 @@ bool GetDlcManifest(const FilePath& dlc_manifest_path,
   }
 
   if (!manifest_out->ParseManifest(dlc_json_str)) {
-    LOG(ERROR) << "Failed to parse DLC manifest.";
+    LOG(ERROR) << "Failed to parse DLC manifest for DLC:" << id << ".";
     return false;
   }
 

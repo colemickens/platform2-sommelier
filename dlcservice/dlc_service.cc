@@ -82,7 +82,7 @@ DlcService::~DlcService() {
 }
 
 void DlcService::LoadDlcModuleImages() {
-  (void)dlc_manager_->GetInstalled();
+  dlc_manager_->LoadDlcModuleImages();
 }
 
 bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
