@@ -8,7 +8,7 @@ use std::io::{stdout, Write};
 
 use getopts::Options;
 
-use backends::{Backend, VmFeatures};
+use backends::{Backend, ContainerSource, VmFeatures};
 use frontends::Frontend;
 use EnvMap;
 
@@ -366,14 +366,33 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn container(&mut self) -> VmcResult {
-        let (vm_name, container_name, image_server, image_alias) = match self.args.len() {
+        let (vm_name, container_name, source) = match self.args.len() {
             2 => (
                 self.args[0],
                 self.args[1],
-                "https://storage.googleapis.com/cros-containers/%d",
-                "debian/buster",
+                ContainerSource::ImageServer {
+                    image_server: "https://storage.googleapis.com/cros-containers/%d".to_string(),
+                    image_alias: "debian/buster".to_string(),
+                },
             ),
-            4 => (self.args[0], self.args[1], self.args[2], self.args[3]),
+            4 => (
+                self.args[0],
+                self.args[1],
+                // If this argument looks like an absolute path, treat it and the following
+                // parameter as local paths to tarballs.  Otherwise, assume they are an
+                // image server URL and image alias.
+                if self.args[2].starts_with("/") {
+                    ContainerSource::Tarballs {
+                        rootfs_path: self.args[2].to_string(),
+                        metadata_path: self.args[3].to_string(),
+                    }
+                } else {
+                    ContainerSource::ImageServer {
+                        image_server: self.args[2].to_string(),
+                        image_alias: self.args[3].to_string(),
+                    }
+                },
+            ),
             _ => return Err(ExpectedVmAndContainer.into()),
         };
 
@@ -394,13 +413,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             Some(end) => &email[..end],
         };
 
-        try_command!(self.backend.container_create(
-            vm_name,
-            user_id_hash,
-            container_name,
-            image_server,
-            image_alias
-        ));
+        try_command!(self
+            .backend
+            .container_create(vm_name, user_id_hash, container_name, source));
         try_command!(self.backend.container_setup_user(
             vm_name,
             user_id_hash,
@@ -502,7 +517,7 @@ const USAGE: &str = r#"
      list |
      share <vm name> <path> |
      unshare <vm name> <path> |
-     container <vm name> <container name> [ <image server> <image alias> ]  |
+     container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] |
      usb-attach <vm name> <bus>:<device> |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
@@ -729,8 +744,7 @@ mod tests {
                 _vm_name: &str,
                 _user_id_hash: &str,
                 _container_name: &str,
-                _image_server: &str,
-                _image_alias: &str,
+                _source: ContainerSource,
             ) -> Result<(), Box<Error>> {
                 Ok(())
             }

@@ -39,6 +39,26 @@ pub struct VmFeatures {
     pub audio_capture: bool,
 }
 
+pub enum ContainerSource {
+    ImageServer {
+        image_alias: String,
+        image_server: String,
+    },
+    Tarballs {
+        rootfs_path: String,
+        metadata_path: String,
+    },
+}
+
+impl Default for ContainerSource {
+    fn default() -> Self {
+        ContainerSource::ImageServer {
+            image_alias: "".to_string(),
+            image_server: "".to_string(),
+        }
+    }
+}
+
 // The input for this macro is an ordinary trait declaration, with some restrictions. Each method
 // must take `&mut self` and return a `Result` where the `Ok` variant implements `Default` and the
 // `Err` variant is `Box<Error>`. All other arguments types must implement `Default` and no provided
@@ -252,8 +272,7 @@ impl_backend! {
             vm_name: &str,
             user_id_hash: &str,
             container_name: &str,
-            image_server: &str,
-            image_alias: &str,
+            source: ContainerSource,
         ) -> Result<(), Box<Error>>;
 
         /// Starts `container_name`, inside the `vm_name`, owned by `user_id_hash`.

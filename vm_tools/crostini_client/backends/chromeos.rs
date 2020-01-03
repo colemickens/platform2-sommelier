@@ -16,7 +16,7 @@ use std::process::Command;
 use dbus::{BusType, Connection, ConnectionItem, Message, OwnedFd};
 use protobuf::Message as ProtoMessage;
 
-use backends::{Backend, VmFeatures};
+use backends::{Backend, ContainerSource, VmFeatures};
 use lsb_release::{LsbRelease, ReleaseChannel};
 use proto::system_api::cicerone_service::{self, *};
 use proto::system_api::concierge_service::*;
@@ -1020,15 +1020,28 @@ impl ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
         container_name: &str,
-        image_server: &str,
-        image_alias: &str,
+        source: ContainerSource,
     ) -> Result<(), Box<Error>> {
         let mut request = CreateLxdContainerRequest::new();
         request.vm_name = vm_name.to_owned();
         request.container_name = container_name.to_owned();
         request.owner_id = user_id_hash.to_owned();
-        request.image_server = image_server.to_owned();
-        request.image_alias = image_alias.to_owned();
+        match source {
+            ContainerSource::ImageServer {
+                image_alias,
+                image_server,
+            } => {
+                request.image_server = image_server.to_owned();
+                request.image_alias = image_alias.to_owned();
+            }
+            ContainerSource::Tarballs {
+                rootfs_path,
+                metadata_path,
+            } => {
+                request.rootfs_path = rootfs_path.to_owned();
+                request.metadata_path = metadata_path.to_owned();
+            }
+        }
 
         let response: CreateLxdContainerResponse = self.sync_protobus(
             Message::new_method_call(
@@ -1452,21 +1465,14 @@ impl Backend for ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
         container_name: &str,
-        image_server: &str,
-        image_alias: &str,
+        source: ContainerSource,
     ) -> Result<(), Box<Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
             return Err(NotAvailableForPluginVm.into());
         }
 
-        self.create_container(
-            vm_name,
-            user_id_hash,
-            container_name,
-            image_server,
-            image_alias,
-        )
+        self.create_container(vm_name, user_id_hash, container_name, source)
     }
 
     fn container_start(
