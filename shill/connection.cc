@@ -15,6 +15,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
+#include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"

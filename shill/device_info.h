@@ -15,23 +15,23 @@
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/device.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/rtnl_listener.h"
 #include "shill/net/shill_time.h"
+#include "shill/refptr_types.h"
 #include "shill/technology.h"
 
 namespace shill {
 
+class EventDispatcher;
 class Manager;
 class Metrics;
 class RoutingTable;
 class RTNLHandler;
+class RTNLListener;
 class RTNLMessage;
 class Sockets;
 
@@ -149,12 +149,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   };
 
   struct Info {
-    Info()
-        : flags(0),
-          rx_bytes(0),
-          tx_bytes(0),
-          has_addresses_only(false),
-          technology(Technology::kUnknown) {}
+    Info();
 
     DeviceRefPtr device;
     std::string name;
@@ -242,9 +237,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void OnWiFiInterfaceInfoReceived(const Nl80211Message& message);
 #endif  // DISABLE_WIFI
 
-  void set_sockets_for_test(std::unique_ptr<Sockets> sockets) {
-    sockets_ = std::move(sockets);
-  }
+  void set_sockets_for_test(std::unique_ptr<Sockets> sockets);
 
   EventDispatcher* dispatcher() const;
   Metrics* metrics() const;

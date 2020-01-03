@@ -1375,6 +1375,10 @@ bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) {
   return brillo::userdb::GetUserInfo(user_name, uid, nullptr);
 }
 
+void DeviceInfo::set_sockets_for_test(std::unique_ptr<Sockets> sockets) {
+  sockets_ = std::move(sockets);
+}
+
 EventDispatcher* DeviceInfo::dispatcher() const {
   return manager_->dispatcher();
 }
@@ -1382,5 +1386,12 @@ EventDispatcher* DeviceInfo::dispatcher() const {
 Metrics* DeviceInfo::metrics() const {
   return manager_->metrics();
 }
+
+DeviceInfo::Info::Info()
+    : flags(0),
+      rx_bytes(0),
+      tx_bytes(0),
+      has_addresses_only(false),
+      technology(Technology::kUnknown) {}
 
 }  // namespace shill
