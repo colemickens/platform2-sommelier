@@ -2486,6 +2486,7 @@ void AttestationService::CreateCertificateRequestTask(
   if (database_pb.identities().size() <= identity) {
     LOG(ERROR) << __func__ << ": Cannot create a certificate request, identity "
                << identity << " does not exist.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
   std::string key_label;
