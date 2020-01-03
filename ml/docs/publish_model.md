@@ -47,18 +47,11 @@ CrOS major version:
 Two methods will be supported to publish an ML model:
 
 1. Installed into rootfs partition.
-2. Installed into the user partition as a downloadable component by DLC
-Service.
+2. Installed into the user partition as a downloadable component using Chrome
+   component updater. (Under development, ETA 2020-Q1).
 
-> WARNING: Currently only the first method is supported. DLC is still under
-> development and its ETA is Q4 2018.
-
-To know more about which method you should use and why we have two, read
-[section below](#two-methods-why).
-In general, **method #2 is the preferred option**, unless you know that you need
-method #1 and you have received permission to increase the storage size of
-rootfs. Remember that storage in rootfs is limited and we are trying to control
-rootfs growth as much as possible.
+To know more about why we have two methods and the pros and cons of each, read
+the [section below](#two-methods-why).
 
 ## Method #1: Install a model inside rootfs
 
@@ -133,44 +126,7 @@ See [this CL](https://crrev.com/c/1342736) for an example of all the above.
 
 See the [logging section](#log-your-model-on-uma) for more details.
 
-
-## Method #2: Use DLC to install a model inside the stateful partition
-
-> WARNING: This section is pending the implementation of DLC Service.
-> See [go/dlc-service-proposal] for more info.
-
-
-## Which method to use and why {#two-methods-why}
-We provide two methods of model deployment, each with their own pros and cons.
-
-Method #1, installing inside rootfs, has the benefit of making the model
-available right after the system boots for the first time.
-No updates and thus no network connection is required.
-Besides, it was better suited as a starting point to create a working prototype
-of the ML Service in the early stages of development.
-
-Method #1 has one big limit: storage space on rootfs. Since we want to avoid
-increasing the size of rootfs, we reserve this method for those models that are
-either very small (less than 30KB) or that are system critical and need to be
-available before the first successful update of the device.
-
-Method #2 is the solution to the limitation of Method #1. Large models can be
-installed this way, because we have no restrictions on the size increase of the
-stateful partition (within reason).
-Models are installed in an encrypted partition. Files in that partition are
-shared by all users.
-
-Method #2 promises to bind models to platform releases, so all models can be
-verified and tested automatically before they are sent to device.
-
-The disadvantage of Method #2 is that the model cannot be used until
-the system has succesfully updated.
-
-If you believe that your case is eligible for Method #1, contact
-chrome-knowledge-eng@ to get your case approved.
-
-
-## Upgrading to a new version of a model
+### Upgrading to a new version of a rootfs model
 
 If you have a new, probably better version of a model, these are the recommended
 steps to swap it in:
@@ -206,6 +162,45 @@ Finch rollout. Optionally, you can also take this shortcut (with caveats):
   Chrome OS and everything is back in sync. It's to you if breaking your
   unlaunched feature for a few days is OK. (Don't cause Chrome to start crashing
   of course.)
+
+
+
+## Method #2: Use component updater to install a model inside the stateful partition
+
+> Detailed instructions for this section are pending the final implementation of
+> OOB model updates. See [go/cros-model-update] for the design. ETA 2020-Q1.
+
+
+## Which method to use and why {#two-methods-why}
+We provide two methods of model deployment, each with their own pros and cons.
+
+Method #1, installing inside rootfs, has the benefit of making the model
+available right after the system boots for the first time.  No updates and thus
+no network connection is required.  Besides, it was better suited as a starting
+point to create a working prototype of the ML Service in the early stages of
+development.
+
+Method #1 has one big limit: storage space on rootfs. Since we want to avoid
+increasing the size of rootfs, we reserve this method for those models that are
+either very small (less than 30KB) or that are system critical and need to be
+available before the first successful update of the device.
+
+A second property of Method #1 is that it ties model versions to the platform
+version, i.e. updated every 6 weeks after passing through dev and Beta versions.
+
+Method #2 is the solution to the limitations of Method #1. Large models can be
+installed this way, because we have fewer restrictions on the size increase of
+the stateful partition (within reason); and the component updater approach
+allows the rollout of models (controlled by e.g. Finch) in between platform
+releases.
+
+The disadvantage of Method #2 is that the model cannot be used until
+the component updater has fetched the component, i.e. it won't be available
+out-of-box. For models that need to be present when the device is first used or
+otherwise always be available, a combination of Methods #1 and #2 will be
+needed.
+
+Contact chrome-knowledge-eng@ to consult about the right approach.
 
 
 ## Log your model on UMA {#log-your-model-on-uma}
@@ -275,17 +270,17 @@ reviewer from the owners of histograms.xml. The owners can be found at
 [CL/1125701]: http://crrev.com/c/1125701
 [CL/1140020]: http://crrev.com/c/1140020
 [go/cros-ml-service-models]: http://go/cros-ml-service-models
-[go/dlc-service-proposal]: http://go/dlc-service-proposal
+[go/cros-model-update]: http://go/cros-model-update
 [go/finch-best-practices]: http://go/finch-best-practices
 [go/ml-abc]: http://go/ml-abc
-[toco]: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco
-[hist-readme]: https://chromium.googlesource.com/chromium/src/tools/+/refs/heads/master/metrics/histograms/README.md
 [hist-one-pager]: https://chromium.googlesource.com/chromium/src/tools/+/refs/heads/master/metrics/histograms/one-pager.md
+[hist-readme]: https://chromium.googlesource.com/chromium/src/tools/+/refs/heads/master/metrics/histograms/README.md
+[histograms.xml]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/histograms.xml?q=histograms.xml&sq=package:chromium&dr
 [loading & inference test]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/machine_learning_service_impl_test.cc
-[ML Service ebuild]: https://cs.corp.google.com/chromeos_public/src/third_party/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild
 [metrics-owner]: https://cs.chromium.org/chromium/src/base/metrics/OWNERS?q=base/metrics/OWNERS&sq=package:chromium&dr
+[ML Service ebuild]: https://cs.corp.google.com/chromeos_public/src/third_party/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild
 [model.mojom]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/mojom/model.mojom
 [model_metadata.cc]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/ml/model_metadata.cc
-[histograms.xml]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/histograms.xml?q=histograms.xml&sq=package:chromium&dr
 [pretty_print.py]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/pretty_print.py?sq=package:chromium&dr&g=0
+[toco]: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco
 [validate_format.py]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/validate_format.py?sq=package:chromium&dr&g=0
