@@ -49,7 +49,6 @@
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
 #include "shill/routing_table.h"
-#include "shill/service.h"
 #include "shill/vpn/vpn_provider.h"
 
 #if !defined(DISABLE_WIFI)
