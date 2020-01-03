@@ -30,6 +30,13 @@ class Environment {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
+  // 100KB max input size. The parser isn't designed for high efficiency and
+  // it can end up timing out on larger input sizes that have lots of
+  // whitespace.
+  constexpr int kMaxInputSize = 102400;
+  if (size > kMaxInputSize)
+    return 0;
+
   // The filename has no impact on this function's execution.
   base::FilePath file_path(env.temp_dir_.GetPath().Append("mime_types"));
   base::WriteFile(file_path, reinterpret_cast<const char*>(data), size);
