@@ -251,7 +251,7 @@ impl fmt::Debug for ChromeOSError {
 
 impl Error for ChromeOSError {}
 
-fn dbus_message_to_proto<T: ProtoMessage>(message: &Message) -> Result<T, Box<Error>> {
+fn dbus_message_to_proto<T: ProtoMessage>(message: &Message) -> Result<T, Box<dyn Error>> {
     let raw_buffer: Vec<u8> = message.read1()?;
     let mut proto = T::new();
     proto.merge_from_bytes(&raw_buffer)?;
@@ -268,7 +268,7 @@ pub struct ChromeOS {
 
 impl ChromeOS {
     /// Initiates a D-Bus connection and returns an initialized backend.
-    pub fn new() -> Result<ChromeOS, Box<Error>> {
+    pub fn new() -> Result<ChromeOS, Box<dyn Error>> {
         let connection = Connection::get_private(BusType::System)?;
         Ok(ChromeOS {
             connection: connection,
@@ -284,7 +284,7 @@ impl ChromeOS {
         &mut self,
         message: Message,
         request: &I,
-    ) -> Result<O, Box<Error>> {
+    ) -> Result<O, Box<dyn Error>> {
         self.sync_protobus_timeout(message, request, &[], DEFAULT_TIMEOUT_MS)
     }
 
@@ -295,7 +295,7 @@ impl ChromeOS {
         request: &I,
         fds: &[OwnedFd],
         timeout_millis: i32,
-    ) -> Result<O, Box<Error>> {
+    ) -> Result<O, Box<dyn Error>> {
         let method = message.append1(request.write_to_bytes()?).append_ref(fds);
         let message = self
             .connection
@@ -308,10 +308,10 @@ impl ChromeOS {
         interface: &str,
         signal: &str,
         timeout_millis: i32,
-    ) -> Result<O, Box<Error>> {
+    ) -> Result<O, Box<dyn Error>> {
         let rule = format!("interface='{}',member='{}'", interface, signal);
         self.connection.add_match(&rule)?;
-        let mut result: Result<O, Box<Error>> = Err("timeout while waiting for signal".into());
+        let mut result: Result<O, Box<dyn Error>> = Err("timeout while waiting for signal".into());
         for item in self.connection.iter(timeout_millis) {
             match item {
                 ConnectionItem::Signal(message) => {
@@ -331,7 +331,7 @@ impl ChromeOS {
     }
 
     /// Request that component updater load a named component.
-    fn component_updater_load_component(&mut self, name: &str) -> Result<(), Box<Error>> {
+    fn component_updater_load_component(&mut self, name: &str) -> Result<(), Box<dyn Error>> {
         let method = Message::new_method_call(
             "org.chromium.ComponentUpdaterService",
             "/org/chromium/ComponentUpdaterService",
@@ -352,7 +352,7 @@ impl ChromeOS {
         &mut self,
         user_id_hash: &str,
         feature_name: &str,
-    ) -> Result<bool, Box<Error>> {
+    ) -> Result<bool, Box<dyn Error>> {
         let method = Message::new_method_call(
             CHROME_FEATURES_SERVICE_NAME,
             CHROME_FEATURES_SERVICE_PATH,
@@ -371,7 +371,7 @@ impl ChromeOS {
         }
     }
 
-    fn notify_vm_starting(&mut self) -> Result<(), Box<Error>> {
+    fn notify_vm_starting(&mut self) -> Result<(), Box<dyn Error>> {
         let method = Message::new_method_call(
             LOCK_TO_SINGLE_USER_SERVICE_NAME,
             LOCK_TO_SINGLE_USER_SERVICE_PATH,
@@ -385,7 +385,7 @@ impl ChromeOS {
         Ok(())
     }
 
-    fn is_crostini_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<Error>> {
+    fn is_crostini_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
         let enabled = match self.crostini_enabled {
             Some(value) => value,
             None => {
@@ -397,7 +397,7 @@ impl ChromeOS {
         Ok(enabled)
     }
 
-    fn is_plugin_vm_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<Error>> {
+    fn is_plugin_vm_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
         let enabled = match self.plugin_vm_enabled {
             Some(value) => value,
             None => {
@@ -410,7 +410,7 @@ impl ChromeOS {
     }
 
     /// Request debugd to start vm_concierge.
-    fn start_concierge(&mut self) -> Result<(), Box<Error>> {
+    fn start_concierge(&mut self) -> Result<(), Box<dyn Error>> {
         // Mount the termina component, waiting up to 2 minutes to download it. If this fails we
         // won't be able to start the concierge service below.
         self.component_updater_load_component("cros-termina")?;
@@ -430,7 +430,7 @@ impl ChromeOS {
     }
 
     /// Request debugd to start vmplugin_dispatcher.
-    fn start_vm_plugin_dispather(&mut self, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn start_vm_plugin_dispather(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         // TODO(dtor): download the component before trying to start it.
 
         let method = Message::new_method_call(
@@ -451,7 +451,7 @@ impl ChromeOS {
     }
 
     /// Starts all necessary VM services (concierge and optionally the Plugin VM dispatcher).
-    fn start_vm_infrastructure(&mut self, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn start_vm_infrastructure(&mut self, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         if self.is_plugin_vm_enabled(user_id_hash)? {
             // Starting the dispatcher will also start concierge.
             self.start_vm_plugin_dispather(user_id_hash)
@@ -467,7 +467,7 @@ impl ChromeOS {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
-    ) -> Result<String, Box<Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         let mut request = CreateDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
@@ -501,7 +501,7 @@ impl ChromeOS {
         source_name: Option<&str>,
         removable_media: Option<&str>,
         params: &[&str],
-    ) -> Result<Option<String>, Box<Error>> {
+    ) -> Result<Option<String>, Box<dyn Error>> {
         let mut request = CreateDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
@@ -575,7 +575,11 @@ impl ChromeOS {
     }
 
     /// Request that concierge create a disk image.
-    fn destroy_disk_image(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn destroy_disk_image(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+    ) -> Result<(), Box<dyn Error>> {
         let mut request = DestroyDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
@@ -604,7 +608,7 @@ impl ChromeOS {
         user_id_hash: &str,
         export_name: &str,
         removable_media: Option<&str>,
-    ) -> Result<Option<String>, Box<Error>> {
+    ) -> Result<Option<String>, Box<dyn Error>> {
         let export_path = match removable_media {
             Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
                 .join(media_path)
@@ -670,7 +674,7 @@ impl ChromeOS {
         plugin_vm: bool,
         import_name: &str,
         removable_media: Option<&str>,
-    ) -> Result<Option<String>, Box<Error>> {
+    ) -> Result<Option<String>, Box<dyn Error>> {
         let import_path = match removable_media {
             Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
                 .join(media_path)
@@ -735,7 +739,7 @@ impl ChromeOS {
     fn parse_disk_op_status(
         &mut self,
         response: DiskImageStatusResponse,
-    ) -> Result<(bool, u32), Box<Error>> {
+    ) -> Result<(bool, u32), Box<dyn Error>> {
         match response.status {
             DiskImageStatus::DISK_STATUS_CREATED => Ok((true, response.progress)),
             DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok((false, response.progress)),
@@ -744,7 +748,7 @@ impl ChromeOS {
     }
 
     /// Request concierge to provide status of a disk operation (import or export) with given UUID.
-    fn check_disk_operation(&mut self, uuid: &str) -> Result<(bool, u32), Box<Error>> {
+    fn check_disk_operation(&mut self, uuid: &str) -> Result<(bool, u32), Box<dyn Error>> {
         let mut request = DiskImageStatusRequest::new();
         request.command_uuid = uuid.to_owned();
 
@@ -762,7 +766,7 @@ impl ChromeOS {
     }
 
     /// Wait for updated status of a disk operation (import or export) with given UUID.
-    fn wait_disk_operation(&mut self, uuid: &str) -> Result<(bool, u32), Box<Error>> {
+    fn wait_disk_operation(&mut self, uuid: &str) -> Result<(bool, u32), Box<dyn Error>> {
         loop {
             let response: DiskImageStatusResponse = self.protobus_wait_for_signal_timeout(
                 VM_CONCIERGE_INTERFACE,
@@ -782,7 +786,7 @@ impl ChromeOS {
         user_id_hash: &str,
         target_location: Option<StorageLocation>,
         target_name: Option<&str>,
-    ) -> Result<(Vec<VmDiskInfo>, u64), Box<Error>> {
+    ) -> Result<(Vec<VmDiskInfo>, u64), Box<dyn Error>> {
         let mut request = ListVmDisksRequest::new();
         request.cryptohome_id = user_id_hash.to_owned();
         match target_location {
@@ -811,7 +815,7 @@ impl ChromeOS {
     }
 
     /// Checks if VM with given name/disk is Plugin VM.
-    fn is_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<bool, Box<Error>> {
+    fn is_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
         let (images, _) = self.list_disk_images(
             user_id_hash,
             Some(StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM),
@@ -827,7 +831,7 @@ impl ChromeOS {
         user_id_hash: &str,
         features: VmFeatures,
         disk_image_path: String,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let mut request = StartVmRequest::new();
         request.start_termina = true;
         request.owner_id = user_id_hash.to_owned();
@@ -863,7 +867,7 @@ impl ChromeOS {
     }
 
     /// Request that dispatcher start given Plugin VM.
-    fn start_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn start_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         let mut request = vm_plugin_dispatcher::StartVmRequest::new();
         request.owner_id = user_id_hash.to_owned();
         request.vm_name_uuid = vm_name.to_owned();
@@ -885,7 +889,7 @@ impl ChromeOS {
     }
 
     /// Request that dispatcher starts application responsible for rendering Plugin VM window.
-    fn show_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn show_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         let mut request = vm_plugin_dispatcher::ShowVmRequest::new();
         request.owner_id = user_id_hash.to_owned();
         request.vm_name_uuid = vm_name.to_owned();
@@ -907,7 +911,7 @@ impl ChromeOS {
     }
 
     /// Request that `concierge` stop a vm with the given disk image.
-    fn stop_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn stop_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         let mut request = StopVmRequest::new();
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
@@ -934,7 +938,7 @@ impl ChromeOS {
     }
 
     // Request `VmInfo` from concierge about given `vm_name`.
-    fn get_vm_info(&mut self, vm_name: &str, user_id_hash: &str) -> Result<VmInfo, Box<Error>> {
+    fn get_vm_info(&mut self, vm_name: &str, user_id_hash: &str) -> Result<VmInfo, Box<dyn Error>> {
         let mut request = GetVmInfoRequest::new();
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
@@ -963,7 +967,7 @@ impl ChromeOS {
         seneschal_handle: u32,
         user_id_hash: &str,
         path: &str,
-    ) -> Result<String, Box<Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         let mut request = SharePathRequest::new();
         request.handle = seneschal_handle;
         request.shared_path.set_default().path = path.to_owned();
@@ -993,7 +997,7 @@ impl ChromeOS {
         &mut self,
         seneschal_handle: u32,
         path: &str,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let mut request = UnsharePathRequest::new();
         request.handle = seneschal_handle;
         request.path = format!("MyFiles/{}", path);
@@ -1021,7 +1025,7 @@ impl ChromeOS {
         user_id_hash: &str,
         container_name: &str,
         source: ContainerSource,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let mut request = CreateLxdContainerRequest::new();
         request.vm_name = vm_name.to_owned();
         request.container_name = container_name.to_owned();
@@ -1079,7 +1083,7 @@ impl ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
         container_name: &str,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let mut request = StartLxdContainerRequest::new();
         request.vm_name = vm_name.to_owned();
         request.container_name = container_name.to_owned();
@@ -1119,7 +1123,7 @@ impl ChromeOS {
         user_id_hash: &str,
         container_name: &str,
         username: &str,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let mut request = SetUpLxdContainerUserRequest::new();
         request.vm_name = vm_name.to_owned();
         request.owner_id = user_id_hash.to_owned();
@@ -1150,7 +1154,7 @@ impl ChromeOS {
         bus: u8,
         device: u8,
         usb_fd: OwnedFd,
-    ) -> Result<u8, Box<Error>> {
+    ) -> Result<u8, Box<dyn Error>> {
         let mut request = AttachUsbDeviceRequest::new();
         request.owner_id = user_id_hash.to_owned();
         request.vm_name = vm_name.to_owned();
@@ -1181,7 +1185,7 @@ impl ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
         port: u8,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let mut request = DetachUsbDeviceRequest::new();
         request.owner_id = user_id_hash.to_owned();
         request.vm_name = vm_name.to_owned();
@@ -1208,7 +1212,7 @@ impl ChromeOS {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
-    ) -> Result<Vec<UsbDeviceMessage>, Box<Error>> {
+    ) -> Result<Vec<UsbDeviceMessage>, Box<dyn Error>> {
         let mut request = ListUsbDeviceRequest::new();
         request.owner_id = user_id_hash.to_owned();
         request.vm_name = vm_name.to_owned();
@@ -1230,7 +1234,7 @@ impl ChromeOS {
         }
     }
 
-    fn permission_broker_open_path(&mut self, path: &Path) -> Result<OwnedFd, Box<Error>> {
+    fn permission_broker_open_path(&mut self, path: &Path) -> Result<OwnedFd, Box<dyn Error>> {
         let path_str = path
             .to_str()
             .ok_or_else(|| FailedGetOpenPath(path.into()))?;
@@ -1258,7 +1262,7 @@ impl Backend for ChromeOS {
         "ChromeOS"
     }
 
-    fn metrics_send_sample(&mut self, name: &str) -> Result<(), Box<Error>> {
+    fn metrics_send_sample(&mut self, name: &str) -> Result<(), Box<dyn Error>> {
         let status = Command::new("metrics_client")
             .arg("-v")
             .arg(name)
@@ -1272,7 +1276,7 @@ impl Backend for ChromeOS {
         Ok(())
     }
 
-    fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<Error>> {
+    fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<dyn Error>> {
         let method = Message::new_method_call(
             "org.chromium.SessionManager",
             "/org/chromium/SessionManager",
@@ -1296,7 +1300,7 @@ impl Backend for ChromeOS {
         source_name: Option<&str>,
         removable_media: Option<&str>,
         params: &[&str],
-    ) -> Result<Option<String>, Box<Error>> {
+    ) -> Result<Option<String>, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.create_vm_image(
             name,
@@ -1313,7 +1317,7 @@ impl Backend for ChromeOS {
         name: &str,
         user_id_hash: &str,
         features: VmFeatures,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         self.notify_vm_starting()?;
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(name, user_id_hash)? {
@@ -1336,7 +1340,7 @@ impl Backend for ChromeOS {
         }
     }
 
-    fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.stop_vm(name, user_id_hash)
     }
@@ -1347,7 +1351,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         file_name: &str,
         removable_media: Option<&str>,
-    ) -> Result<Option<String>, Box<Error>> {
+    ) -> Result<Option<String>, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.export_disk_image(name, user_id_hash, file_name, removable_media)
     }
@@ -1359,7 +1363,7 @@ impl Backend for ChromeOS {
         plugin_vm: bool,
         file_name: &str,
         removable_media: Option<&str>,
-    ) -> Result<Option<String>, Box<Error>> {
+    ) -> Result<Option<String>, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.import_disk_image(name, user_id_hash, plugin_vm, file_name, removable_media)
     }
@@ -1369,7 +1373,7 @@ impl Backend for ChromeOS {
         name: &str,
         user_id_hash: &str,
         path: &str,
-    ) -> Result<String, Box<Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
         // The VmInfo uses a u64 as the handle, but SharePathRequest uses a u32 for the handle.
@@ -1386,7 +1390,7 @@ impl Backend for ChromeOS {
         name: &str,
         user_id_hash: &str,
         path: &str,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
         // The VmInfo uses a u64 as the handle, but SharePathRequest uses a u32 for the handle.
@@ -1396,7 +1400,7 @@ impl Backend for ChromeOS {
         self.unshare_path_with_vm(vm_info.seneschal_server_handle as u32, path)
     }
 
-    fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
             self.show_plugin_vm(vm_name, user_id_hash)
@@ -1419,7 +1423,7 @@ impl Backend for ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
         container_name: &str,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         Command::new("vsh")
             .arg(format!("--vm_name={}", vm_name))
             .arg(format!("--owner_id={}", user_id_hash))
@@ -1434,12 +1438,15 @@ impl Backend for ChromeOS {
         Ok(())
     }
 
-    fn disk_destroy(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn disk_destroy(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.destroy_disk_image(vm_name, user_id_hash)
     }
 
-    fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<(String, u64)>, u64), Box<Error>> {
+    fn disk_list(
+        &mut self,
+        user_id_hash: &str,
+    ) -> Result<(Vec<(String, u64)>, u64), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let (images, total_size) = self.list_disk_images(user_id_hash, None, None)?;
         let out_images: Vec<(String, u64)> = images.into_iter().map(|e| (e.name, e.size)).collect();
@@ -1450,12 +1457,16 @@ impl Backend for ChromeOS {
         &mut self,
         uuid: &str,
         user_id_hash: &str,
-    ) -> Result<(bool, u32), Box<Error>> {
+    ) -> Result<(bool, u32), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.check_disk_operation(uuid)
     }
 
-    fn wait_disk_op(&mut self, uuid: &str, user_id_hash: &str) -> Result<(bool, u32), Box<Error>> {
+    fn wait_disk_op(
+        &mut self,
+        uuid: &str,
+        user_id_hash: &str,
+    ) -> Result<(bool, u32), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.wait_disk_operation(uuid)
     }
@@ -1466,7 +1477,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         container_name: &str,
         source: ContainerSource,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
             return Err(NotAvailableForPluginVm.into());
@@ -1480,7 +1491,7 @@ impl Backend for ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
         container_name: &str,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
             return Err(NotAvailableForPluginVm.into());
@@ -1495,7 +1506,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         container_name: &str,
         username: &str,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
             return Err(NotAvailableForPluginVm.into());
@@ -1510,7 +1521,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         bus: u8,
         device: u8,
-    ) -> Result<u8, Box<Error>> {
+    ) -> Result<u8, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let usb_file_path = format!("/dev/bus/usb/{:03}/{:03}", bus, device);
         let usb_fd = self.permission_broker_open_path(Path::new(&usb_file_path))?;
@@ -1522,7 +1533,7 @@ impl Backend for ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
         port: u8,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.detach_usb(vm_name, user_id_hash, port)
     }
@@ -1531,7 +1542,7 @@ impl Backend for ChromeOS {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
-    ) -> Result<Vec<(u8, u16, u16, String)>, Box<Error>> {
+    ) -> Result<Vec<(u8, u16, u16, String)>, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let device_list = self
             .list_usb(vm_name, user_id_hash)?

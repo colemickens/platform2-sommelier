@@ -13,7 +13,7 @@ use frontends::Frontend;
 use EnvMap;
 
 enum VmcError {
-    Command(&'static str, u32, Box<Error>),
+    Command(&'static str, u32, Box<dyn Error>),
     ExpectedCrosUserIdHash,
     ExpectedName,
     ExpectedNoArgs,
@@ -91,7 +91,7 @@ impl fmt::Debug for VmcError {
 
 impl Error for VmcError {}
 
-type VmcResult = Result<(), Box<Error>>;
+type VmcResult = Result<(), Box<dyn Error>>;
 
 macro_rules! try_command {
     ($x:expr) => {
@@ -100,7 +100,7 @@ macro_rules! try_command {
 }
 
 struct Command<'a, 'b, 'c> {
-    backend: &'a mut Backend,
+    backend: &'a mut dyn Backend,
     args: &'b [&'b str],
     environ: &'c EnvMap<'c>,
 }
@@ -537,7 +537,7 @@ impl Frontend for Vmc {
         eprintln!("USAGE: {}{}", program_name, USAGE);
     }
 
-    fn run(&self, backend: &mut Backend, args: &[&str], environ: &EnvMap) -> VmcResult {
+    fn run(&self, backend: &mut dyn Backend, args: &[&str], environ: &EnvMap) -> VmcResult {
         if args.len() < 2 {
             self.print_usage("vmc");
             return Ok(());
@@ -725,7 +725,7 @@ mod tests {
             fn name(&self) -> &'static str {
                 "Sessions List"
             }
-            fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<Error>> {
+            fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<dyn Error>> {
                 Ok(vec![(
                     "testuser@example.com".to_owned(),
                     "fake_hash".to_owned(),
@@ -736,7 +736,7 @@ mod tests {
                 _vm_name: &str,
                 _user_id_hash: &str,
                 _container_name: &str,
-            ) -> Result<(), Box<Error>> {
+            ) -> Result<(), Box<dyn Error>> {
                 Ok(())
             }
             fn container_create(
@@ -745,7 +745,7 @@ mod tests {
                 _user_id_hash: &str,
                 _container_name: &str,
                 _source: ContainerSource,
-            ) -> Result<(), Box<Error>> {
+            ) -> Result<(), Box<dyn Error>> {
                 Ok(())
             }
             fn container_start(
@@ -753,7 +753,7 @@ mod tests {
                 _vm_name: &str,
                 _user_id_hash: &str,
                 _container_name: &str,
-            ) -> Result<(), Box<Error>> {
+            ) -> Result<(), Box<dyn Error>> {
                 Ok(())
             }
             fn container_setup_user(
@@ -762,7 +762,7 @@ mod tests {
                 _user_id_hash: &str,
                 _container_name: &str,
                 _username: &str,
-            ) -> Result<(), Box<Error>> {
+            ) -> Result<(), Box<dyn Error>> {
                 Ok(())
             }
         }

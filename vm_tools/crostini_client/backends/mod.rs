@@ -61,7 +61,7 @@ impl Default for ContainerSource {
 
 // The input for this macro is an ordinary trait declaration, with some restrictions. Each method
 // must take `&mut self` and return a `Result` where the `Ok` variant implements `Default` and the
-// `Err` variant is `Box<Error>`. All other arguments types must implement `Default` and no provided
+// `Err` variant is `Box<dyn Error>`. All other arguments types must implement `Default` and no provided
 // implementations for the methods are allowed.
 //
 // The output of this macro is the input trait with provided methods that return
@@ -70,7 +70,7 @@ impl Default for ContainerSource {
 // `Ok(Default::default())`. Each dummy implementation also gets a suite of tests.
 macro_rules! impl_backend {
     ($(#[$trait_attr:meta])* pub trait $trait_nm:ident {
-        $( $(#[$fn_attr:meta])* fn $fn_nm:ident (&mut self $(, $arg_nm:ident: $arg_ty:ty)* $(,)*) -> Result<$fn_ret:ty, Box<Error>>;)+
+        $( $(#[$fn_attr:meta])* fn $fn_nm:ident (&mut self $(, $arg_nm:ident: $arg_ty:ty)* $(,)*) -> Result<$fn_ret:ty, Box<dyn Error>>;)+
     }) => {
 
         $(#[$trait_attr])*
@@ -80,7 +80,7 @@ macro_rules! impl_backend {
 
             $(
                 $(#[$fn_attr])*
-                fn $fn_nm(&mut self $(, $arg_nm: $arg_ty)*) -> Result<$fn_ret, Box<Error>> {
+                fn $fn_nm(&mut self $(, $arg_nm: $arg_ty)*) -> Result<$fn_ret, Box<dyn Error>> {
                     $(let _ = $arg_nm;)*
                     Err(UnimplementedError {
                         name: self.name(),
@@ -136,7 +136,7 @@ macro_rules! impl_backend {
             }
 
             $(
-                fn $fn_nm(&mut self $(, $arg_nm: $arg_ty)*) -> Result<$fn_ret, Box<Error>> {
+                fn $fn_nm(&mut self $(, $arg_nm: $arg_ty)*) -> Result<$fn_ret, Box<dyn Error>> {
                     $(let _ = $arg_nm;)*
                     Ok(Default::default())
                 }
@@ -166,11 +166,11 @@ impl_backend! {
         // Metrics
 
         /// Sends a `Platform.CrOSEvent` enum histogram sample.
-        fn metrics_send_sample(&mut self, name: &str) -> Result<(), Box<Error>>;
+        fn metrics_send_sample(&mut self, name: &str) -> Result<(), Box<dyn Error>>;
 
         // Sessions
         /// Gets a list of active sessions as a list of tuples: `(email, user_id_hash)`.
-        fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<Error>>;
+        fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<dyn Error>>;
 
         // Vm
 
@@ -183,16 +183,16 @@ impl_backend! {
             source_name: Option<&str>,
             removable_media: Option<&str>,
             params: &[&str],
-        ) -> Result<Option<String>, Box<Error>>;
+        ) -> Result<Option<String>, Box<dyn Error>>;
         /// Starts a VM called `name` with the given `user_id_hash`.
         fn vm_start(
             &mut self,
             name: &str,
             user_id_hash: &str,
             features: VmFeatures,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<(), Box<dyn Error>>;
         /// Stop `name` VM with given `user_id_hash`.
-        fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;
+        fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>>;
         /// Exports the stateful disk image of `name` VM owned by `user_id_hash` to `file_name`,
         /// optionally to external drive `removable_media`.
         fn vm_export(
@@ -201,7 +201,7 @@ impl_backend! {
             user_id_hash: &str,
             file_name: &str,
             removable_media: Option<&str>,
-        ) -> Result<Option<String>, Box<Error>>;
+        ) -> Result<Option<String>, Box<dyn Error>>;
         /// Imports a disk image `file_name` as a VM `name` owned by `user_id_hash`. The file may
         /// optionally reside on external drive `removable_media`.
         fn vm_import(
@@ -211,7 +211,7 @@ impl_backend! {
             plugin_vm: bool,
             file_name: &str,
             removable_media: Option<&str>,
-        ) -> Result<Option<String>, Box<Error>>;
+        ) -> Result<Option<String>, Box<dyn Error>>;
         /// Share a `path` with VM `name` owned by `user_id_hash` and return the path inside the VM
         /// that it was mounted.
         fn vm_share_path(
@@ -219,7 +219,7 @@ impl_backend! {
             name: &str,
             user_id_hash: &str,
             path: &str,
-        ) -> Result<String, Box<Error>>;
+        ) -> Result<String, Box<dyn Error>>;
         /// Share a `path` with VM `name` owned by `user_id_hash` and return the path inside the VM
         /// that it was mounted.
         fn vm_unshare_path(
@@ -227,41 +227,41 @@ impl_backend! {
             name: &str,
             user_id_hash: &str,
             path: &str,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<(), Box<dyn Error>>;
 
         // Vsh
 
         /// Starts `vsh` to open a shell into `vm_name` owned by `user_id_hash`.
-        fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;
+        fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>>;
         /// Opens virtual shell in `container_name`, inside the `vm_name`, owned by `user_id_hash`.
         fn vsh_exec_container(
             &mut self,
             vm_name: &str,
             user_id_hash: &str,
             container_name: &str,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<(), Box<dyn Error>>;
 
         // Disk
 
         /// Destroys the disk of `vm_name` for the given `user_id_hash`.
-        fn disk_destroy(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;
+        fn disk_destroy(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>>;
         /// Gets a list of all VM disks for `user_id_hash` and their total size.
         fn disk_list(
             &mut self,
             user_id_hash: &str,
-        ) -> Result<(Vec<(String, u64)>, u64), Box<Error>>;
+        ) -> Result<(Vec<(String, u64)>, u64), Box<dyn Error>>;
         /// Checks status of executing disk operation (import, export).
         fn disk_op_status(
             &mut self,
             uuid: &str,
             user_id_hash: &str,
-        ) -> Result<(bool, u32), Box<Error>>;
+        ) -> Result<(bool, u32), Box<dyn Error>>;
         /// Waits for the status of executing disk operation (import, export) to update.
         fn wait_disk_op(
             &mut self,
             uuid: &str,
             user_id_hash: &str,
-        ) -> Result<(bool, u32), Box<Error>>;
+        ) -> Result<(bool, u32), Box<dyn Error>>;
 
         // Container
 
@@ -273,7 +273,7 @@ impl_backend! {
             user_id_hash: &str,
             container_name: &str,
             source: ContainerSource,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<(), Box<dyn Error>>;
 
         /// Starts `container_name`, inside the `vm_name`, owned by `user_id_hash`.
         fn container_start(
@@ -281,7 +281,7 @@ impl_backend! {
             vm_name: &str,
             user_id_hash: &str,
             container_name: &str,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<(), Box<dyn Error>>;
 
         /// Sets up the `username` in `container_name`, inside the `vm_name`, owned by
         /// `user_id_hash`.
@@ -291,7 +291,7 @@ impl_backend! {
             user_id_hash: &str,
             container_name: &str,
             username: &str,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<(), Box<dyn Error>>;
 
         // USB
         fn usb_attach(
@@ -300,17 +300,17 @@ impl_backend! {
             user_id_hash: &str,
             bus: u8,
             device: u8,
-        ) -> Result<u8, Box<Error>>;
+        ) -> Result<u8, Box<dyn Error>>;
         fn usb_detach(
             &mut self,
             vm_name: &str,
             user_id_hash: &str,
             port: u8,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<(), Box<dyn Error>>;
         fn usb_list(
             &mut self,
             vm_name: &str,
             user_id_hash: &str,
-        ) -> Result<Vec<(u8, u16, u16, String)>, Box<Error>>;
+        ) -> Result<Vec<(u8, u16, u16, String)>, Box<dyn Error>>;
     }
 }

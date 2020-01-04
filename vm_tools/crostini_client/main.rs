@@ -50,7 +50,7 @@ fn print_usage(program_name: &str, opts: &Options) {
     }
 }
 
-fn main() -> Result<(), Box<Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let args_string: Vec<String> = env::args().collect();
     let args: Vec<&str> = args_string.iter().map(|s| s.as_str()).collect();
     let vars_string: BTreeMap<String, String> = env::vars().collect();

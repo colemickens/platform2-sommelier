@@ -25,9 +25,13 @@ pub trait Frontend {
 
     /// Parses the command line style `args` and enviroment variables and runs the chosen
     /// command against the given `backend`.
-    fn run(&self, backend: &mut Backend, args: &[&str], environ: &EnvMap)
-        -> Result<(), Box<Error>>;
+    fn run(
+        &self,
+        backend: &mut dyn Backend,
+        args: &[&str],
+        environ: &EnvMap,
+    ) -> Result<(), Box<dyn Error>>;
 }
 
 /// An array of all frontends.
-pub const FRONTENDS: &[&Frontend] = &[&Vmc];
+pub const FRONTENDS: &[&dyn Frontend] = &[&Vmc];
