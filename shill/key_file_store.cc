@@ -4,14 +4,22 @@
 
 #include "shill/key_file_store.h"
 
+#include <list>
+#include <map>
 #include <memory>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
+#include <base/optional.h>
+#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/scoped_umask.h>
 #include <fcntl.h>
+#include <re2/re2.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -33,16 +41,356 @@ static string ObjectID(const KeyFileStore* k) {
 }  // namespace Logging
 
 namespace {
-string ConvertErrorToMessage(GError* error) {
-  if (!error) {
-    return "Unknown GLib error.";
+
+// GLib uses the semicolon for separating lists, but it is configurable,
+// so we don't want to hardcode it around this file.
+constexpr char kListSeparator = ';';
+
+string Escape(const string& str, base::Optional<char> separator) {
+  string out;
+  bool leading_space = true;
+  for (const char c : str) {
+    switch (c) {
+      case ' ':
+        if (leading_space) {
+          out += "\\s";
+        } else {
+          out += ' ';
+        }
+        break;
+      case '\t':
+        if (leading_space) {
+          out += "\\t";
+        } else {
+          out += '\t';
+        }
+        break;
+      case '\n':
+        out += "\\n";
+        break;
+      case '\r':
+        out += "\\r";
+        break;
+      case '\\':
+        out += "\\\\";
+        leading_space = false;
+        break;
+      default:
+        if (separator.has_value() && c == separator.value()) {
+          out += "\\";
+          out += c;
+          leading_space = true;
+        } else {
+          out += c;
+          leading_space = false;
+        }
+        break;
+    }
   }
-  string message =
-      base::StringPrintf("GError(%d): %s", error->code, error->message);
-  g_error_free(error);
-  return message;
+  return out;
 }
+
+bool Unescape(const string& str,
+              base::Optional<char> separator,
+              vector<string>* out) {
+  DCHECK(out);
+  out->clear();
+  string current;
+  bool escaping = false;
+  for (const char c : str) {
+    if (escaping) {
+      switch (c) {
+        case 's':
+          current += ' ';
+          break;
+        case 't':
+          current += '\t';
+          break;
+        case 'n':
+          current += '\n';
+          break;
+        case 'r':
+          current += '\r';
+          break;
+        default:
+          current += c;
+          break;
+      }
+      escaping = false;
+      continue;
+    }
+
+    if (c == '\\') {
+      escaping = true;
+      continue;
+    }
+
+    if (separator.has_value() && c == separator.value()) {
+      out->push_back(current);
+      current.clear();
+      continue;
+    }
+
+    current += c;
+  }
+
+  if (escaping) {
+    LOG(ERROR) << "Unterminated escape sequence in \"" << str << "\"";
+    return false;
+  }
+  // If we are parsing a list and the current string is empty, then the last
+  // character was either a separator (closing off a list item) or the entire
+  // list is empty. In this case, we don't add an element.
+  // Otherwise, we are parsing not as as list, in which case |current| holds
+  // the whole value, or we've started to parse a value but it is technically
+  // unterminated, which glib still accepts. In those cases, we add to the
+  // output.
+  if (!separator.has_value() || !current.empty()) {
+    out->push_back(current);
+  }
+  return true;
+}
+
+using KeyValuePair = std::pair<string, string>;
+bool IsBlankComment(const KeyValuePair& kv) {
+  return kv.first.empty() && kv.second.empty();
+}
+
+class Group {
+ public:
+  explicit Group(const string& name) : name_(name) {}
+
+  void Set(const string& key, const string& value) {
+    if (index_.count(key) > 0) {
+      index_[key]->second = value;
+      return;
+    }
+
+    entries_.push_back({key, value});
+    index_[key] = &entries_.back();
+  }
+
+  base::Optional<string> Get(const string& key) const {
+    const auto it = index_.find(key);
+    if (it == index_.end()) {
+      return base::nullopt;
+    }
+
+    return it->second->second;
+  }
+
+  bool Delete(const string& key) {
+    const auto it = index_.find(key);
+    if (it == index_.end()) {
+      return false;
+    }
+
+    KeyValuePair* pair = it->second;
+    index_.erase(it);
+    base::Erase(entries_, *pair);
+    return true;
+  }
+
+  // Comment lines are ignored, but they have to be preserved when the file is
+  // written back out. Hence, we add them to the entries list but not to the
+  // index.
+  void AddComment(const string& comment) { entries_.push_back({"", comment}); }
+
+  // Serializes this group to a string, preserving comments.
+  string Serialize(bool is_last_group) const {
+    string data = base::StringPrintf("[%s]\n", name_.c_str());
+    for (const auto& entry : entries_) {
+      if (!entry.first.empty()) {
+        data += entry.first + "=";
+      }
+      data += entry.second + "\n";
+    }
+    // If this is not the last group and there isn't already a blank
+    // comment line, glib adds a blank line for readability. Replicate
+    // that behavior here.
+    if (!is_last_group &&
+        (entries_.empty() || !IsBlankComment(entries_.back()))) {
+      data += "\n";
+    }
+    return data;
+  }
+
+ private:
+  string name_;
+  std::list<KeyValuePair> entries_;
+  std::map<string, KeyValuePair*> index_;
+
+  DISALLOW_COPY_AND_ASSIGN(Group);
+};
+
 }  // namespace
+
+constexpr LazyRE2 group_header_matcher = {
+    "\\[([^[:cntrl:]\\]]*)\\][[:space:]]*"};
+constexpr LazyRE2 key_value_matcher = {"([^ ]+?) *= *(.*)"};
+
+class KeyFileStore::KeyFile {
+ public:
+  static std::unique_ptr<KeyFile> Create(const base::FilePath& path) {
+    string contents;
+    if (!base::ReadFileToString(path, &contents)) {
+      return nullptr;
+    }
+
+    vector<string> lines = base::SplitString(
+        contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+    // Trim final empty line if present, since ending a file on a newline
+    // will cause us to have an extra with base::SPLIT_WANT_ALL.
+    if (!lines.empty() && lines.back().empty()) {
+      lines.pop_back();
+    }
+
+    std::list<string> pre_group_comments;
+    std::list<Group> groups;
+    std::map<std::string, Group*> index;
+    for (const auto& line : lines) {
+      // Trim leading spaces.
+      auto pos = line.find_first_not_of(' ');
+      string trimmed_line;
+      if (pos != std::string::npos) {
+        trimmed_line = line.substr(pos);
+      }
+
+      if (trimmed_line.empty() || trimmed_line[0] == '#') {
+        // Comment line.
+        if (groups.empty()) {
+          pre_group_comments.push_back(line);
+        } else {
+          groups.back().AddComment(line);
+        }
+        continue;
+      }
+
+      string group_name;
+      if (RE2::FullMatch(trimmed_line, *group_header_matcher, &group_name)) {
+        // Group header.
+        groups.emplace_back(group_name);
+        index[group_name] = &groups.back();
+        continue;
+      }
+
+      string key;
+      string value;
+      if (RE2::FullMatch(trimmed_line, *key_value_matcher, &key, &value)) {
+        // Key-value pair.
+        if (groups.empty()) {
+          LOG(ERROR) << "Key-value pair found without a group";
+          return nullptr;
+        }
+
+        groups.back().Set(key, value);
+        continue;
+      }
+
+      LOG(ERROR) << "Could not parse line: \"" << line << "\"";
+      return nullptr;
+    }
+
+    return std::unique_ptr<KeyFile>(
+        new KeyFile(path, std::move(pre_group_comments), std::move(groups),
+                    std::move(index)));
+  }
+
+  void Set(const string& group, const string& key, const string& value) {
+    if (index_.count(group) == 0) {
+      groups_.emplace_back(group);
+      index_[group] = &groups_.back();
+    }
+
+    index_[group]->Set(key, value);
+  }
+
+  base::Optional<string> Get(const string& group, const string& key) const {
+    const auto it = index_.find(group);
+    if (it == index_.end()) {
+      return base::nullopt;
+    }
+
+    return it->second->Get(key);
+  }
+
+  bool Delete(const string& group, const string& key) {
+    const auto it = index_.find(group);
+    if (it == index_.end()) {
+      return false;
+    }
+
+    // Older behavior here was that deleting a nonexistent key from an
+    // existing group did not return an error, so replicate that here.
+    it->second->Delete(key);
+    return true;
+  }
+
+  bool HasGroup(const string& group) const { return index_.count(group) > 0; }
+
+  void DeleteGroup(const string& group) {
+    const auto it = index_.find(group);
+    if (it == index_.end()) {
+      return;
+    }
+
+    Group* grp = it->second;
+    index_.erase(it);
+    base::EraseIf(groups_, [grp](const Group& g) { return &g == grp; });
+  }
+
+  set<string> GetGroups() const {
+    set<string> group_names;
+    for (const auto& group : index_) {
+      group_names.insert(group.first);
+    }
+    return group_names;
+  }
+
+  void SetHeader(const string& header) {
+    vector<string> lines = base::SplitString(
+        header, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+    pre_group_comments_.clear();
+    for (const string& line : lines) {
+      pre_group_comments_.push_back("#" + line);
+    }
+  }
+
+  bool Flush() const {
+    string to_write;
+    for (const string& line : pre_group_comments_) {
+      to_write += line + '\n';
+    }
+    for (const Group& group : groups_) {
+      to_write += group.Serialize(&group == &groups_.back());
+    }
+
+    brillo::ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR) & 0777);
+    if (!base::ImportantFileWriter::WriteFileAtomically(path_, to_write)) {
+      LOG(ERROR) << "Failed to store key file: " << path_.value();
+      return false;
+    }
+    return true;
+  }
+
+ private:
+  KeyFile(const base::FilePath& path,
+          std::list<string> pre_group_comments,
+          std::list<Group> groups,
+          std::map<std::string, Group*> index)
+      : path_(path),
+        pre_group_comments_(pre_group_comments),
+        groups_(std::move(groups)),
+        index_(std::move(index)) {}
+
+  base::FilePath path_;
+  std::list<string> pre_group_comments_;
+  std::list<Group> groups_;
+  std::map<string, Group*> index_;
+
+  DISALLOW_COPY_AND_ASSIGN(KeyFile);
+};
 
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
@@ -51,16 +399,7 @@ KeyFileStore::KeyFileStore(const base::FilePath& path)
   CHECK(!path_.empty());
 }
 
-KeyFileStore::~KeyFileStore() {
-  ReleaseKeyFile();
-}
-
-void KeyFileStore::ReleaseKeyFile() {
-  if (key_file_) {
-    g_key_file_free(key_file_);
-    key_file_ = nullptr;
-  }
-}
+KeyFileStore::~KeyFileStore() = default;
 
 bool KeyFileStore::IsEmpty() const {
   int64_t file_size = 0;
@@ -70,52 +409,29 @@ bool KeyFileStore::IsEmpty() const {
 bool KeyFileStore::Open() {
   CHECK(!key_file_);
   crypto_.Init();
-  key_file_ = g_key_file_new();
   if (IsEmpty()) {
     LOG(INFO) << "Creating a new key file at " << path_.value();
-    return true;
+    base::File f(path_, base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_READ |
+                            base::File::FLAG_WRITE);
   }
-  GError* error = nullptr;
-  if (g_key_file_load_from_file(
-          key_file_, path_.value().c_str(),
-          static_cast<GKeyFileFlags>(G_KEY_FILE_KEEP_COMMENTS |
-                                     G_KEY_FILE_KEEP_TRANSLATIONS),
-          &error)) {
-    return true;
+
+  key_file_ = KeyFile::Create(path_);
+  if (!key_file_) {
+    LOG(ERROR) << "Failed to load key file from " << path_.value();
+    return false;
   }
-  LOG(ERROR) << "Failed to load key file from " << path_.value() << ": "
-             << ConvertErrorToMessage(error);
-  ReleaseKeyFile();
-  return false;
+
+  return true;
 }
 
 bool KeyFileStore::Close() {
   bool success = Flush();
-  ReleaseKeyFile();
+  key_file_.reset();
   return success;
 }
 
 bool KeyFileStore::Flush() {
-  CHECK(key_file_);
-  GError* error = nullptr;
-  gsize length = 0;
-  gchar* data = g_key_file_to_data(key_file_, &length, &error);
-
-  bool success = true;
-  if (!data || error) {
-    LOG(ERROR) << "Failed to convert key file to string: "
-               << ConvertErrorToMessage(error);
-    success = false;
-  }
-  if (success) {
-    brillo::ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR) & 0777);
-    success = base::ImportantFileWriter::WriteFileAtomically(path_, data);
-    if (!success) {
-      LOG(ERROR) << "Failed to store key file: " << path_.value();
-    }
-  }
-  g_free(data);
-  return success;
+  return key_file_->Flush();
 }
 
 bool KeyFileStore::MarkAsCorrupted() {
@@ -131,15 +447,7 @@ bool KeyFileStore::MarkAsCorrupted() {
 
 set<string> KeyFileStore::GetGroups() const {
   CHECK(key_file_);
-  gsize length = 0;
-  gchar** groups = g_key_file_get_groups(key_file_, &length);
-  if (!groups) {
-    LOG(ERROR) << "Unable to obtain groups.";
-    return set<string>();
-  }
-  set<string> group_set(groups, groups + length);
-  g_strfreev(groups);
-  return group_set;
+  return key_file_->GetGroups();
 }
 
 // Returns a set so that caller can easily test whether a particular group
@@ -148,7 +456,7 @@ set<string> KeyFileStore::GetGroupsWithKey(const string& key) const {
   set<string> groups = GetGroups();
   set<string> groups_with_key;
   for (const auto& group : groups) {
-    if (g_key_file_has_key(key_file_, group.c_str(), key.c_str(), nullptr)) {
+    if (key_file_->Get(group, key).has_value()) {
       groups_with_key.insert(group);
     }
   }
@@ -169,48 +477,23 @@ set<string> KeyFileStore::GetGroupsWithProperties(
 
 bool KeyFileStore::ContainsGroup(const string& group) const {
   CHECK(key_file_);
-  return g_key_file_has_group(key_file_, group.c_str());
+  return key_file_->HasGroup(group);
 }
 
 bool KeyFileStore::DeleteKey(const string& group, const string& key) {
   CHECK(key_file_);
-  GError* error = nullptr;
-  g_key_file_remove_key(key_file_, group.c_str(), key.c_str(), &error);
-  if (!error) {
-    return true;
-  }
-  if (error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
-    g_error_free(error);
-    return true;
-  }
-  LOG(ERROR) << "Failed to delete (" << group << ":" << key
-             << "): " << ConvertErrorToMessage(error);
-  return false;
+  return key_file_->Delete(group, key);
 }
 
 bool KeyFileStore::DeleteGroup(const string& group) {
   CHECK(key_file_);
-  GError* error = nullptr;
-  g_key_file_remove_group(key_file_, group.c_str(), &error);
-  if (!error) {
-    return true;
-  }
-  if (error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
-    g_error_free(error);
-    return true;
-  }
-  LOG(ERROR) << "Failed to delete group " << group << ": "
-             << ConvertErrorToMessage(error);
-  return false;
+  key_file_->DeleteGroup(group);
+  return true;
 }
 
 bool KeyFileStore::SetHeader(const string& header) {
-  GError* error = nullptr;
-  g_key_file_set_comment(key_file_, nullptr, nullptr, header.c_str(), &error);
-  if (error) {
-    LOG(ERROR) << "Failed to to set header: " << ConvertErrorToMessage(error);
-    return false;
-  }
+  CHECK(key_file_);
+  key_file_->SetHeader(header);
   return true;
 }
 
@@ -218,18 +501,23 @@ bool KeyFileStore::GetString(const string& group,
                              const string& key,
                              string* value) const {
   CHECK(key_file_);
-  GError* error = nullptr;
-  gchar* data =
-      g_key_file_get_string(key_file_, group.c_str(), key.c_str(), &error);
-  if (!data) {
-    string s = ConvertErrorToMessage(error);
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+  base::Optional<string> data = key_file_->Get(group, key);
+  if (!data.has_value()) {
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
-  if (value) {
-    *value = data;
+
+  vector<string> temp;
+  if (!Unescape(data.value(), base::nullopt, &temp)) {
+    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << ") as"
+                   << " string";
+    return false;
   }
-  g_free(data);
+
+  CHECK_EQ(1U, temp.size());
+  if (value) {
+    *value = temp[0];
+  }
   return true;
 }
 
@@ -237,7 +525,7 @@ bool KeyFileStore::SetString(const string& group,
                              const string& key,
                              const string& value) {
   CHECK(key_file_);
-  g_key_file_set_string(key_file_, group.c_str(), key.c_str(), value.c_str());
+  key_file_->Set(group, key, Escape(value, base::nullopt));
   return true;
 }
 
@@ -245,24 +533,32 @@ bool KeyFileStore::GetBool(const string& group,
                            const string& key,
                            bool* value) const {
   CHECK(key_file_);
-  GError* error = nullptr;
-  gboolean data =
-      g_key_file_get_boolean(key_file_, group.c_str(), key.c_str(), &error);
-  if (error) {
-    string s = ConvertErrorToMessage(error);
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+  base::Optional<string> data = key_file_->Get(group, key);
+  if (!data.has_value()) {
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
+
+  bool b;
+  if (data.value() == "true") {
+    b = true;
+  } else if (data.value() == "false") {
+    b = false;
+  } else {
+    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << ") as"
+                   << " bool";
+    return false;
+  }
+
   if (value) {
-    *value = data;
+    *value = b;
   }
   return true;
 }
 
 bool KeyFileStore::SetBool(const string& group, const string& key, bool value) {
   CHECK(key_file_);
-  g_key_file_set_boolean(key_file_, group.c_str(), key.c_str(),
-                         value ? TRUE : FALSE);
+  key_file_->Set(group, key, value ? "true" : "false");
   return true;
 }
 
@@ -270,77 +566,82 @@ bool KeyFileStore::GetInt(const string& group,
                           const string& key,
                           int* value) const {
   CHECK(key_file_);
-  GError* error = nullptr;
-  gint data =
-      g_key_file_get_integer(key_file_, group.c_str(), key.c_str(), &error);
-  if (error) {
-    string s = ConvertErrorToMessage(error);
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+  base::Optional<string> data = key_file_->Get(group, key);
+  if (!data.has_value()) {
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
+
+  int i;
+  if (!base::StringToInt(data.value(), &i)) {
+    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << ") as"
+                   << " int";
+    return false;
+  }
+
   if (value) {
-    *value = data;
+    *value = i;
   }
   return true;
 }
 
 bool KeyFileStore::SetInt(const string& group, const string& key, int value) {
   CHECK(key_file_);
-  g_key_file_set_integer(key_file_, group.c_str(), key.c_str(), value);
+  key_file_->Set(group, key, base::NumberToString(value));
   return true;
 }
 
 bool KeyFileStore::GetUint64(const string& group,
                              const string& key,
                              uint64_t* value) const {
-  // Read the value in as a string and then convert to uint64_t because glib's
-  // g_key_file_set_uint64 appears not to work correctly on 32-bit platforms
-  // in unit tests.
-  string data_string;
-  if (!GetString(group, key, &data_string)) {
+  CHECK(key_file_);
+  base::Optional<string> data = key_file_->Get(group, key);
+  if (!data.has_value()) {
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
-  uint64_t data;
-  if (!base::StringToUint64(data_string, &data)) {
-    SLOG(this, 10) << "Failed to convert (" << group << ":" << key << "): "
-                   << "string to uint64_t conversion failed";
+  uint64_t i;
+  if (!base::StringToUint64(data.value(), &i)) {
+    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
+                   << " as uint64";
     return false;
   }
 
   if (value) {
-    *value = data;
+    *value = i;
   }
-
   return true;
 }
 
 bool KeyFileStore::SetUint64(const string& group,
                              const string& key,
                              uint64_t value) {
-  // Convert the value to a string first, then save the value because glib's
-  // g_key_file_get_uint64 appears not to work on 32-bit platforms in our
-  // unit tests.
-  return SetString(group, key, base::NumberToString(value));
+  CHECK(key_file_);
+  key_file_->Set(group, key, base::NumberToString(value));
+  return true;
 }
 
 bool KeyFileStore::GetStringList(const string& group,
                                  const string& key,
                                  vector<string>* value) const {
   CHECK(key_file_);
-  gsize length = 0;
-  GError* error = nullptr;
-  gchar** data = g_key_file_get_string_list(key_file_, group.c_str(),
-                                            key.c_str(), &length, &error);
-  if (!data) {
-    string s = ConvertErrorToMessage(error);
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+  base::Optional<string> data = key_file_->Get(group, key);
+  if (!data.has_value()) {
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
-  if (value) {
-    value->assign(data, data + length);
+
+  vector<string> list;
+  if (!Unescape(data.value(), kListSeparator, &list)) {
+    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
+                   << " as string list";
+    return false;
   }
-  g_strfreev(data);
+
+  if (value) {
+    *value = list;
+  }
   return true;
 }
 
@@ -348,12 +649,13 @@ bool KeyFileStore::SetStringList(const string& group,
                                  const string& key,
                                  const vector<string>& value) {
   CHECK(key_file_);
-  vector<const char*> list;
+  vector<string> escaped_strings;
+  // glib appends a separator to every element of the list.
   for (const auto& string_entry : value) {
-    list.push_back(string_entry.c_str());
+    escaped_strings.push_back(Escape(string_entry, kListSeparator) +
+                              kListSeparator);
   }
-  g_key_file_set_string_list(key_file_, group.c_str(), key.c_str(), list.data(),
-                             list.size());
+  key_file_->Set(group, key, base::JoinString(escaped_strings, string()));
   return true;
 }
 

@@ -103,6 +103,7 @@ pkg_config("target_defaults") {
     "libtirpc",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "re2",
   ]
 }
 
@@ -223,8 +224,6 @@ pkg_config("libshill_config") {
 
 pkg_config("libshill_all_dependent_config") {
   pkg_deps = [
-    # For g_key_*(), etc in key_file_store.*
-    "glib-2.0",
     "libcares",
     "libmetrics-${libbase_ver}",
     "libpasswordprovider",

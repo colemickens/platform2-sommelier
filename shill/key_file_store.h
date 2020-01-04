@@ -5,11 +5,11 @@
 #ifndef SHILL_KEY_FILE_STORE_H_
 #define SHILL_KEY_FILE_STORE_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
-#include <glib.h>  // Can't forward-declare GKeyFile due to typedef.
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -19,8 +19,12 @@
 namespace shill {
 
 // A key file store implementation of the store interface. See
-// http://www.gtk.org/api/2.6/glib/glib-Key-value-file-parser.html for details
-// of the key file format.
+// https://specifications.freedesktop.org/desktop-entry-spec/latest/ar01s03.html
+// for details of the key file format, and
+// https://developer.gnome.org/glib/stable/glib-Key-value-file-parser.html
+// for details of the GLib API that is being reimplemented here.
+// This implementation does not support locales because we do not use locale
+// strings and never have.
 class KeyFileStore : public StoreInterface {
  public:
   explicit KeyFileStore(const base::FilePath& path);
@@ -81,14 +85,15 @@ class KeyFileStore : public StoreInterface {
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
   FRIEND_TEST(KeyFileStoreTest, OpenFail);
 
+  class KeyFile;
+
   static const char kCorruptSuffix[];
 
-  void ReleaseKeyFile();
   bool DoesGroupMatchProperties(const std::string& group,
                                 const KeyValueStore& properties) const;
 
   CryptoProvider crypto_;
-  GKeyFile* key_file_;
+  std::unique_ptr<KeyFile> key_file_;
   const base::FilePath path_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyFileStore);
