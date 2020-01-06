@@ -303,6 +303,124 @@ TEST_F(KeyFileStoreTest, DeleteGroup) {
             ReadKeyFile());
 }
 
+TEST_F(KeyFileStoreTest, RetainLeadingWhitespaceInCommentLine) {
+  static const char kGroup[] = "the-group";
+  static const char kCommentLine[] = "     # comment line";
+  static const char kKeyAlive[] = "alive";
+  const int kValueAlive = 3;
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s\n"
+                         "%s=%d\n",
+                         kGroup, kCommentLine, kKeyAlive, kValueAlive));
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
+                               "%s\n"
+                               "%s=%d\n",
+                               kGroup, kCommentLine, kKeyAlive, kValueAlive),
+            ReadKeyFile());
+}
+
+TEST_F(KeyFileStoreTest, TrimWhitespaceBeforeGroupHeader) {
+  static const char kGroup[] = "the-group";
+  static const char kKeyAlive[] = "alive";
+  const int kValueAlive = 3;
+  WriteKeyFile(
+      base::StringPrintf("    [%s]\n"
+                         "%s=%d\n",
+                         kGroup, kKeyAlive, kValueAlive));
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
+                               "%s=%d\n",
+                               kGroup, kKeyAlive, kValueAlive),
+            ReadKeyFile());
+}
+
+TEST_F(KeyFileStoreTest, TrimWhitespaceBeforeKeyValuePair) {
+  static const char kGroup[] = "the-group";
+  static const char kKeyAlive[] = "alive";
+  const int kValueAlive = 3;
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "    %s=%d\n",
+                         kGroup, kKeyAlive, kValueAlive));
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
+                               "%s=%d\n",
+                               kGroup, kKeyAlive, kValueAlive),
+            ReadKeyFile());
+}
+
+TEST_F(KeyFileStoreTest, TrimWhitespaceAroundKeyValueEquals) {
+  static const char kGroup[] = "the-group";
+  static const char kKey[] = "key";
+  static const char kValue[] = "value";
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s  =  %s\n",
+                         kGroup, kKey, kValue));
+  ASSERT_TRUE(store_->Open());
+  string value;
+  EXPECT_TRUE(store_->GetString(kGroup, kKey, &value));
+  EXPECT_EQ(kValue, value);
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
+                               "%s=%s\n",
+                               kGroup, kKey, kValue),
+            ReadKeyFile());
+}
+
+TEST_F(KeyFileStoreTest, PostGroupWhitespace) {
+  // Tests consistent treatment of comment and whitespace lines at the end
+  // of groups in glib key files.
+  static const char kGroupA[] = "group-a";
+  static const char kKeyA[] = "key-a";
+  static const char kValueA[] = "value-a";
+  static const char kGroupB[] = "group-b";
+  static const char kCommentB[] = "#comment b";
+  static const char kGroupC[] = "group-c";
+  static const char kWhitespaceC[] = "      ";
+  static const char kGroupD[] = "group-d";
+  static const char kGroupE[] = "group-e";
+  static const char kGroupF[] = "group-f";
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=%s\n"
+                         "[%s]\n"
+                         "%s\n"
+                         "[%s]\n"
+                         "%s\n"
+                         "[%s]\n"
+                         "\n"
+                         "[%s]\n"
+                         "[%s]\n",
+                         kGroupA, kKeyA, kValueA, kGroupB, kCommentB, kGroupC,
+                         kWhitespaceC, kGroupD, kGroupE, kGroupF));
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(
+      base::StringPrintf("[%s]\n"
+                         "%s=%s\n"
+                         "\n"
+                         "[%s]\n"
+                         "%s\n"
+                         "\n"
+                         "[%s]\n"
+                         "%s\n"
+                         "\n"
+                         "[%s]\n"
+                         "\n"
+                         "[%s]\n"
+                         "\n"
+                         "[%s]\n",
+                         kGroupA, kKeyA, kValueA, kGroupB, kCommentB, kGroupC,
+                         kWhitespaceC, kGroupD, kGroupE, kGroupF),
+      ReadKeyFile());
+}
+
 TEST_F(KeyFileStoreTest, GetString) {
   static const char kGroup[] = "something";
   static const char kKey[] = "foo";
@@ -321,6 +439,23 @@ TEST_F(KeyFileStoreTest, GetString) {
   ASSERT_TRUE(store_->Close());
 }
 
+TEST_F(KeyFileStoreTest, UnescapeInitialWhitespaceInValue) {
+  static const char kGroup[] = "the-group";
+  static const char kKeyAlive[] = "alive";
+  static const char kKeyDead[] = "dead";
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=\\s foo\n"
+                         "%s=\\t\tbar\n",
+                         kGroup, kKeyAlive, kKeyDead));
+  ASSERT_TRUE(store_->Open());
+  string value;
+  EXPECT_TRUE(store_->GetString(kGroup, kKeyAlive, &value));
+  EXPECT_EQ(value, "  foo");
+  EXPECT_TRUE(store_->GetString(kGroup, kKeyDead, &value));
+  EXPECT_EQ(value, "\t\tbar");
+}
+
 TEST_F(KeyFileStoreTest, SetString) {
   static const char kGroup[] = "string-group";
   static const char kKey1[] = "test-string";
@@ -335,6 +470,22 @@ TEST_F(KeyFileStoreTest, SetString) {
                                "%s=%s\n"
                                "%s=%s\n",
                                kGroup, kKey1, kValue1, kKey2, kValue2),
+            ReadKeyFile());
+}
+
+TEST_F(KeyFileStoreTest, EscapeInitialWhitespaceInValue) {
+  static const char kGroup[] = "the-group";
+  static const char kKeyAlive[] = "alive";
+  static const char kKeyDead[] = "dead";
+
+  ASSERT_TRUE(store_->Open());
+  EXPECT_TRUE(store_->SetString(kGroup, kKeyAlive, "  foo"));
+  EXPECT_TRUE(store_->SetString(kGroup, kKeyDead, "\t\tbar"));
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
+                               "%s=\\s\\sfoo\n"
+                               "%s=\\t\\tbar\n",
+                               kGroup, kKeyAlive, kKeyDead),
             ReadKeyFile());
 }
 
@@ -486,22 +637,24 @@ TEST_F(KeyFileStoreTest, GetStringList) {
   static const char kGroup[] = "string-lists";
   static const char kKeyEmpty[] = "empty";
   static const char kKeyEmptyValue[] = "empty-value";
+  static const char kKeyValue[] = "value";
   static const char kKeyValueEmpty[] = "value-empty";
   static const char kKeyValueEmptyValue[] = "value-empty-value";
   static const char kKeyValues[] = "values";
   static const char kValue[] = "value";
   static const char kValue2[] = "value2";
   static const char kValue3[] = "value3";
-  WriteKeyFile(
-      base::StringPrintf("[%s]\n"
-                         "%s=\n"
-                         "%s=;%s\n"
-                         "%s=%s;;\n"
-                         "%s=%s;;%s\n"
-                         "%s=%s;%s;%s\n",
-                         kGroup, kKeyEmpty, kKeyEmptyValue, kValue,
-                         kKeyValueEmpty, kValue, kKeyValueEmptyValue, kValue,
-                         kValue2, kKeyValues, kValue, kValue2, kValue3));
+  WriteKeyFile(base::StringPrintf(
+      "[%s]\n"
+      "%s=\n"
+      "%s=;%s\n"
+      "%s=%s;\n"
+      "%s=%s;;\n"
+      "%s=%s;;%s\n"
+      "%s=%s;%s;%s\n",
+      kGroup, kKeyEmpty, kKeyEmptyValue, kValue, kKeyValue, kValue,
+      kKeyValueEmpty, kValue, kKeyValueEmptyValue, kValue, kValue2, kKeyValues,
+      kValue, kValue2, kValue3));
   ASSERT_TRUE(store_->Open());
 
   vector<string> value;
@@ -516,6 +669,10 @@ TEST_F(KeyFileStoreTest, GetStringList) {
   ASSERT_EQ(2, value.size());
   EXPECT_EQ("", value[0]);
   EXPECT_EQ(kValue, value[1]);
+
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValue, &value));
+  ASSERT_EQ(1, value.size());
+  EXPECT_EQ(kValue, value[0]);
 
   EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValueEmpty, &value));
   ASSERT_EQ(2, value.size());
@@ -538,18 +695,38 @@ TEST_F(KeyFileStoreTest, GetStringList) {
   ASSERT_TRUE(store_->Close());
 }
 
+TEST_F(KeyFileStoreTest, UnescapeSeparatorInList) {
+  static const char kGroup[] = "tama-town";
+  static const char kKey[] = "residents";
+
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s="
+                         "GN=Yuuko\\;FN=Yoshida\\;NN=Shamiko;"
+                         "GN=Momo\\;FN=Chiyoda\\;NN=Fresh Peach;\n",
+                         kGroup, kKey));
+  ASSERT_TRUE(store_->Open());
+  vector<string> value;
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKey, &value));
+  EXPECT_EQ(2, value.size());
+  EXPECT_EQ(value[0], "GN=Yuuko;FN=Yoshida;NN=Shamiko");
+  EXPECT_EQ(value[1], "GN=Momo;FN=Chiyoda;NN=Fresh Peach");
+}
+
 TEST_F(KeyFileStoreTest, SetStringList) {
   static const char kGroup[] = "strings";
   static const char kKeyEmpty[] = "e";
+  static const char kKeyValue[] = "v";
   static const char kKeyEmptyValue[] = "ev";
   static const char kKeyValueEmpty[] = "ve";
   static const char kKeyValueEmptyValue[] = "vev";
-  static const char kKeyValues[] = "v";
+  static const char kKeyValues[] = "vvv";
   static const char kValue[] = "abc";
   static const char kValue2[] = "pqr";
   static const char kValue3[] = "xyz";
   ASSERT_TRUE(store_->Open());
   ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmpty, {}));
+  ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValue, {kValue}));
   ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmptyValue, {"", kValue}));
   ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmpty, {kValue, ""}));
   ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmptyValue,
@@ -560,14 +737,32 @@ TEST_F(KeyFileStoreTest, SetStringList) {
   EXPECT_EQ(
       base::StringPrintf("[%s]\n"
                          "%s=\n"
+                         "%s=%s;\n"
                          "%s=;%s;\n"
                          "%s=%s;;\n"
                          "%s=%s;;%s;\n"
                          "%s=%s;%s;%s;\n",
-                         kGroup, kKeyEmpty, kKeyEmptyValue, kValue,
-                         kKeyValueEmpty, kValue, kKeyValueEmptyValue, kValue,
-                         kValue2, kKeyValues, kValue, kValue2, kValue3),
+                         kGroup, kKeyEmpty, kKeyValue, kValue, kKeyEmptyValue,
+                         kValue, kKeyValueEmpty, kValue, kKeyValueEmptyValue,
+                         kValue, kValue2, kKeyValues, kValue, kValue2, kValue3),
       ReadKeyFile());
+}
+
+TEST_F(KeyFileStoreTest, EscapeSeparatorInList) {
+  static const char kGroup[] = "tama-town";
+  static const char kKey[] = "residents";
+
+  ASSERT_TRUE(store_->Open());
+  EXPECT_TRUE(store_->SetStringList(
+      kGroup, kKey,
+      {"GN=Yuuko;FN=Yoshida;NN=Shamiko", "GN=Momo;FN=Chiyoda;NN=Fresh Peach"}));
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(base::StringPrintf("[%s]\n"
+                               "%s="
+                               "GN=Yuuko\\;FN=Yoshida\\;NN=Shamiko;"
+                               "GN=Momo\\;FN=Chiyoda\\;NN=Fresh Peach;\n",
+                               kGroup, kKey),
+            ReadKeyFile());
 }
 
 TEST_F(KeyFileStoreTest, GetCryptedString) {
