@@ -5,4 +5,6 @@ ACTION!="remove", ATTR{inhibited}=="*",    RUN+="/bin/chown power:power $sys/$de
 ACTION!="remove", SUBSYSTEM=="leds", DEVPATH=="*:kbd_backlight", RUN+="/lib/udev/chown-sysfs-backlight-dir.sh $sys/$devpath"
 
 # Older kernels (<v4.19) put cros_fp under the chromeos class
-SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", GROUP="power" MODE="0660"
+# The cros_ec-access group is also required by cros_healthd (the associated user
+# that is part of the cros_ec-access group is "healthd_ec").
+SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", GROUP="cros_ec-access" MODE="0660"
