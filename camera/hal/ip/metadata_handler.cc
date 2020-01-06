@@ -20,6 +20,7 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(int format,
   android::CameraMetadata metadata;
 
   std::vector<int32_t> characteristic_keys = {
+      ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
       ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
       ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
       ANDROID_SENSOR_ORIENTATION,
@@ -33,6 +34,12 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(int format,
   metadata.update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, request_result_keys);
 
   metadata.update(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, request_result_keys);
+
+  std::vector<int32_t> available_fps_ranges;
+  available_fps_ranges.push_back(fps);
+  available_fps_ranges.push_back(fps);
+  metadata.update(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
+                  available_fps_ranges);
 
   std::vector<int64_t> min_frame_durations;
   min_frame_durations.push_back(format);
