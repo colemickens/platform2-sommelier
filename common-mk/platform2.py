@@ -11,6 +11,7 @@ Takes care of running GN/ninja/etc... with all the right values.
 
 from __future__ import print_function
 
+import collections
 import glob
 import json
 import os
@@ -23,6 +24,7 @@ from chromite.lib import osutils
 from chromite.lib import portage_util
 
 import common_utils
+import ebuild_function
 
 # USE flags used in BUILD.gn should be listed in _IUSE or _IUSE_TRUE.
 
@@ -351,7 +353,7 @@ class Platform2(object):
     cros_build_lib.run(gn_args, env=self.get_build_environment(),
                        cwd=self.get_platform2_root())
 
-  def gn_desc(self, *desc_args):
+  def gn_desc(self, *args):
     """Describe BUILD.gn.
 
     Runs gn desc with generated flags.
@@ -366,7 +368,7 @@ class Platform2(object):
         '--args=%s' % ' '.join(gn_args_args),
         '--format=json',
     ]
-    cmd += desc_args
+    cmd += args
     result = cros_build_lib.run(cmd, env=self.get_build_environment(),
                                 cwd=self.get_platform2_root(),
                                 stdout=True, encoding='utf-8')
@@ -461,6 +463,63 @@ class Platform2(object):
     for test_options in test_options_list:
       cros_build_lib.run(test_options, encoding='utf-8')
 
+  def configure_install(self):
+    """Generates installation commands of ebuild."""
+    conf = self.gn_desc('--all')
+    group_all = conf.get('//%s:all' % self.platform_subdir, {})
+    group_all_deps = group_all.get('deps', [])
+    config_group = collections.defaultdict(list)
+    for target_name in group_all_deps:
+      target_conf = conf.get(target_name, {})
+      metadata = target_conf.get('metadata', {})
+      install_config = unwrap_value(metadata, '_install_config')
+      if not install_config:
+        continue
+      sources = install_config.get('sources')
+      if not sources:
+        continue
+      install_path = install_config.get('install_path')
+      outputs = install_config.get('outputs')
+      symlinks = install_config.get('symlinks')
+      recursive = install_config.get('recursive')
+      options = install_config.get('options')
+      command_type = install_config.get('type')
+      config_key = (install_path, recursive, options, command_type)
+      config_group[config_key].append((sources, outputs, symlinks))
+    cmd_list = []
+    for install_config, install_args in config_group.items():
+      args = []
+      # Commands to install sources without explicit outputs nor symlinks can be
+      # merged into one. Concat all such sources.
+      sources = sum([sources for sources, outputs, symlinks in install_args
+                     if not outputs and not symlinks], [])
+      if sources:
+        args.append((sources, None, None))
+      # Append all remaining sources/outputs/symlinks.
+      args += [(sources, outputs, symlinks) for
+               sources, outputs, symlinks in install_args
+               if outputs or symlinks]
+      # Generate the command line.
+      install_path, recursive, options, command_type = install_config
+      for sources, outputs, symlinks in args:
+        cmd_list += ebuild_function.generate(sources=sources,
+                                             install_path=install_path,
+                                             outputs=outputs,
+                                             symlinks=symlinks,
+                                             recursive=recursive,
+                                             options=options,
+                                             command_type=command_type)
+    return cmd_list
+
+  def install(self, _args):
+    """Outputs the installation commands of ebuild as a standard output."""
+    install_cmd_list = self.configure_install()
+    for install_cmd in install_cmd_list:
+      # An error occurs at six.moves.shlex_quote when running pylint.
+      # https://github.com/PyCQA/pylint/issues/1965
+      # pylint: disable=too-many-function-args
+      print(' '.join(six.moves.shlex_quote(arg) for arg in install_cmd))
+
 
 def unwrap_value(metadata, attr, default=None):
   """Gets a value like dict.get() with unwrapping it."""
@@ -472,7 +531,7 @@ def unwrap_value(metadata, attr, default=None):
 
 def GetParser():
   """Return a command line parser."""
-  actions = ['configure', 'compile', 'deviterate', 'test_all']
+  actions = ['configure', 'compile', 'deviterate', 'test_all', 'install']
 
   parser = commandline.ArgumentParser(description=__doc__)
   parser.add_argument('--action', default='deviterate',
