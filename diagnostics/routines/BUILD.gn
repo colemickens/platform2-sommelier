@@ -70,6 +70,9 @@ if (use.test) {
   }
 
   source_set("libroutine_test_utils") {
+    deps = [
+      "//diagnostics:diagnostics_mojo_bindings",
+    ]
     configs += [
       ":libroutine_test_utils_pkg_deps",
       "//common-mk:test",
