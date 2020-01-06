@@ -17,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 
 namespace debugd {
 
@@ -28,6 +29,8 @@ constexpr char kCPUOfflineSubath[] = "devices/system/cpu/offline";
 constexpr char kCPUOnlineSubpath[] = "devices/system/cpu/online";
 constexpr char kDisableCPUFlag[] = "0";
 constexpr char kEnableCPUFlag[] = "1";
+constexpr base::TimeDelta kWriteRetryDelay =
+    base::TimeDelta::FromMilliseconds(100);
 
 }  // namespace
 
@@ -96,7 +99,15 @@ bool SchedulerConfigurationUtils::LookupFDAndWriteFlag(
 }
 
 bool SchedulerConfigurationUtils::DisableCPU(const std::string& cpu_number) {
-  return LookupFDAndWriteFlag(cpu_number, kDisableCPUFlag);
+  bool status = LookupFDAndWriteFlag(cpu_number, kDisableCPUFlag);
+  // Sometimes the CPU control file is busy so sleep and retry.
+  int retries = 5;
+  while (!status && errno == EBUSY && retries-- > 0) {
+    usleep(kWriteRetryDelay.InMicroseconds());
+    status = LookupFDAndWriteFlag(cpu_number, kDisableCPUFlag);
+  }
+
+  return status;
 }
 
 // This writes the flag to enable the given CPU by number.
