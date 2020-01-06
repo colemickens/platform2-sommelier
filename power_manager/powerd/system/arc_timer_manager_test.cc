@@ -13,8 +13,8 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -115,19 +115,9 @@ bool AreTimerIdsIdenticalSizeButDistinct(
 
 }  // namespace
 
-class ArcTimerManagerTest : public ::testing::Test,
-                            public base::MessageLoopForIO::Watcher {
+class ArcTimerManagerTest : public ::testing::Test {
  public:
   ArcTimerManagerTest() { arc_timer_manager_.Init(&dbus_wrapper_); }
-
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override {
-    VLOG(1) << "Fd readable";
-    // The fd watched in |WaitForExpiration| is now ready to read. Call the quit
-    // closure so that |WaitForExpiration| can go on to read the fd.
-    loop_runner_.StopLoop();
-  }
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  protected:
   bool CreateTimers(const std::string& tag,
@@ -235,18 +225,23 @@ class ArcTimerManagerTest : public ::testing::Test,
       return false;
     }
 
+    TestMainLoopRunner runner;
     // Set up a watcher to watch for the timer's read fd to become readable.
-    // Make this non-persistent as the callback shouldn't fire multiple times
-    // before the data is read.
-    base::MessageLoopForIO::FileDescriptorWatcher controller(FROM_HERE);
-    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-            timer_read_fd, false, base::MessageLoopForIO::WATCH_READ,
-            &controller, this)) {
-      LOG(ERROR) << "Failed to watch read fd";
-      return false;
-    }
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
+    watcher = base::FileDescriptorWatcher::WatchReadable(
+        timer_read_fd,
+        base::BindRepeating(
+            [](TestMainLoopRunner* runner,
+               std::unique_ptr<base::FileDescriptorWatcher::Controller>*
+                   watcher) {
+              VLOG(1) << "Fd readable";
+              *watcher = nullptr;
+              runner->StopLoop();
+            },
+            &runner, &watcher));
+
     // Start run loop and error out if the fd isn't readable after a timeout.
-    if (!loop_runner_.StartLoop(base::TimeDelta::FromSeconds(30))) {
+    if (!runner.StartLoop(base::TimeDelta::FromSeconds(30))) {
       LOG(ERROR) << "Timed out waiting for expiration";
       return false;
     }
@@ -336,9 +331,6 @@ class ArcTimerManagerTest : public ::testing::Test,
   std::map<std::string, std::unique_ptr<ArcTimerStore>> arc_timer_stores_;
 
   DBusWrapperStub dbus_wrapper_;
-  // Run loop used in |WaitForExpiration|. Its |StopLoop| method is called in
-  // |OnFileCanReadWithoutBlocking|.
-  TestMainLoopRunner loop_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcTimerManagerTest);
 };
