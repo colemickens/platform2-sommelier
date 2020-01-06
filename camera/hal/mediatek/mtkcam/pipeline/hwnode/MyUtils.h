@@ -215,15 +215,19 @@ class OpaqueReprocUtil {
     size_t app_meta_length;
     size_t hal_meta_offset;
     size_t hal_meta_length;
+    size_t lcso_image_offset;
+    size_t lcso_image_length;
 
     MVOID dump() {
       CAM_LOGD(
           "[opaque] aligned_byte(0x%x) raw_size(%d,%d) raw_format(0x%x) "
           "stride_in_bytes(%zu) "
-          "payload(%zu-%zu) app_meta(%zu-%zu) hal_meta(%zu-%zu)",
+          "payload(%zu-%zu) app_meta(%zu-%zu) hal_meta(%zu-%zu)"
+          "lcso_image(%zu-%zu)",
           aligned_byte, raw_size.w, raw_size.h, raw_format, stride_in_bytes,
           payload_offset, payload_length, app_meta_offset, app_meta_length,
-          hal_meta_offset, hal_meta_length);
+          hal_meta_offset, hal_meta_length, lcso_image_offset,
+          lcso_image_length);
     }
   } opaque_reproc_info_t;
 
@@ -254,6 +258,8 @@ class OpaqueReprocUtil {
     pInfo->app_meta_length = 0;
     pInfo->hal_meta_offset = 0;
     pInfo->hal_meta_length = 0;
+    pInfo->lcso_image_offset = 0;
+    pInfo->lcso_image_length = 0;
 
     return 0;
   }
@@ -294,17 +300,19 @@ class OpaqueReprocUtil {
       return ALREADY_EXISTS;
     }
 
-    // calculate the offset of app meta where hal meta is probably empty
-    pInfo->app_meta_offset = pInfo->payload_offset + pInfo->hal_meta_length;
+    // calculate the offset of app meta where hal meta/lcso is probably empty
+    pInfo->app_meta_offset = pInfo->payload_offset + pInfo->hal_meta_length +
+                             pInfo->lcso_image_length;
 
     void* pAppMetaBuf =
         reinterpret_cast<void*>(ptrOpaqueBuf + pInfo->app_meta_offset);
-    MINT32 max_size = pInfo->payload_length - pInfo->hal_meta_length;
+    MINT32 max_size = pInfo->payload_length - pInfo->hal_meta_length -
+                      pInfo->lcso_image_length;
     ssize_t ret = appMeta->flatten(pAppMetaBuf, max_size);
 
     if (ret < 0) {
-      CAM_LOGE("[opaque] oversized payload: ret=%zd, hal_meta_length=%zu", ret,
-               pInfo->hal_meta_length);
+      CAM_LOGE("[opaque] oversized payload: ret=%zd, hal=%zu, lcso=%zu", ret,
+               pInfo->hal_meta_length, pInfo->lcso_image_length);
       return ret;
     }
     pInfo->app_meta_length = ret;
@@ -327,19 +335,57 @@ class OpaqueReprocUtil {
       return ALREADY_EXISTS;
     }
 
-    // calculate the offset of app meta where app meta is probably empty
-    pInfo->hal_meta_offset = pInfo->payload_offset + pInfo->app_meta_length;
+    // calculate the offset of app meta where app meta/lcso is probably empty
+    pInfo->hal_meta_offset = pInfo->payload_offset + pInfo->app_meta_length +
+                             pInfo->lcso_image_length;
     void* pHalMetaBuf =
         reinterpret_cast<void*>(ptrOpaqueBuf + pInfo->hal_meta_offset);
-    MINT32 max_size = pInfo->payload_length - pInfo->app_meta_length;
+    MINT32 max_size = pInfo->payload_length - pInfo->app_meta_length -
+                      pInfo->lcso_image_length;
     ssize_t ret = halMeta->flatten(pHalMetaBuf, max_size);
 
     if (ret < 0) {
-      CAM_LOGE("[opaque] oversized payload: ret =%zd, app_meta_length=%zu", ret,
-               pInfo->app_meta_length);
+      CAM_LOGE("[opaque] oversized payload: ret =%zd, app=%zu, lcso=%zu", ret,
+               pInfo->app_meta_length, pInfo->lcso_image_length);
       return ret;
     }
     pInfo->hal_meta_length = ret;
+
+    return 0;
+  }
+
+  static MERROR setLcsoImageToHeap(
+      std::shared_ptr<IImageBufferHeap> const& pImageBufferHeap,
+      std::shared_ptr<IImageBuffer> pLcsoBuffer) {
+    size_t infoOffset =
+        pImageBufferHeap->getBufSizeInBytes(0) - sizeof(opaque_reproc_info_t);
+    MINTPTR ptrOpaqueBuf = (MINTPTR)pImageBufferHeap->getBufVA(0);
+    opaque_reproc_info_t* pInfo =
+        reinterpret_cast<opaque_reproc_info_t*>(ptrOpaqueBuf + infoOffset);
+
+    if (pInfo->aligned_byte != 0x00) {
+      return NO_INIT;
+    } else if (pInfo->lcso_image_length != 0) {
+      return ALREADY_EXISTS;
+    }
+
+    // calculate the offset of lcso image where app/hal meta is probably empty
+    pInfo->lcso_image_offset =
+        pInfo->payload_offset + pInfo->app_meta_length + pInfo->hal_meta_length;
+    void* pLsocBuf =
+        reinterpret_cast<void*>(ptrOpaqueBuf + pInfo->lcso_image_offset);
+    MINT32 max_size =
+        pInfo->payload_length - pInfo->app_meta_length - pInfo->hal_meta_length;
+    if (pLcsoBuffer->getBufSizeInBytes(0) > max_size) {
+      CAM_LOGE("[opaque] oversized payload: lcso=%zu, app=%zu, hal=%zu",
+               pLcsoBuffer->getBufSizeInBytes(0), pInfo->app_meta_length,
+               pInfo->hal_meta_length);
+      return BAD_VALUE;
+    }
+    memcpy(pLsocBuf, reinterpret_cast<void*>(pLcsoBuffer->getBufVA(0)),
+           pLcsoBuffer->getBufSizeInBytes(0));
+
+    pInfo->lcso_image_length = pLcsoBuffer->getBufSizeInBytes(0);
 
     return 0;
   }
@@ -387,6 +433,34 @@ class OpaqueReprocUtil {
     if (ret < 0) {
       return ret;
     }
+
+    return 0;
+  }
+
+  static MERROR getLcsoImageFromHeap(
+      std::shared_ptr<IImageBufferHeap> const& pImageBufferHeap,
+      std::shared_ptr<IImageBuffer> pLcsoBuffer) {
+    size_t infoOffset =
+        pImageBufferHeap->getBufSizeInBytes(0) - sizeof(opaque_reproc_info_t);
+    MINTPTR ptrOpaqueBuf = (MINTPTR)pImageBufferHeap->getBufVA(0);
+    opaque_reproc_info_t* pInfo =
+        reinterpret_cast<opaque_reproc_info_t*>(ptrOpaqueBuf + infoOffset);
+
+    if (pInfo->aligned_byte != 0x00) {
+      return NO_INIT;
+    }
+
+    void* pLsocBuf =
+        reinterpret_cast<void*>(ptrOpaqueBuf + pInfo->lcso_image_offset);
+
+    if (pLcsoBuffer->getBufSizeInBytes(0) != pInfo->lcso_image_length) {
+      CAM_LOGE("[opaque] invalid lcso size: %zu - %zu",
+               pLcsoBuffer->getBufSizeInBytes(0), pInfo->lcso_image_length);
+      return BAD_VALUE;
+    }
+
+    memcpy(reinterpret_cast<void*>(pLcsoBuffer->getBufVA(0)), pLsocBuf,
+           pInfo->lcso_image_length);
 
     return 0;
   }

@@ -137,6 +137,10 @@ static MERROR evaluateRequest_Pass1(
             in.isMainFrame) {
           P1Map.addIn(in.pRequest_AppImageStreamInfo->pAppImage_Input_Priv
                           ->getStreamId());
+          if (need_P1Dma & P1_LCSO) {
+            P1Map.addOut((*in.pConfiguration_StreamInfo_P1)[i]
+                             .pHalImage_P1_Lcso->getStreamId());
+          }
         } else if (in.pRequest_AppImageStreamInfo->pAppImage_Input_Yuv !=
                        nullptr &&
                    in.isMainFrame) {

@@ -6975,6 +6975,12 @@ P1NodeImp::onProcessResult(P1QueAct* rAct,
         MERROR status = OpaqueReprocUtil::setHalMetadataToHeap(pImageBufferHeap,
                                                                &outHalMetadata);
         MY_LOGD("setHalMetadataToHeap (%d)", status);
+        if ((IS_OUT(REQ_OUT_LCSO, act->reqOutSet)) &&
+            (act->streamBufImg[STREAM_IMG_OUT_LCS].spImgBuf != nullptr)) {
+          MERROR status = OpaqueReprocUtil::setLcsoImageToHeap(
+              pImageBufferHeap, act->streamBufImg[STREAM_IMG_OUT_LCS].spImgBuf);
+          MY_LOGD("setLcsoImageToHeap (%d)", status);
+        }
       }
       //
       MBOOL isChange = MFALSE;
@@ -7044,9 +7050,11 @@ P1NodeImp::processRedoFrame(P1QueAct* rAct) {
   IMetadata appMeta;
   IMetadata halMeta;
   std::shared_ptr<IImageBuffer> imgBuf;
+  std::shared_ptr<IImageBuffer> imgBuf_lcso;
   //
-  if (OK != act->frameImageGet(STREAM_IMG_IN_OPAQUE, &imgBuf)) {
-    MY_LOGE("Can not get in-opaque buffer from frame");
+  if (OK != act->frameImageGet(STREAM_IMG_IN_OPAQUE, &imgBuf) ||
+      OK != act->frameImageGet(STREAM_IMG_OUT_LCS, &imgBuf_lcso)) {
+    MY_LOGE("Can not get in-opaque/lcso buffer from frame");
   } else {
     std::shared_ptr<IImageBufferHeap> pHeap = imgBuf->getImageBufferHeap();
     IMetadata appMetaTagIndex;
@@ -7087,6 +7095,11 @@ P1NodeImp::processRedoFrame(P1QueAct* rAct) {
       }
     } else {
       MY_LOGW("Can not get hal meta from in-opaque buffer");
+    }
+    if (OK == OpaqueReprocUtil::getLcsoImageFromHeap(pHeap, imgBuf_lcso)) {
+      act->frameImagePut(STREAM_IMG_OUT_LCS);
+    } else {
+      MY_LOGW("Can not get lcso image from in-opaque buffer");
     }
   }
   //
