@@ -1773,9 +1773,14 @@ void Manager::SortServicesTask() {
   if (old_logical && old_logical != new_logical)
     old_logical->connection()->SetPriority(old_logical_priority,
                                            old_logical == new_physical);
-  if (new_logical)
+  if (new_logical) {
     new_logical->connection()->SetPriority(Connection::kDefaultPriority,
                                            new_logical == new_physical);
+    auto device = FindDeviceFromService(new_logical);
+    if (device && device->technology().IsPrimaryConnectivityTechnology()) {
+      device->RequestPortalDetection();
+    }
+  }
 
   Error error;
   adaptor_->EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty,

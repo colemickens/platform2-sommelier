@@ -373,7 +373,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
-  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(_, Connection::kDefaultPriority));
@@ -432,7 +431,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
-  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(_, Connection::kDefaultPriority));
@@ -529,7 +527,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
-  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);
   EXPECT_CALL(routing_table_,
@@ -692,7 +689,6 @@ TEST_F(ConnectionTest, AddConfigReverse) {
 
   std::vector<std::string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
-  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);
   EXPECT_CALL(routing_table_,
@@ -747,7 +743,6 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority);
   std::vector<std::string> domain_search_list = {kDomainName + "."};
   EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list));
-  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);
   EXPECT_CALL(routing_table_,
@@ -765,7 +760,6 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _, _));
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority);
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
-  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(_, _)).Times(0);
   connection_->UpdateFromIPConfig(ipconfig_);
   Mock::VerifyAndClearExpectations(&routing_table_);

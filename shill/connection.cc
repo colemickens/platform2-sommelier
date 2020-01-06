@@ -15,7 +15,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
-#include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
@@ -389,12 +388,6 @@ void Connection::SetPriority(uint32_t priority, bool is_primary_physical) {
   UpdateRoutingPolicy();
 
   PushDNSConfig();
-  if (priority == kDefaultPriority) {
-    DeviceRefPtr device = device_info_->GetDevice(interface_index_);
-    if (device) {
-      device->RequestPortalDetection();
-    }
-  }
   routing_table_->FlushCache();
 }
 
