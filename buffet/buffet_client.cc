@@ -66,7 +66,7 @@ brillo::Any GetJsonList(const base::ListValue& list);  // Prototype.
 // UpdateState D-Bus method from Buffet.
 brillo::Any JsonToAny(const base::Value& json) {
   brillo::Any prop_value;
-  switch (json.GetType()) {
+  switch (json.type()) {
     case base::Value::Type::NONE:
       prop_value = nullptr;
       break;
@@ -101,7 +101,7 @@ brillo::Any JsonToAny(const base::Value& json) {
       const base::ListValue* list = nullptr;  // Still owned by |json|.
       CHECK(json.GetAsList(&list));
       CHECK(!list->empty()) << "Unable to deduce the type of list elements.";
-      switch ((*list->begin())->GetType()) {
+      switch ((*list->begin())->type()) {
         case base::Value::Type::BOOLEAN:
           prop_value = GetJsonList<bool>(*list);
           break;
@@ -119,12 +119,12 @@ brillo::Any JsonToAny(const base::Value& json) {
           break;
         default:
           LOG(FATAL) << "Unsupported JSON value type for list element: "
-                     << (*list->begin())->GetType();
+                     << (*list->begin())->type();
       }
       break;
     }
     default:
-      LOG(FATAL) << "Unexpected JSON value type: " << json.GetType();
+      LOG(FATAL) << "Unexpected JSON value type: " << json.type();
       break;
   }
   return prop_value;

@@ -62,7 +62,7 @@ brillo::Any ListListToAny(const base::ListValue& list) {
 // UpdateState D-Bus method from Buffet.
 brillo::Any ValueToAny(const base::Value& json) {
   brillo::Any prop_value;
-  switch (json.GetType()) {
+  switch (json.type()) {
     case base::Value::Type::BOOLEAN:
       prop_value = ValueToAny<bool>(json, &base::Value::GetAsBoolean);
       break;
@@ -90,9 +90,9 @@ brillo::Any ValueToAny(const base::Value& json) {
         prop_value = ListListToAny(*list);
         break;
       }
-      auto type = (*list->begin())->GetType();
+      auto type = (*list->begin())->type();
       for (const base::Value& v : base::ValueReferenceAdapter(*list))
-        CHECK_EQ(v.GetType(), type) << "Unsupported different type elements";
+        CHECK_EQ(v.type(), type) << "Unsupported different type elements";
 
       switch (type) {
         case base::Value::Type::BOOLEAN:
@@ -118,12 +118,12 @@ brillo::Any ValueToAny(const base::Value& json) {
           break;
         default:
           LOG(FATAL) << "Unsupported JSON value type for list element: "
-                     << (*list->begin())->GetType();
+                     << (*list->begin())->type();
       }
       break;
     }
     default:
-      LOG(FATAL) << "Unexpected JSON value type: " << json.GetType();
+      LOG(FATAL) << "Unexpected JSON value type: " << json.type();
       break;
   }
   return prop_value;
