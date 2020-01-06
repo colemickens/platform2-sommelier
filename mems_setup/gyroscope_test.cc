@@ -68,23 +68,18 @@ TEST_F(GyroscopeTest, NotNumericVpd) {
 
 TEST_F(GyroscopeTest, VpdOutOfRange) {
   SetSingleSensor(kBaseSensorLocation);
-  ConfigureVpd({{"in_anglvel_x_base_calibbias", "123456789"},
-                {"in_anglvel_y_base_calibbias", "104"},
+  ConfigureVpd({{"in_anglvel_x_base_calibbias", "104"},
+                {"in_anglvel_y_base_calibbias", "123456789"},
                 {"in_anglvel_z_base_calibbias", "85"}});
 
   EXPECT_TRUE(GetConfiguration()->Configure());
 
   EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_anglvel_x_calibbias").has_value());
-  EXPECT_TRUE(
+  EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_anglvel_y_calibbias").has_value());
-  EXPECT_TRUE(
+  EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_anglvel_z_calibbias").has_value());
-
-  EXPECT_EQ(
-      104, mock_device_->ReadNumberAttribute("in_anglvel_y_calibbias").value());
-  EXPECT_EQ(
-      85, mock_device_->ReadNumberAttribute("in_anglvel_z_calibbias").value());
 }
 
 TEST_F(GyroscopeTest, NotLoadingTriggerModule) {

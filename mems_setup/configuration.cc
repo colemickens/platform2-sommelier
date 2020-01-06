@@ -25,6 +25,7 @@ namespace {
 struct ImuVpdCalibrationEntry {
   std::string name;
   std::string calib;
+  base::Optional<int> max_value;
   base::Optional<int> value;
   bool missing_is_error;
 };
@@ -170,13 +171,13 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
   std::string kind = SensorKindToString(kind_);
 
   std::vector<ImuVpdCalibrationEntry> calib_attributes = {
-      {"x", kCalibrationBias, base::nullopt, true},
-      {"y", kCalibrationBias, base::nullopt, true},
-      {"z", kCalibrationBias, base::nullopt, true},
+      {"x", kCalibrationBias, max_value, base::nullopt, true},
+      {"y", kCalibrationBias, max_value, base::nullopt, true},
+      {"z", kCalibrationBias, max_value, base::nullopt, true},
 
-      {"x", kCalibrationScale, base::nullopt, false},
-      {"y", kCalibrationScale, base::nullopt, false},
-      {"z", kCalibrationScale, base::nullopt, false},
+      {"x", kCalibrationScale, base::nullopt, base::nullopt, false},
+      {"y", kCalibrationScale, base::nullopt, base::nullopt, false},
+      {"z", kCalibrationScale, base::nullopt, base::nullopt, false},
   };
 
   for (auto& calib_attribute : calib_attributes) {
@@ -194,12 +195,14 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
     if (!base::StringToInt(attrib_value.value(), &value)) {
       LOG(ERROR) << "VPD calibration value " << attrib_name
                  << " has invalid value " << attrib_value.value();
+      // TODO(crbug/1039454: gwendal): Add uma stats.
       continue;
     }
-    if (abs(value) > max_value) {
+    if (calib_attribute.max_value && abs(value) > calib_attribute.max_value) {
       LOG(ERROR) << "VPD calibration value " << attrib_name
                  << " has out-of-range value " << attrib_value.value();
-      continue;
+      // TODO(crbug/1039454: gwendal): Add uma stats.
+      return false;
     } else {
       calib_attribute.value = value;
     }
@@ -369,16 +372,14 @@ bool Configuration::EnableKeyboardAngle() {
 }
 
 bool Configuration::ConfigGyro() {
-  if (!CopyImuCalibationFromVpd(kGyroMaxVpdCalibration))
-    return false;
+  CopyImuCalibationFromVpd(kGyroMaxVpdCalibration);
 
   LOG(INFO) << "gyroscope configuration complete";
   return true;
 }
 
 bool Configuration::ConfigAccelerometer() {
-  if (!CopyImuCalibationFromVpd(kAccelMaxVpdCalibration))
-    return false;
+  CopyImuCalibationFromVpd(kAccelMaxVpdCalibration);
 
   if (!AddSysfsTrigger(kAccelSysfsTriggerId))
     return false;

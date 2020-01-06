@@ -80,15 +80,10 @@ TEST_F(AccelerometerTest, VpdOutOfRange) {
 
   EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_accel_x_calibbias").has_value());
-  EXPECT_TRUE(
+  EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_accel_y_calibbias").has_value());
-  EXPECT_TRUE(
+  EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_accel_z_calibbias").has_value());
-
-  EXPECT_EQ(104,
-            mock_device_->ReadNumberAttribute("in_accel_y_calibbias").value());
-  EXPECT_EQ(85,
-            mock_device_->ReadNumberAttribute("in_accel_z_calibbias").value());
 }
 
 TEST_F(AccelerometerTest, CalibscaleData) {

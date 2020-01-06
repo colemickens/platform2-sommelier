@@ -30,7 +30,8 @@ class Configuration {
   bool ConfigIlluminance();
 
   bool CopyImuCalibationFromVpd(int max_value);
-  bool CopyImuCalibationFromVpd(int max_value, const std::string& location);
+  bool CopyImuCalibationFromVpd(int max_value,
+                                const std::string& location);
 
   bool CopyLightCalibrationFromVpd();
 
