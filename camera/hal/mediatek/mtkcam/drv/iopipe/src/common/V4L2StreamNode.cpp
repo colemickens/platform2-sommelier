@@ -247,11 +247,7 @@ V4L2StreamNode::~V4L2StreamNode() {
 }
 
 status_t V4L2StreamNode::setFormatLocked(
-    MSize msize,
-    int img_fmt,
-    unsigned int color_profile,
-    int sensor_order,
-    IImageBufferAllocator::ImgParam* p_img_param) {
+    IImageBufferAllocator::ImgParam* imgParam) {
   LOGD("setFormatLocked imgParam+");
   if (mState != StreamNodeState::OPEN) {
     LOGE("Invalid device state");
@@ -259,43 +255,50 @@ status_t V4L2StreamNode::setFormatLocked(
   }
 
   V4L2Format v4l2_fmt;
-
-  img_fmt = bayerOrderTransform(img_fmt, sensor_order);
+  int fmt = bayerOrderTransform(imgParam->imgFormat, imgParam->sensorOrder);
 
   v4l2_fmt.SetType(mNode->GetBufferType());
   v4l2_fmt.SetBytesPerLine(0, 0);
   v4l2_fmt.SetSizeImage(0, 0);
-  if (img_fmt != eImgFmt_BLOB) {
+  if (fmt != eImgFmt_BLOB) {
     size_t i = 0;
     for (; i < ARRAY_SIZE(Format_Mapper); i++) {
-      if (img_fmt == Format_Mapper[i].ImageFormat) {
+      if (fmt == Format_Mapper[i].ImageFormat) {
         v4l2_fmt.SetPixelFormat(Format_Mapper[i].PixelCode);
-        LOGI("Image format (0x%x->%s)", img_fmt,
-             Format_Mapper[i].fullName.c_str());
+        LOGI("Image format (0x%x->%s)", fmt, Format_Mapper[i].fullName.c_str());
         break;
       }
       LOGI("Image format (%s)", Format_Mapper[i].fullName.c_str());
     }
     if (i == ARRAY_SIZE(Format_Mapper)) {
-      LOGE("Unsupported format 0x%x", img_fmt);
+      LOGE("Unsupported format 0x%x", fmt);
       return -EINVAL;
     }
-    v4l2_fmt.SetWidth(msize.w);
-    v4l2_fmt.SetHeight(msize.h);
+    v4l2_fmt.SetWidth(imgParam->imgSize.w);
+    v4l2_fmt.SetHeight(imgParam->imgSize.h);
     i = 0;
     for (; i < ARRAY_SIZE(Profile_Mapper); i++) {
-      if (color_profile == Profile_Mapper[i].ColorProfile) {
+      if (imgParam->colorProfile == Profile_Mapper[i].ColorProfile) {
         v4l2_fmt.SetColorSpace(Profile_Mapper[i].V4L2_ColorSpace);
         v4l2_fmt.SetQuantization(Profile_Mapper[i].V4L2_Quantization);
-        LOGI("Color Space (0x%x->0x%x)", color_profile,
+        LOGI("Color Space (0x%x->0x%x)", imgParam->colorProfile,
              Profile_Mapper[i].V4L2_ColorSpace);
         break;
       }
       LOGI("Color Profile (0x%x)", Profile_Mapper[i].ColorProfile);
     }
     if (i == ARRAY_SIZE(Profile_Mapper)) {
-      LOGE("Unsupported color profile 0x%x", color_profile);
+      LOGE("Unsupported color profile 0x%x", imgParam->colorProfile);
       return -EINVAL;
+    }
+    if (IS_MULTIPLANAR(v4l2_fmt.PixelFormat())) {
+      for (i = 0;
+           i < NSCam::Utils::Format::queryPlaneCount(imgParam->imgFormat);
+           i++) {
+        v4l2_fmt.SetBytesPerLine(imgParam->bufStridesInBytes[i], i);
+        MY_LOGI("plane %d, bpp %u %dx%d", i, imgParam->bufStridesInBytes[i],
+                imgParam->imgSize.w, imgParam->imgSize.h);
+      }
     }
   }
   status_t ret = mNode->SetFormat(v4l2_fmt);
@@ -305,10 +308,10 @@ status_t V4L2StreamNode::setFormatLocked(
 
   // should not use incomplete v4l2_fmt
   // update for meta data
-  if ((img_fmt == eImgFmt_BLOB) && (p_img_param)) {
+  if ((fmt == eImgFmt_BLOB) && (imgParam)) {
     IImageBufferAllocator::ImgParam update =
         IImageBufferAllocator::ImgParam(mFormat.SizeImage(0), 0);
-    *p_img_param = update;
+    *imgParam = update;
     LOGD("update meta data for blob buffer");
   }
 
@@ -487,10 +490,8 @@ status_t V4L2StreamNode::setFormatAnGetdBuffers(
   CheckError(!buffers->empty(), -EINVAL, "invalid buffers");
 
   if (mState == StreamNodeState::OPEN) {
-    CheckError(setFormatLocked(imgParam->imgSize, imgParam->imgFormat,
-                               imgParam->colorProfile, imgParam->sensorOrder,
-                               imgParam) != NO_ERROR,
-               -EINVAL, "setFormat failed");
+    CheckError(setFormatLocked(imgParam) != NO_ERROR, -EINVAL,
+               "setFormat failed");
   }
   if (mState == StreamNodeState::CONFIGURED) {
     mType = V4L2_MEMORY_MMAP;
@@ -541,10 +542,8 @@ status_t V4L2StreamNode::setBufFormat(
   LOGD("+");
 
   if (mState == StreamNodeState::OPEN) {
-    CheckError(setFormatLocked(imgParam->imgSize, imgParam->imgFormat,
-                               imgParam->colorProfile, imgParam->sensorOrder,
-                               imgParam) != NO_ERROR,
-               -EINVAL, "setFormat failed");
+    CheckError(setFormatLocked(imgParam) != NO_ERROR, -EINVAL,
+               "setFormat failed");
   } else {
     LOGE("Invalid device state");
     return -EINVAL;
@@ -611,10 +610,19 @@ status_t V4L2StreamNode::enque(BufInfo const& buf,
   std::lock_guard<std::mutex> _l(mOpLock);
 
   if (mState == StreamNodeState::OPEN) {
-    CheckError(setFormatLocked(b->getImgSize(), b->getImgFormat(),
-                               b->getColorProfile(),
-                               b->getColorArrangement()) != NO_ERROR,
-               -EINVAL, "setFormat failed");
+    MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+    MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+    for (int i = 0; i < b->getPlaneCount(); ++i) {
+      bufStridesInBytes[i] = b->getBufStridesInBytes(i);
+      MY_LOGI("plane %d stride %u", i, bufStridesInBytes[i]);
+    }
+
+    IImageBufferAllocator::ImgParam imgParam(
+        b->getImgFormat(), b->getImgSize(), bufStridesInBytes,
+        bufBoundaryInBytes, b->getPlaneCount());
+
+    CheckError(setFormatLocked(&imgParam) != NO_ERROR, -EINVAL,
+               "setFormat failed");
     // should not use incomplete v4l2_fmt
     if (mFormat.SizeImage(0) != b->getBufSizeInBytes(0)) {
       LOGW("@%s incosistent size (%zu vs %zu)", __FUNCTION__,

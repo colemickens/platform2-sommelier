@@ -33,6 +33,7 @@ shared_library("libcam_iopie_common") {
   deps += [
     "//camera/hal/mediatek/mtkcam/drv/iopipe/src/utils:libcam_iopie_utils",
     "//camera/hal/mediatek/mtkcam/utils/imgbuf:libmtkcam_imgbuf",
+    "//camera/hal/mediatek/mtkcam/utils/std:libmtkcam_stdutils",
     "//camera/hal/mediatek/mtklibv4l2:libmtk_mc_libv4l2",
   ]
 }

@@ -254,6 +254,7 @@ class VISIBILITY_PUBLIC NormalStream : public INormalStream,
                                            size_t plane_num,
                                            MINT32 color_profile = -1,
                                            MINT32 sensor_order = -1);
+  virtual status_t _set_format_and_buffers(BufInfo const& buf);
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  Variables.

@@ -340,6 +340,48 @@ MBOOL NormalStream::_is_swap_width_height(int transform) {
   return (transform & eTransform_ROT_90) || (transform & eTransform_ROT_270);
 }
 
+status_t NormalStream::_set_format_and_buffers(BufInfo const& buf) {
+  status_t status = NO_ERROR;
+  std::shared_ptr<V4L2StreamNode> node;
+  MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+  MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+  MINT32 color_order = 0;
+  IImageBuffer* const& b = buf.mBuffer;
+  if (b == nullptr) {
+    LOGE("invalid buffer");
+    return -EFAULT;
+  }
+  if (buf.mPortID.index == NSImageio::NSIspio::EPortIndex_IMGI ||
+      buf.mPortID.index == NSImageio::NSIspio::EPortIndex_VIPI) {
+    color_order = b->getColorArrangement();
+  }
+  for (int i = 0; i < b->getPlaneCount(); ++i) {
+    bufStridesInBytes[i] = b->getBufStridesInBytes(i);
+    MY_LOGI("plane %d stride %u", i, bufStridesInBytes[i]);
+  }
+
+  IImageBufferAllocator::ImgParam imgParam(
+      b->getImgFormat(), b->getImgSize(), bufStridesInBytes, bufBoundaryInBytes,
+      b->getPlaneCount(), b->getColorProfile(), color_order);
+
+  status = validNode(buf.mPortID.index, &node);
+  if (status != NO_ERROR) {
+    LOGE("Fail to validNode, s=%d, p=%d", mStreamTag, buf.mPortID.index);
+    return status;
+  }
+  status = node->setBufFormat(&imgParam);
+  if (status != NO_ERROR) {
+    LOGE("setBufFormat failed, s=%d, p=%d", mStreamTag, buf.mPortID.index);
+    return status;
+  }
+  status = node->setupBuffers();
+  if (status != NO_ERROR) {
+    LOGE("setupBuffers failed, s=%d, p=%d", mStreamTag, buf.mPortID.index);
+    return status;
+  }
+  return OK;
+}
+
 status_t NormalStream::_set_format_and_buffers(int port,
                                                MINT img_fmt,
                                                MSize img_size,
@@ -1001,18 +1043,18 @@ NormalStream::enque(QParams* pParams) {
                    NSImageio::NSIspio::EPortIndex_VIPI) {
           vipi_enqued = true;
         }
+
+        buf.mPortID = it->mvIn[i].mPortID;
+        buf.mBuffer = it->mvIn[i].mBuffer;
+        buf.mTransform = it->mvIn[i].mTransform;
+
         // Dynamic Link
         if (mFirstFrame && it == pParams->mvFrameParams.begin()) {
           unstarted_node_num++;
           if (it->mvIn[i].mPortID.index !=
               NSImageio::NSIspio::EPortIndex_TUNING) {
             if (!node->isPrepared())
-              _set_format_and_buffers(
-                  it->mvIn[i].mPortID.index,
-                  it->mvIn[i].mBuffer->getImgFormat(),
-                  it->mvIn[i].mBuffer->getImgSize(), 1,
-                  it->mvIn[i].mBuffer->getColorProfile(),
-                  it->mvIn[i].mBuffer->getColorArrangement());
+              _set_format_and_buffers(buf);
           }
           // remove info in mPortIdxToFmt
           auto search = mPortIdxToFmt.find(it->mvIn[i].mPortID.index);
@@ -1046,9 +1088,6 @@ NormalStream::enque(QParams* pParams) {
             }
           }
         }
-        buf.mPortID = it->mvIn[i].mPortID;
-        buf.mBuffer = it->mvIn[i].mBuffer;
-        buf.mTransform = it->mvIn[i].mTransform;
         all_bufs.push_back(buf);
         all_nodes.push_back(node);
         active_nodes.insert(std::make_pair(node->getId(), node));
@@ -1165,14 +1204,17 @@ NormalStream::enque(QParams* pParams) {
         return MFALSE;
       }
 
+      buf.mPortID = it->mvOut[i].mPortID;
+      buf.mPortID.index = p_idx;
+      buf.mBuffer = it->mvOut[i].mBuffer;
+      buf.mTransform = it->mvOut[i].mTransform;
+
       // Dynamic Link
       if (mFirstFrame && it == pParams->mvFrameParams.begin()) {
         unstarted_node_num++;
 
         if (!node->isPrepared())
-          _set_format_and_buffers(p_idx, it->mvOut[i].mBuffer->getImgFormat(),
-                                  it->mvOut[i].mBuffer->getImgSize(), 1,
-                                  it->mvOut[i].mBuffer->getColorProfile());
+          _set_format_and_buffers(buf);
 
         if (mStreamTag != NSCam::v4l2::ENormalStreamTag_Cap_S) {
           // remove info in mPortIdxToFmt
@@ -1206,23 +1248,26 @@ NormalStream::enque(QParams* pParams) {
         if (mStreamTag == NSCam::v4l2::ENormalStreamTag_Cap_S) {
           bool changed = false;
           int another_pid;
+          std::shared_ptr<V4L2StreamNode> another_node;
+
           if (p_idx == NSImageio::NSIspio::EPortIndex_IMG3O)
             another_pid = NSImageio::NSIspio::EPortIndex_WDMAO;
           else
             another_pid = NSImageio::NSIspio::EPortIndex_IMG3O;
-          status = validNode(another_pid, &node);
+          status = validNode(another_pid, &another_node);
           if (status == NO_ERROR) {
-            status = node->setActive(false, &changed);
+            status = another_node->setActive(false, &changed);
             if (changed) {
-              status = mControl->disableLink(
-                  mMediaDevice, DYNAMIC_LINK_BYVIDEONAME, node->getName());
+              status =
+                  mControl->disableLink(mMediaDevice, DYNAMIC_LINK_BYVIDEONAME,
+                                        another_node->getName());
               if (status != NO_ERROR) {
                 LOGE("mControl->disableLink fail, disable [%s], line %d",
-                     node->getName(), __LINE__);
+                     another_node->getName(), __LINE__);
                 return MFALSE;
               } else {
-                LOGI("mControl->disableLink : %s, line %d", node->getName(),
-                     __LINE__);
+                LOGI("mControl->disableLink : %s, line %d",
+                     another_node->getName(), __LINE__);
               }
             }
           } else {
@@ -1231,16 +1276,7 @@ NormalStream::enque(QParams* pParams) {
           }
         }
       }
-      status = validNode(p_idx, &node);
-      if (status != NO_ERROR) {
-        LOGE("Fail to validNode, port = %d", p_idx);
-        return MFALSE;
-      }
 
-      buf.mPortID = it->mvOut[i].mPortID;
-      buf.mPortID.index = p_idx;
-      buf.mBuffer = it->mvOut[i].mBuffer;
-      buf.mTransform = it->mvOut[i].mTransform;
       all_bufs.push_back(buf);
       all_nodes.push_back(node);
       active_nodes.insert(std::make_pair(node->getId(), node));

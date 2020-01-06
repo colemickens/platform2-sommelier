@@ -168,12 +168,7 @@ class VISIBILITY_PUBLIC V4L2StreamNode {
   }
 
  private:
-  virtual status_t setFormatLocked(
-      MSize msize,
-      int img_fmt,
-      unsigned int color_profile,
-      int sensor_order,
-      IImageBufferAllocator::ImgParam* p_img_param = nullptr);
+  virtual status_t setFormatLocked(IImageBufferAllocator::ImgParam* imgParam);
   virtual status_t startLocked();
   virtual status_t stopLocked();
   virtual status_t setupBuffersLocked();
