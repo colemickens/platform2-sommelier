@@ -56,7 +56,7 @@ TEST_F(AccelerometerTest, MissingVpd) {
 TEST_F(AccelerometerTest, NotNumericVpd) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "blah"},
-                {"in_accel_y_base_calibbias", "104"}});
+                {"in_accel_y_base_calibbias", "100"}});
 
   EXPECT_TRUE(GetConfiguration()->Configure());
 
@@ -64,7 +64,7 @@ TEST_F(AccelerometerTest, NotNumericVpd) {
       mock_device_->ReadNumberAttribute("in_accel_x_calibbias").has_value());
   EXPECT_TRUE(
       mock_device_->ReadNumberAttribute("in_accel_y_calibbias").has_value());
-  EXPECT_EQ(104,
+  EXPECT_EQ(100,
             mock_device_->ReadNumberAttribute("in_accel_y_calibbias").value());
   EXPECT_FALSE(
       mock_device_->ReadNumberAttribute("in_accel_z_calibbias").has_value());
@@ -72,8 +72,8 @@ TEST_F(AccelerometerTest, NotNumericVpd) {
 
 TEST_F(AccelerometerTest, VpdOutOfRange) {
   SetSingleSensor(kBaseSensorLocation);
-  ConfigureVpd({{"in_accel_x_base_calibbias", "123456789"},
-                {"in_accel_y_base_calibbias", "104"},
+  ConfigureVpd({{"in_accel_x_base_calibbias", "104"},   // just above .100g.
+                {"in_accel_y_base_calibbias", "100"},
                 {"in_accel_z_base_calibbias", "85"}});
 
   EXPECT_TRUE(GetConfiguration()->Configure());
@@ -141,7 +141,7 @@ TEST_F(AccelerometerTest, CalibscaleZeroData) {
 TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "50"},
-                {"in_accel_y_base_calibbias", "104"},
+                {"in_accel_y_base_calibbias", "100"},
                 {"in_accel_z_base_calibbias", "85"}});
 
   EXPECT_TRUE(GetConfiguration()->Configure());
@@ -152,7 +152,7 @@ TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
 TEST_F(AccelerometerTest, MultipleSensorDevice) {
   SetSharedSensor();
   ConfigureVpd({{"in_accel_x_base_calibbias", "50"},
-                {"in_accel_y_base_calibbias", "104"},
+                {"in_accel_y_base_calibbias", "100"},
                 {"in_accel_z_base_calibbias", "85"},
                 {"in_accel_y_lid_calibbias", "27"}});
 
@@ -162,7 +162,7 @@ TEST_F(AccelerometerTest, MultipleSensorDevice) {
       50,
       mock_device_->ReadNumberAttribute("in_accel_x_base_calibbias").value());
   EXPECT_EQ(
-      104,
+      100,
       mock_device_->ReadNumberAttribute("in_accel_y_base_calibbias").value());
   EXPECT_EQ(
       85,

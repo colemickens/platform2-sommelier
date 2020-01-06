@@ -44,7 +44,7 @@ constexpr char kCalibrationBias[] = "bias";
 constexpr char kCalibrationScale[] = "scale";
 
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
-constexpr int kAccelMaxVpdCalibration = 256;   // .250g
+constexpr int kAccelMaxVpdCalibration = 103;   // .100g
 constexpr int kAccelSysfsTriggerId = 0;
 
 constexpr int kSysfsTriggerId = -1;
