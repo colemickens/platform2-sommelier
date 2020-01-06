@@ -96,6 +96,10 @@ void CrosHealthdRoutineServiceImpl::GetRoutineUpdate(
       break;
     case mojo_ipc::DiagnosticRoutineCommandEnum::kRemove:
       routine->PopulateStatusUpdate(response, include_output);
+      if (response->routine_update_union->is_noninteractive_update()) {
+        response->routine_update_union->get_noninteractive_update()->status =
+            MojomCrosHealthdDiagnosticRoutineStatusEnum::kRemoved;
+      }
       active_routines_.erase(itr);
       // |routine| is invalid at this point!
       return;
