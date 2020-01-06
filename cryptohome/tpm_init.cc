@@ -275,9 +275,11 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
     *OUT_took_ownership = took_ownership;
   }
 
-  // If we can open the TPM with the default password, then we still need to
-  // zero the SRK password and unrestrict it, then change the owner password.
+  // In monolithic mode, if we can open the TPM with the default password, then
+  // we still need to zero the SRK password and unrestrict it, then change the
+  // owner password.
   if (!tpm_persistent_state_.IsReady() &&
+      !get_tpm()->DoesUseTpmManager() &&
       get_tpm()->TestTpmAuth(default_owner_password)) {
     if (!get_tpm()->InitializeSrk(default_owner_password)) {
       LOG(ERROR) << "Couldn't initialize the SRK";
