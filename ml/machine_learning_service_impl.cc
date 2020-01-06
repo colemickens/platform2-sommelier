@@ -43,7 +43,10 @@ MachineLearningServiceImpl::MachineLearningServiceImpl(
     const std::string& model_dir)
     : builtin_model_metadata_(GetBuiltinModelMetadata()),
       model_dir_(model_dir),
-      binding_(this, std::move(pipe)) {
+      binding_(this,
+               mojo::InterfaceRequest<
+                   chromeos::machine_learning::mojom::MachineLearningService>(
+                       std::move(pipe))) {
   binding_.set_connection_error_handler(std::move(connection_error_handler));
 }
 
