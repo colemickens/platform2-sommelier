@@ -102,7 +102,7 @@ int DeserializeStreamBuffer(
   if (ptr->acquire_fence.is_valid()) {
     out_buffer->acquire_fence =
         mojo::UnwrapPlatformHandle(std::move(ptr->acquire_fence)).ReleaseFD();
-    if (out_buffer->acquire_fence == -EINVAL) {
+    if (out_buffer->acquire_fence == -1) {
       LOGF(ERROR) << "Failed to get acquire_fence";
       return -EINVAL;
     }
@@ -113,7 +113,7 @@ int DeserializeStreamBuffer(
   if (ptr->release_fence.is_valid()) {
     out_buffer->release_fence =
         mojo::UnwrapPlatformHandle(std::move(ptr->release_fence)).ReleaseFD();
-    if (out_buffer->release_fence == -EINVAL) {
+    if (out_buffer->release_fence == -1) {
       LOGF(ERROR) << "Failed to get release_fence";
       close(out_buffer->acquire_fence);
       return -EINVAL;

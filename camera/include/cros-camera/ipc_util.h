@@ -10,7 +10,8 @@
 #include <string>
 
 #include <base/files/scoped_file.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/c/system/types.h>
+#include <mojo/public/cpp/system/message_pipe.h>
 
 #include "cros-camera/export.h"
 
