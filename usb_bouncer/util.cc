@@ -215,7 +215,17 @@ bool AuthorizeAllImpl(SafeFD* dir,
 
   if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorized),
                                 kSysFSEnabled)) {
-    success = false;
+    // EPIPE: wireless USB device that fails in usb_get_device_descriptor().
+    // ENODEV: device that disappears before they can be authorized or fails
+    //   during usb_autoresume_device()
+    // EPROTO: usb_set_configuration() failed, but the device is still
+    //   authorized. This is often caused the device not having adequate power.
+    if (errno == EPIPE || errno == ENODEV || errno == EPROTO) {
+      PLOG(WARNING) << "Failed to authorize USB device: '"
+                    << GetFDPath(dir->get()).value() << "'";
+    } else {
+      success = false;
+    }
   }
 
   // The ScopedDIR takes ownership of this so dup_fd is not scoped on its own.
@@ -235,6 +245,10 @@ bool AuthorizeAllImpl(SafeFD* dir,
 
   struct stat dir_info;
   if (fstat(dir->get(), &dir_info) != 0) {
+    // If the directory no longer exists, skip it.
+    if (errno == ENOENT) {
+      return success;
+    }
     return false;
   }
 
