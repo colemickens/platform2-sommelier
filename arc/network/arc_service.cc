@@ -780,8 +780,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
     }
   }
 
-  if (!datapath_->AddIPv6HostRoute(config.host_ifname(), addr,
-                                   ipv6_config.prefix_len)) {
+  if (!datapath_->AddIPv6HostRoute(config.host_ifname(), addr, 128)) {
     LOG(ERROR) << "Failed to setup the IPv6 route for interface "
                << config.host_ifname();
     return;
@@ -789,8 +788,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
 
   if (!datapath_->AddIPv6Neighbor(ipv6_config.ifname, addr)) {
     LOG(ERROR) << "Failed to setup the IPv6 neighbor proxy";
-    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
-                                   ipv6_config.prefix_len);
+    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr, 128);
     return;
   }
 
@@ -798,8 +796,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
                                     device->config().host_ifname())) {
     LOG(ERROR) << "Failed to setup iptables for IPv6";
     datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
-    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
-                                   ipv6_config.prefix_len);
+    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr, 128);
     return;
   }
 
@@ -832,8 +829,7 @@ void ArcService::ContainerImpl::TeardownIPv6(Device* device) {
   const auto& config = device->config();
   datapath_->RemoveIPv6Forwarding(ipv6_config.ifname, config.host_ifname());
   datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
-  datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
-                                 ipv6_config.prefix_len);
+  datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr, 128);
 
   ScopedNS ns(pid_);
   if (ns.IsValid()) {
