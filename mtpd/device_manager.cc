@@ -641,7 +641,13 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
     return;
   }
   if (kEventAction == "remove") {
-    RemoveDevices(false /* !remove_all */);
+    // libmtp still detects the mtp device as connected now, so add a 1 second
+    // wait to ensure libmtp does not detect the device.
+    base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(&DeviceManager::RemoveDevices,
+                   weak_ptr_factory_.GetWeakPtr(), false /* !remove_all */),
+        base::TimeDelta::FromSeconds(1));
     return;
   }
   // udev notes the existence of other actions like "change" and "move", but
