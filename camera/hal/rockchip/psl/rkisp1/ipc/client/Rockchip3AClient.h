@@ -22,6 +22,7 @@
 #include <mutex>
 #include "cros-camera/camera_algorithm_bridge.h"
 #include "base/bind.h"
+#include "base/callback.h"
 #include "LogHelper.h"
 #include <pthread.h>
 
