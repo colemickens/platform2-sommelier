@@ -696,7 +696,7 @@ FilePath CrashCollector::GetUserCrashDirectory() {
   FilePath user_directory = FilePath(paths::kFallbackUserCrashDirectory);
   // When testing, store crashes in the fallback crash directory; otherwise,
   // the test framework can't get to them after logging the user out.
-  if (ShouldHandleChromeCrashes()) {
+  if (util::IsTestImage() || ShouldHandleChromeCrashes()) {
     return user_directory;
   }
   // In this multiprofile world, there is no one-specific user dir anymore.
