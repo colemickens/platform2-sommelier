@@ -146,6 +146,8 @@ void HomeDirs::FreeDiskSpace() {
   FreeDiskSpaceInternal();
 
   ReportFreeDiskSpaceTotalTime(total_timer.Elapsed().InMilliseconds());
+
+  LOG(INFO) << "Disk cleanup complete.";
 }
 
 void HomeDirs::FreeDiskSpaceInternal() {
