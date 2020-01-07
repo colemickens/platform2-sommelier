@@ -24,11 +24,13 @@ class BRILLO_EXPORT Manifest {
   // Parse the manifest raw string. Return true if successful.
   bool ParseManifest(const std::string& manifest_raw);
 
-  // Getters for manifest fields:
+  // Getters for required manifest fields:
   int manifest_version() const { return manifest_version_; }
   const std::vector<uint8_t>& image_sha256() const { return image_sha256_; }
   const std::vector<uint8_t>& table_sha256() const { return table_sha256_; }
   const std::string& version() const { return version_; }
+
+  // Getters for optional manifest fields:
   FileSystem fs_type() const { return fs_type_; }
   const std::string& id() const { return id_; }
   const std::string& package() const { return package_; }
@@ -37,6 +39,8 @@ class BRILLO_EXPORT Manifest {
   int preallocated_size() const { return preallocated_size_; }
   int size() const { return size_; }
   bool is_removable() const { return is_removable_; }
+  // Indicator for |dlcservice| to allow preloading at a per DLC level.
+  bool preload_allowed() const { return preload_allowed_; }
   const std::map<std::string, std::string> metadata() const {
     return metadata_;
   }
@@ -55,6 +59,7 @@ class BRILLO_EXPORT Manifest {
   int preallocated_size_;
   int size_;
   bool is_removable_;
+  bool preload_allowed_;
   std::map<std::string, std::string> metadata_;
 
   DISALLOW_COPY_AND_ASSIGN(Manifest);

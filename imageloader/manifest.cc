@@ -35,6 +35,7 @@ constexpr char kName[] = "name";
 constexpr char kImageType[] = "image-type";
 constexpr char kPreallocatedSize[] = "pre-allocated-size";
 constexpr char kSize[] = "size";
+constexpr char kPreloadAllowed[] = "preload-allowed";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
@@ -151,6 +152,11 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   if (!manifest_dict->GetBoolean(kIsRemovableField, &is_removable_)) {
     // If is_removable field does not exist, by default it is false.
     is_removable_ = false;
+  }
+
+  if (!manifest_dict->GetBoolean(kPreloadAllowed, &preload_allowed_)) {
+    // If preaload_allowed field does not exist, by default it is false.
+    preload_allowed_ = false;
   }
 
   // All of these fields are optional.

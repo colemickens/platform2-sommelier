@@ -21,6 +21,7 @@ TEST(ManifestTest, ParseManifest) {
   const std::string image_type = R"("dlc")";
   const std::string preallocated_size = R"(600613)";
   const std::string size = R"(42)";
+  const std::string preload_allowed = R"(true)";
   const std::string manifest_version = R"(1)";
   const std::string manifest_raw = std::string() + R"(
     {
@@ -38,6 +39,8 @@ TEST(ManifestTest, ParseManifest) {
     "pre-allocated-size":)" + preallocated_size +
                                    R"(,
     "size":)" + size + R"(,
+    "preload-allowed":)" + preload_allowed +
+                                   R"(,
     "manifest-version":)" + manifest_version +
                                    R"(
     }
@@ -56,6 +59,7 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.image_type(), "dlc");
   EXPECT_EQ(manifest.preallocated_size(), 600613);
   EXPECT_EQ(manifest.size(), 42);
+  EXPECT_EQ(manifest.preload_allowed(), true);
 }
 
 TEST(ManifestTest, ParseManifestNoOptional) {
@@ -89,6 +93,7 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_NE(manifest.table_sha256().size(), 0);
   EXPECT_NE(manifest.version().size(), 0);
   EXPECT_EQ(manifest.manifest_version(), 1);
+  EXPECT_EQ(manifest.preload_allowed(), false);
 }
 
 TEST(ManifestTest, ParseManifestNoImageHash) {
