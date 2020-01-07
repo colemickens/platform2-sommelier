@@ -127,12 +127,13 @@ class MyHolder {
  ******************************************************************************/
 void* getMtkcamModuleFactory(uint32_t module_id) {
   switch (MTKCAM_GET_MODULE_GROUP_ID(module_id)) {
-#define CASE(_group_id_, _group_shared_lib_, _group_factory_)       \
-  case _group_id_: {                                                \
-    static MyHolder singleton(_group_shared_lib_, _group_factory_); \
-    if (auto factory = singleton.get()) {                           \
-      return factory(module_id);                                    \
-    }                                                               \
+#define CASE(_group_id_, _group_shared_lib_, _group_factory_) \
+  case _group_id_: {                                          \
+    static MyHolder* singleton =                              \
+        new MyHolder(_group_shared_lib_, _group_factory_);    \
+    if (auto factory = singleton->get()) {                    \
+      return factory(module_id);                              \
+    }                                                         \
   } break
 
     CASE(MTKCAM_MODULE_GROUP_ID_DRV, "libmtkcam_modulefactory_drv.so",
