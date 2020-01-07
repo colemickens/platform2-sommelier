@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/ethtool.h>
 #include <linux/sockios.h>
 #include <net/if.h>
 #include <net/route.h>
@@ -116,6 +117,62 @@ void PLogAndSaveError(const string& error, string* out_error) {
   out_error->assign(error_with_strerror);
 }
 
+// Sets a sysctl node to a supplied value.
+bool SetSysctl(const char* path, const char* val, string* out_error) {
+  DCHECK(out_error);
+  base::ScopedFD sysctl_node(open(path, O_RDWR | O_CLOEXEC));
+
+  if (!sysctl_node.is_valid()) {
+    PLogAndSaveError(base::StringPrintf("unable to open sysctl node: %s", path),
+                     out_error);
+    return false;
+  }
+
+  ssize_t count = write(sysctl_node.get(), val, strlen(val));
+  if (count != strlen(val)) {
+    PLogAndSaveError(
+        base::StringPrintf("failed to write sysctl node: %s", path), out_error);
+    return false;
+  }
+
+  return true;
+}
+
+bool EnableLro(const char* ifname, string* out_error) {
+  DCHECK(out_error);
+
+  base::ScopedFD sockfd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!sockfd.is_valid()) {
+    PLogAndSaveError("failed to create socket for ethtool ioctl", out_error);
+    return false;
+  }
+
+  struct ifreq ifr;
+  strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+  struct ethtool_value val;
+  val.cmd = ETHTOOL_GFLAGS;
+  ifr.ifr_data = reinterpret_cast<char*>(&val);
+
+  if (HANDLE_EINTR(ioctl(sockfd.get(), SIOCETHTOOL, &ifr)) != 0) {
+    PLogAndSaveError(
+        base::StringPrintf("failed to get ethtool flags for %s", ifname),
+        out_error);
+    return false;
+  }
+
+  val.cmd = ETHTOOL_SFLAGS;
+  val.data |= ETH_FLAG_LRO;
+
+  if (HANDLE_EINTR(ioctl(sockfd.get(), SIOCETHTOOL, &ifr)) != 0) {
+    PLogAndSaveError(base::StringPrintf("failed to enable LRO for %s", ifname),
+                     out_error);
+    return false;
+  }
+
+  return true;
+}
+
 // Writes a resolv.conf with the supplied |nameservers| and |search_domains|.
 // The default Chrome OS resolver options will be used. Returns true on
 // success, and returns false on failure with an error message stored in
@@ -212,6 +269,16 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
     return grpc::Status(grpc::INVALID_ARGUMENT, "IPv4 gateway cannot be 0");
   }
 
+  // Enable IP forwarding first. This will disable LRO, which we'll then have
+  // to reenable manually later.
+  string error;
+  if (!SetSysctl("/proc/sys/net/ipv4/ip_forward", "1", &error)) {
+    return grpc::Status(grpc::INTERNAL, error);
+  }
+  if (!SetSysctl("/proc/sys/net/ipv6/conf/all/forwarding", "1", &error)) {
+    return grpc::Status(grpc::INTERNAL, error);
+  }
+
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!fd.is_valid()) {
     int saved_errno = errno;
@@ -273,6 +340,16 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
         string("failed to enable network interface: ") + strerror(ret));
   }
   LOG(INFO) << "Set interface " << kInterfaceName << " up and running";
+
+  // Forcibly enables Large Receive Offload via ethtool. Linux will
+  // conservatively disable LRO if IP forwarding is enabled since LRO mangles
+  // packets in a way that makes it unsafe to forward. virtio-net uses Generic
+  // Receive Offload, which is safe to use with IP forwarding.
+  if (!EnableLro(kInterfaceName, &error)) {
+    // Don't fail the entire network config since this may run with a 4.19
+    // kernel that doesn't support setting LRO on virtio-net.
+    LOG(WARNING) << "Failed to enable LRO: " << error;
+  }
 
   // Bring up the loopback interface too.
   ret = EnableInterface(fd.get(), kLoopbackName);
