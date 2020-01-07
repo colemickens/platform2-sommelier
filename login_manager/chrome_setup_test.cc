@@ -32,6 +32,7 @@ class ChromeSetupTest : public ::testing::Test {
   const std::string kDefaultDisplay = "default";
   const std::string kOldDisplay = "old";
   const std::string kShelfFlag = "--enable-dim-shelf";
+  const std::string kFeatureFlag = "--enable-features";
   const base::Callback<bool(const base::FilePath&)> kPathInSetCallback =
       base::Bind(&ChromeSetupTest::PathInSet, base::Unretained(this));
 
@@ -214,6 +215,25 @@ TEST_F(ChromeSetupTest, TestAutoDimOldDisplay) {
   login_manager::SetUpAutoDimFlag(&builder_, &cros_config_);
   argv = builder_.arguments();
   EXPECT_EQ("", GetFlag(argv, kShelfFlag));
+}
+
+TEST_F(ChromeSetupTest, TestAllowAmbientEQ) {
+  login_manager::SetUpAllowAmbientEQFlag(&builder_, &cros_config_);
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(0, argv.size());
+
+  cros_config_.SetString(login_manager::kPowerPath,
+                         login_manager::kAllowAmbientEQField, "0");
+  login_manager::SetUpAllowAmbientEQFlag(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  ASSERT_EQ(0, argv.size());
+
+  cros_config_.SetString(login_manager::kPowerPath,
+                         login_manager::kAllowAmbientEQField, "1");
+  login_manager::SetUpAllowAmbientEQFlag(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  ASSERT_EQ(1, argv.size());
+  ASSERT_EQ(login_manager::kAllowAmbientEQFeature, GetFlag(argv, kFeatureFlag));
 }
 
 }  // namespace login_manager

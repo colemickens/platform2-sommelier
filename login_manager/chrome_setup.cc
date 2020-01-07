@@ -65,6 +65,10 @@ constexpr std::array<const char*, 2> kArcBuildProperties = {"device",
 constexpr std::array<const char*, 4> kArcOptionalBuildProperties = {
     "first-api-level", "marketing-name", "metrics-tag", "pai-regions"};
 
+const char kPowerPath[] = "/power";
+const char kAllowAmbientEQField[] = "allow-ambient-eq";
+const char kAllowAmbientEQFeature[] = "AllowAmbientEQ";
+
 // These hashes are only being used temporarily till we can determine if a
 // device is a Chromebox for Meetings or not from the Install Time attributes.
 // TODO(rkc, pbos): Remove these and related code once crbug.com/706523 is
@@ -467,6 +471,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpFingerprintSensorLocationFlag(builder, cros_config);
   SetUpArcBuildPropertiesFlag(builder, cros_config);
   SetUpAutoNightLightFlag(builder, cros_config);
+  SetUpAllowAmbientEQFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
@@ -694,6 +699,22 @@ void SetUpArcBuildPropertiesFlag(ChromiumCommandBuilder* builder,
     return;
   }
   builder->AddArg("--arc-build-properties=" + json_info);
+}
+
+// Enables the "AllowAmbientEQ" feature if "allow-ambient-eq" is set to "1"
+// in cros_config.
+void SetUpAllowAmbientEQFlag(ChromiumCommandBuilder* builder,
+                             brillo::CrosConfigInterface* cros_config) {
+  std::string allow_ambient_eq_str;
+  if (!cros_config || !cros_config->GetString(kPowerPath, kAllowAmbientEQField,
+                                              &allow_ambient_eq_str)) {
+    return;
+  }
+
+  if (allow_ambient_eq_str != "1")
+    return;
+
+  builder->AddFeatureEnableOverride("AllowAmbientEQ");
 }
 
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,

@@ -50,6 +50,15 @@ extern const char kDisplayCategoryField[];
 // Path to hardware properties in CrosConfig.
 extern const char kHardwarePropertiesPath[];
 
+// Path to powerd prefs in cros_config.
+extern const char kPowerPath[];
+
+// Powerd pref to allow Ambient EQ in cros_config.
+extern const char kAllowAmbientEQField[];
+
+// AllowAmbientEQ feature to enable on Chrome.
+extern const char kAllowAmbientEQFeature[];
+
 // Initializes a ChromiumCommandBuilder and performs additional Chrome-specific
 // setup. Returns environment variables that the caller should export for Chrome
 // and arguments that it should pass to the Chrome binary, along with the UID
@@ -115,6 +124,11 @@ void SetUpAutoDimFlag(chromeos::ui::ChromiumCommandBuilder* builder,
 // Add "--arc-build-properties" flag with value read from |cros_config|.
 void SetUpArcBuildPropertiesFlag(chromeos::ui::ChromiumCommandBuilder* builder,
                                  brillo::CrosConfigInterface* cros_config);
+
+// Add "AllowAmbientEQ" flag if allow-ambient-eq powerd pref is set to 1 in
+// |cros_config|. Do not add flag is allow-ambient-eq is set to 0 or not set.
+void SetUpAllowAmbientEQFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                             brillo::CrosConfigInterface* cros_config);
 
 }  // namespace login_manager
 
