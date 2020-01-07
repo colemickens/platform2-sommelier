@@ -303,7 +303,8 @@ Request* ProtocolHandler::GetRequest(const std::string& request_id) const {
 
 // A file descriptor watcher class that oversees I/O operation notification
 // on particular socket file descriptor.
-class ProtocolHandler::Watcher final : public base::MessageLoopForIO::Watcher {
+class ProtocolHandler::Watcher final
+    : public base::MessagePumpLibevent::FdWatcher {
  public:
   Watcher(ProtocolHandler* handler, int fd)
       : fd_{fd}, handler_{handler}, controller_{FROM_HERE} {}
@@ -317,18 +318,18 @@ class ProtocolHandler::Watcher final : public base::MessageLoopForIO::Watcher {
     watching_write_ = write;
     triggered_ = false;
 
-    auto mode = base::MessageLoopForIO::WATCH_READ_WRITE;
+    auto mode = base::MessagePumpLibevent::WATCH_READ_WRITE;
     if (watching_read_ && watching_write_)
-      mode = base::MessageLoopForIO::WATCH_READ_WRITE;
+      mode = base::MessagePumpLibevent::WATCH_READ_WRITE;
     else if (watching_read_)
-      mode = base::MessageLoopForIO::WATCH_READ;
+      mode = base::MessagePumpLibevent::WATCH_READ;
     else if (watching_write_)
-      mode = base::MessageLoopForIO::WATCH_WRITE;
+      mode = base::MessagePumpLibevent::WATCH_WRITE;
     base::MessageLoopForIO::current()->WatchFileDescriptor(fd_, false, mode,
                                                            &controller_, this);
   }
 
-  // Overrides from base::MessageLoopForIO::Watcher.
+  // Overrides from base::MessagePumpLibevent::FdWatcher.
   void OnFileCanReadWithoutBlocking(int /* fd */) override {
     triggered_ = true;
     handler_->ScheduleWork();
@@ -347,7 +348,7 @@ class ProtocolHandler::Watcher final : public base::MessageLoopForIO::Watcher {
   bool watching_read_{false};
   bool watching_write_{false};
   bool triggered_{false};
-  base::MessageLoopForIO::FileDescriptorWatcher controller_;
+  base::MessagePumpLibevent::FdWatchController controller_;
 
   DISALLOW_COPY_AND_ASSIGN(Watcher);
 };
