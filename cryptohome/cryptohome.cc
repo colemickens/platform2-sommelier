@@ -117,6 +117,11 @@ namespace switches {
                                    "install_attributes_set",
                                    "install_attributes_get",
                                    "install_attributes_finalize",
+                                   "install_attributes_count",
+                                   "install_attributes_is_ready",
+                                   "install_attributes_is_secure",
+                                   "install_attributes_is_invalid",
+                                   "install_attributes_is_first_install",
                                    "pkcs11_get_user_token_info",
                                    "pkcs11_get_system_token_info",
                                    "pkcs11_is_user_token_ok",
@@ -186,6 +191,11 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_SET,
     ACTION_INSTALL_ATTRIBUTES_GET,
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
+    ACTION_INSTALL_ATTRIBUTES_COUNT,
+    ACTION_INSTALL_ATTRIBUTES_IS_READY,
+    ACTION_INSTALL_ATTRIBUTES_IS_SECURE,
+    ACTION_INSTALL_ATTRIBUTES_IS_INVALID,
+    ACTION_INSTALL_ATTRIBUTES_IS_FIRST_INSTALL,
     ACTION_PKCS11_GET_USER_TOKEN_INFO,
     ACTION_PKCS11_GET_SYSTEM_TOKEN_INFO,
     ACTION_PKCS11_IS_USER_TOKEN_OK,
@@ -1805,6 +1815,62 @@ int main(int argc, char **argv) {
       return 1;
     }
     printf("InstallAttributesFinalize(): %d\n", result);
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_COUNT],
+      action.c_str())) {
+    brillo::glib::ScopedError error;
+    gint result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_count(
+            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
+      printf("InstallAttributesCount() call failed: %s.\n", error->message);
+      return 1;
+    }
+    printf("InstallAttributesCount(): %d\n", result);
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_IS_READY],
+      action.c_str())) {
+    brillo::glib::ScopedError error;
+    gboolean result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
+            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
+      printf("InstallAttributesIsReady() call failed: %s.\n", error->message);
+      return 1;
+    }
+    printf("InstallAttributesIsReady(): %d\n", static_cast<int>(result));
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_IS_SECURE],
+      action.c_str())) {
+    brillo::glib::ScopedError error;
+    gboolean result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_is_secure(
+            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
+      printf("InstallAttributesIsSecure() call failed: %s.\n", error->message);
+      return 1;
+    }
+    printf("InstallAttributesIsSecure(): %d\n", static_cast<int>(result));
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_IS_INVALID],
+      action.c_str())) {
+    brillo::glib::ScopedError error;
+    gboolean result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_is_invalid(
+            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
+      printf("InstallAttributesIsInvalid() call failed: %s.\n", error->message);
+      return 1;
+    }
+    printf("InstallAttributesIsInvalid(): %d\n", static_cast<int>(result));
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_IS_FIRST_INSTALL],
+      action.c_str())) {
+    brillo::glib::ScopedError error;
+    gboolean result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_is_first_install(
+            proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
+      printf("InstallAttributesIsFirstInstall() call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    printf("InstallAttributesIsFirstInstall(): %d\n", static_cast<int>(result));
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
       action.c_str())) {
