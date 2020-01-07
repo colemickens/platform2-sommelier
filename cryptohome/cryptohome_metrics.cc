@@ -74,10 +74,6 @@ constexpr char kDircryptoMigrationInitialFreeSpaceInMbHistogram[] =
 constexpr char kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram[] =
     "Cryptohome.DircryptoMigrationNoSpaceXattrSizeInBytes";
 constexpr char kTpmAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
-constexpr char kInstallAttributesValidationHistogram[] =
-    "Cryptohome.InstallAttributesValidation";
-constexpr char kInstallAttributesUsageHistogram[] =
-    "Cryptohome.InstallAttributesUsage";
 constexpr char kOOPMountOperationResultHistogram[] =
     "Cryptohome.OOPMountOperationResult";
 constexpr char kOOPMountCleanupResultHistogram[] =
@@ -482,30 +478,6 @@ void ReportDeprecatedApiCalled(DeprecatedApiEvent event) {
                            static_cast<int>(max_event));
 }
 
-void ReportInstallAttributesValidation(InstallAttributesValidationEvent event) {
-  if (!g_metrics) {
-    return;
-  }
-
-  constexpr auto max_event =
-      static_cast<int>(InstallAttributesValidationEvent::kMaxValue);
-  g_metrics->SendEnumToUMA(kInstallAttributesValidationHistogram,
-                           static_cast<int>(event),
-                           static_cast<int>(max_event));
-}
-
-void ReportInstallAttributesUsage(InstallAttributesUsageEvent event) {
-  if (!g_metrics) {
-    return;
-  }
-
-  constexpr auto max_event =
-      static_cast<int>(InstallAttributesUsageEvent::kMaxValue);
-  g_metrics->SendEnumToUMA(kInstallAttributesUsageHistogram,
-                           static_cast<int>(event),
-                           static_cast<int>(max_event));
-}
-
 void ReportOOPMountOperationResult(OOPMountOperationResult result) {
   if (!g_metrics) {
     return;
@@ -529,5 +501,4 @@ void ReportOOPMountCleanupResult(OOPMountCleanupResult result) {
                            static_cast<int>(result),
                            static_cast<int>(max_event));
 }
-
 }  // namespace cryptohome
