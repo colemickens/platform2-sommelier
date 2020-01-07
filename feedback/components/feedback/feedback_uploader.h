@@ -11,7 +11,7 @@
 #include "base/files/file_util.h"
 #include "base/macros.h"
 #include "base/memory/weak_ptr.h"
-#include "base/threading/sequenced_worker_pool.h"
+#include "base/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 
@@ -27,9 +27,9 @@ class FeedbackReport;
 class FeedbackUploader : public base::SupportsWeakPtr<FeedbackUploader> {
  public:
   FeedbackUploader(const base::FilePath& path,
-                   base::SequencedWorkerPool* pool);
+                   scoped_refptr<base::SingleThreadTaskRunner> task_runner);
   FeedbackUploader(const base::FilePath& path,
-                   base::SequencedWorkerPool* pool,
+                   scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                    const std::string& url);
   virtual ~FeedbackUploader();
 
@@ -75,8 +75,8 @@ class FeedbackUploader : public base::SupportsWeakPtr<FeedbackUploader> {
 
   ReportDataCallback dispatch_callback_;
   base::TimeDelta retry_delay_;
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   std::string url_;
-  base::SequencedWorkerPool* pool_;
 
   DISALLOW_COPY_AND_ASSIGN(FeedbackUploader);
 };

@@ -7,8 +7,9 @@
 
 #include <memory>
 
+#include "base/files/file_descriptor_watcher_posix.h"
 #include "base/message_loop/message_loop.h"
-#include "base/threading/sequenced_worker_pool.h"
+#include "base/threading/thread.h"
 #include "feedback/feedback_service.h"
 
 #include <string>
@@ -29,8 +30,9 @@ class Daemon final {
   void Run();
 
  private:
-  base::MessageLoop loop_;
-  scoped_refptr<base::SequencedWorkerPool> pool_;
+  base::MessageLoopForIO loop_;
+  base::Thread worker_thread_;
+  base::FileDescriptorWatcher watcher_;
   std::unique_ptr<feedback::FeedbackUploader> uploader_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);

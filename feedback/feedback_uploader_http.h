@@ -14,7 +14,7 @@ namespace feedback {
 class FeedbackUploaderHttp : public feedback::FeedbackUploader {
  public:
   FeedbackUploaderHttp(const base::FilePath& path,
-                       base::SequencedWorkerPool* pool,
+                       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                        const std::string& url);
   ~FeedbackUploaderHttp() override = default;
 

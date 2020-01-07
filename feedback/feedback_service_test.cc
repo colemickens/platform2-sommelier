@@ -13,8 +13,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/guid.h>
-#include <base/strings/stringprintf.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/stringprintf.h>
+#include <base/threading/thread.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -28,18 +29,17 @@ namespace feedback {
 
 namespace {
 
-static const int kMaxPoolThreads = 1;
-static const char kPoolName[] = "FeedbackWorkerPool";
-static const char kFeedbackReportPath[] = "Feedback Reports";
-static const int kTestProductId = 84;
+static constexpr char kThreadName[] = "FeedbackWorkerThread";
+static constexpr char kFeedbackReportPath[] = "Feedback Reports";
+static constexpr int kTestProductId = 84;
 
 }  // namespace
 
 class MockFeedbackUploader : public feedback::FeedbackUploader {
  public:
-  MockFeedbackUploader(
-      const base::FilePath& path,
-      base::SequencedWorkerPool* pool) : FeedbackUploader(path, pool) {}
+  MockFeedbackUploader(const base::FilePath& path,
+                       scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+      : FeedbackUploader(path, task_runner) {}
 
   MOCK_METHOD(void, DispatchReport, (const std::string&), (override));
 };
@@ -48,7 +48,8 @@ class MockFeedbackUploaderQueue : public MockFeedbackUploader {
  public:
   MockFeedbackUploaderQueue(
       const base::FilePath& path,
-      base::SequencedWorkerPool* pool) : MockFeedbackUploader(path, pool) {}
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+      : MockFeedbackUploader(path, task_runner) {}
 
   MOCK_METHOD(void, QueueReport, (const std::string&), (override));
 };
@@ -57,7 +58,8 @@ class FailedFeedbackUploader : public MockFeedbackUploader {
  public:
   FailedFeedbackUploader(
       const base::FilePath& path,
-      base::SequencedWorkerPool* pool) : MockFeedbackUploader(path, pool) {}
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+      : MockFeedbackUploader(path, task_runner) {}
 
   void DispatchReport(const std::string& data) {
     MockFeedbackUploader::DispatchReport(data);
@@ -88,31 +90,31 @@ class FeedbackServiceTest : public testing::Test {
     return report;
   }
 
-  void WaitOnPool() {
-    pool_->FlushForTesting();
-  }
+  void WaitOnThread() { worker_thread_->FlushForTesting(); }
 
  protected:
   virtual void SetUp() {
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
     CreateDirectory(temp_dir_.GetPath().Append(kFeedbackReportPath));
 
-    pool_ = new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName,
-                                          base::TaskPriority::BACKGROUND);
+    worker_thread_ = std::make_unique<base::Thread>(kThreadName);
+    worker_thread_->Start();
+    worker_task_runner_ = worker_thread_->task_runner();
   }
 
   virtual void TearDown() {
-    WaitOnPool();
-    pool_->Shutdown();
+    WaitOnThread();
+    worker_thread_->Stop();
   }
 
   base::ScopedTempDir temp_dir_;
   base::MessageLoop message_loop_;
-  scoped_refptr<base::SequencedWorkerPool> pool_;
+  std::unique_ptr<base::Thread> worker_thread_;
+  scoped_refptr<base::SingleThreadTaskRunner> worker_task_runner_;
 };
 
 TEST_F(FeedbackServiceTest, SendFeedback) {
-  MockFeedbackUploaderQueue uploader(temp_dir_.GetPath(), pool_.get());
+  MockFeedbackUploaderQueue uploader(temp_dir_.GetPath(), worker_task_runner_);
   std::string data;
   userfeedback::ExtensionSubmit report = GetBaseReport();
   report.SerializeToString(&data);
@@ -125,7 +127,7 @@ TEST_F(FeedbackServiceTest, SendFeedback) {
 }
 
 TEST_F(FeedbackServiceTest, DispatchTest) {
-  MockFeedbackUploader uploader(temp_dir_.GetPath(), pool_.get());
+  MockFeedbackUploader uploader(temp_dir_.GetPath(), worker_task_runner_);
   std::string data;
   userfeedback::ExtensionSubmit report = GetBaseReport();
   report.SerializeToString(&data);
@@ -138,7 +140,7 @@ TEST_F(FeedbackServiceTest, DispatchTest) {
 }
 
 TEST_F(FeedbackServiceTest, UploadFailure) {
-  FailedFeedbackUploader uploader(temp_dir_.GetPath(), pool_.get());
+  FailedFeedbackUploader uploader(temp_dir_.GetPath(), worker_task_runner_);
   std::string data;
   userfeedback::ExtensionSubmit report = GetBaseReport();
   report.SerializeToString(&data);
@@ -148,7 +150,7 @@ TEST_F(FeedbackServiceTest, UploadFailure) {
 
   svc->SendFeedback(report,
       base::Bind(&FeedbackServiceTest::CallbackFeedbackResult, true));
-  WaitOnPool();
+  WaitOnThread();
 
   // Verify that this got put back on the queue.
   EXPECT_TRUE(uploader.GetFirstReport() != nullptr);

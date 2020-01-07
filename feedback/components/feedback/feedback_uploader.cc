@@ -11,7 +11,6 @@
 #include "base/files/file_path.h"
 #include "base/sequenced_task_runner.h"
 #include "base/task_runner_util.h"
-#include "base/threading/sequenced_worker_pool.h"
 #include "components/feedback/feedback_report.h"
 
 namespace feedback {
@@ -33,22 +32,19 @@ bool FeedbackUploader::ReportsUploadTimeComparator::operator()(
   return a->upload_at() > b->upload_at();
 }
 
-FeedbackUploader::FeedbackUploader(const base::FilePath& path,
-                                   base::SequencedWorkerPool* pool)
-    : report_path_(path.Append(kFeedbackReportPath)),
-      retry_delay_(base::TimeDelta::FromMinutes(kRetryDelayMinutes)),
-      url_(kFeedbackPostUrl),
-      pool_(pool) {
-  Init();
-}
+FeedbackUploader::FeedbackUploader(
+    const base::FilePath& path,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+    : FeedbackUploader(path, task_runner, kFeedbackPostUrl) {}
 
-FeedbackUploader::FeedbackUploader(const base::FilePath& path,
-                                   base::SequencedWorkerPool* pool,
-                                   const std::string& url)
+FeedbackUploader::FeedbackUploader(
+    const base::FilePath& path,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    const std::string& url)
     : report_path_(path.Append(kFeedbackReportPath)),
       retry_delay_(base::TimeDelta::FromMinutes(kRetryDelayMinutes)),
-      url_(url),
-      pool_(pool) {
+      task_runner_(task_runner),
+      url_(url) {
   Init();
 }
 
@@ -89,17 +85,8 @@ void FeedbackUploader::RetryReport(const std::string& data) {
 
 void FeedbackUploader::QueueReportWithDelay(const std::string& data,
                                             base::TimeDelta delay) {
-  // Uses a BLOCK_SHUTDOWN file task runner because we really don't want to
-  // lose reports.
-  scoped_refptr<base::SequencedTaskRunner> task_runner =
-      pool_->GetSequencedTaskRunnerWithShutdownBehavior(
-          pool_->GetSequenceToken(),
-          base::SequencedWorkerPool::BLOCK_SHUTDOWN);
-
-  reports_queue_.push(new FeedbackReport(report_path_,
-                                         base::Time::Now() + delay,
-                                         data,
-                                         task_runner));
+  reports_queue_.push(new FeedbackReport(
+      report_path_, base::Time::Now() + delay, data, task_runner_));
   UpdateUploadTimer();
 }
 

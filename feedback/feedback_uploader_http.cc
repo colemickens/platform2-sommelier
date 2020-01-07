@@ -11,8 +11,9 @@ namespace feedback {
 
 FeedbackUploaderHttp::FeedbackUploaderHttp(
     const base::FilePath& path,
-    base::SequencedWorkerPool* pool,
-    const std::string& url) : FeedbackUploader(path, pool, url) {}
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    const std::string& url)
+    : FeedbackUploader(path, task_runner, url) {}
 
 void FeedbackUploaderHttp::DispatchReport(const std::string& data) {
   brillo::ErrorPtr error;

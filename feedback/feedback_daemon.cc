@@ -24,8 +24,7 @@ namespace {
 // to send the report to.
 static const char kSwitchCustomServer[] = "url";
 
-static const int kMaxPoolThreads = 1;
-static const char kPoolName[] = "FeedbackWorkerPool";
+static const char kWorkerThreadName[] = "FeedbackWorkerThread";
 
 static const char kFeedbackReportPath[] = "/run/";
 
@@ -39,15 +38,13 @@ static const char kFeedbackPostUrl[] =
 namespace feedback {
 
 Daemon::Daemon(const std::string& url)
-    : loop_(base::MessageLoop::TYPE_IO),
-      pool_(new base::SequencedWorkerPool(
-          kMaxPoolThreads, kPoolName, base::TaskPriority::BACKGROUND)),
-      uploader_(new FeedbackUploaderHttp(base::FilePath(kFeedbackReportPath),
-                                         pool_.get(), url)) {}
-
-Daemon::~Daemon() {
-  pool_->Shutdown();
+    : worker_thread_(kWorkerThreadName), watcher_(&loop_) {
+  worker_thread_.Start();
+  uploader_ = std::make_unique<FeedbackUploaderHttp>(
+      base::FilePath(kFeedbackReportPath), worker_thread_.task_runner(), url);
 }
+
+Daemon::~Daemon() = default;
 
 void Daemon::Run() {
   base::RunLoop loop;
