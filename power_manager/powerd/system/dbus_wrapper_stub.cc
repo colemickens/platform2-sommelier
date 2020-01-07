@@ -149,9 +149,10 @@ void DBusWrapperStub::NotifyServiceAvailable(dbus::ObjectProxy* proxy,
   if (it == service_availability_callbacks_.end())
     return;
 
-  for (auto& cb : it->second)
-    std::move(cb).Run(available);
+  auto callbacks = std::move(it->second);
   service_availability_callbacks_.erase(it);
+  for (auto& cb : callbacks)
+    std::move(cb).Run(available);
 }
 
 void DBusWrapperStub::NotifyNameOwnerChanged(const std::string& service_name,
