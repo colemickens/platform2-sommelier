@@ -60,6 +60,11 @@ class UserCollector : public UserCollectorBase {
     filter_path_ = filter_path;
   }
 
+ protected:
+  void FinishCrash(const base::FilePath& meta_path,
+                   const std::string& exec_name,
+                   const std::string& payload_name) override;
+
  private:
   friend class UserCollectorTest;
   FRIEND_TEST(UserCollectorTest, ClobberContainerDirectory);

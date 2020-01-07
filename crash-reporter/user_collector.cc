@@ -19,7 +19,9 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process.h>
 
+#include "crash-reporter/user_collector_base.h"
 #include "crash-reporter/util.h"
+#include "crash-reporter/vm_support.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -99,6 +101,19 @@ void UserCollector::Initialize(
 }
 
 UserCollector::~UserCollector() {}
+
+void UserCollector::FinishCrash(const base::FilePath& meta_path,
+                                const std::string& exec_name,
+                                const std::string& payload_name) {
+  VmSupport* vm_support = VmSupport::Get();
+  if (vm_support)
+    vm_support->AddMetadata(this);
+
+  UserCollectorBase::FinishCrash(meta_path, exec_name, payload_name);
+
+  if (vm_support)
+    vm_support->FinishCrash(meta_path);
+}
 
 // Return the string that should be used for the kernel's core_pattern file.
 // Note that if you change the format of the enabled pattern, you'll probably

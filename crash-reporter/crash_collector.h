@@ -356,9 +356,9 @@ class CrashCollector {
   // crash. Write a file of metadata about crash and, if in crash-loop mode,
   // sends the UploadSingleCrash message to debugd. Not called if we failed to
   // make a good crash report.
-  void FinishCrash(const base::FilePath& meta_path,
-                   const std::string& exec_name,
-                   const std::string& payload_name);
+  virtual void FinishCrash(const base::FilePath& meta_path,
+                           const std::string& exec_name,
+                           const std::string& payload_name);
 
   // Returns true if chrome crashes should be handled.
   bool ShouldHandleChromeCrashes();

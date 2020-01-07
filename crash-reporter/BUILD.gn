@@ -76,14 +76,22 @@ static_library("libcrash_reporter") {
     "unclean_shutdown_collector.cc",
     "user_collector.cc",
     "user_collector_base.cc",
+    "vm_support.cc",
   ]
-  defines = [ "USE_DIRENCRYPTION=${use.direncryption}" ]
+  defines = [
+    "USE_DIRENCRYPTION=${use.direncryption}",
+    "USE_KVM_GUEST=${use.kvm_guest}",
+  ]
 
   if (use.cheets) {
     sources += [
       "arc_collector.cc",
       "arc_util.cc",
     ]
+  }
+
+  if (use.kvm_guest) {
+    sources += [ "vm_support_proper.cc" ]
   }
 
   if (use.direncryption) {
@@ -299,7 +307,10 @@ if (use.test) {
       "user_collector_test.cc",
       "util_test.cc",
     ]
-    defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
+    defines = [
+      "USE_KVM_GUEST=${use.kvm_guest}",
+      "USE_CHROMELESS_TTY=${use.chromeless_tty}",
+    ]
     deps = [
       ":hold_lock_file",
       ":libcrash",

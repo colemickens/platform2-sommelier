@@ -64,9 +64,11 @@ const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
 // Key of the lsb-release entry containing the OS description.
 const char kLsbOsDescriptionKey[] = "CHROMEOS_RELEASE_DESCRIPTION";
 
+#if !USE_KVM_GUEST
 // Directory mode of the user crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
 const mode_t kUserCrashPathMode = 02770;
+#endif
 
 // Directory mode of the system crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
@@ -80,7 +82,9 @@ constexpr mode_t kSystemRunStateDirectoryMode = 0755;
 constexpr mode_t kCrashReporterStateDirectoryMode = 0700;
 
 constexpr gid_t kRootGroup = 0;
+#if !USE_KVM_GUEST
 constexpr char kCrashUserGroupName[] = "crash-user-access";
+#endif
 
 // Directory mode of /run/metrics/external/crash-reporter. Anyone in "metrics"
 // group can read/write, and not readable by any other user.
@@ -719,8 +723,9 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
     uid_t* directory_owner,
     gid_t* directory_group) {
   // User crashes should go into the cryptohome, since they may contain PII.
-  // For system crashes, there may not be a cryptohome mounted, so we use the
-  // system crash path.
+  // For system crashes, and crashes in the VM, there may not be a cryptohome
+  // mounted, so we use the system crash path.
+#if !USE_KVM_GUEST
   if (process_euid == default_user_id ||
       crash_directory_selection_method_ == kAlwaysUseUserCrashDirectory) {
     *mode = kUserCrashPathMode;
@@ -730,16 +735,16 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
       return base::nullopt;
     }
     return GetUserCrashDirectory();
-  } else {
-    *mode = kSystemCrashDirectoryMode;
-    *directory_owner = kRootUid;
-    if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
-                                      directory_group)) {
-      PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
-      return base::nullopt;
-    }
-    return system_crash_path_;
   }
+#endif  // !USE_KVM_GUEST
+  *mode = kSystemCrashDirectoryMode;
+  *directory_owner = kRootUid;
+  if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
+                                    directory_group)) {
+    PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
+    return base::nullopt;
+  }
+  return system_crash_path_;
 }
 
 bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,

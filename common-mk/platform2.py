@@ -61,6 +61,7 @@ _IUSE = [
     'hammerd_api',
     'hwid_override',
     'iwlwifi_dump',
+    'kvm_guest',
     'kvm_host',
     'metrics_uploader',
     'mojo',

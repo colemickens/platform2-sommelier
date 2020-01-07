@@ -579,9 +579,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   const int kNtpUid = 5;
   const int kChronosUid = 1000;
   const int kCrashAccessGid = 419;
-  const int kCrashUserAccessGid = 420;
   const mode_t kExpectedSystemMode = 02770;
-  const mode_t kExpectedUserMode = 02770;
 
   mode_t directory_mode;
   uid_t directory_owner;
@@ -605,6 +603,11 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kCrashAccessGid, directory_group);
 
+#if !USE_KVM_GUEST
+  const int kCrashUserAccessGid = 420;
+  const mode_t kExpectedUserMode = 02770;
+
+  // When running in the VM, all crashes will go to the system directory.
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   test_util::SetActiveSessions(mock, {{"user", "hashcakes"}});
   collector_.session_manager_proxy_.reset(mock);
@@ -618,6 +621,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   EXPECT_EQ(kExpectedUserMode, directory_mode);
   EXPECT_EQ(kChronosUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
+#endif
 }
 
 TEST_F(CrashCollectorTest, FormatDumpBasename) {

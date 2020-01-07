@@ -1,0 +1,32 @@
+// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef CRASH_REPORTER_VM_SUPPORT_H_
+#define CRASH_REPORTER_VM_SUPPORT_H_
+
+#include <base/files/file_util.h>
+
+class UserCollector;
+
+// Various methods and utilities for working with crashes that occur in a VM (as
+// opposed to the host).
+class VmSupport {
+ public:
+  // If we are running in a VM, returns a handle to the VM-support wrapper,
+  // otherwise returns nullptr.
+  static VmSupport* Get();
+
+  virtual ~VmSupport();
+
+  // Add vm-specific info, such as the container OS and vm board, to
+  // |collector|'s crash metadata.
+  virtual void AddMetadata(UserCollector* collector) = 0;
+
+  // Perform the extra steps needed when reporting a crash in the VM, such as
+  // informing cicerone. |crash_meta_path| is a path to the .meta file, which we
+  // use to identify the necessary crash files.
+  virtual void FinishCrash(const base::FilePath& crash_meta_path) = 0;
+};
+
+#endif  // CRASH_REPORTER_VM_SUPPORT_H_
