@@ -132,14 +132,15 @@ void FeedbackCommon::CompressFile(const base::FilePath& filename,
   }
   if (feedback_util::ZipString(filename, *data, file->data.get())) {
     base::AutoLock lock(attachments_lock_);
-    attachments_.push_back(file.release());
+    attachments_.push_back(std::move(file));
   }
 }
 
 void FeedbackCommon::AddFile(const std::string& filename,
                              std::unique_ptr<std::string> data) {
   base::AutoLock lock(attachments_lock_);
-  attachments_.push_back(new AttachedFile(filename, std::move(data)));
+  attachments_.push_back(
+      std::make_unique<AttachedFile>(filename, std::move(data)));
 }
 
 void FeedbackCommon::AddLog(const std::string& name, const std::string& value) {

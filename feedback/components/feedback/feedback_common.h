@@ -12,10 +12,10 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/files/file_util.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_vector.h"
 #include "base/synchronization/lock.h"
 
 namespace userfeedback {
@@ -76,7 +76,9 @@ class FeedbackCommon : public base::RefCountedThreadSafe<FeedbackCommon> {
   std::string user_agent() const { return user_agent_; }
   std::string locale() const { return locale_; }
 
-  const AttachedFile* attachment(size_t i) const { return attachments_[i]; }
+  const AttachedFile* attachment(size_t i) const {
+    return attachments_[i].get();
+  }
   size_t attachments() const { return attachments_.size(); }
 
   // Setters
@@ -122,7 +124,7 @@ class FeedbackCommon : public base::RefCountedThreadSafe<FeedbackCommon> {
   // It is possible that multiple attachment add calls are running in
   // parallel, so synchronize access.
   base::Lock attachments_lock_;
-  ScopedVector<AttachedFile> attachments_;
+  std::vector<std::unique_ptr<AttachedFile>> attachments_;
 
   std::unique_ptr<SystemLogsMap> logs_;
 };
