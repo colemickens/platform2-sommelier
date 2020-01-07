@@ -7,6 +7,8 @@ typeattribute cros_ssh_session netdomain;
 )
 
 type cros_audit_sanity_test_file, file_type, cros_file_type, cros_tmpfile_type;
+# NOTE: if you change this, you'll also need to update tast tests that
+# reference it.  Search for "cros_selinux_audit_sanity_test" in the tast repo.
 filetrans_pattern(cros_ssh_session, tmpfs, cros_audit_sanity_test_file, dir, "cros_selinux_audit_sanity_test")
 allow cros_ssh_session cros_audit_sanity_test_file:file create_file_perms;
 allow cros_ssh_session cros_audit_sanity_test_file:dir create_file_perms;
