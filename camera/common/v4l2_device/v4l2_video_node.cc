@@ -459,17 +459,17 @@ enum v4l2_buf_type V4L2VideoNode::GetBufferType() {
   return buffer_type_;
 }
 
-int V4L2VideoNode::Stop() {
+int V4L2VideoNode::Stop(bool releaseBuffers) {
   VLOGF(1) << "Stoping device " << name_;
   base::AutoLock l(state_lock_);
   if (state_ != VideoNodeState::STARTED && state_ != VideoNodeState::PREPARED) {
     LOGF(WARNING) << "Trying to stop a device not started";
     return -EINVAL;
   }
-  return StopLocked();
+  return StopLocked(releaseBuffers);
 }
 
-int V4L2VideoNode::StopLocked() {
+int V4L2VideoNode::StopLocked(bool releaseBuffers) {
   if (state_ == VideoNodeState::STARTED) {
     // stream off
     int ret = ::ioctl(fd_, VIDIOC_STREAMOFF, &buffer_type_);
@@ -478,6 +478,10 @@ int V4L2VideoNode::StopLocked() {
       return ret;
     }
     state_ = VideoNodeState::PREPARED;
+  }
+
+  if (!releaseBuffers) {
+    return 0;
   }
 
   if (state_ == VideoNodeState::PREPARED) {

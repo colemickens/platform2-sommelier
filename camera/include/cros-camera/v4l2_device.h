@@ -394,9 +394,12 @@ class CROS_CAMERA_EXPORT V4L2VideoNode final : public V4L2Device {
 
   // This method stops streaming of the video device.
   //
+  // Args:
+  //    |releaseBuffers|: request 0 buffers if it's true; default value is true.
+  //
   // Returns:
   //    0 on success; corresponding error code on failure.
-  int Stop();
+  int Stop(bool releaseBuffers = true);
 
   // This method starts streaming of the video device.
   //
@@ -450,7 +453,7 @@ class CROS_CAMERA_EXPORT V4L2VideoNode final : public V4L2Device {
 
   int RequestBuffers(size_t num_buffers, enum v4l2_memory memory_type);
 
-  int StopLocked();
+  int StopLocked(bool releaseBuffers = true);
 
   void DestroyBufferPool();
 
