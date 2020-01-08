@@ -27,6 +27,7 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "libcros_config",
     "libpcrecpp",
+    "libshill-client",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
@@ -42,6 +43,7 @@ static_library("libruntime_probe") {
   sources = [
     "component_category.cc",
     "daemon.cc",
+    "function_templates/network.cc",
     "function_templates/storage.cc",
     "functions/all_functions.cc",
     "functions/ata_storage.cc",
