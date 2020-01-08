@@ -1637,9 +1637,12 @@ bool Crypto::CanUnsealWithUserAuth() const {
   base::Optional<bool> is_pcr_bound = tpm_->IsDelegateBoundToPcr();
   if (is_pcr_bound.has_value() && !is_pcr_bound.value())
     return true;
-  // TODO(igorcov): Add the check if the board has a double PCR extend issue.
-  // Specifically "#if defined(USE_DOUBLE_EXTEND_PCR_ISSUE)"
+
+#if USE_DOUBLE_EXTEND_PCR_ISSUE
   return false;
+#else
+  return true;
+#endif
 }
 
 }  // namespace cryptohome
