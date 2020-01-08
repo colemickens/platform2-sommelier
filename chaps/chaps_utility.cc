@@ -471,6 +471,7 @@ bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
       {"CKA_BASE", CKA_BASE},
       {"CKA_PRIME_BITS", CKA_PRIME_BITS},
       {"CKA_SUBPRIME_BITS", CKA_SUBPRIME_BITS},
+      {"CKA_SUB_PRIME_BITS", CKA_SUBPRIME_BITS},
       {"CKA_VALUE_BITS", CKA_VALUE_BITS},
       {"CKA_VALUE_LEN", CKA_VALUE_LEN},
       {"CKA_EXTRACTABLE", CKA_EXTRACTABLE},
@@ -480,6 +481,7 @@ bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
       {"CKA_KEY_GEN_MECHANISM", CKA_KEY_GEN_MECHANISM},
       {"CKA_MODIFIABLE", CKA_MODIFIABLE},
       {"CKA_ECDSA_PARAMS", CKA_ECDSA_PARAMS},
+      {"CKA_EC_PARAMS", CKA_EC_PARAMS},
       {"CKA_EC_POINT", CKA_EC_POINT},
       {"CKA_SECONDARY_AUTH", CKA_SECONDARY_AUTH},
       {"CKA_AUTH_PIN_FLAGS", CKA_AUTH_PIN_FLAGS},
@@ -498,6 +500,8 @@ bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
       {"kKeyBlobAttribute", kKeyBlobAttribute},
       {"kAuthDataAttribute", kAuthDataAttribute},
       {"kLegacyAttribute", kLegacyAttribute},
+      {"kForceSoftwareAttribute", kForceSoftwareAttribute},
+      {"kKeyInSoftware", kKeyInSoftware},
   });
 
   // If we can match the attribute name, then we'll return whatever that's
