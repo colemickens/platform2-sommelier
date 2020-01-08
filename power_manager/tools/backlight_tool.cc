@@ -172,7 +172,7 @@ void PrintAmbientLightPath(bool keyboard) {
   }
 
   AmbientLightSensorManager als_manager;
-  als_manager.SetNumSensorsAndInit(num_als);
+  als_manager.Init(&prefs);
   als_manager.Run(true /* read_immediately */);
 
   AmbientLightSensorInterface* sensor;

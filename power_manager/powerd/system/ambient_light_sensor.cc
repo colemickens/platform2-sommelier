@@ -90,11 +90,19 @@ const int AmbientLightSensor::kNumInitAttemptsBeforeLogging = 5;
 const int AmbientLightSensor::kNumInitAttemptsBeforeGivingUp = 20;
 
 AmbientLightSensor::AmbientLightSensor()
-    : AmbientLightSensor(SensorLocation::UNKNOWN) {}
+    : AmbientLightSensor(SensorLocation::UNKNOWN, false) {}
 
 AmbientLightSensor::AmbientLightSensor(SensorLocation expected_sensor_location)
+    : AmbientLightSensor(expected_sensor_location, false) {}
+
+AmbientLightSensor::AmbientLightSensor(bool enable_color_support)
+    : AmbientLightSensor(SensorLocation::UNKNOWN, enable_color_support) {}
+
+AmbientLightSensor::AmbientLightSensor(SensorLocation expected_sensor_location,
+                                       bool enable_color_support)
     : device_list_path_(kDefaultDeviceListPath),
       poll_interval_ms_(kDefaultPollIntervalMs),
+      enable_color_support_(enable_color_support),
       lux_value_(-1),
       color_temperature_(-1),
       num_init_attempts_(0),
@@ -109,7 +117,18 @@ void AmbientLightSensor::Init(bool read_immediately) {
 }
 
 base::FilePath AmbientLightSensor::GetIlluminancePath() const {
-  return als_file_.HasOpenedFile() ? als_file_.path() : base::FilePath();
+  if (IsColorSensor()) {
+    for (const ColorChannelInfo& channel : kColorChannelConfig) {
+      if (!channel.is_lux_channel)
+        continue;
+      if (color_als_files_.at(&channel).HasOpenedFile())
+        return color_als_files_.at(&channel).path();
+    }
+  } else {
+    if (als_file_.HasOpenedFile())
+      return als_file_.path();
+  }
+  return base::FilePath();
 }
 
 bool AmbientLightSensor::TriggerPollTimerForTesting() {
@@ -305,13 +324,13 @@ bool AmbientLightSensor::InitAlsFile() {
       base::FilePath als_path = check_path.Append(input_names[i]);
       if (!base::PathExists(als_path))
         continue;
-      if (als_file_.Init(als_path)) {
-        LOG(INFO) << "Using lux file " << als_path.value() << " for "
-                  << SensorLocationToString(expected_sensor_location_)
-                  << " ALS";
+      if (!als_file_.Init(als_path))
+        continue;
+      if (enable_color_support_)
         InitColorAlsFiles(check_path);
-        return true;
-      }
+      LOG(INFO) << "Using lux file " << GetIlluminancePath().value() << " for "
+                << SensorLocationToString(expected_sensor_location_) << " ALS";
+      return true;
     }
   }
 

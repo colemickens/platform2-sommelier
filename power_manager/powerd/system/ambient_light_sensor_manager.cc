@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 
 namespace power_manager {
@@ -29,14 +30,23 @@ void AmbientLightSensorManager::set_poll_interval_ms_for_testing(
     sensor->set_poll_interval_ms_for_testing(interval_ms);
 }
 
-void AmbientLightSensorManager::SetNumSensorsAndInit(int num_sensors) {
-  num_sensors_ = num_sensors;
-  if (num_sensors_ == 1) {
-    sensors_.push_back(std::make_unique<system::AmbientLightSensor>());
-    lid_sensor_ = base_sensor_ = sensors_[0].get();
-  } else if (num_sensors_ >= 2) {
+void AmbientLightSensorManager::Init(PrefsInterface* prefs) {
+  prefs_ = prefs;
+  int64_t num_sensors = 0;
+  bool allow_ambient_eq = false;
+  prefs_->GetInt64(kHasAmbientLightSensorPref, &num_sensors);
+  CHECK(prefs_->GetBool(kAllowAmbientEQ, &allow_ambient_eq))
+      << "Failed to read pref " << kAllowAmbientEQ;
+
+  // Currently Ambient EQ is the only use case for color ALS. Enable color
+  // support on ALS if device is allowed to have Ambient EQ feature.
+  if (num_sensors == 1) {
     sensors_.push_back(
-        std::make_unique<system::AmbientLightSensor>(SensorLocation::LID));
+        std::make_unique<system::AmbientLightSensor>(allow_ambient_eq));
+    lid_sensor_ = base_sensor_ = sensors_[0].get();
+  } else if (num_sensors >= 2) {
+    sensors_.push_back(std::make_unique<system::AmbientLightSensor>(
+        SensorLocation::LID, allow_ambient_eq));
     sensors_.push_back(
         std::make_unique<system::AmbientLightSensor>(SensorLocation::BASE));
     lid_sensor_ = sensors_[0].get();

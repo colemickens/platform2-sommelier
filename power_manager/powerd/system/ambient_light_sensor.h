@@ -67,6 +67,9 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
 
   AmbientLightSensor();
   explicit AmbientLightSensor(SensorLocation expected_sensor_location);
+  explicit AmbientLightSensor(bool allow_ambient_eq);
+  AmbientLightSensor(SensorLocation expected_sensor_location,
+                     bool allow_ambient_eq);
   ~AmbientLightSensor() override;
 
   void set_device_list_path_for_testing(const base::FilePath& path) {
@@ -131,6 +134,11 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // List of backlight controllers that are currently interested in updates from
   // this sensor.
   base::ObserverList<AmbientLightObserver> observers_;
+
+  // Boolean to indicate if color support should be enabled on this ambient
+  // light sensor. Color support should only be enabled if sensor is properly
+  // calibrated. Only search for color support if true.
+  bool enable_color_support_;
 
   // Lux value read by the class. If this read did not succeed or no read has
   // occured yet this variable is set to -1.

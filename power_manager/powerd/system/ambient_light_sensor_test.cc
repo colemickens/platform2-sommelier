@@ -190,7 +190,7 @@ TEST_F(AmbientLightSensorTest, IsColorSensor) {
   color_file = device_dir_.Append("in_illuminance_blue_raw");
   CHECK(brillo::WriteStringToFile(color_file, "50"));
 
-  sensor_.reset(new AmbientLightSensor);
+  sensor_.reset(new AmbientLightSensor(true));
   sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
   sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   sensor_->AddObserver(&observer_);

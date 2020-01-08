@@ -63,7 +63,7 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::UdevInterface> CreateUdev() = 0;
 
   virtual std::unique_ptr<system::AmbientLightSensorManagerInterface>
-  CreateAmbientLightSensorManager(int num_sensors) = 0;
+  CreateAmbientLightSensorManager(PrefsInterface* prefs) = 0;
 
   virtual std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) = 0;

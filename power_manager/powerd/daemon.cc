@@ -327,10 +327,8 @@ void Daemon::Init() {
 
   // Ignore the ALS and backlights in factory mode.
   if (!factory_mode_) {
-    int64_t num_light_sensors = 0;
-    prefs_->GetInt64(kHasAmbientLightSensorPref, &num_light_sensors);
     light_sensor_manager_ =
-        delegate_->CreateAmbientLightSensorManager(num_light_sensors);
+        delegate_->CreateAmbientLightSensorManager(prefs_.get());
 
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =

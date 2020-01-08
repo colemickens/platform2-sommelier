@@ -150,7 +150,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return std::move(passed_udev_);
   }
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
-  CreateAmbientLightSensorManager(int num_sensors) override {
+  CreateAmbientLightSensorManager(PrefsInterface* prefs) override {
     return std::move(passed_ambient_light_sensor_manager_);
   }
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(

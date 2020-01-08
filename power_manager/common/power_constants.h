@@ -185,6 +185,9 @@ extern const char kNumSessionsOnCurrentChargePref[];
 // Number of ambient light sensors on the device.
 extern const char kHasAmbientLightSensorPref[];
 
+// If true, device is allowed to have Ambient EQ feature.
+extern const char kAllowAmbientEQ[];
+
 // If true, the device has a charge controller responsible for handling
 // power policies.
 extern const char kHasChargeControllerPref[];

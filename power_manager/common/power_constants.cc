@@ -73,6 +73,7 @@ const char kDarkResumeSourcesPref[] = "dark_resume_sources";
 const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
 const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";
 const char kHasAmbientLightSensorPref[] = "has_ambient_light_sensor";
+const char kAllowAmbientEQ[] = "allow_ambient_eq";
 const char kHasChargeControllerPref[] = "has_charge_controller";
 const char kHasKeyboardBacklightPref[] = "has_keyboard_backlight";
 const char kExternalDisplayOnlyPref[] = "external_display_only";

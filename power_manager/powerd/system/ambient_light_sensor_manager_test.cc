@@ -14,6 +14,7 @@
 #include <brillo/file_utils.h>
 #include <gtest/gtest.h>
 
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 
@@ -61,13 +62,8 @@ class AmbientLightSensorManagerTest : public ::testing::Test {
   ~AmbientLightSensorManagerTest() override {}
 
   void SetUp() override {
+    prefs_.SetInt64(kAllowAmbientEQ, 0);
     CHECK(temp_dir_.CreateUniqueTempDir());
-    base::FilePath device0_dir = temp_dir_.GetPath().Append("device0");
-    CHECK(base::CreateDirectory(device0_dir));
-    data0_file_ = device0_dir.Append("illuminance0_input");
-    CHECK(brillo::WriteStringToFile(data0_file_, base::NumberToString(0)));
-    base::FilePath loc0_file = device0_dir.Append("location");
-    CHECK(brillo::WriteStringToFile(loc0_file, "lid"));
     manager_.reset(new AmbientLightSensorManager());
   }
 
@@ -76,11 +72,34 @@ class AmbientLightSensorManagerTest : public ::testing::Test {
   };
 
  protected:
+  base::FilePath AddSensor(int lux, std::string loc, bool color) {
+    base::FilePath device_dir = temp_dir_.GetPath().Append(
+        "device" + base::NumberToString(num_sensors_++));
+    CHECK(base::CreateDirectory(device_dir));
+    base::FilePath data_file = device_dir.Append("illuminance0_input");
+    CHECK(brillo::WriteStringToFile(data_file, base::NumberToString(lux)));
+    base::FilePath loc_file = device_dir.Append("location");
+    CHECK(brillo::WriteStringToFile(loc_file, loc));
+
+    if (!color)
+      return data_file;
+
+    base::FilePath color_file = device_dir.Append("in_illuminance_red_raw");
+    CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(lux)));
+    color_file = device_dir.Append("in_illuminance_blue_raw");
+    CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(lux)));
+    color_file = device_dir.Append("in_illuminance_green_raw");
+    CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(lux)));
+    return color_file;
+  }
+
   // Temporary directory mimicking a /sys directory containing a set of sensor
   // devices.
   base::ScopedTempDir temp_dir_;
 
-  base::FilePath data0_file_;
+  size_t num_sensors_ = 0;
+
+  FakePrefs prefs_;
 
   std::unique_ptr<AmbientLightSensorManager> manager_;
 
@@ -92,16 +111,22 @@ class AmbientLightSensorManagerTest : public ::testing::Test {
 };
 
 TEST_F(AmbientLightSensorManagerTest, ZeroSensors) {
-  manager_->SetNumSensorsAndInit(0);
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 0);
+
+  manager_->Init(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->Run(false /* read_immediately */);
 
   EXPECT_EQ(nullptr, manager_->GetSensorForInternalBacklight());
   EXPECT_EQ(nullptr, manager_->GetSensorForKeyboardBacklight());
+  EXPECT_FALSE(manager_->HasColorSensor());
 }
 
 TEST_F(AmbientLightSensorManagerTest, OneSensor) {
-  manager_->SetNumSensorsAndInit(1);
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 1);
+  base::FilePath data_file = AddSensor(0, "lid", false);
+
+  manager_->Init(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);
@@ -110,26 +135,25 @@ TEST_F(AmbientLightSensorManagerTest, OneSensor) {
   internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
   ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(0, internal_backlight_sensor->GetAmbientLightLux());
-  EXPECT_EQ(data0_file_, internal_backlight_sensor->GetIlluminancePath());
+  EXPECT_EQ(data_file, internal_backlight_sensor->GetIlluminancePath());
   internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
 
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
   keyboard_backlight_sensor->AddObserver(&keyboard_backlight_observer_);
   ASSERT_TRUE(keyboard_backlight_observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(0, keyboard_backlight_sensor->GetAmbientLightLux());
-  EXPECT_EQ(data0_file_, keyboard_backlight_sensor->GetIlluminancePath());
+  EXPECT_EQ(data_file, keyboard_backlight_sensor->GetIlluminancePath());
   keyboard_backlight_sensor->RemoveObserver(&keyboard_backlight_observer_);
+
+  EXPECT_FALSE(manager_->HasColorSensor());
 }
 
 TEST_F(AmbientLightSensorManagerTest, TwoSensors) {
-  base::FilePath device1_dir = temp_dir_.GetPath().Append("device1");
-  CHECK(base::CreateDirectory(device1_dir));
-  base::FilePath data1_file = device1_dir.Append("illuminance0_input");
-  CHECK(brillo::WriteStringToFile(data1_file, base::NumberToString(1)));
-  base::FilePath loc1_file = device1_dir.Append("location");
-  CHECK(brillo::WriteStringToFile(loc1_file, "base"));
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 2);
+  base::FilePath data0_file = AddSensor(0, "lid", false);
+  base::FilePath data1_file = AddSensor(1, "base", false);
 
-  manager_->SetNumSensorsAndInit(2);
+  manager_->Init(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);
@@ -138,7 +162,7 @@ TEST_F(AmbientLightSensorManagerTest, TwoSensors) {
   internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
   ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(0, internal_backlight_sensor->GetAmbientLightLux());
-  EXPECT_EQ(data0_file_, internal_backlight_sensor->GetIlluminancePath());
+  EXPECT_EQ(data0_file, internal_backlight_sensor->GetIlluminancePath());
   internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
 
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -147,11 +171,17 @@ TEST_F(AmbientLightSensorManagerTest, TwoSensors) {
   EXPECT_EQ(1, keyboard_backlight_sensor->GetAmbientLightLux());
   EXPECT_EQ(data1_file, keyboard_backlight_sensor->GetIlluminancePath());
   keyboard_backlight_sensor->RemoveObserver(&keyboard_backlight_observer_);
+
+  EXPECT_FALSE(manager_->HasColorSensor());
 }
 
 TEST_F(AmbientLightSensorManagerTest, HasColorSensor) {
-  // Default sensor has no color.
-  manager_->SetNumSensorsAndInit(1);
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 2);
+  prefs_.SetInt64(kAllowAmbientEQ, 1);
+  base::FilePath data0_file = AddSensor(0, "lid", true);
+  base::FilePath data1_file = AddSensor(1, "base", false);
+
+  manager_->Init(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
   manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
   manager_->Run(false /* read_immediately */);
@@ -159,56 +189,15 @@ TEST_F(AmbientLightSensorManagerTest, HasColorSensor) {
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
   ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
-  internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
-
-  EXPECT_FALSE(manager_->HasColorSensor());
-
-  // Add a second sensor.
-  base::FilePath device1_dir = temp_dir_.GetPath().Append("device1");
-  CHECK(base::CreateDirectory(device1_dir));
-  base::FilePath data1_file = device1_dir.Append("illuminance0_input");
-  CHECK(brillo::WriteStringToFile(data1_file, base::NumberToString(1)));
-  base::FilePath loc1_file = device1_dir.Append("location");
-  CHECK(brillo::WriteStringToFile(loc1_file, "base"));
-
-  manager_->SetNumSensorsAndInit(2);
-  manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
-  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
-  manager_->Run(false /* read_immediately */);
-
-  internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
-  internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
-  ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
+  EXPECT_EQ(0, internal_backlight_sensor->GetAmbientLightLux());
+  EXPECT_EQ(data0_file, internal_backlight_sensor->GetIlluminancePath());
   internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
 
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
   keyboard_backlight_sensor->AddObserver(&keyboard_backlight_observer_);
   ASSERT_TRUE(keyboard_backlight_observer_.RunUntilAmbientLightUpdated());
-  keyboard_backlight_sensor->RemoveObserver(&keyboard_backlight_observer_);
-
-  EXPECT_FALSE(manager_->HasColorSensor());
-
-  // Add color channels to the second sensor.
-  base::FilePath color_file = device1_dir.Append("in_illuminance_red_raw");
-  CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(1)));
-  color_file = device1_dir.Append("in_illuminance_green_raw");
-  CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(1)));
-  color_file = device1_dir.Append("in_illuminance_blue_raw");
-  CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(1)));
-
-  manager_->SetNumSensorsAndInit(2);
-  manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
-  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
-  manager_->Run(false /* read_immediately */);
-
-  internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
-  internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
-  ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
-  internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
-
-  keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
-  keyboard_backlight_sensor->AddObserver(&keyboard_backlight_observer_);
-  ASSERT_TRUE(keyboard_backlight_observer_.RunUntilAmbientLightUpdated());
+  EXPECT_EQ(1, keyboard_backlight_sensor->GetAmbientLightLux());
+  EXPECT_EQ(data1_file, keyboard_backlight_sensor->GetIlluminancePath());
   keyboard_backlight_sensor->RemoveObserver(&keyboard_backlight_observer_);
 
   EXPECT_TRUE(manager_->HasColorSensor());

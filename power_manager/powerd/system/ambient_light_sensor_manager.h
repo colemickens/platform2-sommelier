@@ -12,6 +12,9 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 
 namespace power_manager {
+
+class PrefsInterface;
+
 namespace system {
 
 class AmbientLightSensorManagerInterface {
@@ -36,7 +39,7 @@ class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
   void set_device_list_path_for_testing(const base::FilePath& path);
   void set_poll_interval_ms_for_testing(int interval_ms);
 
-  void SetNumSensorsAndInit(int num_sensors);
+  void Init(PrefsInterface* prefs);
   void Run(bool read_immediately);
 
   bool HasColorSensor() override;
@@ -45,7 +48,7 @@ class AmbientLightSensorManager : public AmbientLightSensorManagerInterface {
   AmbientLightSensorInterface* GetSensorForKeyboardBacklight() override;
 
  private:
-  int num_sensors_ = -1;
+  PrefsInterface* prefs_ = nullptr;  // non-owned
 
   // AmbientLightSensorManager object owns AmbientLightSensor object via unique
   // pointers.
