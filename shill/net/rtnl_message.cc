@@ -7,9 +7,13 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <netinet/in.h>
+#include <string.h>
 #include <sys/socket.h>
 
+#include <memory>
+
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/ndisc.h"
@@ -17,6 +21,7 @@
 namespace shill {
 
 namespace {
+
 const char* TypeToString(RTNLMessage::Type type) {
   switch (type) {
     case RTNLMessage::kTypeLink:
@@ -37,6 +42,50 @@ const char* TypeToString(RTNLMessage::Type type) {
       return "UnknownType";
   }
 }
+
+std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, size_t len) {
+  RTNLAttrMap attrs;
+  ByteString attr_bytes(reinterpret_cast<const char*>(data), len);
+
+  while (data && RTA_OK(data, len)) {
+    attrs[data->rta_type] = ByteString(
+        reinterpret_cast<unsigned char*>(RTA_DATA(data)), RTA_PAYLOAD(data));
+    data = RTA_NEXT(data, len);
+  }
+
+  if (len) {
+    LOG(ERROR) << "Error parsing RTNL attributes <" << attr_bytes.HexEncode()
+               << ">, trailing length: " << len;
+    return nullptr;
+  }
+
+  return std::make_unique<RTNLAttrMap>(attrs);
+}
+
+ByteString PackAttrs(const RTNLAttrMap& attrs) {
+  ByteString attributes;
+
+  for (const auto& pair : attrs) {
+    size_t len = RTA_LENGTH(pair.second.GetLength());
+    struct rtattr rt_attr = {
+        // Linter discourages 'unsigned short', but 'unsigned short' is used in
+        // the UAPI.
+        static_cast<unsigned short>(len),  // NOLINT(runtime/int)
+        pair.first,
+    };
+    ByteString header(reinterpret_cast<unsigned char*>(&rt_attr),
+                      sizeof(rt_attr));
+    header.Resize(RTA_ALIGN(header.GetLength()));
+    attributes.Append(header);
+
+    ByteString data(pair.second);
+    data.Resize(RTA_ALIGN(data.GetLength()));
+    attributes.Append(data);
+  }
+
+  return attributes;
+}
+
 }  // namespace
 
 struct RTNLHeader {
@@ -52,8 +101,11 @@ struct RTNLHeader {
 };
 
 std::string RTNLMessage::LinkStatus::ToString() const {
-  return base::StringPrintf("LinkStatus type %d flags %X change %X", type,
-                            flags, change);
+  return base::StringPrintf(
+      "LinkStatus type %d flags %X change %X%s", type, flags, change,
+      kind.has_value()
+          ? base::StringPrintf(" kind %s", kind.value().c_str()).c_str()
+          : "");
 }
 
 std::string RTNLMessage::AddressStatus::ToString() const {
@@ -187,20 +239,15 @@ bool RTNLMessage::DecodeInternal(const ByteString& msg) {
   seq_ = hdr->hdr.nlmsg_seq;
   pid_ = hdr->hdr.nlmsg_pid;
 
-  while (attr_data && RTA_OK(attr_data, attr_length)) {
-    SetAttribute(
-        attr_data->rta_type,
-        ByteString(reinterpret_cast<unsigned char*>(RTA_DATA(attr_data)),
-                   RTA_PAYLOAD(attr_data)));
-    attr_data = RTA_NEXT(attr_data, attr_length);
-  }
-
-  if (attr_length) {
-    // We hit a parse error while going through the attributes
+  std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(attr_data, attr_length);
+  if (!attrs) {
     attributes_.clear();
     return false;
   }
 
+  for (const auto& pair : *attrs) {
+    SetAttribute(pair.first, pair.second);
+  }
   return true;
 }
 
@@ -219,8 +266,36 @@ bool RTNLMessage::DecodeLink(const RTNLHeader* hdr,
   type_ = kTypeLink;
   family_ = hdr->ifi.ifi_family;
   interface_index_ = hdr->ifi.ifi_index;
-  set_link_status(
-      LinkStatus(hdr->ifi.ifi_type, hdr->ifi.ifi_flags, hdr->ifi.ifi_change));
+
+  std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(*attr_data, *attr_length);
+  if (!attrs)
+    return false;
+
+  base::Optional<std::string> kind_option;
+
+  if (base::ContainsKey(*attrs, IFLA_LINKINFO)) {
+    ByteString& bytes = attrs->find(IFLA_LINKINFO)->second;
+    struct rtattr* link_data =
+        reinterpret_cast<struct rtattr*>(bytes.GetData());
+    size_t link_len = bytes.GetLength();
+    std::unique_ptr<RTNLAttrMap> linkinfo = ParseAttrs(link_data, link_len);
+
+    if (linkinfo && base::ContainsKey(*linkinfo, IFLA_INFO_KIND)) {
+      ByteString& kindBytes = linkinfo->find(IFLA_INFO_KIND)->second;
+      const char* kind = reinterpret_cast<const char*>(kindBytes.GetData());
+      std::string kind_string(kind, strnlen(kind, kindBytes.GetLength()));
+      if (base::IsStringASCII(kind_string))
+        kind_option = kind_string;
+      else
+        LOG(ERROR) << base::StringPrintf(
+            "Invalid kind <%s>, interface index %d",
+            kindBytes.HexEncode().c_str(), interface_index_);
+    }
+  }
+
+  set_link_status(LinkStatus(hdr->ifi.ifi_type, hdr->ifi.ifi_flags,
+                             hdr->ifi.ifi_change, kind_option));
+
   return true;
 }
 
@@ -447,26 +522,8 @@ ByteString RTNLMessage::Encode() const {
   }
 
   size_t header_length = hdr.hdr.nlmsg_len;
-  ByteString attributes;
-
-  for (const auto& id_attribute_pair : attributes_) {
-    size_t len = RTA_LENGTH(id_attribute_pair.second.GetLength());
-    hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + RTA_ALIGN(len);
-
-    struct rtattr rt_attr = {
-        static_cast<unsigned short>(len),  // NOLINT(runtime/int)
-        id_attribute_pair.first,
-    };
-    ByteString attr_header(reinterpret_cast<unsigned char*>(&rt_attr),
-                           sizeof(rt_attr));
-    attr_header.Resize(RTA_ALIGN(attr_header.GetLength()));
-    attributes.Append(attr_header);
-
-    ByteString attr_data(id_attribute_pair.second);
-    attr_data.Resize(RTA_ALIGN(attr_data.GetLength()));
-    attributes.Append(attr_data);
-  }
-
+  ByteString attributes = PackAttrs(attributes_);
+  hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + attributes.GetLength();
   ByteString packet(reinterpret_cast<unsigned char*>(&hdr), header_length);
   packet.Append(attributes);
 

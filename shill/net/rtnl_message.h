@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/stl_util.h>
 
 #include "shill/net/byte_string.h"
@@ -21,6 +22,8 @@ struct rtattr;
 namespace shill {
 
 struct RTNLHeader;
+
+using RTNLAttrMap = std::unordered_map<uint16_t, ByteString>;
 
 class SHILL_EXPORT RTNLMessage {
  public:
@@ -41,12 +44,14 @@ class SHILL_EXPORT RTNLMessage {
     LinkStatus() : type(0), flags(0), change(0) {}
     LinkStatus(unsigned int in_type,
                unsigned int in_flags,
-               unsigned int in_change)
-        : type(in_type), flags(in_flags), change(in_change) {}
+               unsigned int in_change,
+               base::Optional<std::string> kind = base::nullopt)
+        : type(in_type), flags(in_flags), change(in_change), kind(kind) {}
     std::string ToString() const;
     unsigned int type;
     unsigned int flags;
     unsigned int change;
+    base::Optional<std::string> kind;
   };
 
   struct AddressStatus {
@@ -223,7 +228,7 @@ class SHILL_EXPORT RTNLMessage {
   RouteStatus route_status_;
   NeighborStatus neighbor_status_;
   RdnssOption rdnss_option_;
-  std::unordered_map<uint16_t, ByteString> attributes_;
+  RTNLAttrMap attributes_;
   // NOTE: Update Reset() accordingly when adding a new member field.
 
   DISALLOW_COPY_AND_ASSIGN(RTNLMessage);
