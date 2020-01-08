@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <map>
 #include <sstream>
 #include <unistd.h>
 #include <utility>
@@ -23,15 +24,27 @@ namespace vm_tools {
 namespace garcon {
 namespace {
 
+constexpr char kStdoutCallbackEnv[] = "ANSIBLE_STDOUT_CALLBACK";
+constexpr char kDefaultCallbackPluginPathEnv[] = "ANSIBLE_CALLBACK_PLUGINS";
+constexpr char kStdoutCallbackName[] = "garcon";
+constexpr char kDefaultCallbackPluginPath[] =
+    "/usr/share/ansible/plugins/callback";
+
 // Return true on successful ansible-playbook result and false otherwise.
 bool GetPlaybookApplicationResult(const std::string& stdout,
                                   const std::string& stderr,
                                   std::string* failure_reason) {
-  LOG(INFO) << "Ansible playbook application result: " << stdout;
-  LOG(INFO) << "Ansible playbook application error: " << stderr;
-  // TODO(okalitova): Process ansible-playbook stdout and stderr.
+  const std::string execution_info =
+      "Ansible playbook application stdout:\n" + stdout + "\n" +
+      "Ansible playbook application stderr:\n" + stderr + "\n";
+
+  if (stdout.find("MESSAGE TO GARCON: TASK_FAILED") != std::string::npos) {
+    LOG(INFO) << "Some tasks failed during container configuration";
+    *failure_reason = execution_info;
+    return false;
+  }
   if (!stderr.empty()) {
-    *failure_reason = stderr;
+    *failure_reason = execution_info;
     return false;
   }
   return true;
@@ -57,9 +70,18 @@ void ExecuteAnsiblePlaybook(AnsiblePlaybookApplicationObserver* observer,
                             base::WaitableEvent* event,
                             const base::FilePath& ansible_playbook_file_path,
                             std::string* error_msg) {
-  std::vector<std::string> argv{
-      "ansible-playbook", "--become",   "--connection=local",
-      "--inventory",      "127.0.0.1,", ansible_playbook_file_path.value()};
+  std::vector<std::string> argv{"ansible-playbook",
+                                "--become",
+                                "--connection=local",
+                                "--inventory",
+                                "127.0.0.1,",
+                                ansible_playbook_file_path.value(),
+                                "-e",
+                                "ansible_python_interpreter=/usr/bin/python3"};
+
+  std::map<std::string, std::string> env;
+  env[kStdoutCallbackEnv] = kStdoutCallbackName;
+  env[kDefaultCallbackPluginPathEnv] = kDefaultCallbackPluginPath;
 
   // Set child's process stdout and stderr to write end of pipes.
   int stdio_fd[] = {-1, -1, -1};
@@ -79,7 +101,7 @@ void ExecuteAnsiblePlaybook(AnsiblePlaybookApplicationObserver* observer,
   stdio_fd[STDOUT_FILENO] = write_stdout.get();
   stdio_fd[STDERR_FILENO] = write_stderr.get();
 
-  if (!Spawn(std::move(argv), {}, "", stdio_fd)) {
+  if (!Spawn(std::move(argv), std::move(env), "", stdio_fd)) {
     *error_msg = "Failed to spawn ansible-playbook process";
     return;
   }
