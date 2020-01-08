@@ -136,6 +136,11 @@ void ParseCommandLine(int argc,
   flags->allow_dev_sending = FLAGS_dev;
   flags->ignore_pause_file = FLAGS_ignore_pause_file;
   flags->test_mode = FLAGS_test_mode;
+  if (flags->test_mode) {
+    // The pause file is intended to pause the cronjob crash_sender during
+    // tests, not the crash_sender invoked by the test code.
+    flags->ignore_pause_file = true;
+  }
 }
 
 void RecordCrashDone() {
