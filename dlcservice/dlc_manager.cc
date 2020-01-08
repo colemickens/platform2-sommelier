@@ -120,14 +120,14 @@ class DlcManager::DlcManagerImpl {
       if (installed_.find(id) != installed_.end()) {
         installing_[id] = installed_[id];
       } else {
-        // Failure to create the metadata directory should not fail the install.
-        CreateMetadata(id, err_code, err_msg) &&
-            SetActive(id, err_code, err_msg);
-
+        string throwaway_err_code, throwaway_err_msg;
         if (!Create(id, err_code, err_msg)) {
-          string throwaway_err_code, throwaway_err_msg;
           CancelInstall(&throwaway_err_code, &throwaway_err_msg);
           return false;
+        }
+        // Failure to set the metadata flags should not fail the install.
+        if (!SetActive(id, &throwaway_err_code, &throwaway_err_msg)) {
+          LOG(WARNING) << throwaway_err_msg;
         }
       }
     }
@@ -254,56 +254,31 @@ class DlcManager::DlcManagerImpl {
     return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
   }
 
-  bool CreateMetadata(const std::string& id,
-                      string* err_code,
-                      string* err_msg) {
-    const string& package = GetDlcPackage(id);
-    // Create the metadata directory.
-    FilePath metadata_path_local = utils::GetDlcPath(metadata_dir_, id);
-    FilePath metadata_package_path =
-        utils::GetDlcPackagePath(metadata_dir_, id, package);
+  bool SetActive(const string& id, string* err_code, string* err_msg) {
     // Create the DLC ID metadata directory with correct permissions if it
     // doesn't exist.
+    FilePath metadata_path_local = utils::GetDlcPath(metadata_dir_, id);
     if (!base::PathExists(metadata_path_local)) {
       if (!CreateDirWithDlcPermissions(metadata_path_local)) {
         *err_code = kErrorInternal;
-        *err_msg = "Failed to create the DLC ID metadata directory";
+        *err_msg = "Failed to create the DLC metadata directory for DLC:" + id;
         return false;
       }
     }
-    // Create the DLC package metadata directory with correct permissions if it
-    // doesn't exist.
-    if (!base::PathExists(metadata_package_path)) {
-      if (!CreateDirWithDlcPermissions(metadata_package_path)) {
-        *err_code = kErrorInternal;
-        *err_msg = "Failed to create the DLC package metadata directory";
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool SetActive(const string& id, string* err_code, string* err_msg) {
-    // Create the metadata directory if it doesn't exist.
-    if (!CreateMetadata(id, err_code, err_msg)) {
-      LOG(ERROR) << err_msg;
-      return false;
-    }
-    const string& package = GetDlcPackage(id);
     FilePath active_metadata =
-        utils::GetDlcPackagePath(metadata_dir_, id, package)
+        utils::GetDlcPath(metadata_dir_, id)
             .Append(dlcservice::kDlcMetadataFilePingActive);
     base::ScopedFILE active_metadata_fp(base::OpenFile(active_metadata, "w"));
     if (active_metadata_fp == nullptr) {
       *err_code = kErrorInternal;
-      *err_msg = "Failed to open 'active' metadata file.";
+      *err_msg = "Failed to open 'active' metadata file for DLC:" + id;
       return false;
     }
     // Set 'active' value to true.
     if (!base::WriteFileDescriptor(fileno(active_metadata_fp.get()),
                                    dlcservice::kDlcMetadataActiveValue, 1)) {
       *err_code = kErrorInternal;
-      *err_msg = "Failed to write into active metadata file.";
+      *err_msg = "Failed to write into active metadata file for DLC:" + id;
       return false;
     }
     return true;
@@ -428,8 +403,7 @@ class DlcManager::DlcManagerImpl {
 
       // Set the DLCs to active.
       if (!SetActive(installed_dlc_module_id, &err_code, &err_msg)) {
-        LOG(ERROR) << "Failed to set active metadata for DLC module: "
-                   << installed_dlc_module_id;
+        LOG(WARNING) << err_msg;
       }
 
       if (base::PathExists(FilePath(installed_dlc_module_root))) {

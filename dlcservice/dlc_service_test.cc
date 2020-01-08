@@ -153,7 +153,7 @@ class DlcServiceTest : public testing::Test {
     }
     // Create DLC metadata directory.
     base::FilePath metadata_path_dlc =
-        utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage);
+        utils::GetDlcPath(metadata_path_, kFirstDlc);
     base::CreateDirectory(metadata_path_dlc);
   }
 
@@ -226,7 +226,7 @@ TEST_F(DlcServiceSkipLoadTest, StartUpMountSuccessTest) {
       .WillOnce(DoAll(SetArgPointee<3>("/good/mount"), Return(true)));
 
   base::FilePath metadata_path_active_first_dlc =
-      utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage)
+      utils::GetDlcPath(metadata_path_, kFirstDlc)
           .Append(kDlcMetadataFilePingActive);
 
   EXPECT_FALSE(base::PathExists(metadata_path_active_first_dlc));
@@ -368,14 +368,13 @@ TEST_F(DlcServiceTest, InstallTest) {
       content_path_, kSecondDlc, kPackage, BootSlot::Slot::B);
   base::GetPosixFilePermissions(image_b_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
-  base::FilePath metadata_path =
-      utils::GetDlcPackagePath(metadata_path_, kSecondDlc, kPackage);
+  base::FilePath metadata_path = utils::GetDlcPath(metadata_path_, kSecondDlc);
   base::GetPosixFilePermissions(metadata_path, &permissions);
   EXPECT_EQ(permissions, expected_permissions);
 
   std::string active_value;
   base::FilePath metadata_path_active_second_dlc =
-      utils::GetDlcPackagePath(metadata_path_, kSecondDlc, kPackage)
+      utils::GetDlcPath(metadata_path_, kSecondDlc)
           .Append(kDlcMetadataFilePingActive);
   EXPECT_TRUE(
       base::ReadFileToString(metadata_path_active_second_dlc, &active_value));
@@ -434,7 +433,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledAndDuplicatesFail) {
 
   std::string active_value;
   base::FilePath metadata_path_active_first_dlc =
-      utils::GetDlcPackagePath(metadata_path_, kFirstDlc, kPackage)
+      utils::GetDlcPath(metadata_path_, kFirstDlc)
           .Append(kDlcMetadataFilePingActive);
   EXPECT_TRUE(
       base::ReadFileToString(metadata_path_active_first_dlc, &active_value));
