@@ -61,7 +61,7 @@ class SuspendManager {
   // Proxy to power manager D-Bus service.
   dbus::ObjectProxy* power_manager_dbus_proxy_ = nullptr;
   // Proxy to dispatcher D-Bus service.
-  dbus::ObjectProxy* btdispatch_dbus_proxy_ = nullptr;
+  dbus::ObjectProxy* bluez_dbus_proxy_ = nullptr;
 
   // If non-zero, that means we have registered a delay with power manager and
   // this variable keeps the delay id returned by power manager for later call

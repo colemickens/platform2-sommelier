@@ -64,8 +64,7 @@ class SuspendManagerTest : public ::testing::Test {
         bus_.get(), power_manager::kPowerManagerServiceName,
         dbus::ObjectPath(power_manager::kPowerManagerServicePath));
     bluez_proxy_ = new dbus::MockObjectProxy(
-        bus_.get(),
-        bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+        bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
         dbus::ObjectPath(SuspendManager::kBluetoothAdapterObjectPath));
     EXPECT_CALL(*bus_,
                 GetObjectProxy(
@@ -75,7 +74,7 @@ class SuspendManagerTest : public ::testing::Test {
     EXPECT_CALL(
         *bus_,
         GetObjectProxy(
-            bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+            bluez_object_manager::kBluezObjectManagerServiceName,
             dbus::ObjectPath(SuspendManager::kBluetoothAdapterObjectPath)))
         .WillOnce(Return(bluez_proxy_.get()));
 

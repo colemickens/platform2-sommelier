@@ -58,9 +58,9 @@ void SuspendManager::Init() {
   power_manager_dbus_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-  btdispatch_dbus_proxy_ = bus_->GetObjectProxy(
-      bluetooth_object_manager::kBluetoothObjectManagerServiceName,
-      dbus::ObjectPath(kBluetoothAdapterObjectPath));
+  bluez_dbus_proxy_ =
+      bus_->GetObjectProxy(bluez_object_manager::kBluezObjectManagerServiceName,
+                           dbus::ObjectPath(kBluetoothAdapterObjectPath));
 
   service_watcher_ =
       std::make_unique<ServiceWatcher>(power_manager_dbus_proxy_);
@@ -236,7 +236,7 @@ void SuspendManager::HandleSuspendImminent(int new_suspend_id) {
   writer.AppendString(flags_->Get(kStopOnSuspend) ? kStop : "");
 
   VLOG(1) << "Calling SuspendImminent to BlueZ and/or NewBlue";
-  btdispatch_dbus_proxy_->CallMethod(
+  bluez_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendImminentHandled,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -266,7 +266,7 @@ void SuspendManager::HandleSuspendDone() {
   // In case the bluetooth chip resets on suspend, this method call might
   // produce an error log. It is innocuous and occurs because the adapter
   // also restarts and goes into a known/clean state.
-  btdispatch_dbus_proxy_->CallMethod(
+  bluez_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendDoneHandled,
                  weak_ptr_factory_.GetWeakPtr()));
