@@ -43,14 +43,14 @@ void DoDBusBootstrap(int raw_fd,
 
   CHECK(bus->Connect());
 
-  dbus::ObjectProxy* cros_healthd_service_proxy = bus->GetObjectProxy(
+  dbus::ObjectProxy* cros_healthd_service_factory_proxy = bus->GetObjectProxy(
       diagnostics::kCrosHealthdServiceName,
       dbus::ObjectPath(diagnostics::kCrosHealthdServicePath));
 
   brillo::dbus_utils::FileDescriptor fd(raw_fd);
   brillo::ErrorPtr error;
   auto response = brillo::dbus_utils::CallMethodAndBlock(
-      cros_healthd_service_proxy, kCrosHealthdServiceInterface,
+      cros_healthd_service_factory_proxy, kCrosHealthdServiceInterface,
       kCrosHealthdBootstrapMojoConnectionMethod, &error, fd,
       false /* is_chrome */);
 
@@ -90,12 +90,12 @@ chromeos::cros_healthd::mojom::TelemetryInfoPtr
 CrosHealthdMojoAdapter::GetTelemetryInfo(
     const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&
         categories_to_probe) {
-  if (!cros_healthd_service_.is_bound())
+  if (!cros_healthd_service_factory_.is_bound())
     Connect();
 
   chromeos::cros_healthd::mojom::TelemetryInfoPtr response;
   base::RunLoop run_loop;
-  cros_healthd_service_->ProbeTelemetryInfo(
+  cros_healthd_probe_service_->ProbeTelemetryInfo(
       categories_to_probe,
       base::Bind(&OnMojoResponseReceived<
                      chromeos::cros_healthd::mojom::TelemetryInfoPtr>,
@@ -107,12 +107,12 @@ CrosHealthdMojoAdapter::GetTelemetryInfo(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapter::RunUrandomRoutine(uint32_t length_seconds) {
-  if (!cros_healthd_service_.is_bound())
+  if (!cros_healthd_service_factory_.is_bound())
     Connect();
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
-  cros_healthd_service_->RunUrandomRoutine(
+  cros_healthd_diagnostics_service_->RunUrandomRoutine(
       length_seconds,
       base::Bind(&OnMojoResponseReceived<
                      chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
@@ -125,12 +125,12 @@ CrosHealthdMojoAdapter::RunUrandomRoutine(uint32_t length_seconds) {
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapter::RunBatteryCapacityRoutine(uint32_t low_mah,
                                                   uint32_t high_mah) {
-  if (!cros_healthd_service_.is_bound())
+  if (!cros_healthd_service_factory_.is_bound())
     Connect();
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
-  cros_healthd_service_->RunBatteryCapacityRoutine(
+  cros_healthd_diagnostics_service_->RunBatteryCapacityRoutine(
       low_mah, high_mah,
       base::Bind(&OnMojoResponseReceived<
                      chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
@@ -143,12 +143,12 @@ CrosHealthdMojoAdapter::RunBatteryCapacityRoutine(uint32_t low_mah,
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapter::RunBatteryHealthRoutine(
     uint32_t maximum_cycle_count, uint32_t percent_battery_wear_allowed) {
-  if (!cros_healthd_service_.is_bound())
+  if (!cros_healthd_service_factory_.is_bound())
     Connect();
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
-  cros_healthd_service_->RunBatteryHealthRoutine(
+  cros_healthd_diagnostics_service_->RunBatteryHealthRoutine(
       maximum_cycle_count, percent_battery_wear_allowed,
       base::Bind(&OnMojoResponseReceived<
                      chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
@@ -160,12 +160,12 @@ CrosHealthdMojoAdapter::RunBatteryHealthRoutine(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapter::RunSmartctlCheckRoutine() {
-  if (!cros_healthd_service_.is_bound())
+  if (!cros_healthd_service_factory_.is_bound())
     Connect();
 
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
-  cros_healthd_service_->RunSmartctlCheckRoutine(
+  cros_healthd_diagnostics_service_->RunSmartctlCheckRoutine(
       base::Bind(&OnMojoResponseReceived<
                      chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
                  &response, run_loop.QuitClosure()));
@@ -176,12 +176,12 @@ CrosHealthdMojoAdapter::RunSmartctlCheckRoutine() {
 
 std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
 CrosHealthdMojoAdapter::GetAvailableRoutines() {
-  if (!cros_healthd_service_.is_bound())
+  if (!cros_healthd_service_factory_.is_bound())
     Connect();
 
   std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum> response;
   base::RunLoop run_loop;
-  cros_healthd_service_->GetAvailableRoutines(base::Bind(
+  cros_healthd_diagnostics_service_->GetAvailableRoutines(base::Bind(
       [](std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>* out,
          base::Closure quit_closure,
          const std::vector<
@@ -200,12 +200,12 @@ CrosHealthdMojoAdapter::GetRoutineUpdate(
     int32_t id,
     chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
     bool include_output) {
-  if (!cros_healthd_service_.is_bound())
+  if (!cros_healthd_service_factory_.is_bound())
     Connect();
 
   chromeos::cros_healthd::mojom::RoutineUpdatePtr response;
   base::RunLoop run_loop;
-  cros_healthd_service_->GetRoutineUpdate(
+  cros_healthd_diagnostics_service_->GetRoutineUpdate(
       id, command, include_output,
       base::Bind(&OnMojoResponseReceived<
                      chromeos::cros_healthd::mojom::RoutineUpdatePtr>,
@@ -236,9 +236,15 @@ void CrosHealthdMojoAdapter::Connect() {
 
   // Bind our end of |pipe| to our CrosHealthdServicePtr. The daemon
   // should bind its end to a CrosHealthdService implementation.
-  cros_healthd_service_.Bind(
-      chromeos::cros_healthd::mojom::CrosHealthdServicePtrInfo(
+  cros_healthd_service_factory_.Bind(
+      chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryPtrInfo(
           invitation.ExtractMessagePipe(token), 0u /* version */));
+
+  // Bind the probe and diagnostics services.
+  cros_healthd_service_factory_->GetProbeService(
+      mojo::MakeRequest(&cros_healthd_probe_service_));
+  cros_healthd_service_factory_->GetDiagnosticsService(
+      mojo::MakeRequest(&cros_healthd_diagnostics_service_));
 }
 
 }  // namespace diagnostics

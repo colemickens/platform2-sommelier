@@ -99,7 +99,6 @@ class CrosHealthdMojoServiceTest : public testing::Test {
  private:
   base::MessageLoop message_loop_;
   StrictMock<MockCrosHealthdRoutineService> routine_service_;
-  mojo_ipc::CrosHealthdServicePtr service_ptr_;
   std::unique_ptr<org::chromium::debugdProxyMock> mock_debugd_proxy_;
   dbus::Bus::Options options_;
   scoped_refptr<dbus::MockBus> mock_bus_;

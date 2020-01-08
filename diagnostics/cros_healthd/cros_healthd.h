@@ -17,6 +17,7 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/binding_set.h>
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
@@ -28,7 +29,9 @@
 namespace diagnostics {
 
 // Daemon class for cros_healthd.
-class CrosHealthd final : public brillo::DBusServiceDaemon {
+class CrosHealthd final
+    : public brillo::DBusServiceDaemon,
+      public chromeos::cros_healthd::mojom::CrosHealthdServiceFactory {
  public:
   CrosHealthd();
   ~CrosHealthd() override;
@@ -38,6 +41,14 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
   int OnInit() override;
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
+
+  // chromeos::cros_healthd::mojom::CrosHealthdServiceFactory overrides:
+  void GetProbeService(
+      chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest service)
+      override;
+  void GetDiagnosticsService(
+      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+          service) override;
 
   // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
   // exposed by the cros_healthd daemon (see constants for the API methods at
@@ -77,6 +88,12 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
   std::unique_ptr<CrosHealthdRoutineService> routine_service_;
   // Maintains the Mojo connection with cros_healthd clients.
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
+  // Binding set that connects this instance (which is an implementation of
+  // chromeos::cros_healthd::mojom::CrosHealthdServiceFactory) with
+  // any message pipes set up on top of received file descriptors. A new binding
+  // is added whenever the BootstrapMojoConnection D-Bus method is called.
+  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>
+      binding_set_;
 
   // Connects BootstrapMojoConnection with the methods of the D-Bus object
   // exposed by the cros_healthd daemon.

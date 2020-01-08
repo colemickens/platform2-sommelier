@@ -118,9 +118,15 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
   callback.Run(telemetry_info.Clone());
 }
 
-void CrosHealthdMojoService::AddBinding(
-    chromeos::cros_healthd::mojom::CrosHealthdServiceRequest request) {
-  binding_set_.AddBinding(this /* impl */, std::move(request));
+void CrosHealthdMojoService::AddProbeBinding(
+    chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest request) {
+  probe_binding_set_.AddBinding(this /* impl */, std::move(request));
+}
+
+void CrosHealthdMojoService::AddDiagnosticsBinding(
+    chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+        request) {
+  diagnostics_binding_set_.AddBinding(this /* impl */, std::move(request));
 }
 
 }  // namespace diagnostics

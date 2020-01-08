@@ -21,7 +21,8 @@ namespace diagnostics {
 // Implements the "CrosHealthdService" Mojo interface exposed by the
 // cros_healthd daemon (see the API definition at mojo/cros_healthd.mojom)
 class CrosHealthdMojoService final
-    : public chromeos::cros_healthd::mojom::CrosHealthdService {
+    : public chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService,
+      public chromeos::cros_healthd::mojom::CrosHealthdProbeService {
  public:
   using DiagnosticRoutineStatusEnum =
       chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum;
@@ -34,7 +35,7 @@ class CrosHealthdMojoService final
                          CrosHealthdRoutineService* routine_service);
   ~CrosHealthdMojoService() override;
 
-  // chromeos::cros_healthd::mojom::CrosHealthdService overrides:
+  // chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
   void GetAvailableRoutines(
       const GetAvailableRoutinesCallback& callback) override;
   void GetRoutineUpdate(
@@ -54,18 +55,25 @@ class CrosHealthdMojoService final
       const RunBatteryHealthRoutineCallback& callback) override;
   void RunSmartctlCheckRoutine(
       const RunSmartctlCheckRoutineCallback& callback) override;
+
+  // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,
                           const ProbeTelemetryInfoCallback& callback) override;
 
-  // Adds a new binding to the internal binding set.
-  void AddBinding(
-      chromeos::cros_healthd::mojom::CrosHealthdServiceRequest request);
+  // Adds a new binding to the internal binding sets.
+  void AddProbeBinding(
+      chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest request);
+  void AddDiagnosticsBinding(
+      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+          request);
 
  private:
-  // Mojo binding set that connects |this| with message pipes, allowing the
+  // Mojo binding sets that connect |this| with message pipes, allowing the
   // remote ends to call our methods.
-  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdService>
-      binding_set_;
+  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdProbeService>
+      probe_binding_set_;
+  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+      diagnostics_binding_set_;
 
   // Unowned pointer that should outlive this CrosHealthdMojoService
   // instance.

@@ -115,14 +115,14 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
 
   std::string token;
 
-  chromeos::cros_healthd::mojom::CrosHealthdServiceRequest request;
+  chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryRequest request;
   if (is_chrome) {
     // Connect to mojo in the requesting process.
     mojo::IncomingInvitation invitation =
         mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
     request = mojo::InterfaceRequest<
-        chromeos::cros_healthd::mojom::CrosHealthdService>(
+        chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
         invitation.ExtractMessagePipe(kCrosHealthdMojoConnectionChannelToken));
   } else {
     // Create a unique token which will allow the requesting process to connect
@@ -136,12 +136,24 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
         mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
     request = mojo::InterfaceRequest<
-        chromeos::cros_healthd::mojom::CrosHealthdService>(std::move(pipe));
+        chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
+        std::move(pipe));
   }
-  mojo_service_->AddBinding(std::move(request));
+  binding_set_.AddBinding(this /* impl */, std::move(request));
 
   VLOG(1) << "Successfully bootstrapped Mojo connection";
   return token;
+}
+
+void CrosHealthd::GetProbeService(
+    chromeos::cros_healthd::mojom::CrosHealthdProbeServiceRequest service) {
+  mojo_service_->AddProbeBinding(std::move(service));
+}
+
+void CrosHealthd::GetDiagnosticsService(
+    chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+        service) {
+  mojo_service_->AddDiagnosticsBinding(std::move(service));
 }
 
 void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {

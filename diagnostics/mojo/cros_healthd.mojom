@@ -13,9 +13,17 @@ module chromeos.cros_healthd.mojom;
 import "cros_healthd_diagnostics.mojom";
 import "cros_healthd_probe.mojom";
 
-// Interface exposed by the cros_healthd daemon.
-interface CrosHealthdService {
-  // ------------------- Start of diagnostics definitions ---------------------
+// Factory interface which allows remote ends to request implementations of the
+// probe or diagnostics services.
+interface CrosHealthdServiceFactory {
+  // Returns a bound interface to the diagnostics service.
+  GetDiagnosticsService(CrosHealthdDiagnosticsService& service);
+  // Returns a bound interface to the probe service.
+  GetProbeService(CrosHealthdProbeService& service);
+};
+
+// Diagnostics interface exposed by the cros_healthd daemon.
+interface CrosHealthdDiagnosticsService {
   // Returns an array of all diagnostic routines that the platform supports.
   GetAvailableRoutines()
       => (array<DiagnosticRoutineEnum> available_routines);
@@ -98,11 +106,10 @@ interface CrosHealthdService {
   // * |response| - contains a unique identifier and status for the created
   //                routine.
   RunSmartctlCheckRoutine() => (RunRoutineResponse response);
+};
 
-  // ------------------- End of diagnostics definitions -----------------------
-
-  // ------------------- Start of probe definitions ---------------------
-
+// Probe interface exposed by the cros_healthd daemon.
+interface CrosHealthdProbeService {
   // Returns telemetry information for the desired categories.
   //
   // The request:
@@ -115,6 +122,4 @@ interface CrosHealthdService {
   //                      will be non-null.
   ProbeTelemetryInfo(array<ProbeCategoryEnum> categories)
       => (TelemetryInfo telemetry_info);
-
-  // ------------------- End of probe definitions -----------------------
 };

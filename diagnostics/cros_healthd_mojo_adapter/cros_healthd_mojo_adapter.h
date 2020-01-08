@@ -65,8 +65,21 @@ class CrosHealthdMojoAdapter final {
 
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
-  // Used to send mojo requests to cros_healthd.
-  chromeos::cros_healthd::mojom::CrosHealthdServicePtr cros_healthd_service_;
+  // Binds to an implementation of CrosHealthdServiceFactory. The implementation
+  // is provided by cros_healthd. Allows calling cros_healthd's mojo factory
+  // methods.
+  chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryPtr
+      cros_healthd_service_factory_;
+  // Binds to an implementation of CrosHealthdProbeService. The implementation
+  // is provided by cros_healthd. Allows calling cros_healthd's probe-related
+  // mojo methods.
+  chromeos::cros_healthd::mojom::CrosHealthdProbeServicePtr
+      cros_healthd_probe_service_;
+  // Binds to an implementation of CrosHealthdDiagnosticsService. The
+  // implementation is provided by cros_healthd. Allows calling cros_healthd's
+  // diagnostics-related mojo methods.
+  chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServicePtr
+      cros_healthd_diagnostics_service_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosHealthdMojoAdapter);
 };
