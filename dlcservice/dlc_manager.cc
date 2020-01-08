@@ -336,25 +336,6 @@ class DlcManager::DlcManagerImpl {
       return false;
     }
 
-    // Create the metadata directory.
-    FilePath metadata_path_local = utils::GetDlcPath(metadata_dir_, id);
-    FilePath metadata_package_path =
-        utils::GetDlcPackagePath(metadata_dir_, id, package);
-
-    // Create the DLC ID metadata directory with correct permissions.
-    if (!CreateDirWithDlcPermissions(metadata_path_local)) {
-      *err_code = kErrorInternal;
-      *err_msg = "Failed to create the DLC(" + id + ") metadata directory.";
-      return false;
-    }
-    // Create the DLC package metadata directory with correct permissions.
-    if (!CreateDirWithDlcPermissions(metadata_package_path)) {
-      *err_code = kErrorInternal;
-      *err_msg =
-          "Failed to create the DLC(" + id + ") package metadata directory.";
-      return false;
-    }
-
     // Creates image A.
     FilePath image_a_path =
         utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::A);
