@@ -65,10 +65,22 @@ ReqApiMgr::SYNC_ID ReqApiMgr::getSyncIdByNodeId(V4L2StreamNode::ID id) {
           {V4L2StreamNode::ID_P2_CAP_RAW_INPUT,
            ReqApiMgr::SYNC_ID_CAP_RAW_INPUT},
           {V4L2StreamNode::ID_P2_CAP_TUNING, ReqApiMgr::SYNC_ID_CAP_TUNING},
+          {V4L2StreamNode::ID_P2_CAP_VIPI, ReqApiMgr::SYNC_ID_CAP_VIPI},
+          {V4L2StreamNode::ID_P2_CAP_LCEI, ReqApiMgr::SYNC_ID_CAP_LCEI},
           {V4L2StreamNode::ID_P2_CAP_MDP0, ReqApiMgr::SYNC_ID_CAP_MDP0},
           {V4L2StreamNode::ID_P2_CAP_MDP1, ReqApiMgr::SYNC_ID_CAP_MDP1},
+          {V4L2StreamNode::ID_P2_CAP_IMG2, ReqApiMgr::SYNC_ID_CAP_IMG2O},
+          {V4L2StreamNode::ID_P2_CAP_IMG3, ReqApiMgr::SYNC_ID_CAP_IMG3O},
+          {V4L2StreamNode::ID_P2_REP_RAW_INPUT,
+           ReqApiMgr::SYNC_ID_REP_RAW_INPUT},
+          {V4L2StreamNode::ID_P2_REP_TUNING, ReqApiMgr::SYNC_ID_REP_TUNING},
+          {V4L2StreamNode::ID_P2_REP_VIPI, ReqApiMgr::SYNC_ID_REP_VIPI},
+          {V4L2StreamNode::ID_P2_REP_LCEI, ReqApiMgr::SYNC_ID_REP_LCEI},
+          {V4L2StreamNode::ID_P2_REP_MDP0, ReqApiMgr::SYNC_ID_REP_MDP0},
+          {V4L2StreamNode::ID_P2_REP_MDP1, ReqApiMgr::SYNC_ID_REP_MDP1},
+          {V4L2StreamNode::ID_P2_REP_IMG2, ReqApiMgr::SYNC_ID_REP_IMG2O},
+          {V4L2StreamNode::ID_P2_REP_IMG3, ReqApiMgr::SYNC_ID_REP_IMG3O},
       };
-
   auto itr = k_syncid_nodeid_mapping_tbl.find(id);
   if (itr == k_syncid_nodeid_mapping_tbl.end()) {
     LOGI("(V4L2StreamNode::ID) node id %d doesn't support RequestAPI.", id);

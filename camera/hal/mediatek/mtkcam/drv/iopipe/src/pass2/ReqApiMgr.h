@@ -53,7 +53,19 @@ class ReqApiMgr {
     SYNC_ID_VIPI = 1 << 8,
     SYNC_ID_LCEI = 1 << 9,
     SYNC_ID_IMG3O = 1 << 10,
-    SYNC_ID_IMG2O = 1 << 11
+    SYNC_ID_IMG2O = 1 << 11,
+    SYNC_ID_CAP_VIPI = 1 << 12,
+    SYNC_ID_CAP_LCEI = 1 << 13,
+    SYNC_ID_CAP_IMG3O = 1 << 14,
+    SYNC_ID_CAP_IMG2O = 1 << 15,
+    SYNC_ID_REP_RAW_INPUT = 1 << 16,
+    SYNC_ID_REP_TUNING = 1 << 17,
+    SYNC_ID_REP_MDP0 = 1 << 18,
+    SYNC_ID_REP_MDP1 = 1 << 19,
+    SYNC_ID_REP_VIPI = 1 << 20,
+    SYNC_ID_REP_LCEI = 1 << 21,
+    SYNC_ID_REP_IMG3O = 1 << 22,
+    SYNC_ID_REP_IMG2O = 1 << 23
   };
   /**
    *  @par Description
