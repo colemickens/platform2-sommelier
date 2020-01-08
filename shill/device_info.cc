@@ -131,7 +131,9 @@ const char* const kIgnoredDeviceNamePrefixes[] = {
     // TODO(garrick): Workaround for (chromium:917923): 'arc_' is the prefix
     // used for all ARC++ multinet bridge interface. These should be ignored
     // for now.
-    "arc_", "rmnet_ipa", "veth"};
+    "arc_",
+    "veth",
+};
 
 // As of Linux v5.4, these "kinds" are not part of a UAPI header definition, so
 // we open-code them here, with some reference to where and when we found them
@@ -139,7 +141,8 @@ const char* const kIgnoredDeviceNamePrefixes[] = {
 // necessarily when they were first supported). These strings are also usually
 // annotated in the kernel source tree via MODULE_ALIAS_RTNL_LINK() macros.
 const char* const kIgnoredDeviceKinds[] = {
-    "ifb",  // v5.4, drivers/net/ifb.c:289
+    "ifb",    // v5.4, drivers/net/ifb.c:289
+    "rmnet",  // v5.4, drivers/net/ethernet/qualcomm/rmnet/rmnet_config.c:369
 };
 
 // Modem drivers that we support.
