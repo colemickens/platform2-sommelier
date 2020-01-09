@@ -47,7 +47,7 @@ void BootLockboxDBusAdaptor::RegisterAsync(
 
 void BootLockboxDBusAdaptor::StoreBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        cryptohome::BootLockboxBaseReply>> response,
+        cryptohome::StoreBootLockboxReply>> response,
     const cryptohome::StoreBootLockboxRequest& in_request) {
   if (!in_request.has_key() || !in_request.has_data()) {
     brillo::ErrorPtr error =
@@ -57,7 +57,7 @@ void BootLockboxDBusAdaptor::StoreBootLockbox(
     return;
   }
 
-  cryptohome::BootLockboxBaseReply reply;
+  cryptohome::StoreBootLockboxReply reply;
   cryptohome::BootLockboxErrorCode boot_lockbox_error;
   if (!boot_lockbox_->Store(in_request.key(), in_request.data(),
                             &boot_lockbox_error)) {
@@ -68,7 +68,7 @@ void BootLockboxDBusAdaptor::StoreBootLockbox(
 
 void BootLockboxDBusAdaptor::ReadBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        cryptohome::BootLockboxBaseReply>> response,
+        cryptohome::ReadBootLockboxReply>> response,
     const cryptohome::ReadBootLockboxRequest& in_request) {
   if (!in_request.has_key()) {
     brillo::ErrorPtr error =
@@ -77,23 +77,22 @@ void BootLockboxDBusAdaptor::ReadBootLockbox(
     response->ReplyWithError(error.get());
     return;
   }
-  cryptohome::BootLockboxBaseReply reply;
+  cryptohome::ReadBootLockboxReply reply;
   std::string data;
   cryptohome::BootLockboxErrorCode boot_lockbox_error;
   if (!boot_lockbox_->Read(in_request.key(), &data, &boot_lockbox_error)) {
     reply.set_error(boot_lockbox_error);
   } else {
-    reply.MutableExtension(cryptohome::ReadBootLockboxReply::reply)
-        ->set_data(data);
+    reply.set_data(data);
   }
   response->Return(reply);
 }
 
 void BootLockboxDBusAdaptor::FinalizeBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        cryptohome::BootLockboxBaseReply>> response,
+        cryptohome::FinalizeBootLockboxReply>> response,
     const cryptohome::FinalizeNVRamBootLockboxRequest& in_request) {
-  cryptohome::BootLockboxBaseReply reply;
+  cryptohome::FinalizeBootLockboxReply reply;
   if (!boot_lockbox_->Finalize()) {
     // Failed to finalize, could be communication error or other error.
     reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_OTHER);

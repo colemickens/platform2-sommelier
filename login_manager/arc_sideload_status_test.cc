@@ -84,21 +84,31 @@ class ArcSideloadStatusTest : public ::testing::Test {
   std::unique_ptr<dbus::Response> CreateValidQueryResponse(bool enabled) {
     auto bootlockbox_response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(bootlockbox_response.get());
-    cryptohome::BootLockboxBaseReply reply;
-    reply.MutableExtension(cryptohome::ReadBootLockboxReply::reply)
-        ->set_data(enabled ? "1" : "0");
+    cryptohome::ReadBootLockboxReply reply;
+    reply.set_data(enabled ? "1" : "0");
     EXPECT_TRUE(writer.AppendProtoAsArrayOfBytes(reply));
     return bootlockbox_response;
   }
 
-  // Returns a valid response containing a bootlockbox error.
-  std::unique_ptr<dbus::Response> CreateResponseWithBootLockboxError(
+  // Returns a valid read response containing a bootlockbox error.
+  std::unique_ptr<dbus::Response> CreateReadResponseWithBootLockboxError(
       cryptohome::BootLockboxErrorCode error_code) {
     auto bootlockbox_response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(bootlockbox_response.get());
-    cryptohome::BootLockboxBaseReply base_reply;
-    base_reply.set_error(error_code);
-    EXPECT_TRUE(writer.AppendProtoAsArrayOfBytes(base_reply));
+    cryptohome::ReadBootLockboxReply reply;
+    reply.set_error(error_code);
+    EXPECT_TRUE(writer.AppendProtoAsArrayOfBytes(reply));
+    return bootlockbox_response;
+  }
+
+  // Returns a valid store response containing a bootlockbox error.
+  std::unique_ptr<dbus::Response> CreateStoreResponseWithBootLockboxError(
+      cryptohome::BootLockboxErrorCode error_code) {
+    auto bootlockbox_response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(bootlockbox_response.get());
+    cryptohome::StoreBootLockboxReply reply;
+    reply.set_error(error_code);
+    EXPECT_TRUE(writer.AppendProtoAsArrayOfBytes(reply));
     return bootlockbox_response;
   }
 
@@ -170,7 +180,7 @@ TEST_F(ArcSideloadStatusTest, QueryAdbSideload_NeedPowerwash) {
   auto bootlockbox_response = dbus::Response::CreateEmpty();
   {
     dbus::MessageWriter writer(bootlockbox_response.get());
-    cryptohome::BootLockboxBaseReply reply;
+    cryptohome::ReadBootLockboxReply reply;
     reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED);
     EXPECT_TRUE(writer.AppendProtoAsArrayOfBytes(reply));
   }
@@ -258,7 +268,7 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_BadFormat) {
 TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_MissingKey) {
   // Setup
   ExpectBootLockboxServiceToBeAvailable(true);
-  auto bootlockbox_response = CreateResponseWithBootLockboxError(
+  auto bootlockbox_response = CreateReadResponseWithBootLockboxError(
       cryptohome::BOOTLOCKBOX_ERROR_MISSING_KEY);
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_read_method_call_,
                                  bootlockbox_response.get());
@@ -327,7 +337,7 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_RequirePowerwash) {
   PretendInitialized();
 
   // Setup
-  auto bootlockbox_response = CreateResponseWithBootLockboxError(
+  auto bootlockbox_response = CreateStoreResponseWithBootLockboxError(
       cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED);
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
                                  bootlockbox_response.get());
@@ -348,7 +358,7 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_BootLockboxError) {
   PretendInitialized();
 
   // Setup
-  auto bootlockbox_response = CreateResponseWithBootLockboxError(
+  auto bootlockbox_response = CreateStoreResponseWithBootLockboxError(
       cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_OTHER);
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
                                  bootlockbox_response.get());
@@ -370,7 +380,7 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_AlreadyLogin) {
   // Setup
   // When bootlockbox is finalized (after any user login), store operation will
   // fail with BOOTLOCKBOX_ERROR_WRITE_LOCKED.
-  auto bootlockbox_response = CreateResponseWithBootLockboxError(
+  auto bootlockbox_response = CreateStoreResponseWithBootLockboxError(
       cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_WRITE_LOCKED);
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
                                  bootlockbox_response.get());
@@ -392,8 +402,8 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_Success) {
   // Setup: 1st call to enable
   auto bootlockbox_enable_response = dbus::Response::CreateEmpty();
   dbus::MessageWriter writer(bootlockbox_enable_response.get());
-  cryptohome::BootLockboxBaseReply base_reply;
-  ASSERT_TRUE(writer.AppendProtoAsArrayOfBytes(base_reply));
+  cryptohome::StoreBootLockboxReply reply;
+  ASSERT_TRUE(writer.AppendProtoAsArrayOfBytes(reply));
 
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
                                  bootlockbox_enable_response.get());

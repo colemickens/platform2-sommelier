@@ -126,16 +126,16 @@ ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
   }
 
   dbus::MessageReader reader(response);
-  cryptohome::BootLockboxBaseReply base_reply;
-  if (!reader.PopArrayOfBytesAsProto(&base_reply)) {
+  cryptohome::ReadBootLockboxReply reply;
+  if (!reader.PopArrayOfBytesAsProto(&reply)) {
     LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                << cryptohome::kBootLockboxReadBootLockbox
                << " unable to pop ReadBootLockboxReply proto.";
     return ArcSideloadStatusInterface::Status::DISABLED;
   }
 
-  if (base_reply.has_error()) {
-    switch (base_reply.error()) {
+  if (reply.has_error()) {
+    switch (reply.error()) {
       // When the attribute is unset, defaults to no sideloading.
       case cryptohome::BOOTLOCKBOX_ERROR_MISSING_KEY:
         return ArcSideloadStatusInterface::Status::DISABLED;
@@ -153,28 +153,19 @@ ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
       default:
         LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                    << cryptohome::kBootLockboxReadBootLockbox
-                   << " returned error: " << base_reply.error();
+                   << " returned error: " << reply.error();
         return ArcSideloadStatusInterface::Status::DISABLED;
     }
   }
 
-  if (!base_reply.HasExtension(cryptohome::ReadBootLockboxReply::reply)) {
-    LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
-               << cryptohome::kBootLockboxReadBootLockbox
-               << " missing reply field in ReadBootLockboxReply.";
-    return ArcSideloadStatusInterface::Status::DISABLED;
-  }
-
-  cryptohome::ReadBootLockboxReply readbootlockbox_reply =
-      base_reply.GetExtension(cryptohome::ReadBootLockboxReply::reply);
-  if (!readbootlockbox_reply.has_data()) {
+  if (!reply.has_data()) {
     LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                << cryptohome::kBootLockboxReadBootLockbox
                << " missing data field in ReadBootLockboxReply.";
     return ArcSideloadStatusInterface::Status::DISABLED;
   }
 
-  std::string arc_sideload_allowed = readbootlockbox_reply.data();
+  std::string arc_sideload_allowed = reply.data();
   return arc_sideload_allowed == "1"
              ? ArcSideloadStatusInterface::Status::ENABLED
              : ArcSideloadStatusInterface::Status::DISABLED;
@@ -196,15 +187,15 @@ void ArcSideloadStatus::OnEnableAdbSideloadSet(
   }
 
   dbus::MessageReader reader(result);
-  cryptohome::BootLockboxBaseReply base_reply;
-  if (!reader.PopArrayOfBytesAsProto(&base_reply)) {
+  cryptohome::StoreBootLockboxReply reply;
+  if (!reader.PopArrayOfBytesAsProto(&reply)) {
     std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED,
-                            "response is not a BootLockboxBaseReply");
+                            "response is not a StoreBootLockboxReply");
     return;
   }
 
-  if (base_reply.has_error()) {
-    if (base_reply.error() == cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED) {
+  if (reply.has_error()) {
+    if (reply.error() == cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED) {
       std::move(callback).Run(
           ArcSideloadStatusInterface::Status::NEED_POWERWASH, nullptr);
     } else {

@@ -34,20 +34,20 @@ class BootLockboxDBusAdaptor
   // Stores a digest in bootlockbox.
   void StoreBootLockbox(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          cryptohome::BootLockboxBaseReply>> response,
+          cryptohome::StoreBootLockboxReply>> response,
       const cryptohome::StoreBootLockboxRequest& in_request) override;
 
   // Reads a digest from bootlockbox.
   void ReadBootLockbox(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          cryptohome::BootLockboxBaseReply>> response,
+          cryptohome::ReadBootLockboxReply>> response,
       const cryptohome::ReadBootLockboxRequest& in_request) override;
 
   // Finalizes the BootLockbox and locks the signing key. |response| is of type
   // BaseReply.
   void FinalizeBootLockbox(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          cryptohome::BootLockboxBaseReply>> response,
+          cryptohome::FinalizeBootLockboxReply>> response,
       const cryptohome::FinalizeNVRamBootLockboxRequest& in_request) override;
 
  private:

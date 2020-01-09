@@ -106,7 +106,7 @@ TEST_F(BootLockboxDBusAdaptorTest, StoreBootLockbox) {
       .WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->StoreBootLockbox(
-      capturer.CreateMethodResponse<cryptohome::BootLockboxBaseReply>(),
+      capturer.CreateMethodResponse<cryptohome::StoreBootLockboxReply>(),
       store_request);
 }
 
@@ -119,7 +119,7 @@ TEST_F(BootLockboxDBusAdaptorTest, ReadBootLockbox) {
       .WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->ReadBootLockbox(
-      capturer.CreateMethodResponse<cryptohome::BootLockboxBaseReply>(),
+      capturer.CreateMethodResponse<cryptohome::ReadBootLockboxReply>(),
       read_request);
 }
 
@@ -128,7 +128,7 @@ TEST_F(BootLockboxDBusAdaptorTest, FinalizeBootLockbox) {
   EXPECT_CALL(boot_lockbox_, Finalize());
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->FinalizeBootLockbox(
-      capturer.CreateMethodResponse<cryptohome::BootLockboxBaseReply>(),
+      capturer.CreateMethodResponse<cryptohome::FinalizeBootLockboxReply>(),
       request);
 }
 

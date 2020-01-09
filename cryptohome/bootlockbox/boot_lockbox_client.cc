@@ -55,7 +55,7 @@ bool BootLockboxClient::Store(const std::string& key,
   request.set_key(key);
   request.set_data(digest);
 
-  cryptohome::BootLockboxBaseReply reply;
+  cryptohome::StoreBootLockboxReply reply;
   brillo::ErrorPtr error;
   if (!bootlockbox_->StoreBootLockbox(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call StoreBootLockbox, error: "
@@ -79,30 +79,24 @@ bool BootLockboxClient::Read(const std::string& key,
   cryptohome::ReadBootLockboxRequest request;
   request.set_key(key);
 
-  cryptohome::BootLockboxBaseReply base_reply;
+  cryptohome::ReadBootLockboxReply reply;
   brillo::ErrorPtr error;
-  if (!bootlockbox_->ReadBootLockbox(request, &base_reply, &error)) {
+  if (!bootlockbox_->ReadBootLockbox(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call ReadBootLockbox, error: "
                << error->GetMessage();
     return false;
   }
 
-  if (base_reply.has_error()) {
+  if (reply.has_error()) {
     LOG(ERROR) << "Failed to call ReadBootLockbox, error code: "
-               << base_reply.error();
+               << reply.error();
     return false;
   }
-  if (!base_reply.HasExtension(cryptohome::ReadBootLockboxReply::reply)) {
-    LOG(ERROR) << "Missing reply in ReadBootLockboxReply";
-    return false;
-  }
-  cryptohome::ReadBootLockboxReply read_reply =
-      base_reply.GetExtension(cryptohome::ReadBootLockboxReply::reply);
-  if (!read_reply.has_data()) {
+  if (!reply.has_data()) {
     LOG(ERROR) << "Missing data field in ReadBootLockboxReply";
     return false;
   }
-  *digest = read_reply.data();
+  *digest = reply.data();
   return true;
 }
 
@@ -110,16 +104,16 @@ bool BootLockboxClient::Finalize() {
   base::ElapsedTimer timer;
   cryptohome::FinalizeNVRamBootLockboxRequest request;
 
-  cryptohome::BootLockboxBaseReply base_reply;
+  cryptohome::FinalizeBootLockboxReply reply;
   brillo::ErrorPtr error;
-  if (!bootlockbox_->FinalizeBootLockbox(request, &base_reply, &error)) {
+  if (!bootlockbox_->FinalizeBootLockbox(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call FinalizeBootLockbox";
     return false;
   }
 
-  if (base_reply.has_error()) {
+  if (reply.has_error()) {
     LOG(ERROR) << "Error calling FinalizeBootLockbox, error code: "
-               << base_reply.error();
+               << reply.error();
     return false;
   }
   VLOG(1) << "BootLockboxClient::Finalize took "

@@ -10,7 +10,7 @@
   <interface name="org.chromium.BootLockboxInterface">
     <!-- May be called asynchronously. Both arguments are protobufs:
          request: StoreBootLockboxRequest
-         reply: BaseReply
+         reply: StoreBootLockboxReply
     -->
     <method name="StoreBootLockbox">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
@@ -20,12 +20,12 @@
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::BootLockboxBaseReply" />
+                    value="cryptohome::StoreBootLockboxReply" />
       </arg>
     </method>
     <!-- May be called asynchronously. Both arguments are protobufs:
          request: ReadBootLockboxRequest
-         reply BaseReply with ReadBootLockboxReply
+         reply: ReadBootLockboxReply
     -->
     <method name="ReadBootLockbox">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
@@ -35,12 +35,12 @@
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::BootLockboxBaseReply" />
+                    value="cryptohome::ReadBootLockboxReply" />
       </arg>
     </method>
    <!-- May be called asynchronously.  Both arguments are protobufs:
          request: FinalizeBootLockboxRequest
-         reply: BaseReply
+         reply: FinalizeBootLockboxReply
     -->
     <method name="FinalizeBootLockbox">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
@@ -50,7 +50,7 @@
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::BootLockboxBaseReply" />
+                    value="cryptohome::FinalizeBootLockboxReply" />
       </arg>
     </method>
   </interface>
