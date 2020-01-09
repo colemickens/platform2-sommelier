@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+#include <tuple>
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 
@@ -13,6 +17,7 @@ using base::PathExists;
 using base::ReadFileToStringWithMaxSize;
 using base::TrimWhitespaceASCII;
 using base::TrimPositions::TRIM_ALL;
+using std::pair;
 using std::string;
 using std::vector;
 
@@ -20,49 +25,79 @@ namespace {
 
 constexpr int kReadFileMaxSize = 1024;
 
+// Get string to be used as key name in |MapFilesToDict|.
+string GetKeyName(const string& key) {
+  return key;
+}
+
+string GetKeyName(const pair<string, string>& key) {
+  return key.first;
+}
+
+// Get string to be used as file name in |MapFilesToDict|.
+string GetFileName(const string& key) {
+  return key;
+}
+
+string GetFileName(const pair<string, string>& key) {
+  return key.second;
+}
+
 }  // namespace
 
 namespace runtime_probe {
 
-/* Maps files listed in |keys| and |optional_keys| under |dir_path| into key
- * value pairs.
- *
- * |keys| represents the set of must have, if any |keys| is missed in the
- * |dir_path|, an empty dictionary will be returned.
- */
+template <typename KeyType>
 DictionaryValue MapFilesToDict(const FilePath& dir_path,
-                               const vector<string> keys,
-                               const vector<string> optional_keys) {
+                               const vector<KeyType>& keys,
+                               const vector<KeyType>& optional_keys) {
   DictionaryValue ret;
 
-  for (const auto key : keys) {
-    const auto file_path = dir_path.Append(key);
+  for (const auto& key : keys) {
+    string file_name = GetFileName(key);
+    string key_name = GetKeyName(key);
+    const auto file_path = dir_path.Append(file_name);
     string content;
 
-    /* missing key */
+    /* missing file */
     if (!PathExists(file_path))
       return {};
 
-    /* key exists, but somehow we can't read it */
+    /* file exists, but somehow we can't read it */
     if (!ReadFileToStringWithMaxSize(file_path, &content, kReadFileMaxSize)) {
       LOG(ERROR) << file_path.value() << " exists, but we can't read it";
       return {};
     }
 
-    ret.SetString(key, TrimWhitespaceASCII(content, TRIM_ALL));
+    ret.SetString(key_name, TrimWhitespaceASCII(content, TRIM_ALL));
   }
 
-  for (const auto key : optional_keys) {
-    const auto file_path = dir_path.Append(key);
+  for (const auto& key : optional_keys) {
+    string file_name = GetFileName(key);
+    string key_name = GetKeyName(key);
+    const auto file_path = dir_path.Append(file_name);
     string content;
 
     if (!base::PathExists(file_path))
       continue;
 
     if (ReadFileToStringWithMaxSize(file_path, &content, kReadFileMaxSize))
-      ret.SetString(key, TrimWhitespaceASCII(content, TRIM_ALL));
+      ret.SetString(key_name, TrimWhitespaceASCII(content, TRIM_ALL));
   }
 
   return ret;
 }
+
+// Explicit template instantiation
+template DictionaryValue MapFilesToDict<string>(
+    const FilePath& dir_path,
+    const vector<string>& keys,
+    const vector<string>& optional_keys);
+
+// Explicit template instantiation
+template DictionaryValue MapFilesToDict<pair<string, string>>(
+    const FilePath& dir_path,
+    const vector<pair<string, string>>& keys,
+    const vector<pair<string, string>>& optional_keys);
+
 }  // namespace runtime_probe
