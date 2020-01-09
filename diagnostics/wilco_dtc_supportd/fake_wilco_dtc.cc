@@ -102,6 +102,14 @@ void FakeWilcoDtc::RequestBluetoothDataNotification(
       request, callback);
 }
 
+void FakeWilcoDtc::GetAvailableRoutines(
+    const GetAvailableRoutinesCallback& callback) {
+  grpc_api::GetAvailableRoutinesRequest request;
+  wilco_dtc_supportd_grp_client_.CallRpc(
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncGetAvailableRoutines, request,
+      callback);
+}
+
 void FakeWilcoDtc::HandleMessageFromUi(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
     const HandleMessageFromUiCallback& callback) {

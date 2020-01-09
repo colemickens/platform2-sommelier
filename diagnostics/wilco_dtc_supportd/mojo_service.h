@@ -15,6 +15,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/buffer.h>
 
+#include "mojo/cros_healthd.mojom.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
@@ -99,6 +100,9 @@ class MojoService final
                          const MojomPerformWebRequestCallback& callback);
   void GetConfigurationData(const MojomGetConfigurationDataCallback& callback);
   void HandleEvent(const MojomWilcoDtcSupportdEvent event);
+  void GetCrosHealthdDiagnosticsService(
+      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+          service);
 
  private:
   // Unowned. The delegate should outlive this instance.

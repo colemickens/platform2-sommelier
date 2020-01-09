@@ -127,20 +127,24 @@ bool GetDelegateWebRequestHttpMethod(
 // Forwards and wraps available routines into a gRPC response.
 void ForwardGetAvailableRoutinesResponse(
     const GetAvailableRoutinesCallback& callback,
-    const std::vector<grpc_api::DiagnosticRoutine>& routines) {
+    const std::vector<grpc_api::DiagnosticRoutine>& routines,
+    grpc_api::RoutineServiceStatus service_status) {
   auto reply = std::make_unique<grpc_api::GetAvailableRoutinesResponse>();
   for (auto routine : routines)
     reply->add_routines(routine);
+  reply->set_service_status(service_status);
   callback.Run(std::move(reply));
 }
 
 // Forwards and wraps the result of a RunRoutine command into a gRPC response.
 void ForwardRunRoutineResponse(const RunRoutineCallback& callback,
                                int uuid,
-                               grpc_api::DiagnosticRoutineStatus status) {
+                               grpc_api::DiagnosticRoutineStatus status,
+                               grpc_api::RoutineServiceStatus service_status) {
   auto reply = std::make_unique<grpc_api::RunRoutineResponse>();
   reply->set_uuid(uuid);
   reply->set_status(status);
+  reply->set_service_status(service_status);
   callback.Run(std::move(reply));
 }
 
@@ -153,7 +157,8 @@ void ForwardGetRoutineUpdateResponse(
     int progress_percent,
     grpc_api::DiagnosticRoutineUserMessage user_message,
     const std::string& output,
-    const std::string& status_message) {
+    const std::string& status_message,
+    grpc_api::RoutineServiceStatus service_status) {
   auto reply = std::make_unique<grpc_api::GetRoutineUpdateResponse>();
   reply->set_uuid(uuid);
   reply->set_status(status);
@@ -161,6 +166,7 @@ void ForwardGetRoutineUpdateResponse(
   reply->set_user_message(user_message);
   reply->set_output(output);
   reply->set_status_message(status_message);
+  reply->set_service_status(service_status);
   callback.Run(std::move(reply));
 }
 
@@ -469,7 +475,8 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type BATTERY has no "
                       "battery parameters.";
         ForwardRunRoutineResponse(callback, 0 /* uuid */,
-                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+                                  grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+                                  grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
       }
       break;
@@ -478,7 +485,8 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type BATTERY_SYSFS has "
                       "no battery_sysfs parameters.";
         ForwardRunRoutineResponse(callback, 0 /* uuid */,
-                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+                                  grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+                                  grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
       }
       break;
@@ -487,7 +495,8 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type URANDOM has no "
                       "urandom parameters.";
         ForwardRunRoutineResponse(callback, 0 /* uuid */,
-                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+                                  grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+                                  grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
       }
       break;
@@ -496,14 +505,16 @@ void GrpcService::RunRoutine(
         LOG(ERROR) << "RunRoutineRequest with routine type SMARTCTL_CHECK "
                       "has no smartctl_check parameters.";
         ForwardRunRoutineResponse(callback, 0 /* uuid */,
-                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+                                  grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+                                  grpc_api::ROUTINE_SERVICE_STATUS_OK);
         return;
       }
       break;
     default:
       LOG(ERROR) << "RunRoutineRequest routine type invalid or unset.";
       ForwardRunRoutineResponse(callback, 0 /* uuid */,
-                                grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+                                grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+                                grpc_api::ROUTINE_SERVICE_STATUS_OK);
       return;
   }
 
@@ -518,9 +529,10 @@ void GrpcService::GetRoutineUpdate(
 
   if (request->command() == grpc_api::GetRoutineUpdateRequest::COMMAND_UNSET) {
     ForwardGetRoutineUpdateResponse(
-        callback, request->uuid(), grpc_api::ROUTINE_STATUS_ERROR,
+        callback, request->uuid(), grpc_api::ROUTINE_STATUS_INVALID_FIELD,
         0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET,
-        "" /* output */, "No command specified.");
+        "" /* output */, "No command specified.",
+        grpc_api::ROUTINE_SERVICE_STATUS_OK);
     return;
   }
 

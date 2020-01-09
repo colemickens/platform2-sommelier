@@ -5,17 +5,13 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
 
-#include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
 
-#include "diagnostics/routines/diag_routine.h"
-#include "diagnostics/wilco_dtc_supportd/routine_factory.h"
-#include "diagnostics/wilco_dtc_supportd/routine_factory_impl.h"
+#include "mojo/cros_healthd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
@@ -25,25 +21,40 @@ namespace diagnostics {
 class RoutineService final {
  public:
   using GetAvailableRoutinesToServiceCallback = base::Callback<void(
-      const std::vector<grpc_api::DiagnosticRoutine>& routines)>;
+      const std::vector<grpc_api::DiagnosticRoutine>& routines,
+      grpc_api::RoutineServiceStatus service_status)>;
   using RunRoutineToServiceCallback =
-      base::Callback<void(int uuid, grpc_api::DiagnosticRoutineStatus status)>;
+      base::Callback<void(int uuid,
+                          grpc_api::DiagnosticRoutineStatus status,
+                          grpc_api::RoutineServiceStatus service_status)>;
   using GetRoutineUpdateRequestToServiceCallback =
       base::Callback<void(int uuid,
                           grpc_api::DiagnosticRoutineStatus status,
                           int progress_percent,
                           grpc_api::DiagnosticRoutineUserMessage user_message,
                           const std::string& output,
-                          const std::string& status_message)>;
+                          const std::string& status_message,
+                          grpc_api::RoutineServiceStatus service_status)>;
 
-  RoutineService();
-  explicit RoutineService(RoutineFactory* routine_factory);
+  class Delegate {
+   public:
+    virtual ~Delegate() = default;
+
+    // Binds |service| to an implementation of CrosHealthdDiagnosticsService. In
+    // production, the implementation is provided by cros_healthd. Returns false
+    // if wilco_dtc_supportd's mojo service has not been started by Chrome at
+    // the time this is called.
+    virtual bool GetCrosHealthdDiagnosticsService(
+        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+            service) = 0;
+  };
+
+  // |delegate| - Unowned pointer; must outlive this instance.
+  explicit RoutineService(Delegate* delegate);
   ~RoutineService();
 
   void GetAvailableRoutines(
       const GetAvailableRoutinesToServiceCallback& callback);
-  void SetAvailableRoutinesForTesting(
-      const std::vector<grpc_api::DiagnosticRoutine>& available_routines);
   void RunRoutine(const grpc_api::RunRoutineRequest& request,
                   const RunRoutineToServiceCallback& callback);
   void GetRoutineUpdate(
@@ -53,17 +64,20 @@ class RoutineService final {
       const GetRoutineUpdateRequestToServiceCallback& callback);
 
  private:
-  std::unique_ptr<RoutineFactoryImpl> routine_factory_impl_;
-  RoutineFactory* routine_factory_;
-  // Map from uuids to instances of diagnostics routines that have
-  // been started.
-  std::map<int, std::unique_ptr<DiagnosticRoutine>> active_routines_;
-  // Generator for uuids - currently, when we need a new uuids we
-  // just return next_id_, then increment next_id_.
-  int next_uuid_ = 1;
-  std::vector<grpc_api::DiagnosticRoutine> available_routines_{
-      grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
-      grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM};
+  // Binds |service_ptr_| to an implementation of CrosHealthdDiagnosticsService,
+  // if it is not already bound. Returns false if wilco_dtc_supportd's mojo
+  // service is not yet running and the binding cannot be attempted.
+  bool BindCrosHealthdDiagnosticsServiceIfNeeded();
+  // Disconnect handler called if the mojo connection to cros_healthd is lost.
+  void OnDisconnect();
+
+  // Unowned. Should outlive this instance.
+  Delegate* delegate_ = nullptr;
+
+  // Mojo interface to the CrosHealthdDiagnosticsService endpoint.
+  //
+  // In production this interface is implemented by the cros_healthd process.
+  chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServicePtr service_ptr_;
 
   DISALLOW_COPY_AND_ASSIGN(RoutineService);
 };

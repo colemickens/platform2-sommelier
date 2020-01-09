@@ -53,6 +53,8 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
   using HandleBluetoothDataChangedCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse>)>;
+  using GetAvailableRoutinesCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::GetAvailableRoutinesResponse>)>;
 
   using HandleEcNotificationRequestCallback =
       base::RepeatingCallback<void(int32_t, const std::string&)>;
@@ -84,6 +86,7 @@ class FakeWilcoDtc final {
   void RequestBluetoothDataNotification(
       const grpc_api::RequestBluetoothDataNotificationRequest& request,
       const RequestBluetoothDataNotificationCallback& callback);
+  void GetAvailableRoutines(const GetAvailableRoutinesCallback& callback);
 
   // Sets up the passed callback to be used for subsequent
   // |HandleMessageFromUi| gRPC calls.

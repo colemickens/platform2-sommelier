@@ -64,16 +64,20 @@ class GrpcService final {
                             int http_status,
                             base::StringPiece response_body)>;
     using GetAvailableRoutinesToServiceCallback = base::Callback<void(
-        const std::vector<grpc_api::DiagnosticRoutine>& routines)>;
-    using RunRoutineToServiceCallback = base::Callback<void(
-        int uuid, grpc_api::DiagnosticRoutineStatus status)>;
+        const std::vector<grpc_api::DiagnosticRoutine>& routines,
+        grpc_api::RoutineServiceStatus service_status)>;
+    using RunRoutineToServiceCallback =
+        base::Callback<void(int uuid,
+                            grpc_api::DiagnosticRoutineStatus status,
+                            grpc_api::RoutineServiceStatus service_status)>;
     using GetRoutineUpdateRequestToServiceCallback =
         base::Callback<void(int uuid,
                             grpc_api::DiagnosticRoutineStatus status,
                             int progress_percent,
                             grpc_api::DiagnosticRoutineUserMessage user_message,
                             const std::string& output,
-                            const std::string& status_message)>;
+                            const std::string& status_message,
+                            grpc_api::RoutineServiceStatus service_status)>;
     using GetConfigurationDataFromBrowserCallback =
         base::Callback<void(const std::string& json_configuration_data)>;
     using GetDriveSystemDataCallback =

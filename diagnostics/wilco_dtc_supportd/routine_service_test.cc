@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <limits>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include <base/bind.h>
@@ -13,7 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/wilco_dtc_supportd/fake_routine_factory.h"
+#include "diagnostics/wilco_dtc_supportd/fake_diagnostics_service.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 
@@ -23,27 +25,63 @@ namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
-constexpr char kRoutineDoesNotExistOutput[] =
-    "Specified routine does not exist.";
 
-constexpr grpc_api::DiagnosticRoutine kAvailableRoutines[] = {
-    grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
-    grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM};
+grpc_api::RunRoutineRequest MakeBatteryRoutineRequest() {
+  grpc_api::RunRoutineRequest request;
+  request.set_routine(grpc_api::ROUTINE_BATTERY);
+  request.mutable_battery_params()->set_low_mah(10);
+  request.mutable_battery_params()->set_high_mah(100);
+  return request;
+}
 
-void CopyAvailableRoutines(
+grpc_api::RunRoutineRequest MakeDefaultBatteryRoutineRequest() {
+  grpc_api::RunRoutineRequest request;
+  request.set_routine(grpc_api::ROUTINE_BATTERY);
+  request.mutable_battery_params();
+  return request;
+}
+
+grpc_api::RunRoutineRequest MakeBatterySysfsRoutineRequest() {
+  grpc_api::RunRoutineRequest request;
+  request.set_routine(grpc_api::ROUTINE_BATTERY_SYSFS);
+  request.mutable_battery_sysfs_params()->set_maximum_cycle_count(2);
+  request.mutable_battery_sysfs_params()->set_percent_battery_wear_allowed(30);
+  return request;
+}
+
+grpc_api::RunRoutineRequest MakeUrandomRoutineRequest() {
+  grpc_api::RunRoutineRequest request;
+  request.set_routine(grpc_api::ROUTINE_URANDOM);
+  request.mutable_urandom_params()->set_length_seconds(10);
+  return request;
+}
+
+grpc_api::RunRoutineRequest MakeSmartctlCheckRoutineRequest() {
+  grpc_api::RunRoutineRequest request;
+  request.set_routine(grpc_api::ROUTINE_SMARTCTL_CHECK);
+  request.mutable_smartctl_check_params();
+  return request;
+}
+
+void SaveGetAvailableRoutinesResponse(
     base::Closure callback,
-    std::vector<grpc_api::DiagnosticRoutine>* routines,
-    const std::vector<grpc_api::DiagnosticRoutine>& returned_routines) {
-  routines->assign(returned_routines.begin(), returned_routines.end());
+    grpc_api::GetAvailableRoutinesResponse* response,
+    const std::vector<grpc_api::DiagnosticRoutine>& returned_routines,
+    grpc_api::RoutineServiceStatus service_status) {
+  for (const auto& routine : returned_routines)
+    response->add_routines(routine);
+  response->set_service_status(service_status);
   callback.Run();
 }
 
 void SaveRunRoutineResponse(base::Closure callback,
                             grpc_api::RunRoutineResponse* response,
                             int uuid,
-                            grpc_api::DiagnosticRoutineStatus status) {
+                            grpc_api::DiagnosticRoutineStatus status,
+                            grpc_api::RoutineServiceStatus service_status) {
   response->set_uuid(uuid);
   response->set_status(status);
+  response->set_service_status(service_status);
   callback.Run();
 }
 
@@ -55,13 +93,15 @@ void SaveGetRoutineUpdateResponse(
     int progress_percent,
     grpc_api::DiagnosticRoutineUserMessage user_message,
     const std::string& output,
-    const std::string& status_message) {
+    const std::string& status_message,
+    grpc_api::RoutineServiceStatus service_status) {
   response->set_uuid(uuid);
   response->set_status(status);
   response->set_progress_percent(progress_percent);
   response->set_user_message(user_message);
   response->set_output(output);
   response->set_status_message(status_message);
+  response->set_service_status(service_status);
   callback.Run();
 }
 
@@ -70,29 +110,22 @@ class RoutineServiceTest : public testing::Test {
  protected:
   RoutineServiceTest() = default;
 
-  RoutineService* service() { return &service_; }
-
-  FakeRoutineFactory* routine_factory() { return &routine_factory_; }
-
-  void SetAvailableRoutines() {
-    std::vector<grpc_api::DiagnosticRoutine> routines_to_add;
-    for (auto routine : kAvailableRoutines)
-      routines_to_add.push_back(routine);
-    service_.SetAvailableRoutinesForTesting(routines_to_add);
+  FakeDiagnosticsService* diagnostics_service() {
+    return &diagnostics_service_;
   }
 
-  std::vector<grpc_api::DiagnosticRoutine> ExecuteGetAvailableRoutines() {
-    std::vector<grpc_api::DiagnosticRoutine> routines;
+  grpc_api::GetAvailableRoutinesResponse ExecuteGetAvailableRoutines() {
     base::RunLoop run_loop;
-    service_.GetAvailableRoutines(
-        base::Bind(&CopyAvailableRoutines, run_loop.QuitClosure(), &routines));
+    grpc_api::GetAvailableRoutinesResponse response;
+    service_.GetAvailableRoutines(base::Bind(
+        &SaveGetAvailableRoutinesResponse, run_loop.QuitClosure(), &response));
     run_loop.Run();
-    return routines;
+    return response;
   }
 
-  grpc_api::RunRoutineResponse ExecuteRunRoutine() {
+  grpc_api::RunRoutineResponse ExecuteRunRoutine(
+      const grpc_api::RunRoutineRequest& request) {
     base::RunLoop run_loop;
-    grpc_api::RunRoutineRequest request;
     grpc_api::RunRoutineResponse response;
     service_.RunRoutine(request, base::Bind(&SaveRunRoutineResponse,
                                             run_loop.QuitClosure(), &response));
@@ -115,98 +148,189 @@ class RoutineServiceTest : public testing::Test {
 
  private:
   base::MessageLoop message_loop_;
-  FakeRoutineFactory routine_factory_;
-  RoutineService service_{&routine_factory_};
+  FakeDiagnosticsService diagnostics_service_;
+  RoutineService service_{&diagnostics_service_};
 };
 
 // Test that GetAvailableRoutines returns the expected list of routines.
 TEST_F(RoutineServiceTest, GetAvailableRoutines) {
-  SetAvailableRoutines();
-  auto reply = ExecuteGetAvailableRoutines();
-  EXPECT_THAT(reply, ElementsAreArray(kAvailableRoutines));
+  diagnostics_service()->SetGetAvailableRoutinesResponse(
+      {mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity,
+       mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth,
+       mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck,
+       mojo_ipc::DiagnosticRoutineEnum::kUrandom});
+
+  const auto reply = ExecuteGetAvailableRoutines();
+  EXPECT_THAT(
+      reply.routines(),
+      ElementsAreArray(
+          {grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
+           grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM}));
+  EXPECT_EQ(reply.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
-// Test that getting the status of a routine that doesn't exist returns an
-// error.
-TEST_F(RoutineServiceTest, NonExistingStatus) {
-  auto response = ExecuteGetRoutineUpdate(
-      0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
-      false /* include_output */);
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_ERROR);
-  EXPECT_EQ(response.status_message(), kRoutineDoesNotExistOutput);
+// Test that an unknown mojo routine enum is handled sanely.
+TEST_F(RoutineServiceTest, GetAvailableRoutinesInvalidMojoRoutineEnum) {
+  diagnostics_service()->SetGetAvailableRoutinesResponse(
+      std::vector<mojo_ipc::DiagnosticRoutineEnum>{
+          static_cast<mojo_ipc::DiagnosticRoutineEnum>(
+              std::numeric_limits<std::underlying_type<
+                  mojo_ipc::DiagnosticRoutineEnum>::type>::max()),
+          mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity});
+
+  const auto reply = ExecuteGetAvailableRoutines();
+  EXPECT_THAT(reply.routines(), ElementsAreArray({grpc_api::ROUTINE_BATTERY}));
+  EXPECT_EQ(reply.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
-// Test that a routine can be run.
-TEST_F(RoutineServiceTest, RunRoutine) {
-  routine_factory()->SetNonInteractiveStatus(
-      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, "" /* status_message */,
-      50 /* progress_percent */, "" /* output */);
-  auto response = ExecuteRunRoutine();
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_RUNNING);
-}
+// Test that an invalid RunRoutineRequest is handled sanely.
+TEST_F(RoutineServiceTest, InvalidRunRoutineRequest) {
+  grpc_api::RunRoutineRequest request;
+  request.set_routine(static_cast<grpc_api::DiagnosticRoutine>(
+      std::numeric_limits<
+          std::underlying_type<grpc_api::DiagnosticRoutine>::type>::max()));
 
-// Test that the routine service handles the routine factory failing to create a
-// routine.
-TEST_F(RoutineServiceTest, BadRoutineFactory) {
-  auto response = ExecuteRunRoutine();
-  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
-  EXPECT_EQ(response.uuid(), 0);
+  const auto reply = ExecuteRunRoutine(request);
+  EXPECT_EQ(reply.uuid(), 0);
+  EXPECT_EQ(reply.status(), grpc_api::ROUTINE_STATUS_INVALID_FIELD);
+  EXPECT_EQ(reply.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
 // Test that a routine reporting an invalid user message is handled sanely.
-TEST_F(RoutineServiceTest, InvalidUserMessage) {
-  routine_factory()->SetInteractiveStatus(
+TEST_F(RoutineServiceTest, GetRoutineUpdateInvalidUserMessage) {
+  diagnostics_service()->SetInteractiveUpdate(
       static_cast<mojo_ipc::DiagnosticRoutineUserMessageEnum>(
-          -1) /* user_message */,
+          std::numeric_limits<std::underlying_type<
+              mojo_ipc::DiagnosticRoutineUserMessageEnum>::type>::max()),
       0 /* progress_percent */, "" /* output */);
-  auto run_routine_response = ExecuteRunRoutine();
-  auto update_response =
-      ExecuteGetRoutineUpdate(run_routine_response.uuid(),
-                              grpc_api::GetRoutineUpdateRequest::GET_STATUS,
-                              false /* include_output */);
+
+  const auto update_response = ExecuteGetRoutineUpdate(
+      0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+      false /* include_output */);
   EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
-// Test that a routine reporting an invalid status is handled sanely.
-TEST_F(RoutineServiceTest, InvalidStatus) {
-  routine_factory()->SetNonInteractiveStatus(
-      static_cast<mojo_ipc::DiagnosticRoutineStatusEnum>(-1) /* status */,
+// Test that a routine update reporting an invalid status is handled sanely.
+TEST_F(RoutineServiceTest, InvalidGetRoutineUpdateStatus) {
+  diagnostics_service()->SetNonInteractiveUpdate(
+      static_cast<mojo_ipc::DiagnosticRoutineStatusEnum>(
+          std::numeric_limits<std::underlying_type<
+              mojo_ipc::DiagnosticRoutineStatusEnum>::type>::max()),
       "" /* status_message */, 0 /* progress_percent */, "" /* output */);
-  auto run_routine_response = ExecuteRunRoutine();
-  auto update_response =
-      ExecuteGetRoutineUpdate(run_routine_response.uuid(),
-                              grpc_api::GetRoutineUpdateRequest::GET_STATUS,
-                              false /* include_output */);
+
+  const auto update_response = ExecuteGetRoutineUpdate(
+      0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+      false /* include_output */);
   EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_OK);
+}
+
+// Test that a run routine response reporting an invalid status is handled
+// sanely.
+TEST_F(RoutineServiceTest, InvalidRunRoutineResponseStatus) {
+  diagnostics_service()->SetRunSomeRoutineResponse(
+      0 /* uuid */,
+      static_cast<mojo_ipc::DiagnosticRoutineStatusEnum>(
+          std::numeric_limits<std::underlying_type<
+              mojo_ipc::DiagnosticRoutineStatusEnum>::type>::max()));
+
+  const auto response = ExecuteRunRoutine(MakeSmartctlCheckRoutineRequest());
+  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(response.uuid(), 0);
+  EXPECT_EQ(response.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
 // Test that an invalid command passed to the routine service is handled sanely.
-TEST_F(RoutineServiceTest, InvalidCommand) {
-  routine_factory()->SetNonInteractiveStatus(
-      mojo_ipc::DiagnosticRoutineStatusEnum::kReady /* status */,
-      "" /* status_message */, 0 /* progress_percent */, "" /* output */);
-  auto run_routine_response = ExecuteRunRoutine();
-  auto update_response = ExecuteGetRoutineUpdate(
-      run_routine_response.uuid(),
-      static_cast<grpc_api::GetRoutineUpdateRequest::Command>(-1),
+TEST_F(RoutineServiceTest, GetRoutineUpdateInvalidCommand) {
+  diagnostics_service()->SetNonInteractiveUpdate(
+      mojo_ipc::DiagnosticRoutineStatusEnum::kReady, "" /* status_message */,
+      0 /* progress_percent */, "" /* output */);
+
+  const auto update_response = ExecuteGetRoutineUpdate(
+      0 /* uuid */,
+      static_cast<grpc_api::GetRoutineUpdateRequest::Command>(
+          std::numeric_limits<std::underlying_type<
+              grpc_api::GetRoutineUpdateRequest::Command>::type>::max()),
       false /* include_output */);
-  EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_INVALID_FIELD);
+  EXPECT_EQ(update_response.progress_percent(), 0);
+  EXPECT_EQ(update_response.user_message(),
+            grpc_api::ROUTINE_USER_MESSAGE_UNSET);
+  EXPECT_EQ(update_response.output(), "");
+  EXPECT_EQ(update_response.status_message(), "");
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
-// Test that after a routine has been removed, we cannot access its data.
-TEST_F(RoutineServiceTest, AccessStoppedRoutine) {
-  routine_factory()->SetNonInteractiveStatus(
-      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, "" /* status_message */,
-      50 /* progress_percent */, "" /* output */);
-  auto run_routine_response = ExecuteRunRoutine();
-  ExecuteGetRoutineUpdate(run_routine_response.uuid(),
-                          grpc_api::GetRoutineUpdateRequest::REMOVE,
-                          false /* include_output */);
-  auto update_response = ExecuteGetRoutineUpdate(
-      run_routine_response.uuid(),
-      grpc_api::GetRoutineUpdateRequest::GET_STATUS, true /* include_output */);
+// Test that the routine service doesn't attempt to rebind a valid mojo service
+// pointer.
+TEST_F(RoutineServiceTest, NoRebindService) {
+  constexpr uint32_t kExpectedId = 55;
+  diagnostics_service()->SetRunSomeRoutineResponse(
+      kExpectedId, mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+  // Send the first mojo IPC to the diagnostics service. This IPC should
+  // bootstrap the mojo connection. Ignore the response, because we're only
+  // interested in whether or not the next request tries to bootstrap the mojo
+  // connection again.
+  ExecuteRunRoutine(MakeSmartctlCheckRoutineRequest());
+
+  // Tell the service to respond with an error if a second bootstrapping is
+  // requested.
+  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+
+  // Send another request. This shouldn't see an error, because it shouldn't try
+  // to bootstrap the mojo connection a second time.
+  const auto reply = ExecuteRunRoutine(MakeSmartctlCheckRoutineRequest());
+
+  // If the bootstrap was requested a second time, we would receive a uuid of 0
+  // and a status of grpc_api::FAILED_TO_START.
+  EXPECT_EQ(reply.uuid(), kExpectedId);
+  EXPECT_EQ(reply.status(), grpc_api::ROUTINE_STATUS_RUNNING);
+  EXPECT_EQ(reply.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
+}
+
+// Test that the routine service handles a GetAvailableRoutines request sent
+// before wilco_dtc_supportd's mojo service is established.
+TEST_F(RoutineServiceTest, GetAvailableRoutinesNoService) {
+  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+
+  const auto reply = ExecuteGetAvailableRoutines();
+  EXPECT_EQ(reply.routines_size(), 0);
+  EXPECT_EQ(reply.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+}
+
+// Test that the routine service handles a RunRoutine request sent before
+// wilco_dtc_supportd's mojo service is established.
+TEST_F(RoutineServiceTest, RunRoutineNoService) {
+  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+
+  const auto response = ExecuteRunRoutine(MakeSmartctlCheckRoutineRequest());
+  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  EXPECT_EQ(response.uuid(), 0);
+  EXPECT_EQ(response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+}
+
+// Test that the routine service handles a GetRoutineUpdate request sent before
+// wilco_dtc_supportd's mojo service is established.
+TEST_F(RoutineServiceTest, GetRoutineUpdateNoService) {
+  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+
+  const auto update_response = ExecuteGetRoutineUpdate(
+      0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+      false /* include_output */);
   EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_ERROR);
-  EXPECT_EQ(update_response.status_message(), kRoutineDoesNotExistOutput);
+  EXPECT_EQ(update_response.progress_percent(), 0);
+  EXPECT_EQ(update_response.user_message(),
+            grpc_api::ROUTINE_USER_MESSAGE_UNSET);
+  EXPECT_EQ(update_response.output(), "");
+  EXPECT_EQ(update_response.status_message(), "");
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
 }
 
 // Tests for the GetRoutineUpdate() method of RoutineService when an
@@ -239,15 +363,17 @@ class GetInteractiveUpdateTest
 TEST_P(GetInteractiveUpdateTest, AccessInteractiveRunningRoutine) {
   constexpr uint32_t kExpectedProgressPercent = 17;
   constexpr char kExpectedOutput[] = "Expected output.";
-  routine_factory()->SetInteractiveStatus(
+  diagnostics_service()->SetInteractiveUpdate(
       mojo_message(), kExpectedProgressPercent, kExpectedOutput);
-  auto run_routine_response = ExecuteRunRoutine();
-  auto update_response = ExecuteGetRoutineUpdate(
-      run_routine_response.uuid(),
-      grpc_api::GetRoutineUpdateRequest::GET_STATUS, true /* include_output */);
+
+  const auto update_response = ExecuteGetRoutineUpdate(
+      0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+      true /* include_output */);
   EXPECT_EQ(update_response.user_message(), grpc_message());
   EXPECT_EQ(update_response.progress_percent(), kExpectedProgressPercent);
   EXPECT_EQ(update_response.output(), kExpectedOutput);
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -265,7 +391,7 @@ INSTANTIATE_TEST_CASE_P(
 //                   routine's update.
 // * |grpc_status| - gRPC's DiagnosticRoutineStatus expected to be
 //                   returned by the routine service.
-class GetNoninteractiveUpdateTest
+class GetNonInteractiveUpdateTest
     : public RoutineServiceTest,
       public testing::WithParamInterface<
           std::tuple<mojo_ipc::DiagnosticRoutineStatusEnum,
@@ -284,26 +410,28 @@ class GetNoninteractiveUpdateTest
 };
 
 // Test that after a routine has started, we can access its noninteractive data.
-TEST_P(GetNoninteractiveUpdateTest, AccessNoninteractiveRunningRoutine) {
+TEST_P(GetNonInteractiveUpdateTest, AccessNonInteractiveRunningRoutine) {
   constexpr char kExpectedStatusMessage[] = "Expected status message.";
   constexpr uint32_t kExpectedProgressPercent = 18;
   constexpr char kExpectedOutput[] = "Expected output.";
-  routine_factory()->SetNonInteractiveStatus(
+  diagnostics_service()->SetNonInteractiveUpdate(
       mojo_status(), kExpectedStatusMessage, kExpectedProgressPercent,
       kExpectedOutput);
-  auto run_routine_response = ExecuteRunRoutine();
-  auto update_response = ExecuteGetRoutineUpdate(
-      run_routine_response.uuid(),
-      grpc_api::GetRoutineUpdateRequest::GET_STATUS, true /* include_output */);
+
+  const auto update_response = ExecuteGetRoutineUpdate(
+      0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+      true /* include_output */);
   EXPECT_EQ(update_response.status(), grpc_status());
   EXPECT_EQ(update_response.status_message(), kExpectedStatusMessage);
   EXPECT_EQ(update_response.progress_percent(), kExpectedProgressPercent);
   EXPECT_EQ(update_response.output(), kExpectedOutput);
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
 INSTANTIATE_TEST_CASE_P(
     ,
-    GetNoninteractiveUpdateTest,
+    GetNonInteractiveUpdateTest,
     testing::Values(
         std::make_tuple(mojo_ipc::DiagnosticRoutineStatusEnum::kReady,
                         grpc_api::ROUTINE_STATUS_READY),
@@ -353,23 +481,65 @@ TEST_P(GetRoutineUpdateCommandTest, SendCommand) {
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   constexpr grpc_api::DiagnosticRoutineStatus kExpectedStatus =
       grpc_api::ROUTINE_STATUS_RUNNING;
-  routine_factory()->SetNonInteractiveStatus(
+  diagnostics_service()->SetNonInteractiveUpdate(
       kMojoStatus, kExpectedStatusMessage, kExpectedProgressPercent,
       kExpectedOutput);
-  auto run_routine_response = ExecuteRunRoutine();
-  auto update_response = ExecuteGetRoutineUpdate(
-      run_routine_response.uuid(), command(), true /* include_output */);
+
+  const auto update_response = ExecuteGetRoutineUpdate(
+      0 /* uuid */, command(), true /* include_output */);
   EXPECT_EQ(update_response.status(), kExpectedStatus);
   EXPECT_EQ(update_response.status_message(), kExpectedStatusMessage);
   EXPECT_EQ(update_response.progress_percent(), kExpectedProgressPercent);
   EXPECT_EQ(update_response.output(), kExpectedOutput);
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
 INSTANTIATE_TEST_CASE_P(
     ,
     GetRoutineUpdateCommandTest,
     testing::Values(grpc_api::GetRoutineUpdateRequest::RESUME,
-                    grpc_api::GetRoutineUpdateRequest::CANCEL));
+                    grpc_api::GetRoutineUpdateRequest::CANCEL,
+                    grpc_api::GetRoutineUpdateRequest::REMOVE,
+                    grpc_api::GetRoutineUpdateRequest::GET_STATUS));
+
+// Tests for the RunRoutine() method of RoutineService with different requests.
+//
+// This is a parameterized test with the following parameters:
+// * |request| - gRPC's RunRoutineRequest to be requested.
+class RunRoutineTest
+    : public RoutineServiceTest,
+      public testing::WithParamInterface<grpc_api::RunRoutineRequest> {
+ public:
+  RunRoutineTest() = default;
+
+  // Accessors to the test parameter returned by gtest's GetParam():
+
+  grpc_api::RunRoutineRequest request() const { return GetParam(); }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RunRoutineTest);
+};
+
+// Test that we can request that the given routine is run.
+TEST_P(RunRoutineTest, RunRoutine) {
+  constexpr uint32_t kExpectedId = 77;
+  diagnostics_service()->SetRunSomeRoutineResponse(
+      kExpectedId, mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+
+  const auto reply = ExecuteRunRoutine(request());
+  EXPECT_EQ(reply.uuid(), kExpectedId);
+  EXPECT_EQ(reply.status(), grpc_api::ROUTINE_STATUS_RUNNING);
+  EXPECT_EQ(reply.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
+}
+
+INSTANTIATE_TEST_CASE_P(,
+                        RunRoutineTest,
+                        testing::Values(MakeBatteryRoutineRequest(),
+                                        MakeDefaultBatteryRoutineRequest(),
+                                        MakeBatterySysfsRoutineRequest(),
+                                        MakeUrandomRoutineRequest(),
+                                        MakeSmartctlCheckRoutineRequest()));
 
 }  // namespace
 

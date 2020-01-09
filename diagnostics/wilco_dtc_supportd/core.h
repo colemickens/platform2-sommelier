@@ -33,6 +33,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 
+#include "mojo/cros_healthd.mojom.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
 #include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
@@ -44,6 +45,7 @@ namespace diagnostics {
 class Core final : public DBusService::Delegate,
                    public GrpcService::Delegate,
                    public MojoService::Delegate,
+                   public RoutineService::Delegate,
                    public chromeos::wilco_dtc_supportd::mojom::
                        WilcoDtcSupportdServiceFactory,
                    public BluetoothEventService::Observer,
@@ -193,6 +195,11 @@ class Core final : public DBusService::Delegate,
       const SendGrpcUiMessageToWilcoDtcCallback& callback) override;
   void NotifyConfigurationDataChangedToWilcoDtc() override;
 
+  // RoutineService::Delegate overrides:
+  bool GetCrosHealthdDiagnosticsService(
+      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+          service) override;
+
   // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory
   // overrides:
   void GetService(MojomWilcoDtcSupportdServiceRequest service,
@@ -293,7 +300,7 @@ class Core final : public DBusService::Delegate,
 
   // Implementation of the diagnostic routine interface exposed by the
   // wilco_dtc_supportd daemon.
-  RoutineService routine_service_;
+  RoutineService routine_service_{this /* delegate */};
 
   DISALLOW_COPY_AND_ASSIGN(Core);
 };

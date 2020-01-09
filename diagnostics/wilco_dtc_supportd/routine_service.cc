@@ -16,6 +16,11 @@ namespace diagnostics {
 
 namespace {
 
+// When the battery routine's low_mah and high_mah parameters are not set, we
+// default to low_mah = 1000mAh and high_mah = 10000mAh.
+constexpr int kRoutineBatteryDefaultLowmAh = 1000;
+constexpr int kRoutineBatteryDefaultHighmAh = 10000;
+
 // Converts from mojo's DiagnosticRoutineStatusEnum to gRPC's
 // DiagnosticRoutineStatus.
 bool GetGrpcStatusFromMojoStatus(
@@ -56,6 +61,8 @@ bool GetGrpcStatusFromMojoStatus(
       *grpc_status_out = grpc_api::ROUTINE_STATUS_CANCELLING;
       return true;
   }
+  LOG(ERROR) << "Unknown mojo routine status: "
+             << static_cast<int>(mojo_status);
   return false;
 }
 
@@ -72,12 +79,36 @@ bool GetUserMessageFromMojoEnum(
       *grpc_message_out = grpc_api::ROUTINE_USER_MESSAGE_UNPLUG_AC_POWER;
       return true;
   }
+  LOG(ERROR) << "Unknown mojo user message: " << static_cast<int>(mojo_message);
+  return false;
+}
+
+// Converts from mojo's DiagnosticRoutineEnum to gRPC's DiagnosticRoutine.
+bool GetGrpcRoutineEnumFromMojoRoutineEnum(
+    chromeos::cros_healthd::mojom::DiagnosticRoutineEnum mojo_enum,
+    grpc_api::DiagnosticRoutine* grpc_enum_out) {
+  DCHECK(grpc_enum_out);
+  switch (mojo_enum) {
+    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryCapacity:
+      *grpc_enum_out = grpc_api::ROUTINE_BATTERY;
+      return true;
+    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryHealth:
+      *grpc_enum_out = grpc_api::ROUTINE_BATTERY_SYSFS;
+      return true;
+    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kUrandom:
+      *grpc_enum_out = grpc_api::ROUTINE_URANDOM;
+      return true;
+    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck:
+      *grpc_enum_out = grpc_api::ROUTINE_SMARTCTL_CHECK;
+      return true;
+  }
+  LOG(ERROR) << "Unknown mojo routine: " << static_cast<int>(mojo_enum);
   return false;
 }
 
 // Converts from mojo's RoutineUpdate to gRPC's GetRoutineUpdateResponse.
 void SetGrpcUpdateFromMojoUpdate(
-    chromeos::cros_healthd::mojom::RoutineUpdate* mojo_update,
+    chromeos::cros_healthd::mojom::RoutineUpdatePtr mojo_update,
     grpc_api::GetRoutineUpdateResponse* grpc_update) {
   DCHECK(grpc_update);
   grpc_update->set_progress_percent(mojo_update->progress_percent);
@@ -87,8 +118,6 @@ void SetGrpcUpdateFromMojoUpdate(
     chromeos::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum
         mojo_message = update_union->get_interactive_update()->user_message;
     if (!GetUserMessageFromMojoEnum(mojo_message, &grpc_message)) {
-      LOG(ERROR) << "Unknown mojo user message: "
-                 << static_cast<int>(mojo_message);
       grpc_update->set_status(grpc_api::ROUTINE_STATUS_ERROR);
     } else {
       grpc_update->set_user_message(grpc_message);
@@ -99,8 +128,6 @@ void SetGrpcUpdateFromMojoUpdate(
     grpc_api::DiagnosticRoutineStatus grpc_status;
     auto mojo_status = update_union->get_noninteractive_update()->status;
     if (!GetGrpcStatusFromMojoStatus(mojo_status, &grpc_status)) {
-      LOG(ERROR) << "Unknown mojo routine status: "
-                 << static_cast<int>(mojo_status);
       grpc_update->set_status(grpc_api::ROUTINE_STATUS_ERROR);
     } else {
       grpc_update->set_status(grpc_status);
@@ -112,7 +139,7 @@ void SetGrpcUpdateFromMojoUpdate(
     // specified that they wanted output returned, and some routines may never
     // return any extra input. We'll log the event in the case that it was an
     // error.
-    VLOG(0) << "No output in mojo update.";
+    VLOG(1) << "No output in mojo update.";
     return;
   }
 
@@ -126,52 +153,150 @@ void SetGrpcUpdateFromMojoUpdate(
       std::string(static_cast<const char*>(shared_memory->memory()),
                   shared_memory->mapped_size()));
 }
-}  // namespace
 
-RoutineService::RoutineService() {
-  routine_factory_impl_ = std::make_unique<RoutineFactoryImpl>();
-  routine_factory_ = routine_factory_impl_.get();
+// Converts from gRPC's GetRoutineUpdateRequest::Command to mojo's
+// DiagnosticRoutineCommandEnum.
+bool GetMojoCommandFromGrpcCommand(
+    grpc_api::GetRoutineUpdateRequest::Command grpc_command,
+    chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum*
+        mojo_command_out) {
+  DCHECK(mojo_command_out);
+  switch (grpc_command) {
+    case grpc_api::GetRoutineUpdateRequest::RESUME:
+      *mojo_command_out = chromeos::cros_healthd::mojom::
+          DiagnosticRoutineCommandEnum::kContinue;
+      return true;
+    case grpc_api::GetRoutineUpdateRequest::CANCEL:
+      *mojo_command_out =
+          chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum::kCancel;
+      return true;
+    case grpc_api::GetRoutineUpdateRequest::GET_STATUS:
+      *mojo_command_out = chromeos::cros_healthd::mojom::
+          DiagnosticRoutineCommandEnum::kGetStatus;
+      return true;
+    case grpc_api::GetRoutineUpdateRequest::REMOVE:
+      *mojo_command_out =
+          chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum::kRemove;
+      return true;
+    default:
+      LOG(ERROR) << "Unknown gRPC command: " << static_cast<int>(grpc_command);
+      return false;
+  }
 }
 
-RoutineService::RoutineService(RoutineFactory* routine_factory)
-    : routine_factory_(routine_factory) {}
+// Forwards and wraps the result of a GetAvailableRoutines call into a gRPC
+// response.
+void ForwardGetAvailableRoutinesResponse(
+    const RoutineService::GetAvailableRoutinesToServiceCallback& callback,
+    const std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>&
+        mojo_routines) {
+  std::vector<grpc_api::DiagnosticRoutine> grpc_routines;
+  for (auto mojo_routine : mojo_routines) {
+    grpc_api::DiagnosticRoutine grpc_routine;
+    if (GetGrpcRoutineEnumFromMojoRoutineEnum(mojo_routine, &grpc_routine))
+      grpc_routines.push_back(grpc_routine);
+  }
+  callback.Run(std::move(grpc_routines), grpc_api::ROUTINE_SERVICE_STATUS_OK);
+}
+
+// Forwards and wraps the result of a RunRoutine call into a gRPC response.
+void ForwardRunRoutineResponse(
+    const RoutineService::RunRoutineToServiceCallback& callback,
+    chromeos::cros_healthd::mojom::RunRoutineResponsePtr response) {
+  grpc_api::DiagnosticRoutineStatus grpc_status;
+  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum mojo_status =
+      response->status;
+  if (!GetGrpcStatusFromMojoStatus(mojo_status, &grpc_status)) {
+    callback.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_ERROR,
+                 grpc_api::ROUTINE_SERVICE_STATUS_OK);
+    return;
+  }
+  callback.Run(response->id, grpc_status, grpc_api::ROUTINE_SERVICE_STATUS_OK);
+}
+
+// Forwards and wraps the result of a GetRoutineUpdate call into a gRPC
+// response.
+void ForwardGetRoutineUpdateResponse(
+    int uuid,
+    const RoutineService::GetRoutineUpdateRequestToServiceCallback& callback,
+    chromeos::cros_healthd::mojom::RoutineUpdatePtr response) {
+  grpc_api::GetRoutineUpdateResponse grpc_response;
+  SetGrpcUpdateFromMojoUpdate(std::move(response), &grpc_response);
+  callback.Run(uuid, grpc_response.status(), grpc_response.progress_percent(),
+               grpc_response.user_message(), grpc_response.output(),
+               grpc_response.status_message(),
+               grpc_api::ROUTINE_SERVICE_STATUS_OK);
+}
+
+}  // namespace
+
+RoutineService::RoutineService(Delegate* delegate) : delegate_(delegate) {
+  DCHECK(delegate_);
+}
 
 RoutineService::~RoutineService() = default;
 
 void RoutineService::GetAvailableRoutines(
     const GetAvailableRoutinesToServiceCallback& callback) {
-  callback.Run(available_routines_);
-}
+  if (!BindCrosHealthdDiagnosticsServiceIfNeeded()) {
+    LOG(WARNING) << "GetAvailableRoutines called before mojo was bootstrapped.";
+    callback.Run(std::vector<grpc_api::DiagnosticRoutine>{},
+                 grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+    return;
+  }
 
-void RoutineService::SetAvailableRoutinesForTesting(
-    const std::vector<grpc_api::DiagnosticRoutine>& available_routines) {
-  available_routines_ = available_routines;
+  service_ptr_->GetAvailableRoutines(
+      base::Bind(&ForwardGetAvailableRoutinesResponse, callback));
 }
 
 void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
                                 const RunRoutineToServiceCallback& callback) {
-  auto new_routine = routine_factory_->CreateRoutine(request);
-
-  if (!new_routine) {
-    callback.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  if (!BindCrosHealthdDiagnosticsServiceIfNeeded()) {
+    LOG(WARNING) << "RunRoutine called before mojo was bootstrapped.";
+    callback.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_FAILED_TO_START,
+                 grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
     return;
   }
 
-  new_routine->Start();
-  int uuid = next_uuid_;
-  DCHECK(active_routines_.find(uuid) == active_routines_.end());
-  active_routines_[uuid] = std::move(new_routine);
-  ++next_uuid_;
-
-  grpc_api::DiagnosticRoutineStatus grpc_status;
-  auto mojo_status = active_routines_[uuid]->GetStatus();
-  if (!GetGrpcStatusFromMojoStatus(mojo_status, &grpc_status)) {
-    LOG(ERROR) << "Unknown mojo routine status: "
-               << static_cast<int>(mojo_status);
-    callback.Run(uuid, grpc_api::ROUTINE_STATUS_ERROR);
-    return;
+  switch (request.routine()) {
+    case grpc_api::ROUTINE_BATTERY:
+      DCHECK_EQ(request.parameters_case(),
+                grpc_api::RunRoutineRequest::kBatteryParams);
+      service_ptr_->RunBatteryCapacityRoutine(
+          request.battery_params().low_mah()
+              ? request.battery_params().low_mah()
+              : kRoutineBatteryDefaultLowmAh,
+          request.battery_params().high_mah()
+              ? request.battery_params().high_mah()
+              : kRoutineBatteryDefaultHighmAh,
+          base::Bind(&ForwardRunRoutineResponse, callback));
+      break;
+    case grpc_api::ROUTINE_BATTERY_SYSFS:
+      DCHECK_EQ(request.parameters_case(),
+                grpc_api::RunRoutineRequest::kBatterySysfsParams);
+      service_ptr_->RunBatteryHealthRoutine(
+          request.battery_sysfs_params().maximum_cycle_count(),
+          request.battery_sysfs_params().percent_battery_wear_allowed(),
+          base::Bind(&ForwardRunRoutineResponse, callback));
+      break;
+    case grpc_api::ROUTINE_URANDOM:
+      DCHECK_EQ(request.parameters_case(),
+                grpc_api::RunRoutineRequest::kUrandomParams);
+      service_ptr_->RunUrandomRoutine(
+          request.urandom_params().length_seconds(),
+          base::Bind(&ForwardRunRoutineResponse, callback));
+      break;
+    case grpc_api::ROUTINE_SMARTCTL_CHECK:
+      DCHECK_EQ(request.parameters_case(),
+                grpc_api::RunRoutineRequest::kSmartctlCheckParams);
+      service_ptr_->RunSmartctlCheckRoutine(
+          base::Bind(&ForwardRunRoutineResponse, callback));
+      break;
+    default:
+      LOG(ERROR) << "RunRoutineRequest routine not set or unrecognized.";
+      callback.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
   }
-  callback.Run(uuid, grpc_status);
 }
 
 void RoutineService::GetRoutineUpdate(
@@ -179,57 +304,46 @@ void RoutineService::GetRoutineUpdate(
     grpc_api::GetRoutineUpdateRequest::Command command,
     bool include_output,
     const GetRoutineUpdateRequestToServiceCallback& callback) {
-  auto itr = active_routines_.find(uuid);
-  if (itr == active_routines_.end()) {
-    LOG(ERROR) << "Bad uuid in GetRoutineUpdateRequest.";
+  if (!BindCrosHealthdDiagnosticsServiceIfNeeded()) {
+    LOG(WARNING) << "GetRoutineUpdate called before mojo was bootstrapped.";
     callback.Run(uuid, grpc_api::ROUTINE_STATUS_ERROR, 0 /* progress_percent */,
                  grpc_api::ROUTINE_USER_MESSAGE_UNSET, "" /* output */,
-                 "Specified routine does not exist.");
+                 "" /* status_message */,
+                 grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
     return;
   }
 
-  auto* routine = itr->second.get();
-  grpc_api::GetRoutineUpdateResponse response;
-  chromeos::cros_healthd::mojom::RoutineUpdate update{
-      0, mojo::ScopedHandle(),
-      chromeos::cros_healthd::mojom::RoutineUpdateUnion::New()};
-  switch (command) {
-    case grpc_api::GetRoutineUpdateRequest::RESUME:
-      routine->Resume();
-      break;
-    case grpc_api::GetRoutineUpdateRequest::CANCEL:
-      routine->Cancel();
-      break;
-    case grpc_api::GetRoutineUpdateRequest::GET_STATUS:
-      // Retrieving the status and output of a routine is handled below.
-      break;
-    case grpc_api::GetRoutineUpdateRequest::REMOVE:
-      routine->PopulateStatusUpdate(&update, include_output);
-      SetGrpcUpdateFromMojoUpdate(&update, &response);
-      response.set_status(grpc_api::ROUTINE_STATUS_REMOVED);
-      active_routines_.erase(itr);
-      // |routine| is invalid at this point!
-      callback.Run(uuid, response.status(), response.progress_percent(),
-                   response.user_message(), response.output(),
-                   response.status_message());
-      return;
-    default:
-      LOG(ERROR) << "Invalid command: " << static_cast<int>(command)
-                 << " in GetRoutineUpdateRequest";
-      routine->PopulateStatusUpdate(&update, include_output);
-      SetGrpcUpdateFromMojoUpdate(&update, &response);
-      callback.Run(uuid, grpc_api::ROUTINE_STATUS_ERROR,
-                   response.progress_percent(), response.user_message(),
-                   response.output(), response.status_message());
-      return;
+  chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum mojo_command;
+  if (!GetMojoCommandFromGrpcCommand(command, &mojo_command)) {
+    callback.Run(uuid, grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+                 0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET,
+                 "" /* output */, "" /* status_message */,
+                 grpc_api::ROUTINE_SERVICE_STATUS_OK);
+    return;
   }
 
-  routine->PopulateStatusUpdate(&update, include_output);
-  SetGrpcUpdateFromMojoUpdate(&update, &response);
+  service_ptr_->GetRoutineUpdate(
+      uuid, mojo_command, include_output,
+      base::Bind(&ForwardGetRoutineUpdateResponse, uuid, callback));
+}
 
-  callback.Run(uuid, response.status(), response.progress_percent(),
-               response.user_message(), response.output(),
-               response.status_message());
+bool RoutineService::BindCrosHealthdDiagnosticsServiceIfNeeded() {
+  if (service_ptr_.is_bound())
+    return true;
+
+  if (!delegate_->GetCrosHealthdDiagnosticsService(
+          mojo::MakeRequest(&service_ptr_))) {
+    return false;
+  }
+
+  service_ptr_.set_connection_error_handler(
+      base::Bind(&RoutineService::OnDisconnect, base::Unretained(this)));
+  return true;
+}
+
+void RoutineService::OnDisconnect() {
+  VLOG(1) << "cros_healthd Mojo connection closed.";
+  service_ptr_.reset();
 }
 
 }  // namespace diagnostics

@@ -127,6 +127,7 @@ MakeGetAvailableRoutinesResponse() {
   auto response = std::make_unique<grpc_api::GetAvailableRoutinesResponse>();
   for (auto routine : kFakeAvailableRoutines)
     response->add_routines(routine);
+  response->set_service_status(grpc_api::ROUTINE_SERVICE_STATUS_OK);
   return response;
 }
 
@@ -134,6 +135,7 @@ std::unique_ptr<grpc_api::RunRoutineResponse> MakeRunRoutineResponse() {
   auto response = std::make_unique<grpc_api::RunRoutineResponse>();
   response->set_uuid(kFakeUuid);
   response->set_status(kFakeStatus);
+  response->set_service_status(grpc_api::ROUTINE_SERVICE_STATUS_OK);
   return response;
 }
 
@@ -146,6 +148,7 @@ MakeGetRoutineUpdateResponse(int uuid, bool include_output) {
   response->set_user_message(kFakeUserMessage);
   response->set_output(include_output ? kFakeOutput : "");
   response->set_status_message(kFakeStatusMessage);
+  response->set_service_status(grpc_api::ROUTINE_SERVICE_STATUS_OK);
   return response;
 }
 
@@ -341,14 +344,14 @@ class GrpcServiceTest : public testing::Test {
       std::unique_ptr<grpc_api::GetAvailableRoutinesResponse>* response) {
     auto request = std::make_unique<grpc_api::GetAvailableRoutinesRequest>();
     EXPECT_CALL(delegate_, GetAvailableRoutinesToService(_))
-        .WillOnce(
-            Invoke([](const base::Callback<void(
-                          const std::vector<grpc_api::DiagnosticRoutine>&)>&
-                          callback) {
-              callback.Run(std::vector<grpc_api::DiagnosticRoutine>(
-                  std::begin(kFakeAvailableRoutines),
-                  std::end(kFakeAvailableRoutines)));
-            }));
+        .WillOnce(Invoke([](const base::Callback<void(
+                                const std::vector<grpc_api::DiagnosticRoutine>&,
+                                grpc_api::RoutineServiceStatus)>& callback) {
+          callback.Run(std::vector<grpc_api::DiagnosticRoutine>(
+                           std::begin(kFakeAvailableRoutines),
+                           std::end(kFakeAvailableRoutines)),
+                       grpc_api::ROUTINE_SERVICE_STATUS_OK);
+        }));
     service()->GetAvailableRoutines(std::move(request),
                                     GrpcCallbackResponseSaver(response));
   }
@@ -359,10 +362,12 @@ class GrpcServiceTest : public testing::Test {
       bool is_valid_request) {
     if (is_valid_request) {
       EXPECT_CALL(delegate_, RunRoutineToService(_, _))
-          .WillOnce(WithArgs<1>(Invoke(
-              [](const base::Callback<void(
-                     int, grpc_api::DiagnosticRoutineStatus)>& callback) {
-                callback.Run(kFakeUuid, kFakeStatus);
+          .WillOnce(WithArgs<1>(
+              Invoke([](const base::Callback<void(
+                            int, grpc_api::DiagnosticRoutineStatus,
+                            grpc_api::RoutineServiceStatus)>& callback) {
+                callback.Run(kFakeUuid, kFakeStatus,
+                             grpc_api::ROUTINE_SERVICE_STATUS_OK);
               })));
     }
     service()->RunRoutine(std::move(request),
@@ -377,14 +382,16 @@ class GrpcServiceTest : public testing::Test {
     if (command != grpc_api::GetRoutineUpdateRequest::COMMAND_UNSET) {
       EXPECT_CALL(delegate_, GetRoutineUpdateRequestToService(
                                  uuid, command, include_output, _))
-          .WillOnce(WithArgs<3>(Invoke(
-              [=](const base::Callback<void(
-                      int, grpc_api::DiagnosticRoutineStatus, int,
-                      grpc_api::DiagnosticRoutineUserMessage,
-                      const std::string&, const std::string&)>& callback) {
+          .WillOnce(WithArgs<3>(
+              Invoke([=](const base::Callback<void(
+                             int, grpc_api::DiagnosticRoutineStatus, int,
+                             grpc_api::DiagnosticRoutineUserMessage,
+                             const std::string&, const std::string&,
+                             grpc_api::RoutineServiceStatus)>& callback) {
                 callback.Run(
                     uuid, kFakeStatus, kFakeProgressPercent, kFakeUserMessage,
-                    include_output ? kFakeOutput : "", kFakeStatusMessage);
+                    include_output ? kFakeOutput : "", kFakeStatusMessage,
+                    grpc_api::ROUTINE_SERVICE_STATUS_OK);
               })));
     }
     auto request = std::make_unique<grpc_api::GetRoutineUpdateRequest>();
@@ -485,7 +492,7 @@ TEST_F(GrpcServiceTest, RunRoutineUnsetType) {
   ExecuteRunRoutine(std::move(request), &response,
                     false /* is_valid_request */);
   EXPECT_EQ(response->uuid(), 0);
-  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_INVALID_FIELD);
 }
 
 TEST_F(GrpcServiceTest, GetRoutineUpdateUnsetType) {
@@ -496,7 +503,7 @@ TEST_F(GrpcServiceTest, GetRoutineUpdateUnsetType) {
                           kIncludeOutput, &response);
   ASSERT_TRUE(response);
   EXPECT_EQ(response->uuid(), kFakeUuid);
-  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_INVALID_FIELD);
 }
 
 // Test that GetEcTelemetry() response contains expected |status| and |payload|
@@ -539,7 +546,7 @@ TEST_F(GrpcServiceTest, RunBatteryRoutineNoParameters) {
   ExecuteRunRoutine(std::move(request), &response,
                     false /* is_valid_request */);
   EXPECT_EQ(response->uuid(), 0);
-  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_INVALID_FIELD);
 }
 
 // Test that we can request that the battery_sysfs routine be run.
@@ -560,7 +567,7 @@ TEST_F(GrpcServiceTest, RunBatterySysfsRoutineNoParameters) {
   ExecuteRunRoutine(std::move(request), &response,
                     false /* is_valid_request */);
   EXPECT_EQ(response->uuid(), 0);
-  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_INVALID_FIELD);
 }
 
 // Test that we can request that the urandom routine be run.
@@ -581,7 +588,7 @@ TEST_F(GrpcServiceTest, RunUrandomRoutineNoParameters) {
   ExecuteRunRoutine(std::move(request), &response,
                     false /* is_valid_request */);
   EXPECT_EQ(response->uuid(), 0);
-  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_INVALID_FIELD);
 }
 
 TEST_F(GrpcServiceTest, GetOsVersionUnset) {

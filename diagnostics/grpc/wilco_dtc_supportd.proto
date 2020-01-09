@@ -282,6 +282,14 @@ message GetEcTelemetryResponse {
   bytes payload = 2;
 }
 
+// Whether or not wilco_dtc_supportd can communicate with
+// CrosHealthdDiagnosticsService. Encoded in all messages whose implementations
+// depend on a good connection to CrosHealthdDiagnosticsService.
+enum RoutineServiceStatus {
+  ROUTINE_SERVICE_STATUS_OK = 0;           // Good connection to cros_healthd.
+  ROUTINE_SERVICE_STATUS_UNAVAILABLE = 1;  // No connection to cros_healthd.
+}
+
 // Enumeration of each of the diagnostics routines the platform may support.
 enum DiagnosticRoutine {
   ROUTINE_UNSET = 0;
@@ -306,6 +314,7 @@ enum DiagnosticRoutineStatus {
   ROUTINE_STATUS_REMOVED =
       8;  // Routine has been removed and is no longer valid.
   ROUTINE_STATUS_CANCELLING = 9;  // Routine is being cancelled.
+  ROUTINE_STATUS_INVALID_FIELD = 10;  // Invalid field in request.
 }
 
 // Enumeration of each of the messages a diagnostics routine can pass back.
@@ -322,6 +331,9 @@ message GetAvailableRoutinesRequest {}
 // Return value of the GetAvailableRoutines RPC.
 message GetAvailableRoutinesResponse {
   repeated DiagnosticRoutine routines = 1;
+
+  // Status of the connection to cros_healthd.
+  RoutineServiceStatus service_status = 2;
 }
 
 // Parameters for the RunRoutine RPC.
@@ -374,6 +386,9 @@ message RunRoutineResponse {
   int32 uuid = 1;
 
   DiagnosticRoutineStatus status = 2;
+
+  // Status of the connection to cros_healthd.
+  RoutineServiceStatus service_status = 3;
 }
 
 // Parameters for the GetRoutineUpdate RPC.
@@ -419,6 +434,8 @@ message GetRoutineUpdateResponse {
   // be used to give the user more detail on a routine reporting
   // ROUTINE_STATUS_ERROR or ROUTINE_STATUS_FAILED.
   string status_message = 6;
+  // Status of the connection to cros_healthd.
+  RoutineServiceStatus service_status = 7;
 }
 
 // Parameters for the GetConfigurationData RPC. The message is currently empty.

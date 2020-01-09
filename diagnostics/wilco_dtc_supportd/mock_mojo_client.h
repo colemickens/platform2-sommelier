@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/buffer.h>
 
+#include "mojo/cros_healthd.mojom.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
@@ -29,6 +30,8 @@ class MockMojoClient
       MojoWilcoDtcSupportdWebRequestStatus, int, mojo::ScopedHandle)>;
   using MojoGetConfigurationDataCallback =
       base::Callback<void(const std::string&)>;
+  using MojoCrosHealthdDiagnosticsServiceRequest =
+      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest;
 
   void SendWilcoDtcMessageToUi(
       mojo::ScopedHandle json_message,
@@ -56,6 +59,10 @@ class MockMojoClient
               (const MojoGetConfigurationDataCallback&),
               (override));
   MOCK_METHOD(void, HandleEvent, (const MojoWilcoDtcSupportdEvent), (override));
+  MOCK_METHOD(void,
+              GetCrosHealthdDiagnosticsService,
+              (MojoCrosHealthdDiagnosticsServiceRequest),
+              (override));
 };
 
 }  // namespace diagnostics

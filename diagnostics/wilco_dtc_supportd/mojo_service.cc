@@ -186,4 +186,10 @@ void MojoService::HandleEvent(const MojomWilcoDtcSupportdEvent event) {
   client_ptr_->HandleEvent(event);
 }
 
+void MojoService::GetCrosHealthdDiagnosticsService(
+    chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+        service) {
+  client_ptr_->GetCrosHealthdDiagnosticsService(std::move(service));
+}
+
 }  // namespace diagnostics

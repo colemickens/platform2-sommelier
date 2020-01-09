@@ -51,6 +51,7 @@
 #include "diagnostics/wilco_dtc_supportd/core.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/fake_browser.h"
+#include "diagnostics/wilco_dtc_supportd/fake_diagnostics_service.h"
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
 #include "diagnostics/wilco_dtc_supportd/system/fake_bluetooth_client.h"
 #include "diagnostics/wilco_dtc_supportd/system/fake_powerd_adapter.h"
@@ -64,6 +65,7 @@
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 using testing::_;
+using testing::ElementsAreArray;
 using testing::Invoke;
 using testing::Mock;
 using testing::Return;
@@ -800,6 +802,38 @@ TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtcInvalidResponseJSON) {
   run_loop_fake_browser.Run();
   EXPECT_EQ(json_message, fake_ui_message_receiver_wilco_dtc()
                               ->handle_message_from_ui_actual_json_message());
+}
+
+// Test that wilco_dtc_supportd can get a CrosHealthdDiagnosticsServicePtr from
+// the browser and use it to fulfill a request from wilco_dtc.
+TEST_F(BootstrappedCoreTest, GetCrosHealthdDiagnosticsService) {
+  FakeDiagnosticsService fake_diagnostics_service;
+  EXPECT_CALL(*wilco_dtc_supportd_client(), GetCrosHealthdDiagnosticsService(_))
+      .WillOnce(
+          WithArg<0>([&](chromeos::cros_healthd::mojom::
+                             CrosHealthdDiagnosticsServiceRequest service) {
+            fake_diagnostics_service.GetCrosHealthdDiagnosticsService(
+                std::move(service));
+          }));
+  fake_diagnostics_service.SetGetAvailableRoutinesResponse(
+      std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>{
+          chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::
+              kBatteryCapacity});
+
+  std::vector<grpc_api::DiagnosticRoutine> received_routines;
+  base::RunLoop run_loop;
+  fake_wilco_dtc()->GetAvailableRoutines(base::Bind(
+      [](base::Closure quit_closure,
+         std::vector<grpc_api::DiagnosticRoutine>* unpacked_response_out,
+         std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response) {
+        for (int i = 0; i < response->routines_size(); i++)
+          unpacked_response_out->push_back(response->routines(i));
+        quit_closure.Run();
+      },
+      run_loop.QuitClosure(), &received_routines));
+  run_loop.Run();
+
+  EXPECT_THAT(received_routines, ElementsAreArray({grpc_api::ROUTINE_BATTERY}));
 }
 
 // Test that wilco_dtc will be notified about configuration changes from

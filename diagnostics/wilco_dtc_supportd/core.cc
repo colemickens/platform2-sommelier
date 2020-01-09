@@ -297,6 +297,19 @@ bool Core::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
   return true;
 }
 
+bool Core::GetCrosHealthdDiagnosticsService(
+    chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServiceRequest
+        service) {
+  if (!mojo_service_) {
+    LOG(WARNING) << "GetCrosHealthdDiagnosticsService happens before Mojo "
+                 << "connection is established.";
+    return false;
+  }
+
+  mojo_service_->GetCrosHealthdDiagnosticsService(std::move(service));
+  return true;
+}
+
 void Core::GetService(MojomWilcoDtcSupportdServiceRequest service,
                       MojomWilcoDtcSupportdClientPtr client,
                       const GetServiceCallback& callback) {
