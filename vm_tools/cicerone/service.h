@@ -456,7 +456,7 @@ class Service final {
   void UnregisterHostname(const std::string& hostname);
 
   // Callback for when the crosdns D-Bus service goes online (or is online
-  // already) so we can then register the NameOnwerChanged callback.
+  // already) so we can then register the NameOwnerChanged callback.
   void OnCrosDnsServiceAvailable(bool service_is_available);
 
   // Callback for when the crosdns D-Bus service restarts so we can
