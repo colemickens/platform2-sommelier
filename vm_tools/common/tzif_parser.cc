@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/cicerone/tzif_parser.h"
+#include "vm_tools/common/tzif_parser.h"
 
 #include <arpa/inet.h>
 #include <stdint.h>

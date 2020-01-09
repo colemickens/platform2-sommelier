@@ -36,8 +36,8 @@
 #include <chunneld/proto_bindings/chunneld_service.pb.h>
 #include <dbus/object_proxy.h>
 
-#include "vm_tools/cicerone/tzif_parser.h"
 #include "vm_tools/common/constants.h"
+#include "vm_tools/common/tzif_parser.h"
 
 using std::string;
 

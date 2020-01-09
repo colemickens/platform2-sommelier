@@ -7,12 +7,12 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
 
-#include "vm_tools/cicerone/tzif_parser.h"
+#include "vm_tools/common/tzif_parser.h"
 
 class TzifParserTest : public ::testing::Test {
  public:
   TzifParserTest() {
-    source_dir_ = base::FilePath(getenv("SRC")).Append("cicerone");
+    source_dir_ = base::FilePath(getenv("SRC")).Append("common");
   }
 
  protected:
