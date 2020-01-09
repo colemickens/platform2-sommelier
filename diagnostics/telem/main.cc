@@ -14,6 +14,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/optional.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -87,7 +88,10 @@ void DisplayCpuInfo(
     const std::vector<chromeos::cros_healthd::mojom::CpuInfoPtr>& cpus) {
   printf("model_name,architecture,max_clock_speed_khz\n");
   for (const auto& cpu : cpus) {
-    printf("%s,%s,%u\n", cpu->model_name.c_str(),
+    // Remove commas from the model name before printing CSVs.
+    std::string csv_model_name;
+    base::RemoveChars(cpu->model_name, ",", &csv_model_name);
+    printf("%s,%s,%u\n", csv_model_name.c_str(),
            GetArchitectureString(cpu->architecture).c_str(),
            cpu->max_clock_speed_khz);
   }
