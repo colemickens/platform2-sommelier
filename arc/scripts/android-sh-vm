@@ -2,79 +2,25 @@
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-# TODO(b/131121671): Update this when script with a method that works for
-#   user images.
 
-# Use arc-networkd ADB proxy.
-# Reference: src/platform2/arc/network/adb_proxy.cc
-target='127.0.0.1:5550'
-logged_in_file='/run/state/logged-in'
-
-is_connected() {
-  [ -n "$(adb devices 2>/dev/null | grep "${target}\sdevice")" ]
-}
-
-try_connect() {
-  # It is necessary to wait a little bit after a successful 'adb connect'
-  # before running 'adb shell', else a 'device offline' error occurs and
-  # the command fails.
-  # The loop below will wait for ~5 seconds at most incase the VM is
-  # booting, and will wait for 500ms even after a successful connection
-  # instead of immediately breaking.
-  local attempts=0
-  while [ "${attempts}" -le 10 ] && ! is_connected; do
-    adb connect ${target} >/dev/null
-    sleep 0.5
-    : $(( attempts += 1 ))
-  done
-}
-
-# The user might still be logging in.
-# The loop below will wait for ~15 seconds at most.
-attempts=0
-while [ "${attempts}" -le 30 ] && [ ! -f "${logged_in_file}" ]; do
-  sleep 0.5
-  : $(( attempts += 1 ))
-done
-
-if [ ! -f "${logged_in_file}" ]; then
-  echo "$0: Could not connect, user is not logged in." >&2
+user=root
+owner_id="$(cryptohome --action=status | jq -r '.mounts[0].owner')"
+if [ -z "${owner_id}" ]; then
+  echo "$0: Could not connect, cannot get owner_id" >&2
   exit 1
 fi
+vm_name=arcvm
 
-# 'adb shell' always passes the command line to /bin/sh, so we need to
-# escape arguments.
-command="$(/usr/bin/printf "%q " "$@")"
+# TODO(b/147857453): Use /system/bin/runcon.
 
-# adb tries to create .android in the home directory, pass it
-# a temporary directory instead.
-tmpdir=$(mktemp -d)
-export HOME="${tmpdir}"
-
-# Try to start the server first if it's not started.
-adb start-server 2>/dev/null
-
-try_connect
-
-if ! is_connected; then
-  echo "$0: Could not connect, is the VM running?" >&2
-  rm -rf "${tmpdir}"
-  exit 1
-fi
-
-# ANDROID_DEBUGGABLE in /usr/share/arcvm/config.json has to be true for this to
-# work.
-adb root >/dev/null
-
-# Same as above, need to check if the device is still connected after adb root.
-try_connect
-
-if [ $# -eq 0 ]; then
-  adb shell
-else
-  # Run /system/bin/sh to be consistent with 'android-sh'.
-  adb exec-out "exec /system/bin/sh ${command}"
-fi
-ret=$?
-rm -rf "${tmpdir}"
-exit $ret
+exec /usr/bin/vsh \
+  --user="${user}" --owner_id="${owner_id}" --vm_name="${vm_name}" -- \
+  /system/bin/env -i \
+  ANDROID_ASSETS=/assets \
+  ANDROID_DATA=/data \
+  ANDROID_ROOT=/system \
+  ANDROID_STORAGE=/storage \
+  ASEC_MOUNTPOINT=/mnt/asec \
+  EXTERNAL_STORAGE=/sdcard \
+  PATH=/sbin:/vendor/bin:/system/bin:/system/xbin \
+  /system/bin/sh "$@"
