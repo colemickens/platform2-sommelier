@@ -40,31 +40,39 @@ V4L2Device::~V4L2Device() {
   CloseDevice();
 }
 
-bool V4L2Device::OpenDevice() {
+bool V4L2Device::OpenDevice(bool show_err) {
   struct stat st;
   if (-1 == stat(dev_name_, &st)) {
-    printf("<<< Error: could not find v4l2 device %s: (%d) %s.>>>\n", dev_name_,
-           errno, strerror(errno));
+    if (show_err) {
+      printf("<<< Error: could not find v4l2 device %s: (%d) %s.>>>\n",
+             dev_name_, errno, strerror(errno));
+    }
     return false;
   }
 
   if (!S_ISCHR(st.st_mode)) {
-    printf("<<< Error: specified v4l2 device %s is not char device.>>>\n",
-           dev_name_);
+    if (show_err) {
+      printf("<<< Error: specified v4l2 device %s is not char device.>>>\n",
+             dev_name_);
+    }
     return false;
   }
 
   if (MAJOR(st.st_rdev) != V4L2_VIDEO_CAPTURE_MAJOR ||
       MINOR(st.st_rdev) >= V4L2_VIDEO_CAPTURE_MINOR_MAX) {
-    printf("<<< Error: specified v4l2 device %s is not v4l2 device.>>>\n",
-           dev_name_);
+    if (show_err) {
+      printf("<<< Error: specified v4l2 device %s is not v4l2 device.>>>\n",
+             dev_name_);
+    }
     return false;
   }
 
   fd_ = open(dev_name_, O_RDWR | O_NONBLOCK, 0);
   if (-1 == fd_) {
-    printf("<<< Error: specified v4l2 device %s could not be opened.>>>\n",
-           dev_name_);
+    if (show_err) {
+      printf("<<< Error: specified v4l2 device %s could not be opened.>>>\n",
+             dev_name_);
+    }
     return false;
   }
 
@@ -73,7 +81,9 @@ bool V4L2Device::OpenDevice() {
     return false;
 
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-    printf("<<< Error: %s does not support video capture.>>>\n", dev_name_);
+    if (show_err) {
+      printf("<<< Error: %s does not support video capture.>>>\n", dev_name_);
+    }
     return false;
   }
 

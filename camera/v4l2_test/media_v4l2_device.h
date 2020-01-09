@@ -41,7 +41,7 @@ class V4L2Device {
   V4L2Device(const char* dev_name, uint32_t buffers);
   virtual ~V4L2Device();
 
-  virtual bool OpenDevice();
+  virtual bool OpenDevice(bool show_err = true);
   virtual void CloseDevice();
   // After this function is called, the driver may adjust the settings if they
   // are unsupported.  Caller can use GetV4L2Format() and GetFrameRate() to know

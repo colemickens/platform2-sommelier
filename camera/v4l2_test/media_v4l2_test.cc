@@ -2,13 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/sys_info.h>
 #include <base/time/time.h>
@@ -46,6 +49,70 @@ constexpr char kHalv3TestList[] = "halv3";
 constexpr char kCertificationTestList[] = "certification";
 
 const float kDefaultFrameRate = 30.0;
+
+std::string GetUsbVidPid(const base::FilePath& path) {
+  auto read_id = [&](const char* name) -> std::string {
+    base::FilePath id_path(
+        base::StringPrintf("/sys/class/video4linux/%s/device/../%s",
+                           path.BaseName().value().c_str(), name));
+    base::FilePath normalized;
+    if (!base::NormalizeFilePath(id_path, &normalized)) {
+      return "";
+    }
+    std::string id;
+    if (!base::ReadFileToString(normalized, &id)) {
+      return "";
+    }
+    return base::TrimWhitespaceASCII(id, base::TRIM_ALL).as_string();
+  };
+  std::string vid = read_id("idVendor");
+  std::string pid = read_id("idProduct");
+  if (vid.empty() || pid.empty()) {
+    return "";
+  }
+  return vid + ":" + pid;
+}
+
+bool IsCaptureDevice(const base::FilePath& path) {
+  const uint32_t kCaptureMask =
+      V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
+  // Old drivers use (CAPTURE | OUTPUT) for memory-to-memory video devices.
+  const uint32_t kOutputMask =
+      V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
+  const uint32_t kM2mMask = V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE;
+
+  V4L2Device dev(path.value().c_str(), 1);
+  if (!dev.OpenDevice(/*show_err=*/false)) {
+    return false;
+  }
+  v4l2_capability caps;
+  if (!dev.ProbeCaps(&caps, false)) {
+    return false;
+  }
+  uint32_t mask = (caps.capabilities & V4L2_CAP_DEVICE_CAPS)
+                      ? caps.device_caps
+                      : caps.capabilities;
+  return (mask & kCaptureMask) && !(mask & kOutputMask) && !(mask & kM2mMask);
+}
+
+bool IsUsbCamera(const base::FilePath& path) {
+  return IsCaptureDevice(path) && !GetUsbVidPid(path).empty();
+}
+
+std::vector<base::FilePath> GetUsbCameras() {
+  std::vector<base::FilePath> usb_cameras;
+  base::FilePath pattern("/dev/video*");
+  base::FileEnumerator enumerator(pattern.DirName(), false,
+                                  base::FileEnumerator::FILES,
+                                  pattern.BaseName().value());
+  for (auto path = enumerator.Next(); !path.empty(); path = enumerator.Next()) {
+    if (IsUsbCamera(path)) {
+      usb_cameras.push_back(path);
+    }
+  }
+  std::sort(usb_cameras.begin(), usb_cameras.end());
+  return usb_cameras;
+}
 
 void AddNegativeGtestFilter(const std::string& pattern) {
   LOG(INFO) << "Disable test " << pattern;
@@ -108,9 +175,10 @@ bool CompareFormat(const SupportedFormat& fmt1, const SupportedFormat& fmt2) {
 class V4L2TestEnvironment : public ::testing::Environment {
  public:
   V4L2TestEnvironment(const std::string& test_list,
-                      const std::string& device_path,
-                      const std::string& usb_info)
-      : test_list_(test_list), device_path_(device_path), usb_info_(usb_info) {
+                      const std::string& device_path)
+      : test_list_(test_list),
+        device_path_(device_path),
+        usb_info_(GetUsbVidPid(base::FilePath(device_path))) {
     // The gtest filter need to be modified before RUN_ALL_TESTS().
     if (test_list == kDefaultTestList) {
       // Disable new requirements added in HALv3.
@@ -128,7 +196,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
     } else if (test_list == kHalv3TestList) {
       // This camera module does not support 1080p 30fps and got waived.
       // Please see http://b/115453284 for the detail.
-      if (usb_info == "0bda:5647") {
+      if (usb_info_ == "0bda:5647") {
         AddNegativeGtestFilter(
             "V4L2Test/V4L2TestWithResolution.Resolutions/1920x1080");
         AddNegativeGtestFilter("V4L2Test.CroppingResolution");
@@ -137,22 +205,20 @@ class V4L2TestEnvironment : public ::testing::Environment {
   }
 
   void SetUp() {
+    ASSERT_THAT(usb_info_, MatchesRegex("[0-9a-f]{4}:[0-9a-f]{4}"));
+
     LOG(INFO) << "Test list: " << test_list_;
     LOG(INFO) << "Device path: " << device_path_;
-    LOG(INFO) << "USB Info: " << (usb_info_.empty() ? "(empty)" : usb_info_);
+    LOG(INFO) << "USB Info: " << usb_info_;
 
     ASSERT_THAT(test_list_,
                 AnyOf(StrEq(kDefaultTestList), StrEq(kHalv3TestList),
                       StrEq(kCertificationTestList)));
     ASSERT_TRUE(base::PathExists(base::FilePath(device_path_)));
 
-    const DeviceInfo* device_info = nullptr;
     CameraCharacteristics characteristics;
-    if (!usb_info_.empty()) {
-      ASSERT_THAT(usb_info_, MatchesRegex("[0-9a-f]{4}:[0-9a-f]{4}"));
-      device_info =
-          characteristics.Find(usb_info_.substr(0, 4), usb_info_.substr(5, 9));
-    }
+    const DeviceInfo* device_info =
+        characteristics.Find(usb_info_.substr(0, 4), usb_info_.substr(5, 9));
 
     if (test_list_ != kDefaultTestList) {
       ASSERT_TRUE(characteristics.ConfigFileExists())
@@ -737,16 +803,24 @@ TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
+  DEFINE_bool(list_usbcam, false, "List available USB cameras");
   DEFINE_string(test_list, "default", "Select different test list");
   DEFINE_string(device_path, "/dev/video0", "Path to the video device");
-  DEFINE_string(usb_info, "", "Device vendor id and product id as vid:pid");
 
   // Add a newline at the beginning of the usage text to separate the help
   // message from gtest.
   brillo::FlagHelper::Init(argc, argv, "\nTest V4L2 camera functionalities.");
 
-  cros::tests::g_env = new cros::tests::V4L2TestEnvironment(
-      FLAGS_test_list, FLAGS_device_path, FLAGS_usb_info);
+  if (FLAGS_list_usbcam) {
+    std::vector<base::FilePath> usb_cameras = cros::tests::GetUsbCameras();
+    for (const auto& path : usb_cameras) {
+      std::cout << path.value() << std::endl;
+    }
+    return 0;
+  }
+
+  cros::tests::g_env =
+      new cros::tests::V4L2TestEnvironment(FLAGS_test_list, FLAGS_device_path);
   ::testing::AddGlobalTestEnvironment(cros::tests::g_env);
   return RUN_ALL_TESTS();
 }
