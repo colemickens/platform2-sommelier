@@ -928,8 +928,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Check the CPU count.
-  if (request.cpus() == 0 ||
-      request.cpus() > base::SysInfo::NumberOfProcessors()) {
+  // TODO(yusukes): Also fail if cpus() is zero.
+  if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
     LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
     response.set_failure_reason("Invalid CPU count");
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1204,9 +1204,13 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .audio_capture = request.enable_audio_capture(),
   };
 
+  // TODO(yusukes): Remove the workaround and just use request.cpus().
+  const int32_t cpus = request.cpus() == 0 ? base::SysInfo::NumberOfProcessors()
+                                           : request.cpus();
+
   auto vm = TerminaVm::Create(
-      std::move(kernel), std::move(rootfs), request.cpus(), std::move(disks),
-      vsock_cid, std::move(network_client), std::move(server_proxy),
+      std::move(kernel), std::move(rootfs), cpus, std::move(disks), vsock_cid,
+      std::move(network_client), std::move(server_proxy),
       std::move(runtime_dir), std::move(rootfs_device),
       std::move(stateful_device), features);
   if (!vm) {
