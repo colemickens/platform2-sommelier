@@ -4,6 +4,10 @@
 
 #include "cros-disks/fuse_mounter.h"
 
+// Has to come before linux/fs.h due to conflicting definitions of MS_*
+// constants.
+#include <sys/mount.h>
+
 #include <fcntl.h>
 #include <linux/capability.h>
 #include <linux/fs.h>
@@ -40,6 +44,47 @@ const mode_t kSourcePathPermissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 const char kFuseDeviceFile[] = "/dev/fuse";
 const MountOptions::Flags kRequiredFuseMountFlags =
     MS_NODEV | MS_NOEXEC | MS_NOSUID;
+
+class FUSEMountPoint : public MountPoint {
+ public:
+  FUSEMountPoint(const base::FilePath& path, const Platform* platform)
+      : MountPoint(path), platform_(platform) {}
+
+  ~FUSEMountPoint() override { DestructorUnmount(); }
+
+ private:
+  // MountPoint overrides:
+  MountErrorType UnmountImpl() override {
+    // We take a 2-step approach to unmounting FUSE filesystems. First, try a
+    // normal unmount. This lets the VFS flush any pending data and lets the
+    // filesystem shut down cleanly. If the filesystem is busy, force unmount
+    // the filesystem. This is done because there is no good recovery path the
+    // user can take, and these filesystem are sometimes unmounted implicitly on
+    // login/logout/suspend. This action is similar to native filesystems (i.e.
+    // FAT32, ext2/3/4, etc) which are lazy unmounted if a regular unmount fails
+    // because the filesystem is busy.
+
+    MountErrorType error = platform_->Unmount(path().value(), 0 /* flags */);
+    if (error != MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
+      // MOUNT_ERROR_PATH_ALREADY_MOUNTED is returned on EBUSY.
+      return error;
+    }
+
+    // For FUSE filesystems, MNT_FORCE will cause the kernel driver to
+    // immediately close the channel to the user-space driver program and cancel
+    // all outstanding requests. However, if any program is still accessing the
+    // filesystem, the umount2() will fail with EBUSY and the mountpoint will
+    // still be attached. Since the mountpoint is no longer valid, use
+    // MNT_DETACH to also force the mountpoint to be disconnected.
+    LOG(WARNING) << "Mount point " << quote(path())
+                 << " is busy, using force unmount";
+    return platform_->Unmount(path().value(), MNT_FORCE | MNT_DETACH);
+  }
+
+  const Platform* platform_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(FUSEMountPoint);
+};
 
 void CleanUpCallback(base::OnceClosure cleanup,
                      const base::FilePath& mount_path,
@@ -380,7 +425,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
                      target_path));
 
   *error = MOUNT_ERROR_NONE;
-  return MountPoint::CreateLeaking(target_path);
+  return std::make_unique<FUSEMountPoint>(target_path, platform_);
 }
 
 std::unique_ptr<SandboxedProcess> FUSEMounter::CreateSandboxedProcess() const {
