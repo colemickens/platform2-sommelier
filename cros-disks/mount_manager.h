@@ -208,6 +208,9 @@ class MountManager {
 
   // A new version of DoMount() that returns a MountPoint on success.
   // Subclasses must override one of DoMount() or DoMountNew().
+  // On success, an implementation MUST set |error| to MOUNT_ERROR_NONE and
+  // return a non-null MountPoint. On failure, |error| must be set to an
+  // appropriate error code and nullptr is returned.
   virtual std::unique_ptr<MountPoint> DoMountNew(
       const std::string& source_path,
       const std::string& filesystem_type,
