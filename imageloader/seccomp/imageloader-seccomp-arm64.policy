@@ -28,17 +28,20 @@ getresuid: 1
 getsockname: 1
 gettimeofday: 1
 gettid: 1
+mkdirat: 1
 # Don't allow mmap with both PROT_WRITE and PROT_EXEC
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 # Don't allow mprotect with both PROT_WRITE and PROT_EXEC
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 munmap: 1
+newfstatat: 1
 openat: 1
 pipe2: 1
 prctl: 1
 pwrite64: 1
 read: 1
 recvmsg: 1
+renameat: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 sendmsg: 1
@@ -52,4 +55,5 @@ sysinfo: 1
 tgkill: 1
 uname: 1
 unlinkat: 1
+waitid: 1
 write: 1
