@@ -121,6 +121,9 @@ constexpr char kMetricsUserName[] = "metrics";
 // metrics group for creating /run/metrics/external/crash-reporter.
 constexpr char kMetricsGroupName[] = "metrics";
 
+// CrosEventEnum for crash reports.
+constexpr char kReportCountEnum[] = "Crash.Collector.CollectionCount";
+
 using base::FileEnumerator;
 using base::FilePath;
 using base::StringPrintf;
@@ -324,6 +327,7 @@ CrashCollector::CrashCollector(
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(kCrashLoopModeKey, "true");
   }
+  metrics_lib_ = std::make_unique<MetricsLibrary>();
 }
 
 CrashCollector::~CrashCollector() {
@@ -1198,6 +1202,9 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   if (WriteNewFile(meta_path, meta_data.c_str(), meta_data.size()) < 0) {
     PLOG(ERROR) << "Unable to write " << meta_path.value();
   }
+
+  // Record report created metric in UMA.
+  metrics_lib_->SendCrosEventToUMA(kReportCountEnum);
 
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     SetUpDBus();

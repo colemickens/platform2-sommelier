@@ -27,6 +27,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/paths.h"
@@ -870,6 +871,20 @@ TEST_F(CrashCollectorTest, MetaDataDoesntCreateSymlink) {
   EXPECT_FALSE(base::PathExists(symlink_target_path));
   EXPECT_TRUE(FindLog("Unable to write"));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
+}
+
+TEST_F(CrashCollectorTest, CollectionLogsToUMA) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+
+  const FilePath kMetaFilePath = test_dir_.Append("meta.txt");
+  const char kPayloadName[] = "payload-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
+
+  EXPECT_CALL(*mock_ref, SendCrosEventToUMA("Crash.Collector.CollectionCount"))
+      .WillOnce(Return(true));
+  collector_.FinishCrash(kMetaFilePath, "kernel", kPayloadName);
 }
 
 TEST_F(CrashCollectorTest, GetLogContents) {

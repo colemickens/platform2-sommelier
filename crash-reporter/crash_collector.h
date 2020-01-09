@@ -23,6 +23,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <session_manager/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
+#include <metrics/metrics_library.h>
 
 constexpr mode_t kSystemCrashFilesMode = 0660;
 
@@ -68,6 +69,7 @@ class CrashCollector {
 
   explicit CrashCollector(const std::string& collector_name,
                           const std::string& tag = "");
+
   explicit CrashCollector(
       const std::string& collector_name,
       CrashDirectorySelectionMethod crash_directory_selection_method,
@@ -91,6 +93,11 @@ class CrashCollector {
   void set_reporter_state_directory_for_test(
       const base::FilePath& forced_directory) {
     crash_reporter_state_path_ = forced_directory;
+  }
+
+  void set_metrics_library_for_test(
+      std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
+    metrics_lib_ = std::move(metrics_lib);
   }
 
   // For testing, set the log config file path instead of kDefaultLogConfig.
@@ -181,6 +188,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorMetaDataTest, MetaData);
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntCreateSymlink);
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntOverwriteSymlink);
+  FRIEND_TEST(CrashCollectorTest, CollectionLogsToUMA);
   FRIEND_TEST(CrashCollectorTest, ParseProcessTicksFromStat);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
   FRIEND_TEST(CrashCollectorTest, StripMacAddressesBasic);
@@ -439,6 +447,8 @@ class CrashCollector {
 
   // Prepended to log messages to differentiate between collectors.
   const std::string tag_;
+
+  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 
   DISALLOW_COPY_AND_ASSIGN(CrashCollector);
 };
