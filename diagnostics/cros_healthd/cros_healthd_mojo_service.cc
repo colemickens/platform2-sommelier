@@ -17,6 +17,7 @@
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "diagnostics/cros_healthd/utils/cpu_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
+#include "diagnostics/cros_healthd/utils/timezone_utils.h"
 #include "diagnostics/cros_healthd/utils/vpd_utils.h"
 
 namespace diagnostics {
@@ -110,6 +111,10 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
         telemetry_info.block_device_info = base::Optional<std::vector<
             chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>>(
             FetchNonRemovableBlockDevicesInfo(base::FilePath("/")));
+        break;
+      }
+      case ProbeCategoryEnum::kTimezone: {
+        telemetry_info.timezone_info = FetchTimezoneInfo(base::FilePath("/"));
         break;
       }
     }

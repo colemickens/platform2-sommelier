@@ -34,6 +34,8 @@ constexpr std::pair<const char*,
         {"cached_vpd",
          chromeos::cros_healthd::mojom::ProbeCategoryEnum::kCachedVpdData},
         {"cpu", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kCpu},
+        {"timezone",
+         chromeos::cros_healthd::mojom::ProbeCategoryEnum::kTimezone},
 };
 
 std::string GetArchitectureString(CpuArchitectureEnum architecture) {
@@ -97,6 +99,14 @@ void DisplayCpuInfo(
   }
 }
 
+void DisplayTimezoneInfo(
+    const chromeos::cros_healthd::mojom::TimezoneInfoPtr& timezone) {
+  DCHECK(!timezone.is_null());
+
+  printf("posix_timezone,timezone_region\n");
+  printf("%s,%s\n", timezone->posix.c_str(), timezone->region.c_str());
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(
     const chromeos::cros_healthd::mojom::TelemetryInfoPtr& info) {
@@ -115,6 +125,10 @@ void DisplayTelemetryInfo(
   const auto& cpus = info->cpu_info;
   if (cpus)
     DisplayCpuInfo(cpus.value());
+
+  const auto& timezone = info->timezone_info;
+  if (timezone)
+    DisplayTimezoneInfo(timezone);
 }
 
 // Create a stringified list of the category names for use in help.

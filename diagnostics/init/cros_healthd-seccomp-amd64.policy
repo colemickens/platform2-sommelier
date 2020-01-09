@@ -67,4 +67,6 @@ execve: 1
 arch_prctl: 1
 set_tid_address: 1
 tgkill: 1
+readlink: 1
+futex: 1
 stat: 1

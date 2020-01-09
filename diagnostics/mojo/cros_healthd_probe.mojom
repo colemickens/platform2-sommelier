@@ -24,6 +24,7 @@ enum ProbeCategoryEnum {
   kNonRemovableBlockDevices,
   kCachedVpdData,
   kCpu,
+  kTimezone,
 };
 
 // Information related to the main battery.
@@ -57,7 +58,7 @@ struct BatteryInfo {
 
 // Information related to a specific non-removable block device.
 struct NonRemovableBlockDeviceInfo {
-  // The path of this storage in system. It is useful if caller needs to
+  // The path of this storage on the system. It is useful if caller needs to
   // correlate with other information.
   string path;
   // Exact size of this storage, reported in bytes
@@ -88,6 +89,14 @@ struct CpuInfo {
   uint32 max_clock_speed_khz;
 };
 
+// Timezone information.
+struct TimezoneInfo {
+  // The timezone of the device in POSIX standard.
+  string posix;
+  // The timezone region of the device.
+  string region;
+};
+
 // A collection of all the device's telemetry information that cros_healthd is
 // capable of reporting. Note that every field in TelemetryInfo is nullable, and
 // the response for a particular ProbeTelemetryInfo request will only contain
@@ -107,4 +116,7 @@ struct TelemetryInfo {
   // Information about each of the device's CPUs. Only present when kCpu was
   // included in the categories input to ProbeTelemetryInfo.
   array<CpuInfo>? cpu_info;
+  // Information about the device's timezone. Only present when kTimezone was
+  // included in the categories input to ProbeTelemetryInfo.
+  TimezoneInfo? timezone_info;
 };
