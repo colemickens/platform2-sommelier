@@ -1,10 +1,10 @@
 DRIVER=="wilco-ec", \
     RUN+="/bin/chown power:power \
         $sys$devpath/boot_on_ac \
-        $sys$devpath/usb_power_share", \
+        $sys$devpath/usb_charge", \
     RUN+="/bin/chmod ug+w \
         $sys$devpath/boot_on_ac \
-        $sys$devpath/usb_power_share"
+        $sys$devpath/usb_charge"
 
 KERNEL=="wilco-charger", \
     SUBSYSTEM=="power_supply", \
