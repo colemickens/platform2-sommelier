@@ -92,6 +92,12 @@ mojom::CameraAlgorithmOpsPtr
 CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr(
     const std::string& socket_path) {
   VLOGF_ENTER();
+  base::AutoLock l(*static_lock_);
+
+  if (!mojo_initialized_) {
+    LOGF(WARNING) << "Mojo environment is not initialized";
+    return nullptr;
+  }
 
   mojo::ScopedMessagePipeHandle parent_pipe;
   mojom::CameraAlgorithmOpsPtr algorithm_ops;
@@ -115,8 +121,6 @@ CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr(
 }
 
 bool CameraMojoChannelManagerImpl::InitializeMojoEnv() {
-  VLOGF_ENTER();
-
   base::AutoLock l(*static_lock_);
 
   if (mojo_initialized_) {
@@ -136,12 +140,19 @@ bool CameraMojoChannelManagerImpl::InitializeMojoEnv() {
       ipc_thread_->task_runner(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   mojo_initialized_ = true;
+  LOGF(INFO) << "Mojo IPC environment initialized";
   return true;
 }
 
 void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
   DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
+  base::AutoLock l(*static_lock_);
+
+  if (!mojo_initialized_) {
+    LOGF(WARNING) << "Mojo environment is not initialized";
+    return;
+  }
 
   if (dispatcher_.is_bound()) {
     return;
@@ -228,13 +239,12 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
 // static
 __attribute__((destructor(101))) void
 CameraMojoChannelManagerImpl::TearDownMojoEnv() {
-  VLOGF_ENTER();
-
   base::AutoLock l(*static_lock_);
 
   if (!mojo_initialized_) {
     return;
   }
+  mojo_initialized_ = false;
 
   ipc_thread_->task_runner()->PostTask(
       FROM_HERE,
@@ -242,6 +252,7 @@ CameraMojoChannelManagerImpl::TearDownMojoEnv() {
   ipc_thread_->Stop();
   delete ipc_thread_;
   ipc_thread_ = nullptr;
+  LOGF(INFO) << "Mojo IPC environment destroyed";
 }
 
 // static
