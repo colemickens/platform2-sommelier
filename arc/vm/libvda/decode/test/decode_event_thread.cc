@@ -171,15 +171,15 @@ void DecodeEventThread::CallUseOutputBuffer(int32_t picture_buffer_id,
   DCHECK(thread_checker_.CalledOnValidThread());
 
   int plane_count = gbm_bo_get_plane_count(bo);
-  int plane_fd = gbm_bo_get_plane_fd(bo, 0);
+  int plane_fd = gbm_bo_get_fd(bo);
 
   std::vector<video_frame_plane_t> vda_planes;
 
   // video_frame_plane_t* vda_planes = new video_frame_plane_t[plane_count];
   for (int plane_index = 0; plane_index < plane_count; plane_index++) {
     video_frame_plane_t plane;
-    plane.offset = gbm_bo_get_plane_offset(bo, plane_index);
-    plane.stride = gbm_bo_get_plane_stride(bo, plane_index);
+    plane.offset = gbm_bo_get_offset(bo, plane_index);
+    plane.stride = gbm_bo_get_stride_for_plane(bo, plane_index);
 
     // Check that offsets are increasing which would indicate that all planes
     // are in a single buffer.
