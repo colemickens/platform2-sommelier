@@ -84,6 +84,7 @@
         "name": "some",
         "oem-id": "0",
         "power": {
+          "allow-ambient-eq": "1",
           "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
@@ -210,6 +211,7 @@
         "name": "some",
         "oem-id": "0",
         "power": {
+          "allow-ambient-eq": "1",
           "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
@@ -406,6 +408,7 @@
         "name": "whitelabel",
         "oem-id": "1",
         "power": {
+          "allow-ambient-eq": "1",
           "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
@@ -495,6 +498,7 @@
         "name": "whitelabel",
         "oem-id": "1",
         "power": {
+          "allow-ambient-eq": "1",
           "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
@@ -583,6 +587,7 @@
         "name": "whitelabel",
         "oem-id": "1",
         "power": {
+          "allow-ambient-eq": "1",
           "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
@@ -672,6 +677,7 @@
         "name": "whitelabel",
         "oem-id": "1",
         "power": {
+          "allow-ambient-eq": "1",
           "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",

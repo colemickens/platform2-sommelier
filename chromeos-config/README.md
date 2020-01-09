@@ -489,6 +489,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | [ANY] | N/A | N/A | N/A | N/A | N/A | This type allows additional properties not governed by the schema. See the type description for details on these additional properties.|
+| allow-ambient-eq | string | ```^[01]$``` | False |  | False | Enable (1) or disable (0) Ambient EQ. |
 | touchpad-wakeup | string | ```^[01]$``` | False |  | False | Enable (1) or disable (0) wake from touchpad. |
 
 ### thermal

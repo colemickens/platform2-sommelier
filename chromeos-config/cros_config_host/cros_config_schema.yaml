@@ -467,6 +467,10 @@ properties:
                 the power config example in libcros_config/test.yaml
               type: object
               properties:
+                allow-ambient-eq:
+                  description: Enable (1) or disable (0) Ambient EQ.
+                  type: string
+                  pattern: "^[01]$"
                 touchpad-wakeup:
                   description: Enable (1) or disable (0) wake from touchpad.
                   type: string
