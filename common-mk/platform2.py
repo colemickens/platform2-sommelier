@@ -54,6 +54,7 @@ _IUSE = [
     'dlc',
     'double_extend_pcr_issue',
     'fake_drivefs_launcher',
+    'fast_transition',
     'feedback',
     'fp_on_power_button',
     'ftdi_tpm',
