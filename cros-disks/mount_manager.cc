@@ -146,23 +146,22 @@ MountErrorType MountManager::Remount(const std::string& source_path,
 
   // Perform the underlying mount operation.
   MountOptions applied_options;
-  MountErrorType error_type =
-      DoMount(source_path, filesystem_type, updated_options, *mount_path,
-              &applied_options);
+  MountErrorType error_type = MOUNT_ERROR_UNKNOWN;
+  std::unique_ptr<MountPoint> mount_point =
+      DoMountNew(source_path, filesystem_type, updated_options,
+                 base::FilePath(*mount_path), &applied_options, &error_type);
   if (error_type != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Cannot remount path " << quote(source_path)
                << "': " << error_type;
     return error_type;
   }
 
+  DCHECK(mount_point);
   LOG(INFO) << "Path " << quote(source_path) << " on " << quote(*mount_path)
             << " is remounted with read_only="
             << applied_options.IsReadOnlyOptionSet();
-  AddOrUpdateMountStateCache(
-      source_path,
-      std::make_unique<MountPoint>(base::FilePath(*mount_path),
-                                   std::make_unique<LegacyUnmounter>(this)),
-      applied_options.IsReadOnlyOptionSet());
+  AddOrUpdateMountStateCache(source_path, std::move(mount_point),
+                             applied_options.IsReadOnlyOptionSet());
 
   return error_type;
 }
