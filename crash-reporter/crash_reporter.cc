@@ -371,8 +371,8 @@ int main(int argc, char* argv[]) {
   DEFINE_int64(crash_loop_before, -1,
                "UNIX timestamp. If invoked before this time, use the special "
                "login-crash-loop handling system. (Keep crash report in memory "
-               "and then pass to debugd for immediate upload.)")
-      DEFINE_bool(core2md_failure, false, "Core2md failure test");
+               "and then pass to debugd for immediate upload.)");
+  DEFINE_bool(core2md_failure, false, "Core2md failure test");
   DEFINE_bool(directory_failure, false, "Spool directory failure test");
   DEFINE_string(filter_in, "", "Ignore all crashes but this for testing");
   DEFINE_bool(
