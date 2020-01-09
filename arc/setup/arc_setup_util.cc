@@ -1071,7 +1071,7 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
       }
       if (fchownat(dirfd.get(), target_base_name.c_str(), from_stat.st_uid,
                    from_stat.st_gid, 0 /* flags */) < 0) {
-        PLOG(ERROR) << "Failed to set onwers " << target_path.value();
+        PLOG(ERROR) << "Failed to set owners " << target_path.value();
         return false;
       }
 
