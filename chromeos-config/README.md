@@ -302,6 +302,7 @@ In the tables below,
 | bluetooth | [bluetooth](#bluetooth) |  | False |  | False |  |
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
 | camera | [camera](#camera) |  | False |  | False |  |
+| cros-healthd | [cros-healthd](#cros-healthd) |  | False |  | False | Contains properties used by cros_healthd for model-specific telemetry. Each property represents a category of information and contains boolean properties that indicate whether a device supports a particular telemetry item. See cros_healthd_probe.mojom for descriptions of each property. |
 | detachable-base | [detachable-base](#detachable-base) |  | False |  | False | Contains the configuration for the hammerd which is used to update the detachable base firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
 | firmware | [firmware](#firmware) |  | True |  | False |  |
@@ -390,6 +391,23 @@ In the tables below,
 | config-path | string |  | False |  | False | Specified the camera configuration file path on the model. |
 | count | integer |  | False |  | False | Specified the number of cameras on the model. |
 | legacy-usb | boolean |  | False |  | False | Indicates if the device has legacy usb cameras. |
+
+### cros-healthd
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| battery | [battery](#battery) |  | False |  | False |  |
+| cached-vpd | [cached-vpd](#cached-vpd) |  | False |  | False |  |
+
+### battery
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| has-manufacture-date-smart | boolean |  | False |  | False |  |
+| has-temperature-smart | boolean |  | False |  | False |  |
+
+### cached-vpd
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| has-sku-number | boolean |  | False |  | False |  |
 
 ### detachable-base
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

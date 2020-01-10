@@ -635,6 +635,29 @@ properties:
                 stylus-category: *stylus-category
                 psu-type: *psu-type
               additionalProperties: false
+            cros-healthd:
+              type: object
+              description: Contains properties used by cros_healthd for
+                model-specific telemetry. Each property represents a category of
+                information and contains boolean properties that indicate
+                whether a device supports a particular telemetry item. See
+                cros_healthd_probe.mojom for descriptions of each property.
+              properties:
+                battery:
+                  type: object
+                  properties:
+                    has-manufacture-date-smart:
+                      type: boolean
+                    has-temperature-smart:
+                      type: boolean
+                  additionalProperties: false
+                cached-vpd:
+                  type: object
+                  properties:
+                    has-sku-number:
+                      type: boolean
+                  additionalProperties: false
+              additionalProperties: false
           additionalProperties: false
           required:
           - firmware
