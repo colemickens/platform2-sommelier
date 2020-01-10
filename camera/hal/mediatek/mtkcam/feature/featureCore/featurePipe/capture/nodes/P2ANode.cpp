@@ -1139,7 +1139,7 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
       IHalSensorList* const pIHalSensorList = GET_HalSensorList();
       if (pIHalSensorList) {
         sensorDev =
-            (MUINT32)pIHalSensorList->querySensorDevIdx(rEnqueData.mSensorId);
+            (MUINT32)pIHalSensorList->querySensorDevIdx(mSensorIndex);
         NSCam::SensorStaticInfo sensorStaticInfo;
         memset(&sensorStaticInfo, 0, sizeof(NSCam::SensorStaticInfo));
         pIHalSensorList->querySensorStaticInfo(sensorDev, &sensorStaticInfo);
