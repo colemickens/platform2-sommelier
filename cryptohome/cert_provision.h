@@ -56,6 +56,7 @@ enum CertificateProfile {
 enum SignMechanism {
   SHA1_RSA_PKCS = 0,  // Sign SHA-1 hash using RSASSA-PKCS1-v1_5
   SHA256_RSA_PKCS = 1,  // Sign SHA-256 hash using RSASSA-PKCS1-v1_5
+  SHA256_RSA_PSS = 2,
 };
 
 using ProgressCallback = base::Callback<void(

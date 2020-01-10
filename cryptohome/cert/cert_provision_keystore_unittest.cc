@@ -358,6 +358,17 @@ TEST_F(CertProvisionKeyStoreTest, SignSuccess) {
   EXPECT_TRUE(key_store_.Sign(
       key_id, kCertLabel, SignMechanism::SHA256_RSA_PKCS, data, &sig));
   EXPECT_EQ("sig-sha256", sig);
+
+  found_objects_.assign({kObject});
+
+  signature_ = "sig-sha256-pss";
+  EXPECT_CALL(pkcs11_,
+              SignInit(_, kSession, CKM_SHA256_RSA_PKCS_PSS, _, kObject));
+  EXPECT_CALL(pkcs11_, Sign(_, kSession, _, _, _, _));
+  sig.clear();
+  EXPECT_TRUE(key_store_.Sign(key_id, kCertLabel, SignMechanism::SHA256_RSA_PSS,
+                              data, &sig));
+  EXPECT_EQ("sig-sha256-pss", sig);
 }
 
 // Checks that Sign fails if there's no key.

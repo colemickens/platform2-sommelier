@@ -7,6 +7,7 @@
 #include <base/logging.h>
 
 #include "cryptohome/cert/cert_provision_keystore.h"
+#include <openssl/sha.h>
 
 namespace {
 
@@ -99,6 +100,9 @@ bool KeyStoreImpl::GetMechanismType(SignMechanism mechanism,
     case SHA256_RSA_PKCS:
       *type = CKM_SHA256_RSA_PKCS;
       break;
+    case SHA256_RSA_PSS:
+      *type = CKM_SHA256_RSA_PKCS_PSS;
+      break;
     default:
       return false;
   }
@@ -142,18 +146,11 @@ OpResult KeyStoreImpl::Sign(const std::string& id,
                             SignMechanism mechanism,
                             const std::string& data,
                             std::string* signature) {
-  CK_MECHANISM mech;
-  if (!GetMechanismType(mechanism, &mech.mechanism)) {
-    return {Status::KeyStoreError, "Unknown sign mechanism."};
-  }
-  mech.pParameter = NULL;
-  mech.ulParameterLen = 0;
-
   CK_OBJECT_CLASS class_value = CKO_PRIVATE_KEY;
   CK_ATTRIBUTE attributes[] = {
-    {CKA_CLASS, &class_value, sizeof(class_value)},
-    {CKA_ID, const_cast<char*>(id.c_str()), id.size()},
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.size()},
+      {CKA_CLASS, &class_value, sizeof(class_value)},
+      {CKA_ID, const_cast<char*>(id.c_str()), id.size()},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.size()},
   };
   std::vector<CK_OBJECT_HANDLE> objects;
   OpResult result = Find(attributes, arraysize(attributes), &objects);
@@ -163,6 +160,33 @@ OpResult KeyStoreImpl::Sign(const std::string& id,
   if (objects.size() != 1) {
     return {Status::KeyStoreError,
             objects.size() ? "Multiple keys found." : "No key to sign."};
+  }
+
+  CK_MECHANISM mech;
+  CK_RSA_PKCS_PSS_PARAMS params;
+  if (!GetMechanismType(mechanism, &mech.mechanism)) {
+    return {Status::KeyStoreError, "Unknown sign mechanism."};
+  }
+  if (mechanism == SHA256_RSA_PSS) {
+    // Get the length of the RSA key
+    CK_ATTRIBUTE attribute_template[] = {
+        {CKA_MODULUS, nullptr, 0},
+    };
+    CK_RV ret = C_GetAttributeValue(session_, objects[0], attribute_template,
+                                    arraysize(attribute_template));
+    if (ret != CKR_OK) {
+      return KeyStoreResError("Failed to get attribute value", ret);
+    }
+
+    int rsa_size = attribute_template[0].ulValueLen;
+    CK_ULONG max_sLen = rsa_size - 2 - SHA256_DIGEST_LENGTH;
+
+    params = {CKM_SHA256_RSA_PKCS_PSS, CKG_MGF1_SHA256, max_sLen};
+    mech.pParameter = &params;
+    mech.ulParameterLen = sizeof(params);
+  } else {
+    mech.pParameter = NULL;
+    mech.ulParameterLen = 0;
   }
 
   CK_RV res = C_SignInit(session_, &mech, objects[0]);

@@ -32,7 +32,7 @@ void PrintHelp() {
   printf("  Sign using the provisioned certificate:\n");
   printf("  --sign --label=<label> --in=<file_in> [--out=<file_out>]\n");
   printf("         --mechanism=<mechanism>\n");
-  printf("  where mechanism: sha1_rsa, sha256_rsa\n");
+  printf("  where mechanism: sha1_rsa, sha256_rsa, sha256_rsa_pss\n");
 }
 
 int main(int argc, char** argv) {
@@ -118,6 +118,8 @@ int main(int argc, char** argv) {
       sign_mechanism = cert_provision::SHA1_RSA_PKCS;
     } else if (mechanism == "sha256_rsa") {
       sign_mechanism = cert_provision::SHA256_RSA_PKCS;
+    } else if (mechanism == "sha256_rsa_pss") {
+      sign_mechanism = cert_provision::SHA256_RSA_PSS;
     } else {
       PrintHelp();
       return 2;
