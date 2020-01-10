@@ -23,10 +23,6 @@ class EventDispatcher;
 
 class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
  public:
-  // NOTE: we currently can only support a single instance handling
-  // non-null service appeared/vanished callbacks. Pass empty Closures if you
-  // don't need to watch for service appearance/vanish.
-  // See https://crbug.com/1029162 for more info.
   SupplicantProcessProxy(EventDispatcher* dispatcher,
                          const scoped_refptr<dbus::Bus>& bus,
                          const base::Closure& service_appeared_callback,
