@@ -51,6 +51,7 @@ set_tid_address: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
 stat64: 1
+statx: 1
 sysinfo: 1
 tgkill: 1
 ugetrlimit: 1

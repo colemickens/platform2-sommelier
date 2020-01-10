@@ -53,6 +53,7 @@ setpgid: 1
 setsid: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
+statx: 1
 sysinfo: 1
 tgkill: 1
 uname: 1

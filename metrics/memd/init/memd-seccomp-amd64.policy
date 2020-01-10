@@ -53,6 +53,7 @@ sigaltstack: 1
 # For D-Bus and syslog.
 socket: arg0 == AF_UNIX
 stat: 1
+statx: 1
 sysinfo: 1
 tgkill: 1
 write: 1
