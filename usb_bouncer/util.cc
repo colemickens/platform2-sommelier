@@ -98,7 +98,12 @@ class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
     LOG(ERROR) << message;
   }
 
-  std::string getLastRule() { return lastRule_.toString(); }
+  std::string getLastRule() {
+    if (!lastRule_) {
+      return "";
+    }
+    return lastRule_.toString();
+  }
 
  private:
   usbguard::Rule lastRule_;

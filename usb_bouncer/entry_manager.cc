@@ -139,7 +139,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
   switch (action) {
     case UdevAction::kAdd: {
       std::string rule = rule_from_devpath_(devpath);
-      if (!ValidateRule(rule)) {
+      if (rule.empty() || !ValidateRule(rule)) {
         LOG(ERROR) << "Unable convert devpath to USBGuard allow-list rule.";
         return false;
       }
