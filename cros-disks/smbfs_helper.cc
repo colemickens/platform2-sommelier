@@ -21,6 +21,7 @@ namespace {
 const char kUserName[] = "fuse-smbfs";
 const char kHelperTool[] = "/usr/sbin/smbfs";
 const char kType[] = "smbfs";
+const char kSeccompPolicyFile[] = "/usr/share/policy/smbfs-seccomp.policy";
 
 const char kMojoIdOptionPrefix[] = "mojo_id=";
 const char kDbusSocketPath[] = "/run/dbus";
@@ -100,7 +101,8 @@ std::unique_ptr<FUSEMounter> SmbfsHelper::CreateMounter(
   // TODO(crbug.com/939235): Create a seccomp policy for smbfs.
   return std::make_unique<SmbfsMounter>(
       "", target_path.value(), type(), mount_options, platform(),
-      process_reaper(), program_path().value(), user(), "", paths);
+      process_reaper(), program_path().value(), user(), kSeccompPolicyFile,
+      paths);
 }
 
 }  // namespace cros_disks
