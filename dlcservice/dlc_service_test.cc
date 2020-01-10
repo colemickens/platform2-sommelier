@@ -225,17 +225,16 @@ TEST_F(DlcServiceSkipLoadTest, StartUpMountSuccessTest) {
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>("/good/mount"), Return(true)));
 
-  base::FilePath metadata_path_active_first_dlc =
-      utils::GetDlcPath(metadata_path_, kFirstDlc)
-          .Append(kDlcMetadataFilePingActive);
+  base::FilePath metadata_path_first_dlc =
+      utils::GetDlcPath(metadata_path_, kFirstDlc);
 
-  EXPECT_FALSE(base::PathExists(metadata_path_active_first_dlc));
-
+  EXPECT_TRUE(base::PathExists(metadata_path_first_dlc));
+  base::DeleteFile(metadata_path_first_dlc, true);
   dlc_service_->LoadDlcModuleImages();
 
   // Startup successfully to mount.
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
-  EXPECT_TRUE(base::PathExists(metadata_path_active_first_dlc));
+  EXPECT_TRUE(base::PathExists(metadata_path_first_dlc));
 }
 
 TEST_F(DlcServiceSkipLoadTest, StartUpMountFailureTest) {
@@ -391,9 +390,18 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledValid) {
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .Times(0);
 
+  base::FilePath metadata_path_active_first_dlc =
+      utils::GetDlcPath(metadata_path_, kFirstDlc)
+          .Append(kDlcMetadataFilePingActive);
+  // Set Active to 0 and check if the value is set to 1.
+  EXPECT_TRUE(base::WriteFile(metadata_path_active_first_dlc, "0", 1));
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
   EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
+  std::string active_value;
+  EXPECT_TRUE(
+      base::ReadFileToString(metadata_path_active_first_dlc, &active_value));
+  EXPECT_STREQ(active_value.c_str(), kDlcMetadataActiveValue);
 }
 
 TEST_F(DlcServiceTest, InstallDuplicatesFail) {
@@ -430,14 +438,6 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledAndDuplicatesFail) {
   EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
   EXPECT_TRUE(base::PathExists(metadata_path_.Append(kFirstDlc)));
   EXPECT_FALSE(base::PathExists(metadata_path_.Append(kSecondDlc)));
-
-  std::string active_value;
-  base::FilePath metadata_path_active_first_dlc =
-      utils::GetDlcPath(metadata_path_, kFirstDlc)
-          .Append(kDlcMetadataFilePingActive);
-  EXPECT_TRUE(
-      base::ReadFileToString(metadata_path_active_first_dlc, &active_value));
-  EXPECT_STREQ(active_value.c_str(), kDlcMetadataActiveValue);
 }
 
 TEST_F(DlcServiceTest, InstallFailureCleansUp) {

@@ -116,19 +116,19 @@ class DlcManager::DlcManagerImpl {
 
     for (const auto& dlc : installing_) {
       const string& id = dlc.first;
+      string throwaway_err_code, throwaway_err_msg;
       // If already installed, pick up the root.
       if (installed_.find(id) != installed_.end()) {
         installing_[id] = installed_[id];
       } else {
-        string throwaway_err_code, throwaway_err_msg;
         if (!Create(id, err_code, err_msg)) {
           CancelInstall(&throwaway_err_code, &throwaway_err_msg);
           return false;
         }
-        // Failure to set the metadata flags should not fail the install.
-        if (!SetActive(id, &throwaway_err_code, &throwaway_err_msg)) {
-          LOG(WARNING) << throwaway_err_msg;
-        }
+      }
+      // Failure to set the metadata flags should not fail the install.
+      if (!SetActive(id, &throwaway_err_code, &throwaway_err_msg)) {
+        LOG(WARNING) << throwaway_err_msg;
       }
     }
     return true;
@@ -254,7 +254,9 @@ class DlcManager::DlcManagerImpl {
     return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
   }
 
-  bool SetActive(const string& id, string* err_code, string* err_msg) {
+  bool CreateMetadata(const std::string& id,
+                      string* err_code,
+                      string* err_msg) {
     // Create the DLC ID metadata directory with correct permissions if it
     // doesn't exist.
     FilePath metadata_path_local = utils::GetDlcPath(metadata_dir_, id);
@@ -264,6 +266,15 @@ class DlcManager::DlcManagerImpl {
         *err_msg = "Failed to create the DLC metadata directory for DLC:" + id;
         return false;
       }
+    }
+    return true;
+  }
+
+  bool SetActive(const string& id, string* err_code, string* err_msg) {
+    // Create the metadata directory if it doesn't exist.
+    if (!CreateMetadata(id, err_code, err_msg)) {
+      LOG(ERROR) << err_msg;
+      return false;
     }
     FilePath active_metadata =
         utils::GetDlcPath(metadata_dir_, id)
@@ -382,8 +393,8 @@ class DlcManager::DlcManagerImpl {
       string& installed_dlc_module_root = installed_dlc_module_itr->second;
       string err_code, err_msg;
 
-      // Set the DLCs to active.
-      if (!SetActive(installed_dlc_module_id, &err_code, &err_msg)) {
+      // Create the metadata directory if it doesn't exist.
+      if (!CreateMetadata(installed_dlc_module_id, &err_code, &err_msg)) {
         LOG(WARNING) << err_msg;
       }
 
