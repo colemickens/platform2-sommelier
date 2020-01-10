@@ -513,6 +513,13 @@ SafeFD OpenStateFile(const base::FilePath& base_path,
     return SafeFD();
   }
 
+  // Acquire an exclusive lock on the base path to avoid races when creating
+  // the sub directories. This lock is released when base_fd goes out of scope.
+  if (HANDLE_EINTR(flock(base_fd.get(), LOCK_EX)) < 0) {
+    PLOG(ERROR) << "Failed to lock \"" << base_path.value() << '"';
+    return SafeFD();
+  }
+
   // Ensure the parent directory has the correct permissions.
   SafeFD parent_fd;
   std::tie(parent_fd, err) =
