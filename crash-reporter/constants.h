@@ -9,6 +9,10 @@ namespace constants {
 
 constexpr char kCrashGroupName[] = "crash-access";
 
+// Key in the .meta file. If "false", this crash report was created as part of a
+// test and should not be uploaded to the server. Considered "true" (go ahead
+// and upload) if not present.
+constexpr char kUploadAllowedKey[] = "upload";
 }
 
 #endif  // CRASH_REPORTER_CONSTANTS_H_

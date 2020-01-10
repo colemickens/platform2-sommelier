@@ -306,7 +306,6 @@ CrashCollector::CrashCollector(
     CrashDirectorySelectionMethod crash_directory_selection_method,
     CrashSendingMode crash_sending_mode,
     const std::string& tag)
-
     : lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
       system_crash_path_(paths::kSystemCrashDirectory),
       crash_reporter_state_path_(paths::kCrashReporterStateDirectory),
@@ -340,6 +339,10 @@ void CrashCollector::Initialize(
     is_feedback_allowed_function_ = []() { return true; };
     system_crash_path_ = base::FilePath(paths::kSystemRunCrashDirectory);
   }
+}
+
+void CrashCollector::SetNoUploads() {
+  AddCrashMetaData(constants::kUploadAllowedKey, "false");
 }
 
 void CrashCollector::SetUpDBus() {

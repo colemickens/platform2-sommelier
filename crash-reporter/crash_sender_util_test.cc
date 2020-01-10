@@ -299,6 +299,8 @@ class CrashSenderUtilTest : public testing::Test {
     // per timestamps correctly.
     const base::Time good_meta_time = now - hour * 3;
     const base::Time absolute_meta_time = now - hour * 2;
+    const base::Time no_upload_meta_time =
+        now - base::TimeDelta::FromMinutes(90);
     const base::Time recent_os_meta_time = now - hour;
     const base::Time devcore_meta_time = now;
 
@@ -414,6 +416,33 @@ class CrashSenderUtilTest : public testing::Test {
       return false;
     }
 
+    // This should be kept, since it's less than 24 hours old.
+    no_upload_meta_ = crash_directory.Append("no_upload.meta");
+    no_upload_log_ = crash_directory.Append("no_upload.log");
+    if (!CreateFile(no_upload_meta_,
+                    "payload=" + no_upload_log_.value() +
+                        "\n"
+                        "upload=false\n"
+                        "done=1\n",
+                    no_upload_meta_time))
+      return false;
+    if (!CreateFile(no_upload_log_, "", now))
+      return false;
+
+    // This should be removed, since it's over 24 hours old.
+    old_no_upload_meta_ = crash_directory.Append("old_no_upload.meta");
+    old_no_upload_log_ = crash_directory.Append("old_no_upload.log");
+    if (!CreateFile(old_no_upload_meta_,
+                    "payload=" + old_no_upload_log_.value() +
+                        "\n"
+                        "upload=false\n"
+                        "done=1\n",
+                    now - base::TimeDelta::FromHours(25)))
+      return false;
+    if (!CreateFile(old_no_upload_log_, "",
+                    now - base::TimeDelta::FromHours(25)))
+      return false;
+
     return true;
   }
 
@@ -469,6 +498,10 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath recent_os_log_;
   base::FilePath old_os_meta_;
   base::FilePath large_meta_;
+  base::FilePath no_upload_meta_;
+  base::FilePath no_upload_log_;
+  base::FilePath old_no_upload_meta_;
+  base::FilePath old_no_upload_log_;
 };
 
 base::FilePath* CrashSenderUtilTest::build_directory_ = nullptr;
@@ -713,6 +746,9 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_EQ(Sender::kIgnore,
             sender.ChooseAction(new_incomplete_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Recent incomplete metadata"));
+  EXPECT_EQ(Sender::kIgnore,
+            sender.ChooseAction(no_upload_meta_, &reason, &info));
+  EXPECT_THAT(reason, HasSubstr("Ignoring new no-upload file"));
 
   // Device coredump should be ignored by default.
   EXPECT_EQ(Sender::kIgnore,
@@ -752,6 +788,10 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
 
   EXPECT_EQ(Sender::kRemove, sender.ChooseAction(large_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Metadata file is unusually large"));
+
+  EXPECT_EQ(Sender::kRemove,
+            sender.ChooseAction(old_no_upload_meta_, &reason, &info));
+  EXPECT_THAT(reason, HasSubstr("Removing old no-upload file"));
 
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled,
                             raw_metrics_lib));
