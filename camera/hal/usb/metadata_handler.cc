@@ -394,13 +394,26 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   bool support_constant_framerate = !device_info.constant_framerate_unsupported;
   std::vector<int32_t> available_fps_ranges;
 
-  for (auto fps : supported_fps) {
+  // For devices that cannot actually meet the fps ranges they report, only
+  // report (min, max) and optional (max, max) if they support constant frame
+  // rate.
+  if (device_info.quirks & kQuirkReportLeastFpsRanges) {
     available_fps_ranges.push_back(kMinFps);
-    available_fps_ranges.push_back(fps);
+    available_fps_ranges.push_back(max_fps);
 
     if (support_constant_framerate) {
+      available_fps_ranges.push_back(max_fps);
+      available_fps_ranges.push_back(max_fps);
+    }
+  } else {
+    for (auto fps : supported_fps) {
+      available_fps_ranges.push_back(kMinFps);
       available_fps_ranges.push_back(fps);
-      available_fps_ranges.push_back(fps);
+
+      if (support_constant_framerate) {
+        available_fps_ranges.push_back(fps);
+        available_fps_ranges.push_back(fps);
+      }
     }
   }
   update_static(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,

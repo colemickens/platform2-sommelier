@@ -19,6 +19,7 @@ enum : uint32_t {
   kQuirkMonocle = 1 << 0,
   kQuirkPreferMjpeg = 1 << 1,
   kQuirkRestartOnTimeout = 1 << 2,
+  kQuirkReportLeastFpsRanges = 1 << 3,
 };
 
 uint32_t GetQuirks(const std::string& vid, const std::string& pid);

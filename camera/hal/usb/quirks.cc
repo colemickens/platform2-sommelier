@@ -22,6 +22,10 @@ const QuirksMap& GetQuirksMap() {
       {{"046d", "0809"}, kQuirkPreferMjpeg},
       // Huddly GO (crbug.com/1010557)
       {{"2bd9", "0011"}, kQuirkRestartOnTimeout},
+      // Liteon 5M AF 6BA502N2 (b/147397859)
+      {{"0bda", "5646"}, kQuirkReportLeastFpsRanges},
+      // Liteon AR CCD 8BA842N2A (b/147397859)
+      {{"0bda", "5647"}, kQuirkReportLeastFpsRanges},
   };
   return kQuirksMap;
 }
