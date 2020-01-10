@@ -64,7 +64,8 @@ class KeymasterServer : public arc::mojom::KeymasterServer {
   void Abort(uint64_t operationHandle, const AbortCallback& callback) override;
 
  private:
-  ::keymaster::PureSoftKeymasterContext context_;
+  // Owned by |keymaster_|.
+  ::keymaster::PureSoftKeymasterContext* context_;
   ::keymaster::AndroidKeymaster keymaster_;
 
   DISALLOW_COPY_AND_ASSIGN(KeymasterServer);

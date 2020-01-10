@@ -19,11 +19,12 @@ constexpr size_t kOperationTableSize = 16;
 }  // namespace
 
 KeymasterServer::KeymasterServer()
-    : keymaster_(&context_, kOperationTableSize) {}
+    : context_(new ::keymaster::PureSoftKeymasterContext()),
+      keymaster_(context_, kOperationTableSize) {}
 
 void KeymasterServer::SetSystemVersion(uint32_t os_version,
                                        uint32_t os_patchlevel) {
-  context_.SetSystemVersion(os_version, os_patchlevel);
+  context_->SetSystemVersion(os_version, os_patchlevel);
 }
 
 void KeymasterServer::AddRngEntropy(const std::vector<uint8_t>& data,
