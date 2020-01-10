@@ -30,6 +30,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -39,6 +40,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/scoped_minijail.h>
 #include <seneschal/proto_bindings/seneschal_service.pb.h>
@@ -861,6 +863,17 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     return dbus_response;
   }
 
+  base::ScopedFD src_fd(brillo::OpenSafely(src, O_RDONLY | O_CLOEXEC, 0600));
+  if (!src_fd.is_valid()) {
+    LOG(ERROR) << "Requested path may contain symlinks or point to a "
+               << "non-regular file or directory";
+    response.set_failure_reason(
+        "Requested path may contain symlinks or point to a non-regular "
+        "file/directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   dst = dst.Append(path);
   // The destination directory may already exist either because one of its
   // children was shared and it was automatically created or one of its parents
@@ -876,7 +889,7 @@ std::unique_ptr<dbus::Response> Service::SharePath(
 
     // Then create a file or directory, as necessary.
     struct stat info;
-    if (stat(src.value().c_str(), &info) != 0) {
+    if (fstat(src_fd.get(), &info) != 0) {
       PLOG(ERROR) << "Unable to stat source path";
       response.set_failure_reason("Unable to stat source path");
       writer.AppendProtoAsArrayOfBytes(response);
@@ -905,7 +918,8 @@ std::unique_ptr<dbus::Response> Service::SharePath(
 
   // Do the mount.
   unsigned long flags = MS_BIND | MS_REC;  // NOLINT(runtime/int)
-  const char* source = src.value().c_str();
+  string proc_path = base::StringPrintf("/proc/self/fd/%d", src_fd.get());
+  const char* source = proc_path.c_str();
   const char* target = dst.value().c_str();
   if (mount(source, target, "none", flags, nullptr) != 0) {
     PLOG(ERROR) << "Unable to create bind mount";
