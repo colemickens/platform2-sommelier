@@ -149,7 +149,16 @@ We store reports in a couple of different places.
 
 *   `/var/spool/crash/`: Non-user (i.e. system) queued reports.
 *   `/home/chronos/<user_hash>/crash/`: User-specific queued reports.
-    Used when invoked as the user (e.g. by Chrome as `chronos`).
+    Used when invoked as the user (e.g. by Chrome as `chronos` while logged in).
+*   `/home/chronos/crash`: Crashes from the `chronos` user when not logged in,
+    for instance, if Chrome crashes while not logged in.
+    *** promo
+    When on a test build, all user crashes are written to `/home/chronos/crash`
+    instead of `/home/chronos/<user_hash>/crash/`. This avoids having crashes
+    become inaccessible if a test logs the user out.
+    ***
+*   `/mnt/stateful_partition/unencrypted/preserve/crash`: Crashes found early in
+    the boot process (before `/var/spool/crash` is available) are stored here.
 *   `/home/root/<user_hash>/crash-reporter/`: User-specific queued reports.
     Used when invoked as root (e.g. by the kernel to handle crashes for
     processes that were running as `chronos`).
@@ -259,7 +268,8 @@ See https://crbug.com/275910 for more details.
 At runtime, there are a few different ways one can trigger uploading.
 Since [crash_sender] has internal locking, you don't have to worry about any of
 these methods clobbering or racing with any other crash component.
-* People can run [crash_sender] directly as root (when in developer mode).
+* People can run [crash_sender] directly as root (when in developer mode). You
+  may need to pass `--dev`.
 * [crosh] has a `upload_crashes` command to trigger immediately.
 * The `chrome://crashes` page has a "Start Uploading" link.
 
