@@ -1400,6 +1400,7 @@ void ArcSetup::CleanUpStaleMountPoints() {
       arc_paths_->media_removable_read_directory));
   EXIT_IF(!arc_mounter_->UmountIfExists(
       arc_paths_->media_removable_write_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->android_mutable_source));
 }
 
 void ArcSetup::SetUpSharedMountPoints() {
