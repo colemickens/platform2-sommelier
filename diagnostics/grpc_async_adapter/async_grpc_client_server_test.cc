@@ -175,6 +175,14 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
     // the server and client used here.
     tmpfile_ = tmpdir_.GetPath().AppendASCII("testsocket");
 
+    StartServer();
+
+    // Create the AsyncGrpcClient.
+    client_ = std::make_unique<AsyncGrpcClient<test_rpcs::ExampleService>>(
+        message_loop_.task_runner(), GetDomainSocketAddress());
+  }
+
+  void StartServer() {
     // Create and start the AsyncGrpcServer.
     server_ = std::make_unique<
         AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>>(
@@ -190,10 +198,6 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
         &test_rpcs::ExampleService::AsyncService::RequestHeavyRpc,
         pending_heavy_rpcs_.GetRpcHandlerCallback());
     ASSERT_TRUE(server_->Start());
-
-    // Create the AsyncGrpcClient.
-    client_ = std::make_unique<AsyncGrpcClient<test_rpcs::ExampleService>>(
-        message_loop_.task_runner(), GetDomainSocketAddress());
   }
 
   // Create the second AsyncGrpcClient using the same socket, which has to be
@@ -213,6 +217,11 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
     // test only.
     // TODO(b/132969701): remove when gRPC won't have hangs bug.
     client2_.reset();
+  }
+
+  void RestartServer() {
+    ShutDownServer();
+    StartServer();
   }
 
   void TearDown() override {
@@ -524,6 +533,51 @@ TEST_F(AsyncGrpcClientServerTest, TwoRpcClients) {
     EXPECT_EQ(i, rpc_replies[i].response().echoed_int());
   }
   ShutDownSecondClient();
+}
+
+// Set up a RPC server, then restart it. Send one RPC to each instance.
+TEST_F(AsyncGrpcClientServerTest, RpcServerRestarted) {
+  {
+    RpcReply<test_rpcs::EchoIntRpcResponse> rpc_reply;
+    test_rpcs::EchoIntRpcRequest request;
+    request.set_int_to_echo(1);
+    client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncEchoIntRpc, request,
+                     rpc_reply.MakeWriter());
+
+    pending_echo_int_rpcs_.WaitUntilPendingRpcCount(1);
+    auto pending_rpc = pending_echo_int_rpcs_.GetOldestPendingRpc();
+    EXPECT_EQ(1, pending_rpc->request->int_to_echo());
+
+    auto response = std::make_unique<test_rpcs::EchoIntRpcResponse>();
+    response->set_echoed_int(1);
+    pending_rpc->handler_done_callback.Run(std::move(response));
+
+    rpc_reply.Wait();
+    EXPECT_FALSE(rpc_reply.IsError());
+    EXPECT_EQ(1, rpc_reply.response().echoed_int());
+  }
+
+  RestartServer();
+
+  {
+    RpcReply<test_rpcs::EchoIntRpcResponse> rpc_reply;
+    test_rpcs::EchoIntRpcRequest request;
+    request.set_int_to_echo(2);
+    client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncEchoIntRpc, request,
+                     rpc_reply.MakeWriter());
+
+    pending_echo_int_rpcs_.WaitUntilPendingRpcCount(1);
+    auto pending_rpc = pending_echo_int_rpcs_.GetOldestPendingRpc();
+    EXPECT_EQ(2, pending_rpc->request->int_to_echo());
+
+    auto response = std::make_unique<test_rpcs::EchoIntRpcResponse>();
+    response->set_echoed_int(2);
+    pending_rpc->handler_done_callback.Run(std::move(response));
+
+    rpc_reply.Wait();
+    EXPECT_FALSE(rpc_reply.IsError());
+    EXPECT_EQ(2, rpc_reply.response().echoed_int());
+  }
 }
 
 }  // namespace diagnostics
