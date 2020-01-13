@@ -47,6 +47,7 @@ using ::testing::_;
 using ::testing::ElementsAreArray;
 using ::testing::Invoke;
 using ::testing::WithArgs;
+using ::testing::WithoutArgs;
 
 namespace {
 
