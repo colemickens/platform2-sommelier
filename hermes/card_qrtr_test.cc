@@ -105,8 +105,9 @@ constexpr auto kGetChallengeResp = brillo::make_array<uint8_t>(
 );
 // clang-format on
 
-void NullResponseCallback(std::vector<std::vector<uint8_t>>& responses,
-                          int err) {}
+void NullResponseCallback(
+    std::vector<std::vector<uint8_t>>& responses,  // NOLINT(runtime/references)
+    int err) {}
 
 // Create a full QRTR packet given the data of an APDU message. The current
 // implementation only works for non-fragmented APDUs.
@@ -138,10 +139,11 @@ hermes::EnableIfIterator_t<Iterator, std::vector<uint8_t>> CreateQrtrFromApdu(
       .Times(1)                                                               \
       .WillOnce(                                                              \
           WithArgs<0, 1>(Invoke([this, d = data](const void* arr, size_t l) { \
+            const uint8_t* array = reinterpret_cast<const uint8_t*>(arr);     \
             auto expected = d;                                                \
-            expected[1] = ((uint8_t*)arr)[1];                                 \
+            expected[1] = array[1];                                           \
             this->receive_ids_.push_back(expected[1]);                        \
-            EXPECT_THAT(expected, ElementsAreArray((uint8_t*)arr, l));        \
+            EXPECT_THAT(expected, ElementsAreArray(array, l));                \
             return 0;                                                         \
           })))
 
