@@ -12,6 +12,17 @@ echo_time() {
   date +"[%m%d/%H%M%S.%N INFO] $*"
 }
 
+has_file_opened() {
+  local pid="$1"
+  local filename="$2"
+  for f in /proc/"${pid}"/fd/*; do
+    if [ "$(readlink "${f}")" = "${filename}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 while [ "${RETRY}" -gt 0 ] && [ -z "${PID}" ]; do
   PID=$(initctl status timberslide LOG_PATH="${LOG_PATH}" | \
     awk 'NF>1{print $NF}')
@@ -25,7 +36,9 @@ if [ -z "${PID}" ]; then
 fi
 
 # Check if the debugfs is deleted.
-while [ -z $(lsof -p "${PID}" | grep "${LOG_PATH} (deleted)") ]; do
+# The readlink filename would be changed to "${LOG_PATH} (deleted)" when the
+# file is deleted.
+while has_file_opened "${PID}" "${LOG_PATH}"; do
   # EC logs are fetched per 10 seconds, so check the status per 5 second should
   # be sufficient.
   sleep 5
