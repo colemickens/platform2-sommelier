@@ -4,8 +4,6 @@
 
 #include "vm_tools/concierge/untrusted_vm_utils.h"
 
-#include <sys/utsname.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -101,36 +99,14 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
 
 }  // namespace
 
-// Gets the kernel version of the host it's run on. Returns true if retrieved
-// successfully, false otherwise.
-base::Optional<KernelVersionAndMajorRevision> GetKernelVersion() {
-  struct utsname buf;
-  if (uname(&buf))
-    return base::nullopt;
-
-  // Parse uname result in the form of x.yy.zzz. The parsed data should be in
-  // the expected format.
-  std::vector<base::StringPiece> versions = base::SplitStringPiece(
-      buf.release, ".", base::WhitespaceHandling::TRIM_WHITESPACE,
-      base::SplitResult::SPLIT_WANT_ALL);
-  DCHECK_EQ(versions.size(), 3);
-  DCHECK(!versions[0].empty());
-  DCHECK(!versions[1].empty());
-  int version;
-  bool result = base::StringToInt(versions[0], &version);
-  DCHECK(result);
-  int major_revision;
-  result = base::StringToInt(versions[1], &major_revision);
-  DCHECK(result);
-  return std::make_pair(version, major_revision);
-}
-
 UntrustedVMUtils::UntrustedVMUtils(
     dbus::ObjectProxy* debugd_proxy,
+    KernelVersionAndMajorRevision host_kernel_version,
     KernelVersionAndMajorRevision min_needed_version,
     const base::FilePath& l1tf_status_path,
     const base::FilePath& mds_status_path)
     : debugd_proxy_(debugd_proxy),
+      host_kernel_version_(host_kernel_version),
       min_needed_version_(min_needed_version),
       l1tf_status_path_(l1tf_status_path),
       mds_status_path_(mds_status_path) {
@@ -140,15 +116,7 @@ UntrustedVMUtils::UntrustedVMUtils(
 
 UntrustedVMUtils::MitigationStatus
 UntrustedVMUtils::CheckUntrustedVMMitigationStatus() {
-  if (!host_kernel_version_) {
-    host_kernel_version_ = GetKernelVersion();
-    if (!host_kernel_version_) {
-      LOG(ERROR) << "Failed to get kernel version";
-      return MitigationStatus::VULNERABLE;
-    }
-  }
-
-  if (host_kernel_version_.value() < min_needed_version_)
+  if (host_kernel_version_ < min_needed_version_)
     return MitigationStatus::VULNERABLE;
 
   MitigationStatus status = GetL1TFMitigationStatus(l1tf_status_path_);
@@ -167,7 +135,7 @@ bool UntrustedVMUtils::DisableSMT() {
 
   std::unique_ptr<dbus::Response> response = debugd_proxy_->CallMethodAndBlock(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (response == nullptr)
+  if (!response)
     return false;
 
   bool result;

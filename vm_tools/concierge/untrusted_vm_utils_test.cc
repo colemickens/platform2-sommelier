@@ -58,13 +58,11 @@ class UntrustedVMUtilsTest : public ::testing::Test {
     l1tf_status_path_ = temp_dir_.GetPath().Append("l1tf");
     mds_status_path_ = temp_dir_.GetPath().Append("mds");
 
-    untrusted_vm_utils_ = std::make_unique<UntrustedVMUtils>(
-        debugd_proxy_.get(), kMinKernelVersion, l1tf_status_path_,
-        mds_status_path_);
-
     // Set a kernel version that supports untrusted VMs by default. Individual
     // test cases can override this if testing for related error scenarios.
-    untrusted_vm_utils_->SetKernelVersionForTesting(kMinKernelVersion);
+    untrusted_vm_utils_ = std::make_unique<UntrustedVMUtils>(
+        debugd_proxy_.get(), kMinKernelVersion, kMinKernelVersion,
+        l1tf_status_path_, mds_status_path_);
   }
 
  protected:

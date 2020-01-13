@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
 #include <unistd.h>
@@ -174,10 +175,6 @@ constexpr const char kL1TFFilePath[] =
 // File path that reports the MDS vulnerability status.
 constexpr const char kMDSFilePath[] =
     "/sys/devices/system/cpu/vulnerabilities/mds";
-
-// This change enables strict security checks before starting untrusted VMs.
-// TODO(abhishekbh): Remove when platforms are up to date.
-constexpr bool kEnableStrictUntrustedVMChecks = false;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -620,6 +617,30 @@ bool ListVmDisksInLocation(const string& cryptohome_id,
   return true;
 }
 
+// Returns the current kernel version. If there is a failure to retrieve the
+// version it returns <INT_MIN, INT_MIN>.
+KernelVersionAndMajorRevision GetKernelVersion() {
+  struct utsname buf;
+  if (uname(&buf))
+    return std::make_pair(INT_MIN, INT_MIN);
+
+  // Parse uname result in the form of x.yy.zzz. The parsed data should be in
+  // the expected format.
+  std::vector<base::StringPiece> versions = base::SplitStringPiece(
+      buf.release, ".", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_ALL);
+  DCHECK_EQ(versions.size(), 3);
+  DCHECK(!versions[0].empty());
+  DCHECK(!versions[1].empty());
+  int version;
+  bool result = base::StringToInt(versions[0], &version);
+  DCHECK(result);
+  int major_revision;
+  result = base::StringToInt(versions[1], &major_revision);
+  DCHECK(result);
+  return std::make_pair(version, major_revision);
+}
+
 }  // namespace
 
 std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
@@ -644,6 +665,7 @@ Service::Service(base::Closure quit_closure)
 #else
       resync_vm_clocks_on_resume_(false),
 #endif
+      host_kernel_version_(GetKernelVersion()),
       weak_ptr_factory_(this) {
   plugin_subnet_ = network_address_manager_.AllocateIPv4Subnet(
       arc_networkd::AddressManager::Guest::VM_PLUGIN);
@@ -699,7 +721,7 @@ bool Service::Init() {
     return false;
   }
   untrusted_vm_utils_ = std::make_unique<UntrustedVMUtils>(
-      debugd_proxy, kMinKernelVersionForUntrustedVM,
+      debugd_proxy, host_kernel_version_, kMinKernelVersionForUntrustedVM,
       base::FilePath(kL1TFFilePath), base::FilePath(kMDSFilePath));
 
   using ServiceMethod =
@@ -1035,13 +1057,13 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  if (!is_trusted_vm && kEnableStrictUntrustedVMChecks) {
-    UntrustedVMUtils::MitigationStatus status =
-        untrusted_vm_utils_->CheckUntrustedVMMitigationStatus();
-    switch (status) {
+  if (!is_trusted_vm) {
+    switch (untrusted_vm_utils_->CheckUntrustedVMMitigationStatus()) {
       case UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE:
         break;
 
+      // If the host kernel version isn't supported or the host doesn't have
+      // l1tf and mds mitigations then fail to start an untrusted VM.
       case UntrustedVMUtils::MitigationStatus::VULNERABLE: {
         LOG(ERROR) << "Host vulnerable against untrusted VM";
         response.set_failure_reason("Host vulnerable against untrusted VM");
@@ -1049,17 +1071,21 @@ std::unique_ptr<dbus::Response> Service::StartVm(
         return dbus_response;
       }
 
-      case UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED: {
-        // In this case the mitigation is present due to SMT being enabled. Try
-        // to disable it in order to support Untrusted VMs.
-        if (!untrusted_vm_utils_->DisableSMT()) {
-          LOG(ERROR) << "Failed to disable SMT for untrusted VM";
-          response.set_failure_reason("Failed to disable SMT for untrusted VM");
-          writer.AppendProtoAsArrayOfBytes(response);
-          return dbus_response;
-        }
+      // This case is handled immediately after.
+      case UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED:
         break;
-      }
+    }
+  }
+
+  // Nested virtualization is turned on for all host kernels that support
+  // untrusted VMs. For security purposes this requires that SMT is disabled for
+  // both trusted and untrusted VMs.
+  if (host_kernel_version_ >= kMinKernelVersionForUntrustedVM) {
+    if (!untrusted_vm_utils_->DisableSMT()) {
+      LOG(ERROR) << "Failed to disable SMT";
+      response.set_failure_reason("Failed to disable SMT");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
     }
   }
 
@@ -1106,11 +1132,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // pmem is used, /dev/vda otherwise.
   // Assume every subsequent image was assigned a letter in alphabetical order
   // starting from 'b'.
-  auto host_kernel_version = GetKernelVersion();
-  bool use_pmem =
-      host_kernel_version &&
-      host_kernel_version.value() >= kMinKernelVersionForVirtioPmem &&
-      USE_PMEM_DEVICE_FOR_ROOTFS;
+  bool use_pmem = host_kernel_version_ >= kMinKernelVersionForVirtioPmem &&
+                  USE_PMEM_DEVICE_FOR_ROOTFS;
   string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
 

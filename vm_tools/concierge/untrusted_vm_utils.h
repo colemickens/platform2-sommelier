@@ -13,21 +13,22 @@
 
 namespace vm_tools {
 namespace concierge {
+
 // Used to represent kernel version.
 using KernelVersionAndMajorRevision = std::pair<int, int>;
-
-base::Optional<KernelVersionAndMajorRevision> GetKernelVersion();
 
 // Used to check for, and if needed enable, the conditions required for
 // untrusted VMs.
 class UntrustedVMUtils {
  public:
   // |debugd_proxy| - Used to call into debugd daemon.
+  // |host_kernel_version| - Kernel version of the host.
   // |min_needed_version| - Minimum kernel version required to support untrusted
   // VMs.
   // |l1tf_status_path| - Path to read L1TF vulnerability status from.
   // |mds_status_path| - Path to read MDS vulnerability status from.
   UntrustedVMUtils(dbus::ObjectProxy* debugd_proxy,
+                   KernelVersionAndMajorRevision host_kernel_version,
                    KernelVersionAndMajorRevision min_needed_version,
                    const base::FilePath& l1tf_status_path,
                    const base::FilePath& mds_status_path);
@@ -55,7 +56,7 @@ class UntrustedVMUtils {
   // was already disabled. Returns false otherwise.
   bool DisableSMT();
 
-  // Sets |host_kernel_version_|.
+  // Sets |host_kernel_version_| for testing.
   void SetKernelVersionForTesting(
       KernelVersionAndMajorRevision host_kernel_version);
 
@@ -63,7 +64,10 @@ class UntrustedVMUtils {
   // Not owned. Used for calling the debugd API.
   dbus::ObjectProxy* const debugd_proxy_;
 
-  // Minium kernel version required to support untrusted VMs.
+  // Kernel version of the host this class runs on.
+  KernelVersionAndMajorRevision host_kernel_version_;
+
+  // Minimum kernel version required to support untrusted VMs.
   KernelVersionAndMajorRevision min_needed_version_;
 
   // Path to read L1TF vulnerability status from.
@@ -71,10 +75,6 @@ class UntrustedVMUtils {
 
   // Path to read MDS vulnerability status from.
   base::FilePath mds_status_path_;
-
-  // Kernel version of the host this class runs on. If not set then calculated
-  // using uname syscall. Cached to be used in subsequent calls.
-  base::Optional<KernelVersionAndMajorRevision> host_kernel_version_;
 
   DISALLOW_COPY_AND_ASSIGN(UntrustedVMUtils);
 };

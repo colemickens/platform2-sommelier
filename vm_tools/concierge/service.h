@@ -268,6 +268,9 @@ class Service final {
   };
   std::list<DiskOpInfo> disk_image_ops_;
 
+  // The kernel version of the host.
+  const KernelVersionAndMajorRevision host_kernel_version_;
+
   // Used to check for, and possibly enable, the conditions required for
   // untrusted VMs.
   std::unique_ptr<UntrustedVMUtils> untrusted_vm_utils_;
