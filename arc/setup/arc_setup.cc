@@ -716,131 +716,6 @@ void ArcSetup::SetUpAndroidData() {
   EXIT_IF(
       !InstallDirectory(0770, kSystemUid, kCacheGid,
                         arc_paths_->android_mutable_source.Append("cache")));
-
-  if (SetUpPackagesCache()) {
-    // Note, GMS and GServices caches are valid only in case packages cache is
-    // set which contains predefined value for shared Google user uid. That let
-    // to set valid resources owner.
-    if (SetUpGmsCoreCache())
-      SetUpGservicesCache();
-  }
-}
-
-bool ArcSetup::SetUpPackagesCache() {
-  base::ElapsedTimer timer;
-
-  if (config_.GetBoolOrDie("SKIP_PACKAGES_CACHE_SETUP")) {
-    LOG(INFO) << "Packages cache setup is disabled.";
-    return false;
-  }
-
-  // When /data/system/packages.xml does not exist, copy pre-generated
-  // /system/etc/packages_cache.xml to /data/system/packages.xml
-  const base::FilePath packages_cache =
-      arc_paths_->android_mutable_source.Append("data/system/packages.xml");
-  if (base::PathExists(packages_cache))
-    return false;
-
-  const base::FilePath source_cache =
-      arc_paths_->android_rootfs_directory.Append(
-          "system/etc/packages_cache.xml");
-  // Test if packages cache exists. Manually pushed images may not contain it.
-  if (!base::PathExists(source_cache)) {
-    LOG(INFO) << "Packages cache was not found "
-              << "(this expected for manually-pushed images).";
-    return false;
-  }
-
-  LOG(INFO) << "Installing packages cache to " << packages_cache.value() << ".";
-
-  EXIT_IF(!InstallDirectory(0775, kSystemUid, kSystemGid,
-                            packages_cache.DirName()));
-
-  // To support non-unibuild boards replace fingeprint in cache with current
-  // system fingerprint.
-  std::string content;
-  std::string new_content;
-  EXIT_IF(!base::ReadFileToString(source_cache, &content));
-  SetFingerprintsForPackagesCache(
-      content, GetSystemBuildPropertyOrDie(kFingerprintProp), &new_content);
-
-  EXIT_IF(!base::WriteFile(packages_cache, new_content.c_str(),
-                           new_content.length()));
-  EXIT_IF(!Chown(kSystemUid, kSystemGid, packages_cache));
-  EXIT_IF(!base::SetPosixFilePermissions(packages_cache, 0660));
-
-  LOG(INFO) << "Packages cache setup completed in "
-            << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
-  return true;
-}
-
-bool ArcSetup::SetUpGmsCoreCache() {
-  base::ElapsedTimer timer;
-
-  if (config_.GetBoolOrDie("SKIP_GMS_CORE_CACHE_SETUP")) {
-    LOG(INFO) << "GMS Core cache setup is disabled.";
-    return false;
-  }
-
-  const base::FilePath user_de =
-      arc_paths_->android_mutable_source.Append("data/user_de");
-  const base::FilePath user_de_0 = user_de.Append("0");
-  const base::FilePath user_de_0_gms =
-      user_de_0.Append("com.google.android.gms");
-
-  // When /data/user_de/0/com.google.android.gms does not exist, this indicates
-  // first run for GMS Core. Install set of pre-computed cache files if they
-  // exist.
-  if (base::PathExists(user_de_0_gms))
-    return false;
-
-  const base::FilePath source_cache_dir =
-      arc_paths_->android_rootfs_directory.Append("system/etc/gms_core_cache");
-  if (!base::PathExists(source_cache_dir)) {
-    LOG(INFO) << "GMS Core cache was not found "
-              << "(this expected for manually-pushed images).";
-    return false;
-  }
-
-  LOG(INFO) << "Installing GMS Core cache to " << user_de_0_gms.value() << ".";
-
-  EXIT_IF(!InstallDirectory(0711, kSystemUid, kSystemGid, user_de));
-  EXIT_IF(!InstallDirectory(0771, kSystemUid, kSystemGid, user_de_0));
-  EXIT_IF(!CopyWithAttributes(source_cache_dir, user_de_0_gms));
-
-  LOG(INFO) << "GMS Core cache setup competed in "
-            << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
-
-  return true;
-}
-
-void ArcSetup::SetUpGservicesCache() {
-  base::ElapsedTimer timer;
-
-  // When /data/data/com.google.android.gsf does not exist, that indicates first
-  // run for GServices. In this copy prepared directory with cache files.
-  const base::FilePath data =
-      arc_paths_->android_mutable_source.Append("data/data");
-  const base::FilePath gsf_dir = data.Append("com.google.android.gsf");
-
-  if (base::PathExists(gsf_dir))
-    return;
-
-  const base::FilePath source_cache_dir =
-      arc_paths_->android_rootfs_directory.Append("system/etc/gservices_cache");
-  if (!base::PathExists(source_cache_dir)) {
-    LOG(INFO) << "GServices cache was not found "
-              << "(this expected for manually-pushed images).";
-    return;
-  }
-
-  LOG(INFO) << "Installing GServices cache to " << gsf_dir.value() << ".";
-
-  EXIT_IF(!InstallDirectory(0771, kSystemUid, kSystemGid, data));
-  EXIT_IF(!CopyWithAttributes(source_cache_dir, gsf_dir));
-
-  LOG(INFO) << "GServices cache setup competed in "
-            << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
 }
 
 void ArcSetup::UnmountSdcard() {
@@ -1934,6 +1809,15 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   const bool mount_demo_apps =
       !config_.GetStringOrDie("DEMO_SESSION_APPS_PATH").empty();
 
+  std::string copy_packages_cache;
+  if (config_.GetBoolOrDie("SKIP_PACKAGES_CACHE_SETUP")) {
+    copy_packages_cache = "2";
+  } else if (config_.GetBoolOrDie("COPY_PACKAGES_CACHE")) {
+    copy_packages_cache = "1";
+  } else {
+    copy_packages_cache = "0";
+  }
+
   // Run |kCommand| on the container side. The binary does the following:
   // * Bind-mount the actual cache and data in /var/arc/shared_mounts to /cache
   //   and /data.
@@ -1957,11 +1841,16 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       "--", kCommand, "--serialno", serialnumber, "--disable-boot-completed",
       config_.GetStringOrDie("DISABLE_BOOT_COMPLETED_BROADCAST"),
       "--container-boot-type", std::to_string(static_cast<int>(boot_type)),
-      // When this COPY_PACKAGES_CACHE is set to "1", SystemServer copies
-      // /data/system/pacakges.xml to /data/system/pacakges_copy.xml after the
-      // initialization stage of PackageManagerService.
-      "--copy-packages-cache", config_.GetStringOrDie("COPY_PACKAGES_CACHE"),
-      "--mount-demo-apps", mount_demo_apps ? "1" : "0", "--is-demo-session",
+      // When copy_packages_cache is set to "0" or "1", arccachesetup copies
+      // /system/etc/packages_cache.xml to /data/system/packages.xml. If it is
+      // set to "2", arccachesetup skips copying. When copy_packages_cache is
+      // "1" or "2", SystemServer copies /data/system/packages.xml
+      // to /data/system/packages_copy.xml after the initialization stage of
+      // PackageManagerService.
+      "--copy-packages-cache", copy_packages_cache,
+      "--skip-gms-core-cache-setup",
+      config_.GetStringOrDie("SKIP_GMS_CORE_CACHE_SETUP"), "--mount-demo-apps",
+      mount_demo_apps ? "1" : "0", "--is-demo-session",
       config_.GetStringOrDie("IS_DEMO_SESSION"), "--locale",
       config_.GetStringOrDie("LOCALE"), "--preferred-languages",
       config_.GetStringOrDie("PREFERRED_LANGUAGES"),

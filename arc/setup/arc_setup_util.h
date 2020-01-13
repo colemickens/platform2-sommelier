@@ -271,28 +271,12 @@ bool ExpandPropertyContents(const std::string& content,
 std::string ComputeOEMKey(brillo::CrosConfigInterface* config,
                           const std::string& board);
 
-// Replaces fingerprint in packages cache xml file.
-void SetFingerprintsForPackagesCache(const std::string& content,
-                                     const std::string& fingerprint,
-                                     std::string* new_content);
-
 // Truncates the value side of an Android key=val property line, including
 // handling the special case of build fingerprint.
 //
 // Note: Do not modify this directly.
 // Modify src/components/arc/session/arc_property_util.cc in Chromium first.
 bool TruncateAndroidProperty(const std::string& line, std::string* truncated);
-
-// Performs deep resource copying. Resource means directory, regular file or
-// symbolic link. |from_readonly_path| must point to a read-only filesystem like
-// squashfs. In case |from_readonly_path| defines a directory then recursive
-// copy of resources is used. This also copies permissions and owners of the
-// resources. selinux attributes are copied only for top resource in case it is
-// regular file or directory. |from_readonly_path| and |to_path| must define an
-// absolute path. All underling unsupported resources are ignored. For the root
-// unsupported resources false is returned.
-bool CopyWithAttributes(const base::FilePath& from_readonly_path,
-                        const base::FilePath& to_path);
 
 // Returns true if the process with |pid| is alive or zombie.
 bool IsProcessAlive(pid_t pid);

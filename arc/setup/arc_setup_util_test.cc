@@ -46,31 +46,6 @@ bool FindLineCallback(std::string* out_prop, const std::string& line) {
   return true;
 }
 
-void ValidateResourcesMatch(const base::FilePath& path1,
-                            const base::FilePath& path2) {
-  struct stat stat1;
-  struct stat stat2;
-  EXPECT_GE(lstat(path1.value().c_str(), &stat1), 0);
-  EXPECT_GE(lstat(path2.value().c_str(), &stat2), 0);
-  EXPECT_EQ(stat1.st_mode, stat2.st_mode);
-  EXPECT_EQ(stat1.st_uid, stat2.st_uid);
-  EXPECT_EQ(stat1.st_gid, stat2.st_gid);
-
-  if (S_ISREG(stat1.st_mode)) {
-    std::string data1;
-    std::string data2;
-    EXPECT_TRUE(base::ReadFileToString(path1, &data1));
-    EXPECT_TRUE(base::ReadFileToString(path2, &data2));
-    EXPECT_EQ(data1, data2);
-  } else if (S_ISLNK(stat1.st_mode)) {
-    base::FilePath link1;
-    base::FilePath link2;
-    EXPECT_TRUE(base::ReadSymbolicLink(path1, &link1));
-    EXPECT_TRUE(base::ReadSymbolicLink(path2, &link2));
-    EXPECT_EQ(link1, link2);
-  }
-}
-
 constexpr char kTestProperitesFromFileContent[] =
     ""
     "# begin build properties\n"
@@ -823,102 +798,115 @@ TEST(ArcSetupUtil, TestParseContainerState) {
   EXPECT_EQ(kRootfsPath, rootfs);
 }
 
-TEST(ArcSetupUtil, TestCopyWithAttributes) {
-  base::ScopedTempDir temp_directory;
-  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+TEST(ArcSetupUtil, TestPropertyExpansions) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "brand", "alphabet");
 
-  // Note, actual owner change is not covered due permission restrictions for
-  // unit test. selinux context is also not possible to test due the
-  // permissions.
-  const uid_t kTestUid = getuid();
-  const gid_t kTestGid = getgid();
-
-  const base::FilePath root = temp_directory.GetPath();
-
-  // Create test directory structure.
-  const base::FilePath from_path = root.Append("from");
-  const base::FilePath from_sub_dir1 = from_path.Append("dir1");
-  const base::FilePath from_sub_dir2 = from_path.Append("dir2");
-  const base::FilePath from_test_file = from_sub_dir1.Append("test.txt");
-  const base::FilePath from_test_link = from_sub_dir2.Append("test.lnk");
-  const base::FilePath from_fifo = from_sub_dir1.Append("fifo");
-
-  EXPECT_TRUE(InstallDirectory(0751, kTestUid, kTestGid, from_path));
-  EXPECT_TRUE(InstallDirectory(0771, kTestUid, kTestGid, from_sub_dir1));
-  EXPECT_TRUE(InstallDirectory(0700, kTestUid, kTestGid, from_sub_dir2));
-  EXPECT_TRUE(WriteToFile(from_test_file, 0660, "testme"));
-  EXPECT_TRUE(base::CreateSymbolicLink(from_test_file, from_test_link));
-  EXPECT_EQ(0, mkfifo(from_fifo.value().c_str(), 0700));
-
-  // Copy directory.
-  const base::FilePath to_path = root.Append("to");
-  EXPECT_TRUE(CopyWithAttributes(from_path, to_path));
-
-  // Validate each resource to match.
-  int resource_count = 1;
-  ValidateResourcesMatch(from_path, to_path);
-  base::FileEnumerator traversal(from_path, true /* recursive */,
-                                 base::FileEnumerator::FILES |
-                                     base::FileEnumerator::SHOW_SYM_LINKS |
-                                     base::FileEnumerator::DIRECTORIES);
-  while (true) {
-    const base::FilePath test = traversal.Next();
-    if (test.empty())
-      break;
-    base::FilePath target_path(to_path);
-    EXPECT_TRUE(from_path.AppendRelativePath(test, &target_path));
-    if (test != from_fifo) {
-      ValidateResourcesMatch(test, target_path);
-      ++resource_count;
-    } else {
-      // Unsupported types.
-      EXPECT_FALSE(base::PathExists(target_path));
-    }
-  }
-  EXPECT_EQ(5, resource_count);
-
-  // Copy file.
-  const base::FilePath to_test_file = from_sub_dir2.Append("test2.txt");
-  EXPECT_TRUE(CopyWithAttributes(from_test_file, to_test_file));
-  ValidateResourcesMatch(from_test_file, to_test_file);
-  EXPECT_TRUE(CopyWithAttributes(from_test_file, to_test_file));
-  ValidateResourcesMatch(from_test_file, to_test_file);
-
-  // Copy link.
-  const base::FilePath to_test_link = from_sub_dir2.Append("test2.lnk");
-  EXPECT_TRUE(CopyWithAttributes(from_test_link, to_test_link));
-  ValidateResourcesMatch(from_test_file, to_test_file);
-
-  // Copy fifo
-  EXPECT_FALSE(CopyWithAttributes(from_fifo, from_sub_dir1.Append("fifo2")));
+  std::string expanded;
+  EXPECT_TRUE(ExpandPropertyContents("line1\n{brand}\nline3\n{brand} {brand}",
+                                     &config, &expanded));
+  EXPECT_EQ("line1\nalphabet\nline3\nalphabet alphabet\n", expanded);
 }
 
-TEST(ArcSetupUtil, TestSetFingerprintForPackagesCache) {
-  constexpr char kFingerintBefore[] =
-      "<packages>\n"
-      "    <version sdkVersion=\"25\" databaseVersion=\"3\" "
-      "fingerprint=\"google/coral/{product}_cheets:7.1.1/R67-10545.0.0/"
-      "4697494:user/release-keys\" />\n"
-      "    <version volumeUuid=\"primary_physical\" sdkVersion=\"25\" "
-      "databaseVersion=\"3\" fingerprint=\"google/coral/{product}_cheets:"
-      "7.1.1/R67-10545.0.0/4697494:user/release-keys\" />\n"
-      "</packages>\n";
-  constexpr char kFingerintAfter[] =
-      "<packages>\n"
-      "    <version sdkVersion=\"25\" databaseVersion=\"3\" "
-      "fingerprint=\"google/coral/coral_cheets:7.1.1/R67-10545.0.0/"
-      "4697494:user/release-keys\" />\n"
-      "    <version volumeUuid=\"primary_physical\" sdkVersion=\"25\" "
-      "databaseVersion=\"3\" fingerprint=\"google/coral/coral_cheets:"
-      "7.1.1/R67-10545.0.0/4697494:user/release-keys\" />\n"
-      "</packages>\n";
-  std::string new_content;
-  SetFingerprintsForPackagesCache(
-      kFingerintBefore,
-      "google/coral/coral_cheets:7.1.1/R67-10545.0.0/4697494:user/release-keys",
-      &new_content);
-  EXPECT_EQ(strlen(kFingerintAfter), new_content.length());
-  EXPECT_EQ(kFingerintAfter, new_content);
+TEST(ArcSetupUtil, TestPropertyExpansionsUnmatchedBrace) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "brand", "alphabet");
+
+  std::string expanded;
+  EXPECT_FALSE(
+      ExpandPropertyContents("line{1\nline}2\nline3", &config, &expanded));
+}
+
+TEST(ArcSetupUtil, TestPropertyExpansionsRecursive) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "brand", "alphabet");
+  config.SetString("/arc/build-properties", "model", "{brand} soup");
+
+  std::string expanded;
+  EXPECT_TRUE(ExpandPropertyContents("{model}", &config, &expanded));
+  EXPECT_EQ("alphabet soup\n", expanded);
+}
+
+TEST(ArcSetupUtil, TestPropertyExpansionsMissingProperty) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "model", "{brand} soup");
+
+  std::string expanded;
+
+  EXPECT_FALSE(
+      ExpandPropertyContents("{missing-property}", &config, &expanded));
+  EXPECT_FALSE(ExpandPropertyContents("{model}", &config, &expanded));
+}
+
+// Verify that ro.product.board gets copied to ro.oem.key1 as well.
+TEST(ArcSetupUtil, TestPropertyExpansionBoard) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "board", "testboard");
+
+  std::string expanded;
+  EXPECT_TRUE(
+      ExpandPropertyContents("ro.product.board={board}", &config, &expanded));
+  EXPECT_EQ("ro.product.board=testboard\nro.oem.key1=testboard\n", expanded);
+}
+
+// Non-fingerprint property should do simple truncation.
+TEST(ArcSetupUtil, TestPropertyTruncation) {
+  std::string truncated;
+  EXPECT_TRUE(TruncateAndroidProperty(
+      "property.name="
+      "012345678901234567890123456789012345678901234567890123456789"
+      "01234567890123456789012345678901",
+      &truncated));
+  EXPECT_EQ(
+      "property.name=0123456789012345678901234567890123456789"
+      "012345678901234567890123456789012345678901234567890",
+      truncated);
+}
+
+// Fingerprint truncation with /release-keys should do simple truncation.
+TEST(ArcSetupUtil, TestPropertyTruncationFingerprintRelease) {
+  std::string truncated;
+  EXPECT_TRUE(TruncateAndroidProperty(
+      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
+      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/"
+      "release-keys",
+      &truncated));
+  EXPECT_EQ(
+      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
+      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/relea",
+      truncated);
+}
+
+// Fingerprint truncation with /dev-keys needs to preserve the /dev-keys.
+TEST(ArcSetupUtil, TestPropertyTruncationFingerprintDev) {
+  std::string truncated;
+  EXPECT_TRUE(TruncateAndroidProperty(
+      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
+      "toolongdevicename_cheets:7.1.1/R65-10299.0.9999/4538390:user/dev-keys",
+      &truncated));
+  EXPECT_EQ(
+      "ro.bootimage.build.fingerprint=google/toolongdevicena/"
+      "toolongdevicena_cheets/R65-10299.0.9999/4538390:user/dev-keys",
+      truncated);
+}
+
+// Fingerprint truncation with the wrong format should fail.
+TEST(ArcSetupUtil, TestPropertyTruncationBadFingerprint) {
+  std::string truncated;
+  EXPECT_FALSE(TruncateAndroidProperty(
+      "ro.bootimage.build.fingerprint=google/toolongdevicename/"
+      "toolongdevicename_cheets:7.1.1:123456789012345678901234567890/dev-keys",
+      &truncated));
+}
+
+// Fingerprint truncation without enough room should fail.
+TEST(ArcSetupUtil, TestPropertyTruncationFingerprintShortDevice) {
+  std::string truncated;
+  EXPECT_FALSE(TruncateAndroidProperty(
+      "ro.bootimage.build.fingerprint=google/dev/"
+      "dev_cheets:7.1.1/R65-10299.0.9999/453839012345678901234567890"
+      "12345678901234567890:user/dev-keys",
+      &truncated));
 }
 
 TEST(ArcSetupUtil, TestIsProcessAlive) {
