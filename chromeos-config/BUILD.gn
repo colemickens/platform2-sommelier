@@ -3,9 +3,11 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":chromeos-config-protos",
     ":cros_config",
   ]
   if (use.test) {
@@ -19,6 +21,14 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+proto_library("chromeos-config-protos") {
+  proto_in_dir = "proto"
+  proto_out_dir = "include/chromeos-config/proto_bindings"
+  sources = [
+    "${proto_in_dir}/design_variant_id_scan_config.proto",
+  ]
 }
 
 shared_library("libcros_config") {
