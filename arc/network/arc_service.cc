@@ -601,7 +601,6 @@ bool ArcService::ContainerImpl::OnStartDevice(Device* device) {
           device->options().fwd_multicast)) {
     LOG(ERROR) << "Failed to create container interface.";
     datapath_->RemoveInterface(veth_ifname);
-    datapath_->RemoveBridge(config.host_ifname());
     return false;
   }
 

@@ -242,22 +242,76 @@ TEST_F(ContainerImplTest, OnStartDevice_LegacyAndroid) {
       .WillOnce(Return(true));
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
-  Impl(true)->OnStartDevice(dev.get());
+  EXPECT_TRUE(Impl(true)->OnStartDevice(dev.get()));
   runner_->VerifyWriteSentinel(kTestPIDStr);
 }
 
-TEST_F(ContainerImplTest, OnStartDevice_Android) {
+TEST_F(ContainerImplTest, OnStartDevice_FailsToCreateInterface_LegacyAndroid) {
+  EXPECT_CALL(*datapath_,
+              AddVirtualBridgedInterface(StrEq("android"), _, StrEq("arcbr0")))
+      .WillOnce(Return(""));
+  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _)).Times(0);
+  auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
+  ASSERT_TRUE(dev);
+  EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
+}
+
+TEST_F(ContainerImplTest,
+       OnStartDevice_FailsToAddInterfaceToContainer_LegacyAndroid) {
   EXPECT_CALL(*datapath_,
               AddVirtualBridgedInterface(StrEq("android"), _, StrEq("arcbr0")))
       .WillOnce(Return("peer_android"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_android"), StrEq("arc0"),
                                       StrEq("100.115.92.2"), _))
-      .WillOnce(Return(true));
+      .WillOnce(Return(false));
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("peer_android")));
+  EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
+
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
+  ASSERT_TRUE(dev);
+  EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
+}
+
+TEST_F(ContainerImplTest, OnStartDevice_Android) {
+  EXPECT_CALL(*datapath_,
+              AddVirtualBridgedInterface(StrEq("arc0"), _, StrEq("arcbr0")))
+      .WillOnce(Return("peer_arc0"));
+  EXPECT_CALL(*datapath_,
+              AddInterfaceToContainer(_, StrEq("peer_arc0"), StrEq("arc0"),
+                                      StrEq("100.115.92.2"), _))
+      .WillOnce(Return(true));
+  auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   Impl()->OnStartDevice(dev.get());
   runner_->VerifyWriteSentinel(kTestPIDStr);
+}
+
+TEST_F(ContainerImplTest, OnStartDevice_FailsToCreateInterface_Android) {
+  EXPECT_CALL(*datapath_,
+              AddVirtualBridgedInterface(StrEq("arc0"), _, StrEq("arcbr0")))
+      .WillOnce(Return(""));
+  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _)).Times(0);
+  auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
+  ASSERT_TRUE(dev);
+  EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
+}
+
+TEST_F(ContainerImplTest,
+       OnStartDevice_FailsToAddInterfaceToContainer_Android) {
+  EXPECT_CALL(*datapath_,
+              AddVirtualBridgedInterface(StrEq("arc0"), _, StrEq("arcbr0")))
+      .WillOnce(Return("peer_arc0"));
+  EXPECT_CALL(*datapath_,
+              AddInterfaceToContainer(_, StrEq("peer_arc0"), StrEq("arc0"),
+                                      StrEq("100.115.92.2"), _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("peer_arc0")));
+  EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
+
+  auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
+  ASSERT_TRUE(dev);
+  EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
 }
 
 TEST_F(ContainerImplTest, OnStartDevice_Other) {
@@ -273,6 +327,32 @@ TEST_F(ContainerImplTest, OnStartDevice_Other) {
   Impl()->OnStartDevice(dev.get());
 }
 
+TEST_F(ContainerImplTest, OnStartDevice_FailsToCreateInterface_Other) {
+  EXPECT_CALL(*datapath_,
+              AddVirtualBridgedInterface(StrEq("eth0"), _, StrEq("arc_eth0")))
+      .WillOnce(Return(""));
+  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _)).Times(0);
+  auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
+  ASSERT_TRUE(dev);
+  EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
+}
+
+TEST_F(ContainerImplTest, OnStartDevice_FailsToAddInterfaceToContainer_Other) {
+  EXPECT_CALL(*datapath_,
+              AddVirtualBridgedInterface(StrEq("eth0"), _, StrEq("arc_eth0")))
+      .WillOnce(Return("peer_eth0"));
+  EXPECT_CALL(*datapath_,
+              AddInterfaceToContainer(_, StrEq("peer_eth0"), StrEq("eth0"),
+                                      StrEq("100.115.92.10"), _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("peer_eth0")));
+  EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
+
+  auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
+  ASSERT_TRUE(dev);
+  EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
+}
+
 // Verifies the veth interface is not removed.
 TEST_F(ContainerImplTest, OnStopDevice_LegacyAndroid) {
   EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
@@ -284,7 +364,7 @@ TEST_F(ContainerImplTest, OnStopDevice_LegacyAndroid) {
 // Verifies the veth interface is not removed.
 TEST_F(ContainerImplTest, OnStopDevice_Android) {
   EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
-  auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
+  auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   Impl()->OnStopDevice(dev.get());
 }
