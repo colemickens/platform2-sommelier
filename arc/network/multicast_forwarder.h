@@ -18,6 +18,7 @@
 #include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 
+#include "arc/network/broadcast_forwarder.h"
 #include "arc/network/message_dispatcher.h"
 #include "arc/network/net_util.h"
 
@@ -138,6 +139,7 @@ class MulticastProxy : public brillo::Daemon {
   MessageDispatcher msg_dispatcher_;
   std::map<std::string, std::unique_ptr<MulticastForwarder>> mdns_fwds_;
   std::map<std::string, std::unique_ptr<MulticastForwarder>> ssdp_fwds_;
+  std::map<std::string, std::unique_ptr<BroadcastForwarder>> bcast_fwds_;
 
   base::WeakPtrFactory<MulticastProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(MulticastProxy);

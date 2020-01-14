@@ -117,25 +117,6 @@ const uint8_t tcp_frame[] =
     "\xa5\x6c\x80\x10\x01\x54\x04\xb9\x00\x00\x01\x01\x08\x0a\x00\x5a"
     "\x59\xc0\x32\x53\x14\x3a";
 
-TEST(NDProxyTest, Icmpv6Checksum) {
-  uint8_t buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
-  uint8_t* buffer = NDProxy::AlignFrameBuffer(buffer_extended);
-
-  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(buffer + ETHER_HDR_LEN);
-  icmp6_hdr* icmp6 =
-      reinterpret_cast<icmp6_hdr*>(buffer + ETHER_HDR_LEN + sizeof(ip6_hdr));
-
-  memcpy(buffer, ping_frame, sizeof(ping_frame));
-  uint16_t ori_cksum = icmp6->icmp6_cksum;
-  icmp6->icmp6_cksum = 0;
-  EXPECT_EQ(ori_cksum, NDProxy::Icmpv6Checksum(ip6, icmp6));
-
-  memcpy(buffer, rs_frame, sizeof(rs_frame));
-  ori_cksum = icmp6->icmp6_cksum;
-  icmp6->icmp6_cksum = 0;
-  EXPECT_EQ(ori_cksum, NDProxy::Icmpv6Checksum(ip6, icmp6));
-}
-
 TEST(NDProxyTest, TranslateFrame) {
   uint8_t in_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
   uint8_t out_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];

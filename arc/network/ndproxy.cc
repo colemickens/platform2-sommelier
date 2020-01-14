@@ -28,6 +28,7 @@
 #include <base/bind.h>
 
 #include "arc/network/minijailed_process_runner.h"
+#include "arc/network/net_util.h"
 
 namespace arc_networkd {
 namespace {
@@ -112,36 +113,6 @@ bool NDProxy::Init() {
     return false;
   }
   return true;
-}
-
-// RFC 1071 and RFC 8200 Section 8.1
-// We are doing calculation directly in network order. Note this algorithm works
-// regardless of the endianess of the host.
-uint16_t NDProxy::Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6) {
-  uint32_t sum = 0;
-  // Src and Dst IP
-  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i)
-    sum += ip6->ip6_src.s6_addr16[i];
-  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i)
-    sum += ip6->ip6_dst.s6_addr16[i];
-
-  // Upper-Layer Packet Length
-  sum += ip6->ip6_plen;
-  // Next Header
-  sum += IPPROTO_ICMPV6 << 8;
-
-  // ICMP
-  const uint16_t* word = reinterpret_cast<const uint16_t*>(icmp6);
-  uint16_t len;
-  for (len = ntohs(ip6->ip6_plen); len > 1; len -= 2)
-    sum += *word++;
-  if (len)
-    sum += *word & htons(0x0000ffff);
-
-  // Fold 32-bit into 16 bits
-  while (sum >> 16)
-    sum = (sum & 0xffff) + (sum >> 16);
-  return ~sum;
 }
 
 // In an ICMPv6 Ethernet Frame *frame with length frame_len, replace the mac

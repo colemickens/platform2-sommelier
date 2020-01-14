@@ -73,6 +73,7 @@ static_library("libarcnetwork") {
   sources = [
     "adb_proxy.cc",
     "arc_service.cc",
+    "broadcast_forwarder.cc",
     "crostini_service.cc",
     "datapath.cc",
     "device.cc",

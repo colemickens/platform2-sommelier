@@ -95,7 +95,6 @@ class NDProxy {
   // 1 and 2 will be proxied to each other.
   using interface_mapping = std::map<int, std::set<int>>;
 
-  static uint16_t Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6);
   static void ReplaceMacInIcmpOption(uint8_t* frame,
                                      ssize_t frame_len,
                                      size_t nd_hdr_len,
@@ -137,7 +136,6 @@ class NDProxy {
 
   base::WeakPtrFactory<NDProxy> weak_factory_{this};
 
-  FRIEND_TEST(NDProxyTest, Icmpv6Checksum);
   FRIEND_TEST(NDProxyTest, TranslateFrame);
   DISALLOW_COPY_AND_ASSIGN(NDProxy);
 };

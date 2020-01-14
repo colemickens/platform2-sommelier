@@ -5,7 +5,11 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <linux/in6.h>
+#include <netinet/icmp6.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/udp.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -71,6 +75,22 @@ bool GenerateRandomIPv6Prefix(struct in6_addr* prefix, int len);
 
 std::ostream& operator<<(std::ostream& stream, const struct in_addr& addr);
 std::ostream& operator<<(std::ostream& stream, const struct in6_addr& addr);
+
+// Fold 32-bit into 16 bits.
+uint16_t FoldChecksum(uint32_t sum);
+
+// RFC 1071: We are doing calculation directly in network order.
+// Note this algorithm works regardless of the endianness of the host.
+uint32_t NetChecksum(const void* data, ssize_t len);
+
+uint16_t Ipv4Checksum(const iphdr* ip);
+
+// UDPv4 checksum along with IPv4 pseudo-header is defined in RFC 793,
+// Section 3.1.
+uint16_t Udpv4Checksum(const iphdr* ip, const udphdr* udp);
+
+// ICMPv6 checksum is defined in RFC 8200 Section 8.1
+uint16_t Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6);
 
 }  // namespace arc_networkd
 

@@ -531,6 +531,7 @@ int MulticastProxy::OnInit() {
 void MulticastProxy::Reset() {
   mdns_fwds_.clear();
   ssdp_fwds_.clear();
+  bcast_fwds_.clear();
 }
 
 void MulticastProxy::OnParentProcessExit() {
@@ -549,6 +550,7 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
 
   auto mdns_fwd = mdns_fwds_.find(dev_ifname);
   auto ssdp_fwd = ssdp_fwds_.find(dev_ifname);
+  auto bcast_fwd = bcast_fwds_.find(dev_ifname);
 
   if (!msg.has_teardown()) {
     // Start multicast forwarders.
@@ -578,6 +580,18 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
       LOG(WARNING) << "SSDP forwarder could not be started on " << dev_ifname;
     }
 
+    if (bcast_fwd == bcast_fwds_.end()) {
+      LOG(INFO) << "Enabling broadcast forwarding for device " << dev_ifname;
+      auto fwd = std::make_unique<BroadcastForwarder>(dev_ifname);
+      bcast_fwd = bcast_fwds_.emplace(dev_ifname, std::move(fwd)).first;
+    }
+
+    LOG(INFO) << "Starting broadcast forwarding between " << dev_ifname
+              << " and " << msg.br_ifname();
+    if (!bcast_fwd->second->AddGuest(msg.br_ifname())) {
+      LOG(WARNING) << "SSDP forwarder could not be started on " << dev_ifname;
+    }
+
     return;
   }
 
@@ -593,6 +607,11 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
                 << msg.br_ifname();
       ssdp_fwd->second->RemoveGuest(msg.br_ifname());
     }
+    if (bcast_fwd != bcast_fwds_.end()) {
+      LOG(INFO) << "Disabling broadcast forwarding between " << dev_ifname
+                << " and " << msg.br_ifname();
+      bcast_fwd->second->RemoveGuest(msg.br_ifname());
+    }
     return;
   }
 
@@ -606,6 +625,11 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
     LOG(INFO) << "Disabling SSDP forwarding for physical interface "
               << dev_ifname;
     ssdp_fwds_.erase(ssdp_fwd);
+  }
+  if (bcast_fwd != bcast_fwds_.end()) {
+    LOG(INFO) << "Disabling broadcast forwarding for physical interface "
+              << dev_ifname;
+    bcast_fwds_.erase(bcast_fwd);
   }
 }
 

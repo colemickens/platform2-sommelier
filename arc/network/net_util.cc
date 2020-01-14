@@ -90,4 +90,63 @@ std::ostream& operator<<(std::ostream& stream, const struct in6_addr& addr) {
   return stream;
 }
 
+uint16_t FoldChecksum(uint32_t sum) {
+  while (sum >> 16)
+    sum = (sum & 0xffff) + (sum >> 16);
+  return ~sum;
+}
+
+uint32_t NetChecksum(const void* data, ssize_t len) {
+  uint32_t sum = 0;
+  const uint16_t* word = reinterpret_cast<const uint16_t*>(data);
+  for (; len > 1; len -= 2)
+    sum += *word++;
+  if (len)
+    sum += *word & htons(0x0000ffff);
+  return sum;
+}
+
+uint16_t Ipv4Checksum(const iphdr* ip) {
+  uint32_t sum = NetChecksum(ip, sizeof(iphdr));
+  return FoldChecksum(sum);
+}
+
+uint16_t Udpv4Checksum(const iphdr* ip, const udphdr* udp) {
+  uint8_t pseudo_header[12];
+  memset(pseudo_header, 0, sizeof(pseudo_header));
+
+  // Fill in the pseudo-header.
+  memcpy(pseudo_header, &ip->saddr, sizeof(in_addr));
+  memcpy(pseudo_header + 4, &ip->daddr, sizeof(in_addr));
+  memcpy(pseudo_header + 9, &ip->protocol, sizeof(uint8_t));
+  memcpy(pseudo_header + 10, &udp->len, sizeof(uint16_t));
+
+  // Compute pseudo-header checksum
+  uint32_t sum = NetChecksum(pseudo_header, sizeof(pseudo_header));
+
+  // UDP
+  sum += NetChecksum(udp, ntohs(udp->len));
+
+  return FoldChecksum(sum);
+}
+
+uint16_t Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6) {
+  uint32_t sum = 0;
+  // Src and Dst IP
+  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i)
+    sum += ip6->ip6_src.s6_addr16[i];
+  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i)
+    sum += ip6->ip6_dst.s6_addr16[i];
+
+  // Upper-Layer Packet Length
+  sum += ip6->ip6_plen;
+  // Next Header
+  sum += IPPROTO_ICMPV6 << 8;
+
+  // ICMP
+  sum += NetChecksum(icmp6, ntohs(ip6->ip6_plen));
+
+  return FoldChecksum(sum);
+}
+
 }  // namespace arc_networkd
