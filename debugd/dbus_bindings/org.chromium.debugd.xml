@@ -1134,9 +1134,9 @@
           Examples include manufacture_date_smart and temperature_smart.
         </tp:docstring>
       </arg>
-      <arg name="outfd" type="h" direction="out">
+      <arg name="output" type="s" direction="out">
         <tp:docstring>
-          File descriptor to send output to.
+          Output of the ectool command parsed by cros_healthd_helper.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>

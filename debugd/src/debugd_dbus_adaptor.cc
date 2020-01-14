@@ -590,9 +590,9 @@ bool DebugdDBusAdaptor::EvaluateProbeFunction(
 bool DebugdDBusAdaptor::CollectSmartBatteryMetric(
     brillo::ErrorPtr* error,
     const std::string& metric_name,
-    brillo::dbus_utils::FileDescriptor* outfd) {
+    std::string* output) {
   return cros_healthd_tool_->CollectSmartBatteryMetric(error, metric_name,
-                                                       outfd);
+                                                       output);
 }
 
 }  // namespace debugd

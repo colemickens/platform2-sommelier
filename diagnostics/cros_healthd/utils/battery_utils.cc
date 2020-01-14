@@ -23,7 +23,6 @@
 #include <dbus/object_proxy.h>
 #include <re2/re2.h>
 
-#include "debugd/dbus-proxies.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace diagnostics {
@@ -31,73 +30,16 @@ namespace diagnostics {
 BatteryFetcher::BatteryFetcher(
     org::chromium::debugdProxyInterface* debugd_proxy,
     dbus::ObjectProxy* power_manager_proxy)
-    : debugd_proxy_(debugd_proxy), power_manager_proxy_(power_manager_proxy) {}
+    : debugd_proxy_(debugd_proxy), power_manager_proxy_(power_manager_proxy) {
+  DCHECK(debugd_proxy_);
+  DCHECK(power_manager_proxy_);
+}
+
 BatteryFetcher::~BatteryFetcher() = default;
 
 namespace {
 constexpr char kManufactureDateSmart[] = "manufacture_date_smart";
 constexpr char kTemperatureSmart[] = "temperature_smart";
-enum class PipeState {
-  PENDING,  // Bytes are currently being written to the destination string
-  ERROR,    // Failed to succesfully read bytes from source file descriptor
-  DONE      // All bytes were succesfully read from the source file descriptor
-};
-
-// The system-defined size of buffer used to read from a pipe.
-const size_t kBufferSize = PIPE_BUF;
-// Seconds to wait for debugd to return probe results.
-const time_t kWaitSeconds = 5;
-
-PipeState ReadPipe(int src_fd, std::string* dst_str) {
-  char buffer[kBufferSize];
-  const ssize_t bytes_read = HANDLE_EINTR(read(src_fd, buffer, kBufferSize));
-  if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-    PLOG(ERROR) << "read() from fd " << src_fd << " failed";
-    return PipeState::ERROR;
-  }
-  if (bytes_read == 0) {
-    return PipeState::DONE;
-  }
-  if (bytes_read > 0) {
-    dst_str->append(buffer, bytes_read);
-  }
-  return PipeState::PENDING;
-}
-
-bool ReadNonblockingPipeToString(int fd, std::string* out) {
-  fd_set read_fds;
-  struct timeval timeout;
-
-  FD_ZERO(&read_fds);
-  FD_SET(fd, &read_fds);
-
-  timeout.tv_sec = kWaitSeconds;
-  timeout.tv_usec = 0;
-
-  while (true) {
-    int retval = select(fd + 1, &read_fds, nullptr, nullptr, &timeout);
-    if (retval < 0) {
-      PLOG(ERROR) << "select() failed from debugd";
-      return false;
-    }
-
-    // Should only happen on timeout. Log a warning here, so we get at least a
-    // log if the process is stale.
-    if (retval == 0) {
-      LOG(WARNING) << "select() timed out. Process might be stale.";
-      return false;
-    }
-
-    PipeState state = ReadPipe(fd, out);
-    if (state == PipeState::DONE) {
-      return true;
-    }
-    if (state == PipeState::ERROR) {
-      return false;
-    }
-  }
-}
-
 }  // namespace
 
 template <typename T>
@@ -106,37 +48,14 @@ bool BatteryFetcher::FetchSmartBatteryMetric(
     T* smart_metric,
     base::OnceCallback<bool(const base::StringPiece& input, T* output)>
         convert_string_to_num) {
-  constexpr auto kDebugdSmartBatteryFunction = "CollectSmartBatteryMetric";
-  dbus::MethodCall method_call(debugd::kDebugdInterface,
-                               kDebugdSmartBatteryFunction);
-
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(metric_name);
-
-  // In milliseconds, the time to wait for a debugd call.
-  constexpr base::TimeDelta kDebugdTimeOut =
-      base::TimeDelta::FromMilliseconds(10 * 1000);
-  std::unique_ptr<dbus::Response> response =
-      debugd_proxy_->GetObjectProxy()->CallMethodAndBlock(
-          &method_call, kDebugdTimeOut.InMilliseconds());
-
-  if (!response) {
-    LOG(ERROR) << "Failed to issue D-Bus call to method "
-               << kDebugdSmartBatteryFunction << " of debugd D-Bus interface";
-    return false;
-  }
-
-  dbus::MessageReader reader(response.get());
-  base::ScopedFD read_fd{};
-  if (!reader.PopFileDescriptor(&read_fd)) {
-    LOG(ERROR) << "Failed to read fd that represents the read end of the pipe"
-                  " from debugd";
-    return false;
-  }
-
+  brillo::ErrorPtr error;
+  constexpr int kTimeoutMs = 10 * 1000;
   std::string debugd_result;
-  if (!ReadNonblockingPipeToString(read_fd.get(), &debugd_result)) {
-    LOG(ERROR) << "Cannot read result from debugd";
+  if (!debugd_proxy_->CollectSmartBatteryMetric(metric_name, &debugd_result,
+                                                &error, kTimeoutMs)) {
+    LOG(ERROR) << "Failed retrieving " << metric_name
+               << " from debugd: " << error->GetCode() << " "
+               << error->GetMessage();
     return false;
   }
 

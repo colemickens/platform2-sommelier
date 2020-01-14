@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 
 namespace debugd {
@@ -20,7 +19,7 @@ class CrosHealthdTool {
 
   bool CollectSmartBatteryMetric(brillo::ErrorPtr* error,
                                  const std::string& metric_name,
-                                 brillo::dbus_utils::FileDescriptor* outfd);
+                                 std::string* output);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CrosHealthdTool);

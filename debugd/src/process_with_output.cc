@@ -40,8 +40,13 @@ ProcessWithOutput::~ProcessWithOutput() {
 }
 
 bool ProcessWithOutput::Init() {
+  return Init({});
+}
+
+bool ProcessWithOutput::Init(
+    const std::vector<std::string>& minijail_extra_args) {
   if (use_minijail_) {
-    if (!SandboxedProcess::Init())
+    if (!SandboxedProcess::Init(minijail_extra_args))
       return false;
   }
 

@@ -29,6 +29,7 @@ class ProcessWithOutput : public SandboxedProcess {
   ProcessWithOutput();
   ~ProcessWithOutput() override;
   bool Init() override;
+  bool Init(const std::vector<std::string>& minijail_extra_args) override;
   bool GetOutput(std::string* output) const;
   bool GetOutputLines(std::vector<std::string>* output) const;
 

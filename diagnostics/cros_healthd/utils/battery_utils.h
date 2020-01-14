@@ -62,8 +62,6 @@ class BatteryFetcher {
   bool ExtractBatteryMetrics(dbus::Response* response,
                              BatteryInfoPtr* output_info);
 
-  friend class BatteryUtilsTest;
-
   DISALLOW_COPY_AND_ASSIGN(BatteryFetcher);
 };
 
