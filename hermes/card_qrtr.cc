@@ -104,6 +104,14 @@ void CardQrtr::SendApdus(std::vector<lpa::card::Apdu> apdus,
   }
 }
 
+bool CardQrtr::IsSimValidAfterEnable() {
+  return true;
+}
+
+bool CardQrtr::IsSimValidAfterDisable() {
+  return true;
+}
+
 void CardQrtr::Initialize() {
   CHECK(socket_->IsValid());
 

@@ -21,10 +21,12 @@ const char kErrorDomain[] = "Hermes";
 const char kErrorCodeUnknown[] = "Unknown";
 const char kErrorCodeWrongState[] = "WrongState";
 const char kErrorCodeInvalidIccid[] = "InvalidIccid";
-const char kErrorCodeProfileNotEnabled[] = "ProfileNotEnabled";
+const char kErrorCodeProfileAlreadyEnabled[] = "ProfileAlreadyEnabled";
+const char kErrorCodeProfileAlreadyDisabled[] = "ProfileAlreadyDisabled";
 const char kErrorCodeNeedConfirmationCode[] = "NeedConfirmationCode";
 const char kErrorCodeInvalidActivationCode[] = "InvalidActivationCode";
 const char kErrorCodeSendNotificationError[] = "SendNotificationError";
+const char kErrorCodeNoOpForTestingProfile[] = "NoOpForTestingProfile";
 
 bool HandleLpaError(
     int error,
@@ -78,9 +80,12 @@ DBusAdaptor::DBusAdaptor(lpa::core::Lpa* lpa, Executor* executor)
                             "Invalid state for requested method");
   error_map_[lpa::core::Lpa::kIccidNotFound] = brillo::Error::Create(
       FROM_HERE, kErrorDomain, kErrorCodeInvalidIccid, "Invalid iccid");
-  error_map_[lpa::core::Lpa::kProfileNotEnabled] = brillo::Error::Create(
-      FROM_HERE, kErrorDomain, kErrorCodeProfileNotEnabled,
-      "Requested method needs an enabled profile");
+  error_map_[lpa::core::Lpa::kProfileAlreadyEnabled] = brillo::Error::Create(
+      FROM_HERE, kErrorDomain, kErrorCodeProfileAlreadyEnabled,
+      "Requested method provided an already-enabled profile");
+  error_map_[lpa::core::Lpa::kProfileAlreadyDisabled] = brillo::Error::Create(
+      FROM_HERE, kErrorDomain, kErrorCodeProfileAlreadyDisabled,
+      "Requested method provided a disabled profile");
   error_map_[lpa::core::Lpa::kNeedConfirmationCode] = brillo::Error::Create(
       FROM_HERE, kErrorDomain, kErrorCodeNeedConfirmationCode,
       "Need confirmation code");
@@ -91,6 +96,9 @@ DBusAdaptor::DBusAdaptor(lpa::core::Lpa* lpa, Executor* executor)
       brillo::Error::Create(FROM_HERE, kErrorDomain,
                             kErrorCodeSendNotificationError,
                             "Failed to send notifications");
+  error_map_[lpa::core::Lpa::kNoOpForTestingProfile] = brillo::Error::Create(
+      FROM_HERE, kErrorDomain, kErrorCodeNoOpForTestingProfile,
+      "Non-test mode cannot use test profile");
 }
 
 void DBusAdaptor::InstallProfile(
@@ -109,22 +117,11 @@ void DBusAdaptor::InstallProfile(
     return;
   }
 
-  auto simple_cb = [response{std::shared_ptr<DBusResponse<ProfileInfo>>(
-                        std::move(response))},
-                    cb{std::move(profile_cb)}, in_activation_code,
-                    this](int error) {
-    if (!HandleLpaError(error, &error_map_, response.get())) {
-      return;
-    }
-    // TODO(crbug.com/963555) Return valid ProfileInfo
-    lpa::proto::ProfileInfo empty;
-    cb(empty, error);
-  };
   lpa::core::Lpa::DownloadOptions options;
   options.enable_profile = false;
   options.allow_policy_rules = false;
   lpa_->DownloadProfile(in_activation_code, std::move(options), executor_,
-                        std::move(simple_cb));
+                        std::move(profile_cb));
 }
 
 void DBusAdaptor::UninstallProfile(std::unique_ptr<DBusResponse<>> response,

@@ -77,7 +77,7 @@ void Smdp::OnHttpsResponse(LpaCallback cb,
                            std::unique_ptr<brillo::http::Response> response) {
   std::string raw_data;
   if (!response) {
-    cb(0, raw_data, lpa::smdp::SmdpClient::kErrorResponse);
+    cb(0, raw_data, lpa::smdp::SmdpClient::kMalformedResponse);
     return;
   }
 

@@ -32,8 +32,10 @@ class CardQrtr : public lpa::card::EuiccCard {
     virtual ~TxInfo() = default;
   };
 
-  using ResponseCallback = std::function<void(
-      std::vector<std::vector<uint8_t>>& responses, int err)>;
+  using ResponseCallback =
+      std::function<void(std::vector<std::vector<uint8_t>>&
+                             responses,  // NOLINT(runtime/references)
+                         int err)>;
 
   static std::unique_ptr<CardQrtr> Create(
       std::unique_ptr<SocketInterface> socket,
@@ -44,6 +46,8 @@ class CardQrtr : public lpa::card::EuiccCard {
   // lpa::card::EuiccCard overrides.
   void SendApdus(std::vector<lpa::card::Apdu> apdus,
                  ResponseCallback cb) override;
+  bool IsSimValidAfterEnable() override;
+  bool IsSimValidAfterDisable() override;
   lpa::util::EuiccLog* logger() override { return logger_; }
 
  private:
