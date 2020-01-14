@@ -179,6 +179,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
     test_helper_.SetUpSystemSalt();
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
+    tpm_init_.set_tpm(&tpm_);
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
     ON_CALL(homedirs_, AmountOfFreeDiskSpace()).WillByDefault(
         Return(kFreeSpaceThresholdToTriggerCleanup));
@@ -226,6 +227,8 @@ class ServiceTestNotInitialized : public ::testing::Test {
   void ClearReplies() { event_sink_.ClearReplies(); }
 
   MakeTests test_helper_;
+  NiceMock<MockTpm> tpm_;
+  NiceMock<MockTpmInit> tpm_init_;
   NiceMock<MockCrypto> crypto_;
   NiceMock<MockAttestation> attest_;
   NiceMock<MockHomeDirs> homedirs_;
@@ -2193,14 +2196,9 @@ TEST_F(ServiceTest, InstallAttributesStatusQueries) {
 }
 
 TEST_F(ServiceTestNotInitialized, OwnershipCallbackRepeated) {
-  // We need the TPM object, so set it up here.
-  NiceMock<MockTpm> tpm;
-  NiceMock<MockTpmInit> tpm_init;
-  tpm_init.set_tpm(&tpm);
-
   service_.set_use_tpm(true);
-  service_.set_tpm(&tpm);
-  service_.set_tpm_init(&tpm_init);
+  service_.set_tpm(&tpm_);
+  service_.set_tpm_init(&tpm_init_);
   service_.set_initialize_tpm(true);
 
   service_.Initialize();
@@ -2208,7 +2206,7 @@ TEST_F(ServiceTestNotInitialized, OwnershipCallbackRepeated) {
   SetupMount("foo@gmail.com");
 
   // Called by OwnershipCallback().
-  EXPECT_CALL(tpm, HandleOwnershipTakenEvent).WillOnce(Return());
+  EXPECT_CALL(tpm_, HandleOwnershipTakenEvent).WillOnce(Return());
   // Called by ResetAllTPMContext().
   mount_->set_crypto(&crypto_);
   EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
@@ -2219,12 +2217,6 @@ TEST_F(ServiceTestNotInitialized, OwnershipCallbackRepeated) {
   // than once.
   service_.OwnershipCallback(true, true);
   service_.OwnershipCallback(true, true);
-
-  // Prevent tpm and tpm_init from being used after going out of scope.
-  service_.set_use_tpm(false);
-  service_.set_tpm(nullptr);
-  service_.set_initialize_tpm(false);
-  service_.set_tpm_init(nullptr);
 }
 
 }  // namespace cryptohome
