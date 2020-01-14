@@ -59,6 +59,9 @@ class NDProxy {
     return buffer + 3 - (reinterpret_cast<uintptr_t>(buffer + 1) & 0x3);
   }
 
+  // Helper function to create a AF_PACKET socket suitable for frame read/write.
+  static base::ScopedFD PreparePacketSocket();
+
   // Initialize the resources needed such as rtnl socket and dummy socket for
   // ioctl. Return false if failed.
   bool Init();
@@ -124,12 +127,6 @@ class NDProxy {
   uint8_t out_frame_buffer_extended_[IP_MAXPACKET + ETH_HLEN + 4];
   uint8_t* in_frame_buffer_;
   uint8_t* out_frame_buffer_;
-
-  // Utilize MessageDispatcher to watch control fd
-  std::unique_ptr<MessageDispatcher> msg_dispatcher_;
-  // Data fd and its watcher
-  base::ScopedFD fd_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   interface_mapping if_map_rs_;
   interface_mapping if_map_ra_;

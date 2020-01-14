@@ -74,6 +74,21 @@ NDProxy::NDProxy()
     : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
       out_frame_buffer_(AlignFrameBuffer(out_frame_buffer_extended_)) {}
 
+base::ScopedFD NDProxy::PreparePacketSocket() {
+  base::ScopedFD fd(
+      socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_IPV6)));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "socket() failed";
+    return base::ScopedFD();
+  }
+  if (setsockopt(fd.get(), SOL_SOCKET, SO_ATTACH_FILTER, &kNDFrameBpfProgram,
+                 sizeof(kNDFrameBpfProgram))) {
+    PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
+    return base::ScopedFD();
+  }
+  return fd;
+}
+
 bool NDProxy::Init() {
   rtnl_fd_ = base::ScopedFD(
       socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE));
@@ -188,7 +203,10 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
 
   // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
   // it needs to be modified so guest OS L3 stack can see it.
-  if (!(eth->h_dest[0] & 0x1)) {
+  // For proxy cascading case, we also need to recheck if destination MAC is
+  // ff:ff:ff:ff:ff:ff (which must have been filled by an upstream proxy).
+  if (!(eth->h_dest[0] & 0x1) ||
+      memcmp(eth->h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN) == 0) {
     MacAddress neighbor_mac;
     if (GetNeighborMac(ip6->ip6_dst, &neighbor_mac)) {
       memcpy(eth->h_dest, neighbor_mac.data(), ETHER_ADDR_LEN);
@@ -581,15 +599,8 @@ int NDProxyDaemon::OnInit() {
       &NDProxyDaemon::OnGuestIpDiscovery, weak_factory_.GetWeakPtr()));
 
   // Initialize data fd
-  fd_ = base::ScopedFD(
-      socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_IPV6)));
+  fd_ = NDProxy::PreparePacketSocket();
   if (!fd_.is_valid()) {
-    PLOG(ERROR) << "socket() failed";
-    return EX_OSERR;
-  }
-  if (setsockopt(fd_.get(), SOL_SOCKET, SO_ATTACH_FILTER, &kNDFrameBpfProgram,
-                 sizeof(kNDFrameBpfProgram))) {
-    PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
     return EX_OSERR;
   }
 
