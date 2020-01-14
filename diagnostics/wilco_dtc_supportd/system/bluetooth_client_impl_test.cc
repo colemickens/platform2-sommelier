@@ -103,9 +103,9 @@ class BluetoothClientImplTest : public ::testing::Test {
       : dbus_bus_(new dbus::MockBus(dbus::Bus::Options())),
         dbus_object_proxy_(new dbus::MockObjectProxy(
             dbus_bus_.get(),
-            bluetooth_object_manager::kBluetoothObjectManagerServiceName,
-            dbus::ObjectPath(bluetooth_object_manager::
-                                 kBluetoothObjectManagerServicePath))) {}
+            bluez_object_manager::kBluezObjectManagerServiceName,
+            dbus::ObjectPath(
+                bluez_object_manager::kBluezObjectManagerServicePath))) {}
 
   ~BluetoothClientImplTest() override {
     EXPECT_CALL(
@@ -120,19 +120,16 @@ class BluetoothClientImplTest : public ::testing::Test {
     ON_CALL(*dbus_bus_, GetDBusTaskRunner())
         .WillByDefault(Return(base::ThreadTaskRunnerHandle::Get().get()));
 
-    EXPECT_CALL(
-        *dbus_bus_,
-        GetObjectProxy(
-            bluetooth_object_manager::kBluetoothObjectManagerServiceName,
-            dbus::ObjectPath(
-                bluetooth_object_manager::kBluetoothObjectManagerServicePath)))
+    EXPECT_CALL(*dbus_bus_,
+                GetObjectProxy(
+                    bluez_object_manager::kBluezObjectManagerServiceName,
+                    dbus::ObjectPath(
+                        bluez_object_manager::kBluezObjectManagerServicePath)))
         .WillOnce(Return(dbus_object_proxy_.get()));
 
     dbus_object_manager_ = new StrictMock<dbus::MockObjectManager>(
-        dbus_bus_.get(),
-        bluetooth_object_manager::kBluetoothObjectManagerServiceName,
-        dbus::ObjectPath(
-            bluetooth_object_manager::kBluetoothObjectManagerServicePath));
+        dbus_bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
+        dbus::ObjectPath(bluez_object_manager::kBluezObjectManagerServicePath));
 
     // Force TaskRunner to run pending tasks as effect of instantiating
     // MockObjectManager. Needed to avoid memory leaks because pending tasks
@@ -140,12 +137,11 @@ class BluetoothClientImplTest : public ::testing::Test {
     base::RunLoop run_loop;
     run_loop.RunUntilIdle();
 
-    EXPECT_CALL(
-        *dbus_bus_,
-        GetObjectManager(
-            bluetooth_object_manager::kBluetoothObjectManagerServiceName,
-            dbus::ObjectPath(
-                bluetooth_object_manager::kBluetoothObjectManagerServicePath)))
+    EXPECT_CALL(*dbus_bus_,
+                GetObjectManager(
+                    bluez_object_manager::kBluezObjectManagerServiceName,
+                    dbus::ObjectPath(
+                        bluez_object_manager::kBluezObjectManagerServicePath)))
         .WillOnce(Return(dbus_object_manager_.get()));
 
     EXPECT_CALL(*dbus_object_manager_,

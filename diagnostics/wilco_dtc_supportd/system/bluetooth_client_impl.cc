@@ -30,9 +30,9 @@ bool AreDevicePropertiesValid(
 
 BluetoothClientImpl::BluetoothClientImpl(const scoped_refptr<dbus::Bus>& bus)
     : object_manager_(bus->GetObjectManager(
-          bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+          bluez_object_manager::kBluezObjectManagerServiceName,
           dbus::ObjectPath(
-              bluetooth_object_manager::kBluetoothObjectManagerServicePath))),
+              bluez_object_manager::kBluezObjectManagerServicePath))),
       weak_ptr_factory_(this) {
   DCHECK(object_manager_);
   object_manager_->RegisterInterface(
