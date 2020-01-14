@@ -1,0 +1,73 @@
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":dbus_code_generator",
+    ":system_proxy",
+    ":system_proxy_worker",
+  ]
+  if (use.test) {
+    deps += [ ":system-proxy_test" ]
+  }
+}
+
+# D-Bus code generator.
+generate_dbus_adaptors("dbus_code_generator") {
+  new_fd_bindings = true
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/system_proxy"
+  sources = [
+    "dbus_bindings/org.chromium.SystemProxy.xml",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("system_proxy_worker") {
+  configs += [ ":target_defaults" ]
+  all_dependent_pkg_deps = [ "libcurl" ]
+  sources = [
+    "system_proxy_worker.cc",
+  ]
+}
+
+executable("system_proxy") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "system_proxy.cc",
+  ]
+}
+
+# Unit tests.
+if (use.test) {
+  pkg_config("system-proxy_test_config") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+      "libminijail",
+    ]
+  }
+  executable("system-proxy_test") {
+    configs += [
+      "//common-mk:test",
+      ":system-proxy_test_config",
+      ":target_defaults",
+    ]
+    sources = []
+    defines = [ "UNIT_TEST" ]
+    deps = [
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
