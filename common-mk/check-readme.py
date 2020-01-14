@@ -105,7 +105,7 @@ def CheckSubdirs():
   """Check the subdir README.md files exist."""
   # Legacy projects that don't have a README.md file.
   # Someone should write some docs :D.
-  WHITELIST = (
+  LEGACYLIST = (
       'attestation',
       'avtest_label_detect',
       'buffet',
@@ -119,7 +119,6 @@ def CheckSubdirs():
       'modem-utilities',
       'mtpd',
       'salsa',
-      'shill',
       'thd',
       'timberslide',
       'tpm_manager',
@@ -133,11 +132,12 @@ def CheckSubdirs():
   for proj in GetActiveProjects():
     readme = os.path.join(TOP_DIR, proj, 'README.md')
     if os.path.exists(readme):
-      if proj in WHITELIST:
-        logging.error('*** Project "%s" is in no-README WHITELIST, but actually'
-                      ' has one. Please remove it from WHITELIST!', proj)
+      if proj in LEGACYLIST:
+        logging.error(
+            '*** Project "%s" is in no-README LEGACYLIST, but actually has '
+            'one. Please remove it from LEGACYLIST!', proj)
     else:
-      if not proj in WHITELIST:
+      if not proj in LEGACYLIST:
         logging.error('*** Project "%s" needs a README.md file', proj)
         ret = 1
   return ret

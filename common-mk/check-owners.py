@@ -43,28 +43,9 @@ def CheckSubdirs():
   # Legacy projects that don't have an OWNERS file.
   # Someone should claim them :D.
   LEGACYLIST = (
-      'bootstat',
       'container_utils',
       'cros-fuzz',
-      'cros_component',
-      'feedback',
-      'fitpicker',
-      'init',
-      'libcontainer',
-      'libmems',
-      'policy_proto',
-      'policy_utils',
-      'rendernodehost',
       'screenshot',
-      'sepolicy',
-      'smogcheck',
-      'st_flash',
-      'touch_firmware_calibration',
-      'touch_keyboard',
-      'trim',
-      'userfeedback',
-      'userspace_touchpad',
-      'virtual_file_provider',
   )
 
   ret = 0
