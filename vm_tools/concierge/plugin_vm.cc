@@ -683,6 +683,12 @@ bool PluginVm::Start(uint32_t cpus,
                          "/etc"),
   };
 
+  // TODO(kimjae): This is a temporary hack to have relative files to be found
+  // even when started from DLC paths. Clean this up once a cleaner solution can
+  // be leveraged.
+  if (pvm::helper::IsDlcVm())
+    bind_mounts.push_back(base::StringPrintf("%s:%s:false", bin_dir, bin_dir));
+
   // Put everything into the brillo::ProcessImpl.
   for (auto& arg : args) {
     process_.AddArg(std::move(arg));
