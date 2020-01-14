@@ -76,7 +76,12 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
   value.GetAsList(&list_value);
 
   for (auto it = list_value->begin(); it != list_value->end(); it++) {
+// TODO(crbug.com/909719): remove this after libchrome uprev
+#if BASE_VER < 576279
     auto ptr = runtime_probe::ProbeFunction::FromValue(**it);
+#else
+    auto ptr = runtime_probe::ProbeFunction::FromValue(*it);
+#endif
     if (!ptr) {
       LOG(ERROR) << "failed to parse " << value
                  << " as a list of probe functions.";

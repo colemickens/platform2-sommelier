@@ -55,7 +55,7 @@ TEST(SysfsFunctionTest, TestRead) {
   auto results = f->Eval();
   ASSERT_EQ(results.size(), 2);
 
-  for (auto result : results) {
+  for (auto& result : results) {
     ASSERT_TRUE(result.HasKey("1")) << "result: " << result;
 
     std::string value_1;

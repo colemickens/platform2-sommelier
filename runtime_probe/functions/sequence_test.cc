@@ -37,8 +37,14 @@ TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
   base::DictionaryValue b;
   b.SetBoolean("b", true);
 
+  DataType val;
+  // val{std::move(a), std::move(b)} implicitly calls the copy constructor which
+  // is not possible.
+  val.push_back(std::move(a));
+  val.push_back(std::move(b));
+
   EXPECT_CALL(*mock_probe_function_1, Eval())
-      .WillOnce(testing::Return(DataType{a, b}));
+      .WillOnce(testing::Return(testing::ByMove(std::move(val))));
 
   auto mock_probe_function_2 = std::make_unique<MockProbeFunction>();
   // The sequence function should abort after calling mock_probe_function_1,
@@ -51,7 +57,7 @@ TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
   DataType results = sequence.Eval();
 
   std::stringstream stream;
-  for (auto result : results) {
+  for (auto& result : results) {
     stream << result;
   }
   /* The `results` should be empty */
@@ -67,8 +73,11 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   a.SetBoolean("a", true);
   a.SetBoolean("c", false);
 
+  DataType val_a;
+  val_a.push_back(std::move(a));
+
   EXPECT_CALL(*mock_probe_function_1, Eval())
-      .WillOnce(testing::Return(DataType{a}));
+      .WillOnce(testing::Return(testing::ByMove(std::move(val_a))));
 
   auto mock_probe_function_2 = std::make_unique<MockProbeFunction>();
 
@@ -76,8 +85,11 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   b.SetBoolean("b", true);
   b.SetBoolean("c", true);
 
+  DataType val_b;
+  val_b.push_back(std::move(b));
+
   EXPECT_CALL(*mock_probe_function_2, Eval())
-      .WillOnce(testing::Return(DataType{b}));
+      .WillOnce(testing::Return(testing::ByMove(std::move(val_b))));
 
   SequenceFunction sequence{};
   sequence.functions_.push_back(std::move(mock_probe_function_1));
@@ -86,7 +98,7 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   DataType results = sequence.Eval();
 
   std::stringstream stream;
-  for (auto result : results) {
+  for (auto& result : results) {
     stream << result;
   }
   /* The `results` should be empty */

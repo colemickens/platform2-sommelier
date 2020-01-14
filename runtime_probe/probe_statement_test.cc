@@ -40,14 +40,26 @@ TEST(ProbeStatementTest, TestEval) {
   good_result.SetString("expected_field", "expected");
   good_result.SetString("optional_field", "optional");
 
+  base::DictionaryValue good_result2;  // duplicate due to copy limit
+  good_result2.SetString("expected_field", "expected");
+  good_result2.SetString("optional_field", "optional");
+
   // bad_result is empty, which doesn't have expected field
   base::DictionaryValue bad_result;
   bad_result.SetString("optional_field", "optional");
 
+  ProbeFunction::DataType val_a;
+  // val_a{std::move(x), std::move(y)} implicitly calls the copy constructor
+  // which is not possible.
+  val_a.push_back(std::move(good_result));
+  val_a.push_back(std::move(bad_result));
+
+  ProbeFunction::DataType val_b;
+  val_b.push_back(std::move(good_result2));
+
   EXPECT_CALL(*mock_eval, Eval())
-      .WillOnce(
-          ::testing::Return(ProbeFunction::DataType{good_result, bad_result}))
-      .WillOnce(::testing::Return(ProbeFunction::DataType{good_result}));
+      .WillOnce(::testing::Return(::testing::ByMove(std::move(val_a))))
+      .WillOnce(::testing::Return(::testing::ByMove(std::move(val_b))));
 
   probe_statement.eval_ = std::move(mock_eval);
 

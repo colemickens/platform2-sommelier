@@ -54,7 +54,12 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromDictionaryValue(
     VLOG(1) << "keys does not exist or is not a ListValue";
   } else {
     for (auto it = keys_value->begin(); it != keys_value->end(); it++) {
+// TODO(crbug.com/909719): remove this after libchrome uprevs to r576279
+#if BASE_VER < 576279
       const auto v = it->get();
+#else
+      const auto& v = *it;
+#endif
       // Currently, destroy all previously inserted valid elems
       if (!v->is_string()) {
         LOG(ERROR) << "keys should be a list of string: " << *keys_value;

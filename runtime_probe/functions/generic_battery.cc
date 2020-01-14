@@ -28,11 +28,11 @@ GenericBattery::DataType GenericBattery::Eval() const {
     LOG(ERROR) << "Failed to invoke helper to retrieve battery sysfs results.";
     return result;
   }
-  const auto battery_results =
+  auto battery_results =
       base::ListValue::From(base::JSONReader::Read(json_output));
 
   for (int i = 0; i < battery_results->GetSize(); ++i) {
-    const base::DictionaryValue* battery_res;
+    base::DictionaryValue* battery_res;
     battery_results->GetDictionary(i, &battery_res);
     result.push_back(std::move(*battery_res));
   }

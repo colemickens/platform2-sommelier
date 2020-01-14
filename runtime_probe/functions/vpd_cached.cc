@@ -23,11 +23,10 @@ VPDCached::DataType VPDCached::Eval() const {
     LOG(ERROR) << "Failed to invoke helper to retrieve cached vpd information.";
     return result;
   }
-  const auto vpd_results =
-      base::ListValue::From(base::JSONReader::Read(json_output));
+  auto vpd_results = base::ListValue::From(base::JSONReader::Read(json_output));
 
   for (int i = 0; i < vpd_results->GetSize(); i++) {
-    const base::DictionaryValue* vpd_res;
+    base::DictionaryValue* vpd_res;
     vpd_results->GetDictionary(i, &vpd_res);
     result.push_back(std::move(*vpd_res));
   }
