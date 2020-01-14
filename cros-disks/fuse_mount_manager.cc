@@ -58,12 +58,13 @@ bool FUSEMountManager::Initialize() {
   return true;
 }
 
-MountErrorType FUSEMountManager::DoMount(
+std::unique_ptr<MountPoint> FUSEMountManager::DoMountNew(
     const std::string& source,
     const std::string& fuse_type,
     const std::vector<std::string>& options,
-    const std::string& mount_path,
-    MountOptions* applied_options) {
+    const base::FilePath& mount_path,
+    MountOptions* applied_options,
+    MountErrorType* error) {
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
   Uri uri = Uri::Parse(source);
@@ -80,7 +81,8 @@ MountErrorType FUSEMountManager::DoMount(
   if (!selected_helper) {
     LOG(ERROR) << "Cannot find suitable FUSE module for type "
                << quote(fuse_type) << " and source " << quote(source);
-    return MOUNT_ERROR_UNKNOWN_FILESYSTEM;
+    *error = MOUNT_ERROR_UNKNOWN_FILESYSTEM;
+    return nullptr;
   }
 
   // Make a temporary dir where the helper may keep stuff needed by the mounter
@@ -90,19 +92,23 @@ MountErrorType FUSEMountManager::DoMount(
       !platform()->SetPermissions(path, 0755)) {
     LOG(ERROR) << "Cannot create working directory for FUSE module "
                << quote(selected_helper->type());
-    return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
+    *error = MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
+    return nullptr;
   }
 
-  auto mounter = selected_helper->CreateMounter(
-      base::FilePath(path), uri, base::FilePath(mount_path), options);
+  auto mounter = selected_helper->CreateMounter(base::FilePath(path), uri,
+                                                mount_path, options);
   if (!mounter) {
     LOG(ERROR) << "Invalid options for FUSE module "
                << quote(selected_helper->type()) << " and source "
                << quote(source);
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    *error = MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return nullptr;
   }
 
-  return mounter->MountOld();
+  // Note: FUSEMounter::Mount() currently ignores |options| and instead uses the
+  // MountOptions passed in the constructor.
+  return mounter->Mount(source, mount_path, options, error);
 }
 
 MountErrorType FUSEMountManager::DoUnmount(const std::string& path) {

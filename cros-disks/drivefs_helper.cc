@@ -102,6 +102,39 @@ bool EnsureOwnership(const Platform& platform,
   return true;
 }
 
+class DrivefsMounter : public FUSEMounter {
+ public:
+  DrivefsMounter(const std::string& source_path,
+                 const std::string& target_path,
+                 const std::string& filesystem_type,
+                 const MountOptions& mount_options,
+                 const Platform* platform,
+                 brillo::ProcessReaper* process_reaper,
+                 const std::string& mount_program_path,
+                 const std::string& mount_user,
+                 const std::string& seccomp_policy,
+                 const std::vector<BindPath>& accessible_paths)
+      : FUSEMounter(source_path,
+                    target_path,
+                    filesystem_type,
+                    mount_options,
+                    platform,
+                    process_reaper,
+                    mount_program_path,
+                    mount_user,
+                    seccomp_policy,
+                    accessible_paths,
+                    true /* permit_network_access */) {}
+
+  // FUSEMounter overrides:
+  std::unique_ptr<MountPoint> Mount(const std::string& source,
+                                    const base::FilePath& target_path,
+                                    std::vector<std::string> options,
+                                    MountErrorType* error) const override {
+    return FUSEMounter::Mount("", target_path, options, error);
+  }
+};
+
 }  // namespace
 
 DrivefsHelper::DrivefsHelper(const Platform* platform,
@@ -168,9 +201,9 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
     paths.push_back(
         {my_files_path.value(), true /* writable */, true /* recursive */});
   }
-  return std::make_unique<FUSEMounter>(
+  return std::make_unique<DrivefsMounter>(
       "", target_path.value(), type(), mount_options, platform(),
-      process_reaper(), program_path().value(), user(), seccomp, paths, true);
+      process_reaper(), program_path().value(), user(), seccomp, paths);
 }
 
 base::FilePath DrivefsHelper::GetValidatedDirectory(

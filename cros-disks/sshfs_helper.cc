@@ -14,6 +14,7 @@
 
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/uri.h"
@@ -53,6 +54,43 @@ struct Base64FileMapping {
 const Base64FileMapping kWrittenFiles[] = {
     {kOptionIdentityBase64, kOptionIdentityFile, "id"},
     {kOptionUserKnownHostsBase64, kOptionUserKnownHostsFile, "known_hosts"},
+};
+
+class SshfsMounter : public FUSEMounter {
+ public:
+  SshfsMounter(const std::string& source_path,
+               const std::string& target_path,
+               const std::string& filesystem_type,
+               const MountOptions& mount_options,
+               const Platform* platform,
+               brillo::ProcessReaper* process_reaper,
+               const std::string& mount_program_path,
+               const std::string& mount_user,
+               const std::string& seccomp_policy,
+               const std::vector<BindPath>& accessible_paths)
+      : FUSEMounter(source_path,
+                    target_path,
+                    filesystem_type,
+                    mount_options,
+                    platform,
+                    process_reaper,
+                    mount_program_path,
+                    mount_user,
+                    seccomp_policy,
+                    accessible_paths,
+                    true /* permit_network_access */) {}
+
+  // FUSEMounter overrides:
+  std::unique_ptr<MountPoint> Mount(const std::string& source_path,
+                                    const base::FilePath& target_path,
+                                    std::vector<std::string> options,
+                                    MountErrorType* error) const override {
+    // This mounter will be created and invoked by FUSEMountManager, which
+    // expects the source to be a URI.
+    Uri uri = Uri::Parse(source_path);
+    CHECK(uri.valid());
+    return FUSEMounter::Mount(uri.path(), target_path, options, error);
+  }
 };
 
 }  // namespace
@@ -110,10 +148,10 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
   mount_options.Initialize(opts, true, base::IntToString(files_uid),
                            base::IntToString(files_gid));
 
-  return std::make_unique<FUSEMounter>(
+  return std::make_unique<SshfsMounter>(
       source.path(), target_path.value(), type(), mount_options, platform(),
       process_reaper(), program_path().value(), user(), "",
-      std::vector<FUSEMounter::BindPath>(), true /* permit_network_access */);
+      std::vector<FUSEMounter::BindPath>());
 }
 
 bool SshfsHelper::PrepareWorkingDirectory(

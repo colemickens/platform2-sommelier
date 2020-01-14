@@ -19,6 +19,7 @@
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
@@ -129,9 +130,18 @@ class FUSEMountManagerTest : public ::testing::Test {
     manager_.RegisterHelper(std::move(helper));
   }
 
-  MountErrorType DoMount(const std::string& type, const std::string& src) {
+  std::unique_ptr<MountPoint> DoMount(const std::string& type,
+                                      const std::string& src,
+                                      MountErrorType* error) {
     MountOptions mount_options;
-    return manager_.DoMount(src, type, {}, kSomeMountpoint, &mount_options);
+    std::unique_ptr<MountPoint> mount_point = manager_.DoMountNew(
+        src, type, {}, base::FilePath(kSomeMountpoint), &mount_options, error);
+    if (*error == MOUNT_ERROR_NONE) {
+      EXPECT_TRUE(mount_point);
+    } else {
+      EXPECT_FALSE(mount_point);
+    }
+    return mount_point;
   }
 
   Metrics metrics_;
@@ -206,8 +216,10 @@ TEST_F(FUSEMountManagerTest, DoUnmount_Busy) {
 
 // Verify that DoMount fails when there are not helpers.
 TEST_F(FUSEMountManagerTest, DoMount_NoHandlers) {
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
-            DoMount(kNoType, kSomeSource.value()));
+  MountErrorType mount_error;
+  std::unique_ptr<MountPoint> mount_point =
+      DoMount(kNoType, kSomeSource.value(), &mount_error);
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error);
 }
 
 // Verify that DoMount fails when helpers don't handle this source.
@@ -218,8 +230,10 @@ TEST_F(FUSEMountManagerTest, DoMount_NotHandled) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
-            DoMount(kNoType, kSomeSource.value()));
+  MountErrorType mount_error;
+  std::unique_ptr<MountPoint> mount_point =
+      DoMount(kNoType, kSomeSource.value(), &mount_error);
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error);
 }
 
 // Verify that DoMount delegates mounting to the correct helpers when
@@ -233,7 +247,8 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
       .WillOnce(DoAll(SetArgPointee<2>("/blah"), Return(true)));
   EXPECT_CALL(platform_, SetPermissions("/blah", 0755)).WillOnce(Return(true));
   MockMounter* mounter = new MockMounter(&platform_, &process_reaper_);
-  EXPECT_CALL(*mounter, Mount("foobar", base::FilePath(kSomeMountpoint), _, _))
+  EXPECT_CALL(*mounter,
+              Mount(kSomeSource.value(), base::FilePath(kSomeMountpoint), _, _))
       .WillOnce(WithArg<3>([](MountErrorType* error) {
         *error = MOUNT_ERROR_NONE;
         return MountPoint::CreateLeaking(base::FilePath(kSomeMountpoint));
@@ -246,7 +261,11 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  EXPECT_EQ(MOUNT_ERROR_NONE, DoMount(kNoType, kSomeSource.value()));
+  MountErrorType mount_error;
+  std::unique_ptr<MountPoint> mount_point =
+      DoMount(kNoType, kSomeSource.value(), &mount_error);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error);
+  EXPECT_EQ(base::FilePath(kSomeMountpoint), mount_point->path());
 }
 
 }  // namespace cros_disks

@@ -51,11 +51,13 @@ class FUSEMountManager : public MountManager {
   // format of the |source|. The underlying mounter may decide to apply mount
   // options different than |options|. |applied_options| is used to return
   // the mount options applied by the mounter.
-  MountErrorType DoMount(const std::string& source,
-                         const std::string& fuse_type,
-                         const std::vector<std::string>& options,
-                         const std::string& mount_path,
-                         MountOptions* applied_options) override;
+  std::unique_ptr<MountPoint> DoMountNew(
+      const std::string& source,
+      const std::string& fuse_type,
+      const std::vector<std::string>& options,
+      const base::FilePath& mount_path,
+      MountOptions* applied_options,
+      MountErrorType* error) override;
 
   // Unmounts |path|. Returns true if |path| is unmounted successfully.
   MountErrorType DoUnmount(const std::string& path) override;
