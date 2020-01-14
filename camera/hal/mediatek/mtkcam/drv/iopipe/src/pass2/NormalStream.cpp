@@ -818,9 +818,13 @@ NormalStream::init(char const* szCallerName,
       } else {
         img_size = it->getImgSize();
       }
+      MUINT32 planeCount = it->getBufPlanes().size();
+      for (int i = 0; i < planeCount; ++i) {
+        bufStridesInBytes[i] = it->getBufPlanes()[i].rowStrideInBytes;
+      }
       IImageBufferAllocator::ImgParam imgParam(it->getImgFormat(), img_size,
                                                bufStridesInBytes,
-                                               bufBoundaryInBytes, 1);
+                                               bufBoundaryInBytes, planeCount);
       status =
           _applyPortPolicy(img_size, it->getImgFormat(), it->getTransform(),
                            false, largest_w, &port_idx);
