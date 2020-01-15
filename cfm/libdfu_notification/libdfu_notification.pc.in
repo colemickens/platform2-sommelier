@@ -1,0 +1,8 @@
+bslot=@BSLOT@
+include_dir=@INCLUDE_DIR@
+
+Name: libdfu_notification
+Description: DFU Notification shared library for CFM.
+Version: ${bslot}
+CFlags: -I${include_dir}
+Libs: -ldfu_notification
