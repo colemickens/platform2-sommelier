@@ -49,7 +49,8 @@ constexpr char kSmbConfData[] =
     "\tkerberos encryption types = %s\n"
     "\tclient signing = mandatory\n"
     "\tclient min protocol = SMB2\n"
-    // TODO(ljusten): Remove this line once crbug.com/662440 is resolved.
+    // TODO(crbug.com/662440): Remove this line if it is no longer necessary.
+    // (Make sure that Samba doesn't default to some older version)
     "\tclient max protocol = SMB3\n"
     "\tclient ipc min protocol = SMB2\n"
     "\tclient ldap sasl wrapping = sign\n";

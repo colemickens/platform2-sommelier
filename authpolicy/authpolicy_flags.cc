@@ -181,9 +181,6 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_log_status(true);
       flags_.set_log_caches(true);
       flags_.set_net_log_level("10");
-      // TODO(ljusten): Consider removing this once stabilized. Note that
-      // uprev'ing a dependency of Samba might introduce seccomp failures,
-      // though! See https://crbug.com/752944.
       flags_.set_log_seccomp(true);
       flags_.set_trace_krb5(true);
       break;

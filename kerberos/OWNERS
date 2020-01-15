@@ -1,9 +1,12 @@
 set noparent
 
-# Primary owner. Use if available.
-ljusten@chromium.org
+# Current owners (prefer)
+fsandrade@chromium.org
+tomdobro@chromium.org
 
-# Secondary owner(s).
-rsorokin@chromium.org
+# Previous owners (ask if current owners are not available)
+# Commented out so automatic tools don't prefer
+# ljusten@chromium.org
+# rsorokin@chromium.org
 
 # COMPONENT: Enterprise>ActiveDirectory
