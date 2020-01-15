@@ -147,29 +147,13 @@ class ConnectionTest : public Test {
     }
   }
 
-  void ReplaceSingletons(ConnectionRefPtr connection) {
-    connection->resolver_ = &resolver_;
-    connection->routing_table_ = &routing_table_;
-    connection->rtnl_handler_ = &rtnl_handler_;
-  }
-
   void UpdateProperties() { ipconfig_->UpdateProperties(properties_, true); }
 
   void UpdateIPv6Properties() {
     ip6config_->UpdateProperties(ipv6_properties_, true);
   }
 
-  const IPAddress& GetLocalAddress(ConnectionRefPtr connection) {
-    return connection->local_;
-  }
-
-  const IPAddress& GetGatewayAddress(ConnectionRefPtr connection) {
-    return connection->gateway_;
-  }
-
-  bool GetHasBroadcastDomain(ConnectionRefPtr connection) {
-    return connection->has_broadcast_domain_;
-  }
+  bool GetHasBroadcastDomain() { return connection_->has_broadcast_domain_; }
 
   bool FixGatewayReachability(const IPAddress& local,
                               IPAddress* peer,
@@ -310,7 +294,9 @@ class ConnectionTest : public Test {
     ConnectionRefPtr connection(new Connection(
         device->interface_index(), device->link_name(), fixed_ip_params,
         device->technology(), device_info_.get(), &control_));
-    ReplaceSingletons(connection);
+    connection->resolver_ = &resolver_;
+    connection->routing_table_ = &routing_table_;
+    connection->rtnl_handler_ = &rtnl_handler_;
     return connection;
   }
 
@@ -370,9 +356,9 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
-  EXPECT_TRUE(gateway_address_.Equals(GetGatewayAddress(connection_)));
-  EXPECT_TRUE(GetHasBroadcastDomain(connection_));
+  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
+  EXPECT_TRUE(gateway_address_.Equals(connection_->gateway()));
+  EXPECT_TRUE(GetHasBroadcastDomain());
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
@@ -427,9 +413,9 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
-  EXPECT_TRUE(gateway_address_.Equals(GetGatewayAddress(connection_)));
-  EXPECT_TRUE(GetHasBroadcastDomain(connection_));
+  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
+  EXPECT_TRUE(gateway_address_.Equals(connection_->gateway()));
+  EXPECT_TRUE(GetHasBroadcastDomain());
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
@@ -516,9 +502,9 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
-  EXPECT_TRUE(gateway_address_.Equals(GetGatewayAddress(connection_)));
-  EXPECT_TRUE(GetHasBroadcastDomain(connection_));
+  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
+  EXPECT_TRUE(gateway_address_.Equals(connection_->gateway()));
+  EXPECT_TRUE(GetHasBroadcastDomain());
   EXPECT_FALSE(connection_->IsIPv6());
 
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority);
@@ -585,7 +571,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIPv6) {
   connection_->UpdateFromIPConfig(ip6config_);
 
   IPAddress test_local_address(local_ipv6_address_);
-  EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
+  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
   EXPECT_TRUE(connection_->IsIPv6());
 }
 
@@ -614,7 +600,7 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIPv6) {
   connection_->UpdateFromIPConfig(ip6config_);
 
   IPAddress test_local_address(local_ipv6_address_);
-  EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
+  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
   EXPECT_TRUE(connection_->IsIPv6());
 }
 
@@ -646,7 +632,7 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
-  EXPECT_FALSE(GetHasBroadcastDomain(connection_));
+  EXPECT_FALSE(GetHasBroadcastDomain());
 }
 
 TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
