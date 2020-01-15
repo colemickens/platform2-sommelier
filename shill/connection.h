@@ -132,8 +132,9 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, SetMTU);
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
 
-  // Work around misconfigured servers which provide a gateway address that
-  // is unreachable with the provided netmask.
+  // Create a link route to the gateway when the gateway is in a separate
+  // subnet. This can work if the host LAN and gateway LAN are bridged
+  // together, but is not a recommended network configuration.
   bool FixGatewayReachability(const IPAddress& local,
                               IPAddress* peer,
                               IPAddress* gateway);
