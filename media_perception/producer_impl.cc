@@ -13,7 +13,9 @@
 namespace mri {
 
 video_capture::mojom::ProducerPtr ProducerImpl::CreateInterfacePtr() {
-  return binding_.CreateInterfacePtrAndBind();
+  video_capture::mojom::ProducerPtr server_ptr;
+  binding_.Bind(mojo::MakeRequest(&server_ptr));
+  return server_ptr;
 }
 
 void ProducerImpl::RegisterVirtualDevice(

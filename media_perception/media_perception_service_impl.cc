@@ -27,7 +27,10 @@ MediaPerceptionServiceImpl::MediaPerceptionServiceImpl(
     std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client,
     std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client,
     std::shared_ptr<Rtanalytics> rtanalytics)
-    : binding_(this, std::move(pipe)),
+    : binding_(this,
+               mojo::InterfaceRequest<
+                   chromeos::media_perception::mojom::MediaPerceptionService>(
+                   std::move(pipe))),
       video_capture_service_client_(video_capture_service_client),
       chrome_audio_service_client_(chrome_audio_service_client),
       rtanalytics_(rtanalytics) {

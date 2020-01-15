@@ -53,7 +53,9 @@ bool VideoFrameHandlerImpl::RemoveFrameHandler(int frame_handler_id) {
 }
 
 video_capture::mojom::VideoFrameHandlerPtr VideoFrameHandlerImpl::CreateInterfacePtr() {
-  return binding_.CreateInterfacePtrAndBind();
+  video_capture::mojom::VideoFrameHandlerPtr server_ptr;
+  binding_.Bind(mojo::MakeRequest(&server_ptr));
+  return server_ptr;
 }
 
 void VideoFrameHandlerImpl::OnNewBuffer(
