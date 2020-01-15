@@ -96,9 +96,6 @@ int64_t VSockProxy::RegisterFileDescriptor(
   }
   fd_map_.emplace(handle,
                   FileDescriptorInfo{std::move(stream), std::move(controller)});
-
-  // TODO(hidehiko): Info looks too verbose. Reduce it when we are ready.
-  LOG(INFO) << "New FD is created: raw_fd=" << raw_fd << ", handle=" << handle;
   return handle;
 }
 
@@ -206,7 +203,6 @@ void VSockProxy::Stop() {
 }
 
 bool VSockProxy::OnClose(arc_proxy::Close* close) {
-  LOG(INFO) << "Closing: " << close->handle();
   auto it = fd_map_.find(close->handle());
   if (it == fd_map_.end()) {
     LOG(ERROR) << "Couldn't find handle: handle=" << close->handle();
@@ -276,7 +272,6 @@ bool VSockProxy::OnData(arc_proxy::Data* data) {
 }
 
 bool VSockProxy::OnConnectRequest(arc_proxy::ConnectRequest* request) {
-  LOG(INFO) << "Connecting to " << request->path();
   arc_proxy::VSockMessage reply;
   auto* response = reply.mutable_connect_response();
 
@@ -416,7 +411,6 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
     // In case of EOF on the other side of the |fd|, |fd| needs to be closed.
     // Otherwise it will be kept read-ready and this callback will be
     // repeatedly called.
-    LOG(INFO) << "Closing: handle=" << handle;
     message.mutable_close()->set_handle(handle);
     // Close the corresponding fd, too.
     fd_map_.erase(it);
