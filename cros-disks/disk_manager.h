@@ -67,11 +67,13 @@ class DiskManager : public MountManager {
 
  protected:
   // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
-  MountErrorType DoMount(const std::string& source_path,
-                         const std::string& filesystem_type,
-                         const std::vector<std::string>& options,
-                         const std::string& mount_path,
-                         MountOptions* applied_options) override;
+  std::unique_ptr<MountPoint> DoMountNew(
+      const std::string& source_path,
+      const std::string& filesystem_type,
+      const std::vector<std::string>& options,
+      const base::FilePath& mount_path,
+      MountOptions* applied_options,
+      MountErrorType* error) override;
 
   // Unmounts |path|.
   MountErrorType DoUnmount(const std::string& path) override;
@@ -84,6 +86,9 @@ class DiskManager : public MountManager {
   bool ShouldReserveMountPathOnError(MountErrorType error_type) const override;
 
  private:
+  // MountPoint implementation that ejects the device on unmount.
+  class EjectingMountPoint;
+
   // Creates an appropriate mounter object for a given filesystem.
   std::unique_ptr<MounterCompat> CreateMounter(
       const Disk& disk,
@@ -95,16 +100,17 @@ class DiskManager : public MountManager {
   // Otherwise, it returns NULL. This pointer is owned by the DiskManager.
   const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
 
-  // If |disk| should be ejected on unmount, add |mount_path| and the device
-  // file of |disk| to |devices_to_eject_on_unmount_| and returns true. Returns
-  // false otherwise.
-  bool ScheduleEjectOnUnmount(const std::string& mount_path, const Disk& disk);
+  // Ejects media for the device |device_file|. Return true if the eject process
+  // has started or |eject_device_on_unmount_| is false, or false if the eject
+  // process failed.
+  bool EjectDevice(const std::string& device_file);
 
-  // Ejects media from a device mounted at |mount_path|. Return true if the
-  // eject process has started, or false if the |mount_path| is not in
-  // |devices_to_eject_on_unmount_| or |eject_device_on_unmount_| is set to
-  // false.
-  bool EjectDeviceOfMountPath(const std::string& mount_path);
+  // If |disk| is an optical disk, wrap |mount_point| in a wrapper that ejects
+  // the disk on a successful unmount. If |disk| is not an optical disk, returns
+  // |mount_point|. This is exposed as a function to allow ejecting behaviour to
+  // be tested.
+  std::unique_ptr<MountPoint> MaybeWrapMountPointForEject(
+      std::unique_ptr<MountPoint> mount_point, const Disk& disk);
 
   DiskMonitor* const disk_monitor_;
   DeviceEjector* const device_ejector_;
@@ -127,11 +133,10 @@ class DiskManager : public MountManager {
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
   FRIEND_TEST(DiskManagerTest, DoMountDiskWithNonexistentSourcePath);
   FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithBusyRetry);
-  FRIEND_TEST(DiskManagerTest, ScheduleEjectOnUnmount);
-  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPath);
-  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed);
-  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled);
-  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPathWhenMountPathExcluded);
+  FRIEND_TEST(DiskManagerTest, EjectDevice);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceWhenUnmountFailed);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceWhenExplicitlyDisabled);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceWhenReleased);
 
   DISALLOW_COPY_AND_ASSIGN(DiskManager);
 };

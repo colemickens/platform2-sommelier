@@ -9,6 +9,7 @@
 #include <time.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -24,6 +25,7 @@
 #include "cros-disks/exfat_mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/metrics.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/mounter.h"
 #include "cros-disks/ntfs_mounter.h"
 #include "cros-disks/platform.h"
@@ -64,6 +66,14 @@ class MockPlatform : public Platform {
               Unmount,
               (const std::string&, int),
               (const, override));
+};
+
+class MockMountPoint : public MountPoint {
+ public:
+  explicit MockMountPoint(const base::FilePath& path) : MountPoint(path) {}
+  ~MockMountPoint() override { DestructorUnmount(); }
+
+  MOCK_METHOD(MountErrorType, UnmountImpl, (), (override));
 };
 
 }  // namespace
@@ -265,79 +275,94 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
   std::string filesystem_type = "ext3";
   std::string source_path = "/dev/nonexistent-path";
   std::string mount_path = "/tmp/cros-disks-test";
-  std::vector<std::string> options;
   MountOptions applied_options;
-  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH,
-            manager_.DoMount(source_path, filesystem_type, options, mount_path,
-                             &applied_options));
+  MountErrorType mount_error = MOUNT_ERROR_UNKNOWN;
+  std::unique_ptr<MountPoint> mount_point = manager_.DoMountNew(
+      source_path, filesystem_type, {} /* options */,
+      base::FilePath(mount_path), &applied_options, &mount_error);
+  EXPECT_FALSE(mount_point);
+  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, mount_error);
 }
 
-TEST_F(DiskManagerTest, DoUnmountDiskWithBusyRetry) {
-  std::string source_path = "/dev/mount-path";
-  EXPECT_CALL(platform_, Unmount(source_path, 0))
-      .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
-  EXPECT_CALL(platform_, Unmount(source_path, MNT_DETACH))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(source_path));
-}
-
-TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {
-  std::string mount_path = "/media/removable/disk";
+TEST_F(DiskManagerTest, EjectDevice) {
+  const base::FilePath kMountPath("/media/removable/disk");
   Disk disk;
-  disk.device_file = "/dev/sr0";
-  EXPECT_FALSE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
-  EXPECT_FALSE(
-      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 
+  std::unique_ptr<MockMountPoint> mount_point =
+      std::make_unique<MockMountPoint>(kMountPath);
+  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  disk.device_file = "/dev/sda";
+  disk.media_type = DEVICE_MEDIA_USB;
+  EXPECT_CALL(ejector_, Eject("/dev/sda")).Times(0);
+  std::unique_ptr<MountPoint> wrapped_mount_point =
+      manager_.MaybeWrapMountPointForEject(std::move(mount_point), disk);
+  EXPECT_EQ(MOUNT_ERROR_NONE, wrapped_mount_point->Unmount());
+
+  mount_point = std::make_unique<MockMountPoint>(kMountPath);
+  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  disk.device_file = "/dev/sr0";
   disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
-  EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
-  EXPECT_TRUE(
-      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
-
-  disk.media_type = DEVICE_MEDIA_DVD;
-  manager_.devices_to_eject_on_unmount_.clear();
-  EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
-  EXPECT_TRUE(
-      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
-}
-
-TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
-  std::string mount_path = "/media/removable/disk";
-  Disk disk;
-  disk.device_file = "/dev/sr0";
-  manager_.devices_to_eject_on_unmount_[mount_path] = disk;
   EXPECT_CALL(ejector_, Eject("/dev/sr0")).WillOnce(Return(true));
-  EXPECT_TRUE(manager_.EjectDeviceOfMountPath(mount_path));
-  EXPECT_FALSE(
-      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  wrapped_mount_point =
+      manager_.MaybeWrapMountPointForEject(std::move(mount_point), disk);
+  EXPECT_EQ(MOUNT_ERROR_NONE, wrapped_mount_point->Unmount());
+
+  mount_point = std::make_unique<MockMountPoint>(kMountPath);
+  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  disk.device_file = "/dev/sr1";
+  disk.media_type = DEVICE_MEDIA_DVD;
+  EXPECT_CALL(ejector_, Eject("/dev/sr1")).WillOnce(Return(true));
+  wrapped_mount_point =
+      manager_.MaybeWrapMountPointForEject(std::move(mount_point), disk);
+  EXPECT_EQ(MOUNT_ERROR_NONE, wrapped_mount_point->Unmount());
 }
 
-TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
-  std::string mount_path = "/media/removable/disk";
+TEST_F(DiskManagerTest, EjectDeviceWhenUnmountFailed) {
+  const base::FilePath kMountPath("/media/removable/disk");
   Disk disk;
   disk.device_file = "/dev/sr0";
-  manager_.devices_to_eject_on_unmount_[mount_path] = disk;
-  EXPECT_CALL(ejector_, Eject(_)).WillOnce(Return(false));
-  EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
-  EXPECT_FALSE(
-      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+
+  std::unique_ptr<MockMountPoint> mount_point =
+      std::make_unique<MockMountPoint>(kMountPath);
+  EXPECT_CALL(*mount_point, UnmountImpl())
+      .WillRepeatedly(Return(MOUNT_ERROR_UNKNOWN));
+  EXPECT_CALL(ejector_, Eject("/dev/sr0")).Times(0);
+  std::unique_ptr<MountPoint> wrapped_mount_point =
+      manager_.MaybeWrapMountPointForEject(std::move(mount_point), disk);
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN, wrapped_mount_point->Unmount());
 }
 
-TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled) {
-  std::string mount_path = "/media/removable/disk";
+TEST_F(DiskManagerTest, EjectDeviceWhenExplicitlyDisabled) {
+  const base::FilePath kMountPath("/media/removable/disk");
   Disk disk;
   disk.device_file = "/dev/sr0";
-  manager_.devices_to_eject_on_unmount_[mount_path] = disk;
+  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+
+  std::unique_ptr<MockMountPoint> mount_point =
+      std::make_unique<MockMountPoint>(kMountPath);
+  EXPECT_CALL(*mount_point, UnmountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
   manager_.eject_device_on_unmount_ = false;
-  EXPECT_CALL(ejector_, Eject(_)).Times(0);
-  EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
-  EXPECT_FALSE(
-      base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+  EXPECT_CALL(ejector_, Eject("/dev/sr0")).Times(0);
+  std::unique_ptr<MountPoint> wrapped_mount_point =
+      manager_.MaybeWrapMountPointForEject(std::move(mount_point), disk);
+  EXPECT_EQ(MOUNT_ERROR_NONE, wrapped_mount_point->Unmount());
 }
 
-TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenMountPathExcluded) {
-  EXPECT_CALL(ejector_, Eject(_)).Times(0);
-  EXPECT_FALSE(manager_.EjectDeviceOfMountPath("/media/removable/disk"));
+TEST_F(DiskManagerTest, EjectDeviceWhenReleased) {
+  const base::FilePath kMountPath("/media/removable/disk");
+  Disk disk;
+  disk.device_file = "/dev/sr0";
+  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+
+  std::unique_ptr<MockMountPoint> mount_point =
+      std::make_unique<MockMountPoint>(kMountPath);
+  EXPECT_CALL(*mount_point, UnmountImpl()).Times(0);
+  EXPECT_CALL(ejector_, Eject("/dev/sr0")).Times(0);
+  std::unique_ptr<MountPoint> wrapped_mount_point =
+      manager_.MaybeWrapMountPointForEject(std::move(mount_point), disk);
+  wrapped_mount_point->Release();
+  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, wrapped_mount_point->Unmount());
 }
 
 }  // namespace cros_disks

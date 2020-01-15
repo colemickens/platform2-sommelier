@@ -28,12 +28,54 @@
 #include "cros-disks/filesystem.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/ntfs_mounter.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/system_mounter.h"
 
 namespace cros_disks {
+
+class DiskManager::EjectingMountPoint : public MountPoint {
+ public:
+  EjectingMountPoint(std::unique_ptr<MountPoint> mount_point,
+                     DiskManager* disk_manager,
+                     const std::string& device_file)
+      : MountPoint(mount_point->path()),
+        mount_point_(std::move(mount_point)),
+        disk_manager_(disk_manager),
+        device_file_(device_file) {
+    DCHECK(mount_point_);
+    DCHECK(disk_manager_);
+    DCHECK(!device_file_.empty());
+  }
+
+  ~EjectingMountPoint() override { DestructorUnmount(); }
+
+  void Release() override {
+    MountPoint::Release();
+    mount_point_->Release();
+  }
+
+ protected:
+  MountErrorType UnmountImpl() override {
+    MountErrorType error = mount_point_->Unmount();
+    if (error == MOUNT_ERROR_NONE) {
+      bool success = disk_manager_->EjectDevice(device_file_);
+      LOG_IF(ERROR, !success)
+          << "Unable to eject device " << quote(device_file_)
+          << " for mount path " << quote(path());
+    }
+    return error;
+  }
+
+ private:
+  const std::unique_ptr<MountPoint> mount_point_;
+  DiskManager* const disk_manager_;
+  const std::string device_file_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(EjectingMountPoint);
+};
 
 DiskManager::DiskManager(const std::string& mount_root,
                          Platform* platform,
@@ -204,29 +246,34 @@ bool DiskManager::CanMount(const std::string& source_path) const {
          base::StartsWith(source_path, "/dev/", base::CompareCase::SENSITIVE);
 }
 
-MountErrorType DiskManager::DoMount(const std::string& source_path,
-                                    const std::string& filesystem_type,
-                                    const std::vector<std::string>& options,
-                                    const std::string& mount_path,
-                                    MountOptions* applied_options) {
+std::unique_ptr<MountPoint> DiskManager::DoMountNew(
+    const std::string& source_path,
+    const std::string& filesystem_type,
+    const std::vector<std::string>& options,
+    const base::FilePath& mount_path,
+    MountOptions* applied_options,
+    MountErrorType* error) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(source_path), &disk)) {
     LOG(ERROR) << quote(source_path) << " is not a valid device";
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return nullptr;
   }
 
   if (disk.is_on_boot_device) {
     LOG(ERROR) << quote(source_path)
                << " is on boot device and not allowed to mount";
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return nullptr;
   }
 
   if (disk.device_file.empty()) {
     LOG(ERROR) << quote(source_path) << " does not have a device file";
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return nullptr;
   }
 
   std::string device_filesystem_type =
@@ -236,72 +283,51 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
   if (device_filesystem_type.empty()) {
     LOG(ERROR) << "Cannot determine the file system type of device "
                << quote(source_path);
-    return MOUNT_ERROR_UNKNOWN_FILESYSTEM;
+    *error = MOUNT_ERROR_UNKNOWN_FILESYSTEM;
+    return nullptr;
   }
 
   const Filesystem* filesystem = GetFilesystem(device_filesystem_type);
   if (filesystem == nullptr) {
     LOG(ERROR) << "File system type " << quote(device_filesystem_type)
                << " on device " << quote(source_path) << " is not supported";
-    return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+    *error = MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+    return nullptr;
   }
 
   std::unique_ptr<MounterCompat> mounter(
-      CreateMounter(disk, *filesystem, mount_path, options));
+      CreateMounter(disk, *filesystem, mount_path.value(), options));
   CHECK(mounter) << "Failed to create a mounter";
 
-  MountErrorType error_type = mounter->MountOld();
-  if (error_type != MOUNT_ERROR_NONE) {
+  std::unique_ptr<MountPoint> mount_point = mounter->Mount(
+      disk.device_file, mount_path, mounter->mount_options().options(), error);
+  if (*error != MOUNT_ERROR_NONE) {
+    DCHECK(!mount_point);
     // Try to mount the filesystem read-only if mounting it read-write failed.
     if (!mounter->mount_options().IsReadOnlyOptionSet()) {
       LOG(INFO) << "Trying to mount " << quote(source_path) << " read-only";
       std::vector<std::string> ro_options = options;
       ro_options.push_back("ro");
-      mounter = CreateMounter(disk, *filesystem, mount_path, ro_options);
+      mounter =
+          CreateMounter(disk, *filesystem, mount_path.value(), ro_options);
       CHECK(mounter) << "Failed to create a 'ro' mounter";
-      error_type = mounter->MountOld();
+      mount_point = mounter->Mount(disk.device_file, mount_path,
+                                   mounter->mount_options().options(), error);
     }
   }
 
-  if (error_type != MOUNT_ERROR_NONE) {
-    return error_type;
+  if (*error != MOUNT_ERROR_NONE) {
+    DCHECK(!mount_point);
+    return nullptr;
   }
 
-  ScheduleEjectOnUnmount(mount_path, disk);
   *applied_options = mounter->mount_options();
-  return MOUNT_ERROR_NONE;
+  return MaybeWrapMountPointForEject(std::move(mount_point), disk);
 }
 
 MountErrorType DiskManager::DoUnmount(const std::string& path) {
-  CHECK(!path.empty()) << "Invalid path argument";
-
-  // The USB or SD drive on some system may be powered off after the system
-  // goes into the S3 suspend state. To avoid leaving a mount point in a stale
-  // state while its associated physical drive is gone, the cros-disks client
-  // on the Chrome side unmounts all the mount points it manages before the
-  // system goes into suspend. However, an ongoing filesystem access may keep a
-  // mount point busy, which is beyond the control of Chrome or cros-disks. We
-  // used to force umount the mount points but that has become undesirable. For
-  // instance, when force unmounting a mount point backed by a FUSE process,
-  // umount2() reports an error and the mount point is left in a half-broken
-  // state. Lazy unmount is preferred over force unmount under such condition
-  // (although it still doesn't necessarily guarantee a clean unmount if the
-  // filesystem access doesn't finish before the USB or SD drive is powered
-  // off). To better handle this kind of situation, we first try performing a
-  // normal unmount. If that fails with errno == EBUSY, we retry with a lazy
-  // unmount before giving up and reporting an error.
-  MountErrorType error = platform()->Unmount(path, 0 /* flags */);
-  if (error == MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
-    // MOUNT_ERROR_PATH_ALREADY_MOUNTED is returned on EBUSY.
-    LOG(WARNING) << "Mount point " << quote(path)
-                 << " is busy, retrying with lazy unmount";
-    error = platform()->Unmount(path, MNT_DETACH);
-  }
-
-  if (error == MOUNT_ERROR_NONE) {
-    EjectDeviceOfMountPath(path);
-  }
-  return error;
+  NOTREACHED();
+  return MOUNT_ERROR_UNKNOWN;
 }
 
 std::string DiskManager::SuggestMountPath(
@@ -319,27 +345,20 @@ bool DiskManager::ShouldReserveMountPathOnError(
          error_type == MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
 }
 
-bool DiskManager::ScheduleEjectOnUnmount(const std::string& mount_path,
-                                         const Disk& disk) {
-  if (!disk.IsOpticalDisk())
-    return false;
-
-  devices_to_eject_on_unmount_[mount_path] = disk;
+bool DiskManager::EjectDevice(const std::string& device_file) {
+  if (eject_device_on_unmount_) {
+    return device_ejector_->Eject(device_file);
+  }
   return true;
 }
 
-bool DiskManager::EjectDeviceOfMountPath(const std::string& mount_path) {
-  auto it = devices_to_eject_on_unmount_.find(mount_path);
-  if (it == devices_to_eject_on_unmount_.end())
-    return false;
-
-  auto disk = it->second;
-  devices_to_eject_on_unmount_.erase(it);
-
-  if (eject_device_on_unmount_) {
-    return device_ejector_->Eject(disk.device_file);
+std::unique_ptr<MountPoint> DiskManager::MaybeWrapMountPointForEject(
+    std::unique_ptr<MountPoint> mount_point, const Disk& disk) {
+  if (!disk.IsOpticalDisk()) {
+    return mount_point;
   }
-  return false;
+  return std::make_unique<EjectingMountPoint>(std::move(mount_point), this,
+                                              disk.device_file);
 }
 
 bool DiskManager::UnmountAll() {

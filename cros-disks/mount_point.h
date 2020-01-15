@@ -28,7 +28,7 @@ class MountPoint {
   // Releases (leaks) the ownership of the mount point.
   // Until all places handle ownership of mount points properly
   // it's necessary to be able to leave the mount alone.
-  void Release();
+  virtual void Release();
 
   // Unmounts right now using the unmounter.
   MountErrorType Unmount();
