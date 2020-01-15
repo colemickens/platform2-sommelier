@@ -188,4 +188,18 @@ bool ServiceDBusAdaptor::GetLoadableProfileEntries(
   return true;
 }
 
+bool ServiceDBusAdaptor::GetWiFiPassphrase(
+    brillo::ErrorPtr* error, std::string* out_passphrase) {
+  SLOG(this, 2) << __func__;
+
+  Error e;
+  std::string passphrase = service_->GetWiFiPassphrase(&e);
+  if (!e.IsSuccess()) {
+    return !e.ToChromeosError(error);
+  }
+
+  *out_passphrase = passphrase;
+  return true;
+}
+
 }  // namespace shill

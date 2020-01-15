@@ -402,6 +402,13 @@ void Service::CompleteCellularActivation(Error* error) {
       "Service doesn't support cellular activation completion.");
 }
 
+std::string Service::GetWiFiPassphrase(Error* error) {
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotSupported,
+      "Service doesn't support WiFi passphrase retrieval.");
+  return std::string();
+}
+
 bool Service::IsActive(Error* /*error*/) {
   return state() != kStateUnknown && state() != kStateIdle &&
          state() != kStateFailure && state() != kStateDisconnecting;

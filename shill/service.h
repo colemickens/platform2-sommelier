@@ -181,6 +181,9 @@ class Service : public base::RefCounted<Service> {
   // The default implementation returns the error kNotSupported.
   virtual void CompleteCellularActivation(Error* error);
 
+  // The default implementation returns the error kNotSupported.
+  virtual std::string GetWiFiPassphrase(Error* error);
+
   mockable bool IsActive(Error* error);
 
   // Returns whether services of this type should be auto-connect by default.

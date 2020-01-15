@@ -157,6 +157,8 @@ class WiFiService : public Service {
 
   bool IsAutoConnectable(const char** reason) const override;
 
+  std::string GetWiFiPassphrase(Error* error) override;
+
   // Signal level in dBm.  If no current endpoint, returns
   // std::numeric_limits<int>::min().
   int16_t SignalLevel() const;

@@ -174,6 +174,18 @@ Methods		dict GetProperties()
 			argument pairs to do a "GetEntry" call on each profile
 			object.
 
+		string GetWiFiPassphrase()
+
+			Return the passphrase for a given WiFi network if it
+			has one.  This will return a NotSupported error if
+			called on a Service which is not WiFi, or if there is
+			no saved passphrase.  This is included as a separate
+			method instead of a property to help ensure that the
+			passpharse isn't accidentally leaked to the UI or
+			included in logs.
+
+			Possible Errors: [service].Error.NotSupported
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

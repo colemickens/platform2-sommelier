@@ -30,6 +30,9 @@
 		<method name="GetLoadableProfileEntries">
 			<arg type="a{os}" direction="out"/>
 		</method>
+		<method name="GetWiFiPassphrase">
+			<arg type="s" direction="out"/>
+		</method>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>

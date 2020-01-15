@@ -188,6 +188,16 @@ bool WiFiService::IsAutoConnectable(const char** reason) const {
   return true;
 }
 
+std::string WiFiService::GetWiFiPassphrase(Error* error) {
+  if (Is8021x() || passphrase_.empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          "Service doesn't have a passphrase.");
+    return std::string();
+  }
+
+  return passphrase_;
+}
+
 void WiFiService::SetEAPKeyManagement(const string& key_management) {
   Service::SetEAPKeyManagement(key_management);
   UpdateSecurity();
