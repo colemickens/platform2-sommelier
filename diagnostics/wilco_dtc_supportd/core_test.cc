@@ -606,7 +606,7 @@ TEST_F(StartedCoreTest, HandleRequestBluetoothDataNotification) {
       };
 
   base::RunLoop run_loop;
-  auto barrier_closure = BarrierClosure(2, run_loop.QuitClosure());
+  auto barrier_closure = BarrierClosure(3, run_loop.QuitClosure());
 
   grpc_api::HandleBluetoothDataChangedRequest
       fake_wilco_dtc_bluetooth_grpc_request;
@@ -621,8 +621,15 @@ TEST_F(StartedCoreTest, HandleRequestBluetoothDataNotification) {
           bluetooth_callback, barrier_closure,
           &fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request));
 
-  core_delegate()->bluetooth_event_service()->EmitBluetoothAdapterDataChanged(
-      adapters);
+  fake_wilco_dtc.RequestBluetoothDataNotification(
+      grpc_api::RequestBluetoothDataNotificationRequest{},
+      base::Bind(
+          [](base::Closure barrier_closure,
+             std::unique_ptr<
+                 grpc_api::RequestBluetoothDataNotificationResponse>) {
+            barrier_closure.Run();
+          },
+          barrier_closure));
 
   run_loop.Run();
 
