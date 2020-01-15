@@ -346,6 +346,11 @@ properties:
                     since it may not have firmware at that point.
                   type: boolean
                   build-only-element: true
+                firmware-config:
+                  description: The firmware config bitmap to be flashed to the CBI. This field is
+                    used in the factory.
+                  type: integer
+                  build-only-element: false
               additionalProperties: false
             firmware-signing:
               type: object

@@ -196,6 +196,7 @@ chromeos:
                 ec: "another"
                 depthcharge: "another"
                 libpayload: "another"
+              firmware-config: 0xFFFFFFFF
             firmware-signing:
               key-id: "{{$key-id}}"
               signature-id: "{{$name}}"

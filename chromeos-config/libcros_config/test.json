@@ -126,7 +126,9 @@
             "ucm-suffix": "another"
           }
         },
-        "firmware": {},
+        "firmware": {
+          "firmware-config": 4294967295
+        },
         "hardware-properties": {
           "is-lid-convertible": true
         },
