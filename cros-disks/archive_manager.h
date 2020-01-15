@@ -6,6 +6,7 @@
 #define CROS_DISKS_ARCHIVE_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -96,7 +97,7 @@ class ArchiveManager : public MountManager {
 
   // Mounts |base_path| to |avfs_path| via AVFS.
   MountErrorType MountAVFSPath(const std::string& base_path,
-                               const std::string& avfs_path) const;
+                               const std::string& avfs_path);
 
   // Adds a mapping of |mount_path| to |virtual_path| to |virtual_paths_|.
   // An existing mapping of |mount_path| is overwritten.
@@ -120,6 +121,10 @@ class ArchiveManager : public MountManager {
 
   // This variable is set to true if the AVFS daemons have started.
   bool avfs_started_;
+
+  // Mapping of AVFS daemon mount path to MountPoint. Should contain one entry
+  // per running AVFS daemon.
+  std::map<base::FilePath, std::unique_ptr<MountPoint>> avfsd_mounts_;
 
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPath);
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPathWithInvalidPaths);

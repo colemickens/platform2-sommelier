@@ -7,10 +7,12 @@
 #include <sys/mount.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
@@ -323,14 +325,15 @@ bool ArchiveManager::StopAVFS() {
   avfs_started_ = false;
   // Unmounts all mounted archives before unmounting AVFS mounts.
   bool all_unmounted = UnmountAll();
-  for (const auto& mapping : kAVFSPathMapping) {
-    const std::string& path = mapping.avfs_path;
-    if (!platform()->PathExists(path))
-      continue;
 
-    const MountErrorType error = platform()->Unmount(path, 0);
-    if (error != MOUNT_ERROR_NONE)
+  for (auto it = avfsd_mounts_.begin(); it != avfsd_mounts_.end();) {
+    std::unique_ptr<MountPoint> mount_point = std::move(it->second);
+    it = avfsd_mounts_.erase(it);
+
+    const MountErrorType error = mount_point->Unmount();
+    if (error != MOUNT_ERROR_NONE) {
       all_unmounted = false;
+    }
   }
 
   return all_unmounted;
@@ -364,8 +367,14 @@ bool ArchiveManager::CreateMountDirectory(const std::string& path) const {
   return true;
 }
 
-MountErrorType ArchiveManager::MountAVFSPath(
-    const std::string& base_path, const std::string& avfs_path) const {
+MountErrorType ArchiveManager::MountAVFSPath(const std::string& base_path,
+                                             const std::string& avfs_path) {
+  base::FilePath mount_path(avfs_path);
+  if (base::ContainsKey(avfsd_mounts_, mount_path)) {
+    LOG(ERROR) << "AVFS mount point " << quote(mount_path) << " already exists";
+    return MOUNT_ERROR_INTERNAL;
+  }
+
   MountInfo mount_info;
   if (!mount_info.RetrieveFromCurrentProcess())
     return MOUNT_ERROR_INTERNAL;
@@ -406,10 +415,15 @@ MountErrorType ArchiveManager::MountAVFSPath(
       }),
       false /* permit_network_access */, kAVFSMountGroup);
 
-  MountErrorType mount_error = fuse_mounter->MountOld();
+  MountErrorType mount_error = MOUNT_ERROR_UNKNOWN;
+  std::unique_ptr<MountPoint> mount_point = fuse_mounter->Mount(
+      "", mount_path, mount_options.options(), &mount_error);
   if (mount_error != MOUNT_ERROR_NONE) {
+    DCHECK(!mount_point);
     return mount_error;
   }
+
+  DCHECK(mount_point);
 
   if (!mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {
@@ -420,6 +434,7 @@ MountErrorType ArchiveManager::MountAVFSPath(
 
   LOG(INFO) << "Mounted " << quote(base_path) << " to " << quote(avfs_path)
             << " via AVFS";
+  avfsd_mounts_[mount_path] = std::move(mount_point);
   return MOUNT_ERROR_NONE;
 }
 
