@@ -131,6 +131,8 @@ std::unique_ptr<ArcVm> ArcVm::Create(
     base::FilePath rootfs,
     base::FilePath fstab,
     uint32_t cpus,
+    base::FilePath pstore_path,
+    uint32_t pstore_size,
     std::vector<ArcVm::Disk> disks,
     uint32_t vsock_cid,
     std::unique_ptr<patchpanel::Client> network_client,
@@ -142,7 +144,8 @@ std::unique_ptr<ArcVm> ArcVm::Create(
       std::move(seneschal_server_proxy), std::move(runtime_dir), features));
 
   if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(fstab), cpus,
-                 std::move(disks), std::move(params))) {
+                 std::move(pstore_path), pstore_size, std::move(disks),
+                 std::move(params))) {
     vm.reset();
   }
 
@@ -157,6 +160,8 @@ bool ArcVm::Start(base::FilePath kernel,
                   base::FilePath rootfs,
                   base::FilePath fstab,
                   uint32_t cpus,
+                  base::FilePath pstore_path,
+                  uint32_t pstore_size,
                   std::vector<ArcVm::Disk> disks,
                   std::vector<string> params) {
   // Get the available network interfaces.
@@ -187,20 +192,22 @@ bool ArcVm::Start(base::FilePath kernel,
   // Build up the process arguments.
   // clang-format off
   base::StringPairs args = {
-    { kCrosvmBin,         "run" },
-    { "--cpus",           std::to_string(cpus) },
-    { "--mem",            GetVmMemoryMiB() },
-    { rootfs_flag,        rootfs.value() },
-    { "--cid",            std::to_string(vsock_cid_) },
-    { "--socket",         GetVmSocketPath() },
-    { "--wayland-sock",   kWaylandSocket },
-    { "--wayland-sock",   "/run/arcvm/mojo/mojo-proxy.sock,name=mojo" },
-    { "--wayland-dmabuf", "" },
-    { "--serial",         "type=syslog,num=1" },
-    { "--syslog-tag",     base::StringPrintf("ARCVM(%u)", vsock_cid_) },
-    { "--cras-audio",     "" },
-    { "--cras-capture",   "" },
-    { "--android-fstab",  fstab.value() },
+    { kCrosvmBin,          "run" },
+    { "--cpus",            std::to_string(cpus) },
+    { "--mem",             GetVmMemoryMiB() },
+    { rootfs_flag,         rootfs.value() },
+    { "--cid",             std::to_string(vsock_cid_) },
+    { "--socket",          GetVmSocketPath() },
+    { "--wayland-sock",    kWaylandSocket },
+    { "--wayland-sock",    "/run/arcvm/mojo/mojo-proxy.sock,name=mojo" },
+    { "--wayland-dmabuf",  "" },
+    { "--serial",          "type=syslog,num=1" },
+    { "--syslog-tag",      base::StringPrintf("ARCVM(%u)", vsock_cid_) },
+    { "--cras-audio",      "" },
+    { "--cras-capture",    "" },
+    { "--android-fstab",   fstab.value() },
+    { "--pstore",          base::StringPrintf("path=%s,size=%d",
+                              pstore_path.value().c_str(), pstore_size) },
     // TODO(yusukes): Switch from 9p to virtio-fs.
     { "--shared-dir",     base::StringPrintf("%s:%s", kHostGeneratedSharedDir,
                                              kHostGeneratedSharedDirTag) },

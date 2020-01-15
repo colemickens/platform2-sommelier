@@ -43,6 +43,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/ptr_util.h>
+#include <base/optional.h>
 #include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -125,6 +126,9 @@ constexpr char kQcowImageExtension[] = ".qcow2";
 
 // File extension for Plugin VMs disk types
 constexpr char kPluginVmImageExtension[] = ".pvm";
+
+// File extension for pstore backend file
+constexpr char kPstoreExtension[] = ".pstore";
 
 // Valid file extensions for disk images
 constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
@@ -290,46 +294,80 @@ base::FilePath GetLatestVMPath() {
   return latest_path;
 }
 
+// Gets the path to the file given the name, user id, location, and extension.
+base::Optional<base::FilePath> GetFilePathFromName(
+    const std::string& cryptohome_id,
+    const std::string& vm_name,
+    StorageLocation storage_location,
+    const std::string& extension,
+    bool create_parent_dir) {
+  if (!base::ContainsOnlyChars(cryptohome_id, kValidCryptoHomeCharacters)) {
+    LOG(ERROR) << "Invalid cryptohome_id specified";
+    return base::nullopt;
+  }
+  // Base64 encode the given disk name to ensure it only has valid characters.
+  std::string encoded_name;
+  base::Base64UrlEncode(vm_name, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                        &encoded_name);
+
+  base::FilePath storage_dir =
+      base::FilePath(kCryptohomeRoot).Append(cryptohome_id);
+  switch (storage_location) {
+    case STORAGE_CRYPTOHOME_ROOT: {
+      storage_dir = storage_dir.Append(kCrosvmDir);
+      break;
+    }
+    case STORAGE_CRYPTOHOME_PLUGINVM: {
+      storage_dir = storage_dir.Append(kPluginVmDir);
+      break;
+    }
+    default: {
+      LOG(ERROR) << "Unknown storage location type";
+      return base::nullopt;
+    }
+  }
+  if (!base::DirectoryExists(storage_dir)) {
+    if (!create_parent_dir) {
+      return base::nullopt;
+    }
+    base::File::Error dir_error;
+
+    if (!base::CreateDirectoryAndGetError(storage_dir, &dir_error)) {
+      LOG(ERROR) << "Failed to create storage directory in /home/root: "
+                 << base::File::ErrorToString(dir_error);
+      return base::nullopt;
+    }
+  }
+  return storage_dir.Append(encoded_name).AddExtension(extension);
+}
+
 // Gets the path to a VM disk given the name, user id, and location.
 bool GetDiskPathFromName(
-    const std::string& disk_path,
+    const std::string& vm_name,
     const std::string& cryptohome_id,
     StorageLocation storage_location,
     bool create_parent_dir,
     base::FilePath* path_out,
     enum DiskImageType preferred_image_type = DiskImageType::DISK_IMAGE_AUTO) {
-  if (!base::ContainsOnlyChars(cryptohome_id, kValidCryptoHomeCharacters)) {
-    LOG(ERROR) << "Invalid cryptohome_id specified";
-    return false;
-  }
-
-  // Base64 encode the given disk name to ensure it only has valid characters.
-  std::string disk_name;
-  base::Base64UrlEncode(disk_path, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
-                        &disk_name);
-
   switch (storage_location) {
     case STORAGE_CRYPTOHOME_ROOT: {
-      base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
-                                      .Append(cryptohome_id)
-                                      .Append(kCrosvmDir);
-      base::File::Error dir_error;
-      if (!base::DirectoryExists(crosvm_dir)) {
-        if (!create_parent_dir) {
-          return false;
-        }
-
-        if (!base::CreateDirectoryAndGetError(crosvm_dir, &dir_error)) {
-          LOG(ERROR) << "Failed to create crosvm directory in /home/root: "
-                     << base::File::ErrorToString(dir_error);
-          return false;
-        }
+      const auto qcow2_path =
+          GetFilePathFromName(cryptohome_id, vm_name, storage_location,
+                              kQcowImageExtension, create_parent_dir);
+      if (!qcow2_path) {
+        LOG(ERROR) << "Failed to get get qcow2 path";
+        return false;
+      }
+      const auto raw_path =
+          GetFilePathFromName(cryptohome_id, vm_name, storage_location,
+                              kRawImageExtension, create_parent_dir);
+      if (!raw_path) {
+        LOG(ERROR) << "Failed to get get raw path";
+        return false;
       }
 
-      auto qcow2_path = crosvm_dir.Append(disk_name + kQcowImageExtension);
-      auto raw_path = crosvm_dir.Append(disk_name + kRawImageExtension);
-      bool qcow2_exists = base::PathExists(qcow2_path);
-      bool raw_exists = base::PathExists(raw_path);
+      const bool qcow2_exists = base::PathExists(*qcow2_path);
+      const bool raw_exists = base::PathExists(*raw_path);
 
       // This scenario (both <name>.img and <name>.qcow2 exist) should never
       // happen. It is prevented by the later checks in this function.
@@ -337,7 +375,7 @@ bool GetDiskPathFromName(
       // files in dev mode), bail out, since we can't tell which one the user
       // wants.
       if (qcow2_exists && raw_exists) {
-        LOG(ERROR) << "Both qcow2 and raw variants of " << disk_path
+        LOG(ERROR) << "Both qcow2 and raw variants of " << vm_name
                    << " already exist.";
         return false;
       }
@@ -345,39 +383,29 @@ bool GetDiskPathFromName(
       // Return the path to an existing image of any type, if one exists.
       // If not, generate a path based on the preferred image type.
       if (qcow2_exists) {
-        *path_out = qcow2_path;
+        *path_out = *qcow2_path;
       } else if (raw_exists) {
-        *path_out = raw_path;
+        *path_out = *raw_path;
       } else if (preferred_image_type == DISK_IMAGE_QCOW2) {
-        *path_out = qcow2_path;
+        *path_out = *qcow2_path;
       } else if (preferred_image_type == DISK_IMAGE_RAW ||
                  preferred_image_type == DISK_IMAGE_AUTO) {
-        *path_out = raw_path;
+        *path_out = *raw_path;
       } else {
         LOG(ERROR) << "Unknown image type " << preferred_image_type;
         return false;
       }
-
       return true;
     }
     case STORAGE_CRYPTOHOME_PLUGINVM: {
-      base::FilePath pluginvm_dir = base::FilePath(kCryptohomeRoot)
-                                        .Append(cryptohome_id)
-                                        .Append(kPluginVmDir);
-      base::File::Error dir_error;
-      if (!base::DirectoryExists(pluginvm_dir)) {
-        if (!create_parent_dir) {
-          return false;
-        }
-
-        if (!base::CreateDirectoryAndGetError(pluginvm_dir, &dir_error)) {
-          LOG(ERROR) << "Failed to create plugin directory in /home/root: "
-                     << base::File::ErrorToString(dir_error);
-          return false;
-        }
+      const auto plugin_path =
+          GetFilePathFromName(cryptohome_id, vm_name, storage_location,
+                              kPluginVmImageExtension, create_parent_dir);
+      if (!plugin_path) {
+        LOG(ERROR) << "failed to get get plugin path";
+        return false;
       }
-
-      *path_out = pluginvm_dir.Append(disk_name + kPluginVmImageExtension);
+      *path_out = *plugin_path;
       return true;
     }
     default:
@@ -1810,11 +1838,23 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   features.gpu = true;
   features.rootfs_writable = request.rootfs_writable();
 
-  auto vm =
-      ArcVm::Create(std::move(kernel), std::move(rootfs), std::move(fstab),
-                    request.cpus(), std::move(disks), vsock_cid,
-                    std::move(network_client), std::move(server_proxy),
-                    std::move(runtime_dir), features, std::move(params));
+  const auto pstore_path = GetFilePathFromName(
+      request.owner_id(), request.name(), STORAGE_CRYPTOHOME_ROOT,
+      kPstoreExtension, true /* create_parent_dir */);
+  if (!pstore_path) {
+    LOG(ERROR) << "Failed to get pstore path";
+
+    response.set_failure_reason("Failed to get pstore path");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  const uint32_t pstore_size = 1024 * 1024;
+
+  auto vm = ArcVm::Create(
+      std::move(kernel), std::move(rootfs), std::move(fstab), request.cpus(),
+      std::move(*pstore_path), pstore_size, std::move(disks), vsock_cid,
+      std::move(network_client), std::move(server_proxy),
+      std::move(runtime_dir), features, std::move(params));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

@@ -55,6 +55,8 @@ class ArcVm final : public VmInterface {
       base::FilePath rootfs,
       base::FilePath fstab,
       uint32_t cpus,
+      base::FilePath pstore_path,
+      uint32_t pstore_size,
       std::vector<Disk> disks,
       uint32_t vsock_cid,
       std::unique_ptr<patchpanel::Client> network_client,
@@ -128,6 +130,8 @@ class ArcVm final : public VmInterface {
              base::FilePath rootfs,
              base::FilePath fstab,
              uint32_t cpus,
+             base::FilePath pstore_path,
+             uint32_t pstore_size,
              std::vector<Disk> disks,
              std::vector<std::string> params);
 
