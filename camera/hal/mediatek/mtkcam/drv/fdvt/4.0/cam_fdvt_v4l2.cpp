@@ -841,6 +841,7 @@ static int open_fdvt_media_entities() {
         break;
       }
     }
+    close(media_fd);
   }
   if (!found_media_device) {
     MY_LOGE("Can't found media device");
