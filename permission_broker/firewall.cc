@@ -124,8 +124,16 @@ bool Firewall::AddIpv4ForwardRule(ProtocolEnum protocol,
                                   const std::string& interface,
                                   const std::string& dst_ip,
                                   uint16_t dst_port) {
-  return ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip,
-                            dst_port, "-I");
+  if (!ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port, "-I")) {
+      return false;
+  }
+
+  if (!ModifyIpv4ForwardChain(protocol, interface, dst_ip, dst_port, "-A")) {
+      ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port, "-D");
+      return false;
+  }
+
+  return true;
 }
 
 bool Firewall::DeleteIpv4ForwardRule(ProtocolEnum protocol,
@@ -134,8 +142,14 @@ bool Firewall::DeleteIpv4ForwardRule(ProtocolEnum protocol,
                                      const std::string& interface,
                                      const std::string& dst_ip,
                                      uint16_t dst_port) {
-  return ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip,
-                            dst_port, "-D");
+  bool success = true;
+  if (!ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port, "-D")) {
+    success = false;
+  }
+  if (!ModifyIpv4ForwardChain(protocol, interface, dst_ip, dst_port, "-D")) {
+    success = false;
+  }
+  return success;
 }
 
 bool Firewall::ModifyIpv4DNATRule(ProtocolEnum protocol,
@@ -198,6 +212,53 @@ bool Firewall::ModifyIpv4DNATRule(ProtocolEnum protocol,
   argv.push_back("--to-destination");  // new output destination ip:port
   argv.push_back(dst_ip + ":" + std::to_string(dst_port));
   argv.push_back("-w");  // Wait for xtables lock.
+  return RunInMinijail(argv) == 0;
+}
+
+bool Firewall::ModifyIpv4ForwardChain(ProtocolEnum protocol,
+                                      const std::string& interface,
+                                      const std::string& dst_ip,
+                                      uint16_t dst_port,
+                                      const std::string& operation) {
+  if (!IsValidInterfaceName(interface) || interface.empty()) {
+    LOG(ERROR) << "Invalid interface name '" << interface << "'";
+    return false;
+  }
+
+  struct in_addr addr;
+  if (inet_pton(AF_INET, dst_ip.c_str(), &addr) != 1) {
+    LOG(ERROR) << "Invalid IPv4 destination address '" << dst_ip << "'";
+    return false;
+  }
+
+  if (dst_port == 0U) {
+    LOG(ERROR) << "Destination port 0 is not a valid port";
+    return false;
+  }
+
+  // Order does not matter for the FORWARD chain: both -A or -I are possible.
+  if (operation != "-A" && operation != "-I" && operation != "-D") {
+    LOG(ERROR) << "Invalid chain operation '" << operation << "'";
+    return false;
+  }
+
+  std::vector<std::string> argv{
+      kIpTablesPath,
+      "-t",
+      "filter",
+      operation,
+      "FORWARD",
+      "-i",
+      interface,
+      "-p",  // protocol
+      ProtocolName(protocol),
+      "-d",  // destination ip
+      dst_ip,
+      "--dport",  // destination port
+      std::to_string(dst_port),
+      "-j",
+      "ACCEPT",
+      "-w"};  // Wait for xtables lock.
   return RunInMinijail(argv) == 0;
 }
 

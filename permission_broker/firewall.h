@@ -55,15 +55,17 @@ class Firewall {
 
  private:
   friend class FirewallTest;
+  // Adds ACCEPT chain rules to the filter INPUT chain.
   virtual bool AddAcceptRule(const std::string& executable_path,
                              ProtocolEnum protocol,
                              uint16_t port,
                              const std::string& interface);
+  // Removes ACCEPT chain rules from the filter INPUT chain.
   virtual bool DeleteAcceptRule(const std::string& executable_path,
                                 ProtocolEnum protocol,
                                 uint16_t port,
                                 const std::string& interface);
-
+  // Adds or removes MASQUERADE chain rules to/from the nat PREROUTING chain.
   virtual bool ModifyIpv4DNATRule(ProtocolEnum protocol,
                                   const std::string& input_ip,
                                   uint16_t port,
@@ -71,7 +73,12 @@ class Firewall {
                                   const std::string& dst_ip,
                                   uint16_t dst_port,
                                   const std::string& operation);
-
+  // Adds or removes ACCEPT chain rules to/from the filter FORWARD chain.
+  virtual bool ModifyIpv4ForwardChain(ProtocolEnum protocol,
+                                      const std::string& interface,
+                                      const std::string& dst_ip,
+                                      uint16_t dst_port,
+                                      const std::string& operation);
   virtual bool AddLoopbackLockdownRule(const std::string& executable_path,
                                        ProtocolEnum protocol,
                                        uint16_t port);

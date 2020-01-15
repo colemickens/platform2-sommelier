@@ -25,6 +25,7 @@ class MockFirewall : public Firewall {
   int GetRunInMinijailCriterionMatchCount(int id);
   bool CheckCommandsUndone();
   int CountActiveCommands();
+  void ResetStoredCommands();
 
   // Check if the current command matches a failure rule,
   // if the failure rule is not a repeat rule, remove it

@@ -59,10 +59,8 @@ std::vector<std::string> MockFirewall::GetAllCommands() {
 }
 
 int MockFirewall::RunInMinijail(const std::vector<std::string>& argv) {
-  if (MatchAndUpdate(argv))
-    return 1;
   commands_.push_back(argv);
-  return 0;
+  return MatchAndUpdate(argv) ? 1 : 0;
 }
 
 // Returns the inverse of a given command. For an insert or append returns a
@@ -130,6 +128,10 @@ int MockFirewall::CountActiveCommands() {
     }
   }
   return count;
+}
+
+void MockFirewall::ResetStoredCommands() {
+  commands_.clear();
 }
 
 }  // namespace permission_broker

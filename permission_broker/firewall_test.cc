@@ -191,12 +191,12 @@ TEST_F(FirewallTest, AddLoopbackLockdownRules_Ipv6Fails) {
   ASSERT_FALSE(mock_firewall.AddLoopbackLockdownRules(kProtocolUdp, 53));
 }
 
-TEST_F(FirewallTest, AddAcceptRules_InvalidArguments) {
+TEST_F(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   MockFirewall mock_firewall;
   // Don't fail on anything.
-  int id = mock_firewall.SetRunInMinijailFailCriterion({}, true, true);
+  mock_firewall.SetRunInMinijailFailCriterion({}, true, true);
 
-  // Invalid input interface
+  // Invalid input interface. No iptables commands are issued.
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(
       kProtocolTcp, "", 80, "-startdash", "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(
@@ -205,7 +205,10 @@ TEST_F(FirewallTest, AddAcceptRules_InvalidArguments) {
       kProtocolTcp, "", 80, ".startdot", "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
       kProtocolUdp, "", 80, "enddot.", "100.115.92.5", 8080));
-  // Empty interface
+  ASSERT_TRUE(mock_firewall.GetAllCommands().empty());
+  mock_firewall.ResetStoredCommands();
+
+  // Empty interface. No iptables commands are issused.
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "",
                                                 "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 80, "",
@@ -214,25 +217,64 @@ TEST_F(FirewallTest, AddAcceptRules_InvalidArguments) {
                                                    "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 80, "",
                                                    "100.115.92.5", 8080));
-  // Invalid input dst address
+  ASSERT_TRUE(mock_firewall.GetAllCommands().empty());
+  mock_firewall.ResetStoredCommands();
+
+  // Invalid input dst address. No iptables commands are issused.
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(
       kProtocolTcp, "256.256.256.256", 80, "iface", "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "qodpjqwpod", 80,
                                                 "iface", "100.115.92.5", 8080));
+  // Trying to delete an IPv4 forward rule with an invalid input address will
+  // still trigger an explicit iptables -D command for the associated FORWARD
+  // ACCEPT rule. Two such commands are expected.
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
       kProtocolTcp, "1.1", 80, "iface", "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
       kProtocolUdp, "2001:db8::1", 80, "iface", "100.115.92.5", 8080));
-  // Invalid input dst port
+  {
+    std::vector<std::string> expected_commands = {
+        "/sbin/iptables -t filter -D FORWARD -i iface -p tcp -d 100.115.92.5 "
+        "--dport 8080 -j ACCEPT -w",
+        "/sbin/iptables -t filter -D FORWARD -i iface -p udp -d 100.115.92.5 "
+        "--dport 8080 -j ACCEPT -w",
+    };
+    std::vector<std::string> issued_commands = mock_firewall.GetAllCommands();
+    EXPECT_EQ(expected_commands.size(), issued_commands.size());
+    for (int i = 0; i < expected_commands.size(); i++) {
+      ASSERT_EQ(expected_commands[i], issued_commands[i]);
+    }
+  }
+  mock_firewall.ResetStoredCommands();
+
+  // Invalid input dst port.
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 0, "iface",
                                                 "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 0, "iface",
                                                 "100.115.92.5", 8080));
-  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 0, "iface",
+  // Trying to delete an IPv4 forward rule with an invalid input port will
+  // still trigger an explicit iptables -D command for the associated FORWARD
+  // ACCEPT rule. Two such commands are expected.
+  ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolTcp, "", 0, "iface",
                                                    "100.115.92.5", 8080));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 0, "iface",
                                                    "100.115.92.5", 8080));
-  // Invalid output dst address
+  {
+    std::vector<std::string> expected_commands = {
+        "/sbin/iptables -t filter -D FORWARD -i iface -p tcp -d 100.115.92.5 "
+        "--dport 8080 -j ACCEPT -w",
+        "/sbin/iptables -t filter -D FORWARD -i iface -p udp -d 100.115.92.5 "
+        "--dport 8080 -j ACCEPT -w",
+    };
+    std::vector<std::string> issued_commands = mock_firewall.GetAllCommands();
+    EXPECT_EQ(expected_commands.size(), issued_commands.size());
+    for (int i = 0; i < expected_commands.size(); i++) {
+      ASSERT_EQ(expected_commands[i], issued_commands[i]);
+    }
+  }
+  mock_firewall.ResetStoredCommands();
+
+  // Invalid output dst address. No iptables commands are issused.
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "iface",
                                                 "", 8080));
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 80, "iface",
@@ -241,7 +283,10 @@ TEST_F(FirewallTest, AddAcceptRules_InvalidArguments) {
                                                    "iface", "1.1", 8080));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
       kProtocolUdp, "", 80, "iface", "2001:db8::1", 8080));
-  // Invalid output dst port
+  ASSERT_TRUE(mock_firewall.GetAllCommands().empty());
+  mock_firewall.ResetStoredCommands();
+
+  // Invalid output dst port. No iptables commands are issused.
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "iface",
                                                 "100.115.92.5", 0));
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolUdp, "", 80, "iface",
@@ -250,13 +295,13 @@ TEST_F(FirewallTest, AddAcceptRules_InvalidArguments) {
                                                    "iface", "100.115.92.5", 0));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 80,
                                                    "iface", "100.115.92.5", 0));
-
-  EXPECT_EQ(mock_firewall.GetRunInMinijailCriterionMatchCount(id), 0);
+  ASSERT_TRUE(mock_firewall.GetAllCommands().empty());
+  mock_firewall.ResetStoredCommands();
 }
 
-TEST_F(FirewallTest, AddAcceptRules_IptablesFails) {
+TEST_F(FirewallTest, AddIpv4ForwardRules_IptablesFails) {
   MockFirewall mock_firewall;
-  SetMockExpectations(&mock_firewall, false /* success */);
+  mock_firewall.SetRunInMinijailFailCriterion({}, true, false);
 
   ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "iface",
                                                 "100.115.92.6", 8080));
@@ -266,13 +311,40 @@ TEST_F(FirewallTest, AddAcceptRules_IptablesFails) {
       kProtocolTcp, "", 80, "iface", "100.115.92.6", 8080));
   ASSERT_FALSE(mock_firewall.DeleteIpv4ForwardRule(
       kProtocolUdp, "", 80, "iface", "100.115.92.6", 8080));
+
+  // AddIpv4ForwardRule: Firewall should return at the first failure and issue
+  // only a single command.
+  // DeleteIpv4ForwardRule: Firewall should try to delete both the DNAT rule
+  // and the FORWARD rule regardless of iptables failures.
+  std::vector<std::string> expected_commands = {
+      // Failed first AddIpv4ForwardRule call
+      "/sbin/iptables -t nat -I PREROUTING -i iface -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w",
+      // Failed second AddIpv4ForwardRule call
+      "/sbin/iptables -t nat -I PREROUTING -i iface -p udp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w",
+      // Failed first DeleteIpv4ForwardRule call
+      "/sbin/iptables -t nat -D PREROUTING -i iface -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w",
+      "/sbin/iptables -t filter -D FORWARD -i iface -p tcp -d 100.115.92.6 "
+      "--dport 8080 -j ACCEPT -w",
+      // Failed second DeleteIpv4ForwardRule call
+      "/sbin/iptables -t nat -D PREROUTING -i iface -p udp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w",
+      "/sbin/iptables -t filter -D FORWARD -i iface -p udp -d 100.115.92.6 "
+      "--dport 8080 -j ACCEPT -w",
+  };
+  std::vector<std::string> issued_commands = mock_firewall.GetAllCommands();
+  EXPECT_EQ(expected_commands.size(), issued_commands.size());
+  for (int i = 0; i < expected_commands.size(); i++) {
+    ASSERT_EQ(expected_commands[i], issued_commands[i]);
+  }
 }
 
-TEST_F(FirewallTest, AddAcceptRules_ValidRules) {
+TEST_F(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   MockFirewall mock_firewall;
-  int id = mock_firewall.SetRunInMinijailFailCriterion({}, true, true);
+  mock_firewall.SetRunInMinijailFailCriterion({}, true, true);
 
-  // Invalid input interface
   ASSERT_TRUE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "wlan0",
                                                "100.115.92.2", 8080));
   ASSERT_TRUE(mock_firewall.AddIpv4ForwardRule(
@@ -286,25 +358,90 @@ TEST_F(FirewallTest, AddAcceptRules_ValidRules) {
   ASSERT_TRUE(mock_firewall.DeleteIpv4ForwardRule(kProtocolUdp, "", 443, "eth1",
                                                   "1.2.3.4", 443));
 
-  EXPECT_EQ(mock_firewall.GetRunInMinijailCriterionMatchCount(id), 6);
-
   std::vector<std::string> expected_commands = {
       "/sbin/iptables -t nat -I PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.2:8080 -w",
+      "/sbin/iptables -t filter -A FORWARD -i wlan0 -p tcp -d 100.115.92.2 "
+      "--dport 8080 -j ACCEPT -w",
       "/sbin/iptables -t nat -I PREROUTING -i vmtap0 -p tcp -d 100.115.92.2 "
       "--dport 5555 -j DNAT --to-destination 127.0.0.1:5550 -w",
+      "/sbin/iptables -t filter -A FORWARD -i vmtap0 -p tcp -d 127.0.0.1 "
+      "--dport 5550 -j ACCEPT -w",
       "/sbin/iptables -t nat -I PREROUTING -i eth0 -p udp --dport 5353 -j DNAT "
       "--to-destination 192.168.1.1:5353 -w",
+      "/sbin/iptables -t filter -A FORWARD -i eth0 -p udp -d 192.168.1.1 "
+      "--dport 5353 -j ACCEPT -w",
       "/sbin/iptables -t nat -D PREROUTING -i mlan0 -p tcp --dport 5000 -j "
       "DNAT --to-destination 10.0.0.24:5001 -w",
+      "/sbin/iptables -t filter -D FORWARD -i mlan0 -p tcp -d 10.0.0.24 "
+      "--dport 5001 -j ACCEPT -w",
       "/sbin/iptables -t nat -D PREROUTING -i vmtap0 -p tcp -d 100.115.92.2 "
       "--dport 5555 -j DNAT --to-destination 127.0.0.1:5550 -w",
+      "/sbin/iptables -t filter -D FORWARD -i vmtap0 -p tcp -d 127.0.0.1 "
+      "--dport 5550 -j ACCEPT -w",
       "/sbin/iptables -t nat -D PREROUTING -i eth1 -p udp --dport 443 -j DNAT "
-      "--to-destination 1.2.3.4:443 -w"};
+      "--to-destination 1.2.3.4:443 -w",
+      "/sbin/iptables -t filter -D FORWARD -i eth1 -p udp -d 1.2.3.4 "
+      "--dport 443 -j ACCEPT -w",
+  };
+  std::vector<std::string> issued_commands = mock_firewall.GetAllCommands();
+  EXPECT_EQ(expected_commands.size(), issued_commands.size());
+  for (int i = 0; i < expected_commands.size(); i++) {
+    ASSERT_EQ(expected_commands[i], issued_commands[i]);
+  }
+}
+
+TEST_F(FirewallTest, AddIpv4ForwardRules_PartialFailure) {
+  MockFirewall mock_firewall;
+  mock_firewall.SetRunInMinijailFailCriterion({"FORWARD"}, true, false);
+
+  ASSERT_FALSE(mock_firewall.AddIpv4ForwardRule(kProtocolTcp, "", 80, "wlan0",
+                                                "100.115.92.2", 8080));
+
+  // When the second issued FORWARD command fails, expect a delete command to
+  // cleanup the PREROUTING command that succeeded.
+  std::vector<std::string> expected_commands = {
+      "/sbin/iptables -t nat -I PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.2:8080 -w",
+      "/sbin/iptables -t filter -A FORWARD -i wlan0 -p tcp -d 100.115.92.2 "
+      "--dport 8080 -j ACCEPT -w",
+      "/sbin/iptables -t nat -D PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.2:8080 -w",
+  };
   std::vector<std::string> issued_commands = mock_firewall.GetAllCommands();
   ASSERT_EQ(expected_commands.size(), issued_commands.size());
   for (int i = 0; i < expected_commands.size(); i++) {
     ASSERT_EQ(expected_commands[i], issued_commands[i]);
+  }
+}
+
+TEST_F(FirewallTest, DeleteIpv4ForwardRules_PartialFailure) {
+  MockFirewall mock_firewall1;
+  MockFirewall mock_firewall2;
+
+  mock_firewall1.SetRunInMinijailFailCriterion({"FORWARD"}, false, false);
+  mock_firewall2.SetRunInMinijailFailCriterion({"PREROUTING"}, false, false);
+
+  ASSERT_FALSE(mock_firewall1.DeleteIpv4ForwardRule(
+      kProtocolTcp, "", 80, "wlan0", "100.115.92.2", 8080));
+  ASSERT_FALSE(mock_firewall2.DeleteIpv4ForwardRule(
+      kProtocolTcp, "", 80, "wlan0", "100.115.92.2", 8080));
+
+  // Cleanup commands for both FORWARD and PREROUTING rules are both issued
+  // regardless of any iptables failures.
+  std::vector<std::string> expected_commands = {
+      "/sbin/iptables -t nat -D PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.2:8080 -w",
+      "/sbin/iptables -t filter -D FORWARD -i wlan0 -p tcp -d 100.115.92.2 "
+      "--dport 8080 -j ACCEPT -w",
+  };
+  std::vector<std::string> issued_commands1 = mock_firewall1.GetAllCommands();
+  std::vector<std::string> issued_commands2 = mock_firewall2.GetAllCommands();
+  ASSERT_EQ(expected_commands.size(), issued_commands1.size());
+  ASSERT_EQ(expected_commands.size(), issued_commands2.size());
+  for (int i = 0; i < expected_commands.size(); i++) {
+    ASSERT_EQ(expected_commands[i], issued_commands1[i]);
+    ASSERT_EQ(expected_commands[i], issued_commands2[i]);
   }
 }
 }  // namespace permission_broker

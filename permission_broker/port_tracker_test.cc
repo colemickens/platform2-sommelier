@@ -320,7 +320,7 @@ TEST_F(PortTrackerTest, StartPortForwarding_BaseSuccessCase) {
       tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
 
   ASSERT_TRUE(port_tracker_.HasActiveRules());
-  ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
+  ASSERT_EQ(4, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartAdbPortForwarding_BaseSuccessCase) {
@@ -329,7 +329,7 @@ TEST_F(PortTrackerTest, StartAdbPortForwarding_BaseSuccessCase) {
   ASSERT_TRUE(port_tracker_.StartAdbPortForwarding("vmtap0", dbus_fd));
 
   ASSERT_TRUE(port_tracker_.HasActiveRules());
-  ASSERT_EQ(1, mock_firewall_.CountActiveCommands());
+  ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartPortForwarding_LifelineFdFailure) {
@@ -391,7 +391,7 @@ TEST_F(PortTrackerTest, StartPortForwarding_InputPortValidation) {
   ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
       tcp_port, "eth0", crosvm_addr, reserved_port, dbus_fd));
   ASSERT_TRUE(port_tracker_.HasActiveRules());
-  ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
+  ASSERT_EQ(4, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartPortForwarding_InputInterfaceValidation) {
@@ -427,7 +427,7 @@ TEST_F(PortTrackerTest, StartPortForwarding_InputInterfaceValidation) {
       tcp_port, "mlan0", crosvm_addr, tcp_port, dbus_fd));
 
   ASSERT_TRUE(port_tracker_.HasActiveRules());
-  ASSERT_EQ(5, mock_firewall_.CountActiveCommands());
+  ASSERT_EQ(10, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartAdbPortForwarding_InputInterfaceValidation) {
@@ -439,7 +439,7 @@ TEST_F(PortTrackerTest, StartAdbPortForwarding_InputInterfaceValidation) {
   ASSERT_TRUE(port_tracker_.StartAdbPortForwarding("vmtap1", dbus_fd));
 
   ASSERT_TRUE(port_tracker_.HasActiveRules());
-  ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
+  ASSERT_EQ(4, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartPortForwarding_TargetIpAddressValidation) {
