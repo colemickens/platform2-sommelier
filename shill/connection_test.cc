@@ -171,6 +171,14 @@ class ConnectionTest : public Test {
     return connection->has_broadcast_domain_;
   }
 
+  bool FixGatewayReachability(const IPAddress& local,
+                              IPAddress* peer,
+                              IPAddress* gateway) {
+    return connection_->FixGatewayReachability(local, peer, gateway);
+  }
+
+  void SetMTU(int32_t mtu) { return connection_->SetMTU(mtu); }
+
   void SetLocal(const IPAddress& local) { connection_->local_ = local; }
 
   scoped_refptr<MockDevice> CreateDevice(Technology technology) {
@@ -328,8 +336,8 @@ TEST_F(ConnectionTest, InitState) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  EXPECT_EQ(device->interface_index(), connection_->interface_index_);
-  EXPECT_EQ(device->link_name(), connection_->interface_name_);
+  EXPECT_EQ(device->interface_index(), connection_->interface_index());
+  EXPECT_EQ(device->link_name(), connection_->interface_name());
   EXPECT_FALSE(connection_->IsDefault());
 }
 
@@ -814,14 +822,12 @@ TEST_F(ConnectionTest, UpdateDNSServers) {
   std::vector<std::string> dns_servers(kDnsServers, std::end(kDnsServers));
 
   // Non-default connection.
-  connection_->priority_ = Connection::kLeastPriority;
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
   connection_->UpdateDNSServers(dns_servers);
   Mock::VerifyAndClearExpectations(&resolver_);
 
   // Default connection.
-  connection_->use_dns_ = true;
-  connection_->priority_ = Connection::kDefaultPriority;
+  connection_->SetUseDNS(true);
   EXPECT_CALL(resolver_, SetDNSFromLists(dns_servers, _));
   connection_->UpdateDNSServers(dns_servers);
   Mock::VerifyAndClearExpectations(&resolver_);
@@ -863,7 +869,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   IPAddress peer(IPAddress::kFamilyIPv4);
 
   // Should fail because no gateway is set and peer address is invalid.
-  EXPECT_FALSE(connection_->FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_FALSE(FixGatewayReachability(local, &peer, &gateway));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_FALSE(peer.IsValid());
   EXPECT_FALSE(gateway.IsValid());
@@ -873,7 +879,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
   IPAddress gateway_backup(gateway);
   peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(connection_->FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
   // Prefix should remain unchanged.
   EXPECT_EQ(kPrefix, local.prefix());
   // Peer should remain unchanged.
@@ -890,7 +896,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   EXPECT_CALL(routing_table_,
               AddRoute(device->interface_index(), IsLinkRouteTo(gateway)))
       .WillOnce(Return(true));
-  EXPECT_TRUE(connection_->FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
 
   // Invalid peer should not be modified.
   EXPECT_FALSE(peer.IsValid());
@@ -901,13 +907,13 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   EXPECT_CALL(routing_table_,
               AddRoute(device->interface_index(), IsLinkRouteTo(gateway)))
       .WillOnce(Return(false));
-  EXPECT_FALSE(connection_->FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_FALSE(FixGatewayReachability(local, &peer, &gateway));
 
   // Even if there is a peer specified and it does not match the gateway, we
   // should not fail.
   local.set_prefix(kPrefix);
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
-  EXPECT_TRUE(connection_->FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_FALSE(peer.Equals(gateway));
 
@@ -917,7 +923,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   static const char kUnreachableGateway[] = "11.242.2.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
   ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
-  EXPECT_TRUE(connection_->FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
   EXPECT_TRUE(peer.IsDefault());
   EXPECT_TRUE(gateway.IsDefault());
 }
@@ -940,47 +946,47 @@ TEST_F(ConnectionTest, SetMTU) {
   testing::InSequence seq;
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
-  connection_->SetMTU(0);
+  SetMTU(0);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
-  connection_->SetMTU(IPConfig::kUndefinedMTU);
+  SetMTU(IPConfig::kUndefinedMTU);
 
   // Test IPv4 minimum MTU.
   SetLocal(local_address_);
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv4MTU));
-  connection_->SetMTU(1);
+  SetMTU(1);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv4MTU));
-  connection_->SetMTU(IPConfig::kMinIPv4MTU - 1);
+  SetMTU(IPConfig::kMinIPv4MTU - 1);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv4MTU));
-  connection_->SetMTU(IPConfig::kMinIPv4MTU);
+  SetMTU(IPConfig::kMinIPv4MTU);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv4MTU + 1));
-  connection_->SetMTU(IPConfig::kMinIPv4MTU + 1);
+  SetMTU(IPConfig::kMinIPv4MTU + 1);
 
   // Test IPv6 minimum MTU.
   SetLocal(local_ipv6_address_);
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv6MTU));
-  connection_->SetMTU(1);
+  SetMTU(1);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv6MTU));
-  connection_->SetMTU(IPConfig::kMinIPv6MTU - 1);
+  SetMTU(IPConfig::kMinIPv6MTU - 1);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv6MTU));
-  connection_->SetMTU(IPConfig::kMinIPv6MTU);
+  SetMTU(IPConfig::kMinIPv6MTU);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kMinIPv6MTU + 1));
-  connection_->SetMTU(IPConfig::kMinIPv6MTU + 1);
+  SetMTU(IPConfig::kMinIPv6MTU + 1);
 }
 
 }  // namespace shill

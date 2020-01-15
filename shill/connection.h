@@ -127,10 +127,6 @@ class Connection : public base::RefCounted<Connection> {
 
  private:
   friend class ConnectionTest;
-  FRIEND_TEST(ConnectionTest, FixGatewayReachability);
-  FRIEND_TEST(ConnectionTest, InitState);
-  FRIEND_TEST(ConnectionTest, SetMTU);
-  FRIEND_TEST(ConnectionTest, UpdateDNSServers);
 
   // Create a link route to the gateway when the gateway is in a separate
   // subnet. This can work if the host LAN and gateway LAN are bridged
