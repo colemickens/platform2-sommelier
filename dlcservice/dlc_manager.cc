@@ -591,8 +591,18 @@ class DlcManager::DlcManagerImpl {
   // actions.
   void RefreshInstalled() {
     // Recheck installed DLC modules.
-    for (auto installed_dlc_id : utils::ScanDirectory(content_dir_))
-      installed_[installed_dlc_id];
+    for (auto installed_dlc_id : utils::ScanDirectory(content_dir_)) {
+      if (supported_.find(installed_dlc_id) == supported_.end()) {
+        LOG(ERROR) << "Found unsupported DLC(" << installed_dlc_id
+                   << ") installed, will delete.";
+        string err_code, err_msg;
+        if (!Delete(installed_dlc_id, &err_code, &err_msg))
+          LOG(ERROR) << "Failed to fully delete unsupported DLC("
+                     << installed_dlc_id << "): " << err_code << "|" << err_msg;
+      } else {
+        installed_[installed_dlc_id];
+      }
+    }
 
     for (auto installed_dlc_module_itr = installed_.begin();
          installed_dlc_module_itr != installed_.end();
