@@ -9,7 +9,6 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
