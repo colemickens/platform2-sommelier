@@ -137,9 +137,7 @@ class FUSEMounterForTesting : public FUSEMounter {
  public:
   FUSEMounterForTesting(const Platform* platform,
                         brillo::ProcessReaper* process_reaper)
-      : FUSEMounter(kSomeSource,
-                    kMountDir,
-                    kFUSEType,
+      : FUSEMounter(kFUSEType,
                     MountOptions(),
                     platform,
                     process_reaper,

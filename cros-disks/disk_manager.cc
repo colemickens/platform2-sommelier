@@ -219,16 +219,14 @@ std::unique_ptr<MounterCompat> DiskManager::CreateMounter(
   if (filesystem.mounter_type.empty())
     return std::make_unique<MounterCompat>(
         std::make_unique<SystemMounter>(filesystem.mount_type, platform()),
-        disk.device_file, base::FilePath(target_path), mount_options);
+        mount_options);
 
   if (filesystem.mounter_type == ExFATMounter::kMounterType)
-    return std::make_unique<ExFATMounter>(disk.device_file, target_path,
-                                          filesystem.mount_type, mount_options,
+    return std::make_unique<ExFATMounter>(filesystem.mount_type, mount_options,
                                           platform(), process_reaper());
 
   if (filesystem.mounter_type == NTFSMounter::kMounterType)
-    return std::make_unique<NTFSMounter>(disk.device_file, target_path,
-                                         filesystem.mount_type, mount_options,
+    return std::make_unique<NTFSMounter>(filesystem.mount_type, mount_options,
                                          platform(), process_reaper());
 
   LOG(FATAL) << "Invalid mounter type " << quote(filesystem.mounter_type);

@@ -33,9 +33,7 @@ class FUSEMounter : public MounterCompat {
     bool recursive = false;
   };
 
-  FUSEMounter(const std::string& source_path,
-              const std::string& target_path,
-              const std::string& filesystem_type,
+  FUSEMounter(const std::string& filesystem_type,
               const MountOptions& mount_options,
               const Platform* platform,
               brillo::ProcessReaper* process_reaper,

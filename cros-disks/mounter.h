@@ -58,17 +58,10 @@ class Mounter {
 class MounterCompat : public Mounter {
  public:
   MounterCompat(std::unique_ptr<Mounter> mounter,
-                const std::string& source,
-                const base::FilePath& target_path,
                 const MountOptions& mount_options);
   MounterCompat(const std::string& filesystem_type,
-                const std::string& source,
-                const base::FilePath& target_path,
                 const MountOptions& mount_options);
   ~MounterCompat() override;
-
-  // Temporary legacy mount function for transitioning to new implementation.
-  MountErrorType MountOld();
 
   // Mounter overrides.
   std::unique_ptr<MountPoint> Mount(const std::string& source,
@@ -80,14 +73,10 @@ class MounterCompat : public Mounter {
                 const std::vector<std::string>& options,
                 base::FilePath* suggested_dir_name) const override;
 
-  const std::string& source() const { return source_; }
-  const base::FilePath& target_path() const { return target_path_; }
   const MountOptions& mount_options() const { return mount_options_; }
 
  private:
   const std::unique_ptr<Mounter> mounter_;
-  const std::string source_;
-  const base::FilePath target_path_;
   const MountOptions mount_options_;
 
   DISALLOW_COPY_AND_ASSIGN(MounterCompat);

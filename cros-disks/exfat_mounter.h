@@ -17,9 +17,7 @@ class ExFATMounter : public FUSEMounter {
   // A unique type identifier of this derived mounter class.
   static const char kMounterType[];
 
-  ExFATMounter(const std::string& source_path,
-               const std::string& target_path,
-               const std::string& filesystem_type,
+  ExFATMounter(const std::string& filesystem_type,
                const MountOptions& mount_options,
                const Platform* platform,
                brillo::ProcessReaper* process_reaper);

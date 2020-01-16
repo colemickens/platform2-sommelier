@@ -74,10 +74,8 @@ class MounterForTest : public Mounter {
 class MounterCompatForTest : public MounterCompat {
  public:
   MounterCompatForTest(const std::string& filesystem_type,
-                       const std::string& source,
-                       const base::FilePath& target_path,
                        const MountOptions& mount_options)
-      : MounterCompat(filesystem_type, source, target_path, mount_options) {}
+      : MounterCompat(filesystem_type, mount_options) {}
 
   MOCK_METHOD(std::unique_ptr<MountPoint>,
               Mount,
@@ -121,36 +119,42 @@ TEST(MounterTest, Leaking) {
 }
 
 TEST(MounterCompatTest, Properties) {
-  MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
+  MounterCompatForTest mounter("fstype", {});
   EXPECT_EQ("fstype", mounter.filesystem_type());
-  EXPECT_EQ("foo", mounter.source());
-  EXPECT_EQ("/mnt", mounter.target_path().value());
 }
 
 TEST(MounterCompatTest, MountSuccess) {
   const base::FilePath kMountPath = base::FilePath("/mnt");
   const std::vector<std::string> options;
 
-  MounterCompatForTest mounter("fstype", "foo", kMountPath, {});
+  MounterCompatForTest mounter("fstype", {});
   EXPECT_CALL(mounter, Mount("foo", kMountPath, options, _))
       .WillOnce(WithArg<3>([kMountPath](MountErrorType* error) {
         *error = MOUNT_ERROR_NONE;
         return MountPoint::CreateLeaking(kMountPath);
       }));
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.MountOld());
+
+  MountErrorType error = MOUNT_ERROR_NONE;
+  auto mount = mounter.Mount("foo", base::FilePath(kMountPath), {}, &error);
+  EXPECT_TRUE(mount);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
 }
 
 TEST(MounterCompatTest, MountFail) {
   const base::FilePath kMountPath = base::FilePath("/mnt");
   const std::vector<std::string> options;
 
-  MounterCompatForTest mounter("fstype", "foo", kMountPath, {});
+  MounterCompatForTest mounter("fstype", {});
   EXPECT_CALL(mounter, Mount("foo", kMountPath, options, _))
       .WillOnce(WithArg<3>([](MountErrorType* error) {
         *error = MOUNT_ERROR_UNKNOWN;
         return nullptr;
       }));
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mounter.MountOld());
+
+  MountErrorType error = MOUNT_ERROR_NONE;
+  auto mount = mounter.Mount("foo", base::FilePath(kMountPath), {}, &error);
+  EXPECT_FALSE(mount);
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN, error);
 }
 
 }  // namespace cros_disks

@@ -87,9 +87,7 @@ class MockHelper : public FUSEHelper {
 class MockMounter : public FUSEMounter {
  public:
   MockMounter(const Platform* platform, brillo::ProcessReaper* process_reaper)
-      : FUSEMounter("foobar",
-                    "/mnt",
-                    "fuse",
+      : FUSEMounter("fuse",
                     MountOptions(),
                     platform,
                     process_reaper,

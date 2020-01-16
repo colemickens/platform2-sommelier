@@ -260,9 +260,7 @@ MountErrorType MountFuseDevice(const Platform* platform,
 
 }  // namespace
 
-FUSEMounter::FUSEMounter(const std::string& source_path,
-                         const std::string& target_path,
-                         const std::string& filesystem_type,
+FUSEMounter::FUSEMounter(const std::string& filesystem_type,
                          const MountOptions& mount_options,
                          const Platform* platform,
                          brillo::ProcessReaper* process_reaper,
@@ -272,10 +270,7 @@ FUSEMounter::FUSEMounter(const std::string& source_path,
                          const std::vector<BindPath>& accessible_paths,
                          bool permit_network_access,
                          const std::string& mount_group)
-    : MounterCompat(filesystem_type,
-                    source_path,
-                    base::FilePath(target_path),
-                    mount_options),
+    : MounterCompat(filesystem_type, mount_options),
       platform_(platform),
       process_reaper_(process_reaper),
       mount_program_path_(mount_program_path),

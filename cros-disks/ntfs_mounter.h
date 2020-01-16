@@ -17,9 +17,7 @@ class NTFSMounter : public FUSEMounter {
   // A unique type identifier of this derived mounter class.
   static const char kMounterType[];
 
-  NTFSMounter(const std::string& source_path,
-              const std::string& target_path,
-              const std::string& filesystem_type,
+  NTFSMounter(const std::string& filesystem_type,
               const MountOptions& mount_options,
               const Platform* platform,
               brillo::ProcessReaper* process_reaper);

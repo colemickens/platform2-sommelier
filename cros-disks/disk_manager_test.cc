@@ -110,8 +110,6 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
   auto mounter = manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file, mounter->source());
-  EXPECT_EQ(target_path, mounter->target_path().value());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 
@@ -128,8 +126,6 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
   auto mounter = manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file, mounter->source());
-  EXPECT_EQ(target_path, mounter->target_path().value());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 
@@ -152,8 +148,6 @@ TEST_F(DiskManagerTest, CreateVFATSystemMounter) {
   auto mounter = manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file, mounter->source());
-  EXPECT_EQ(target_path, mounter->target_path().value());
   EXPECT_EQ("utf8,shortname=mixed,time_offset=480,rw,nodev,noexec,nosuid",
             mounter->mount_options().ToString());
 }
@@ -171,8 +165,6 @@ TEST_F(DiskManagerTest, CreateExt4SystemMounter) {
   auto mounter = manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file, mounter->source());
-  EXPECT_EQ(target_path, mounter->target_path().value());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 

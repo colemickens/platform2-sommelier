@@ -102,9 +102,7 @@ bool EnsureOwnership(const Platform& platform,
 
 class DrivefsMounter : public FUSEMounter {
  public:
-  DrivefsMounter(const std::string& source_path,
-                 const std::string& target_path,
-                 const std::string& filesystem_type,
+  DrivefsMounter(const std::string& filesystem_type,
                  const MountOptions& mount_options,
                  const Platform* platform,
                  brillo::ProcessReaper* process_reaper,
@@ -112,9 +110,7 @@ class DrivefsMounter : public FUSEMounter {
                  const std::string& mount_user,
                  const std::string& seccomp_policy,
                  const std::vector<BindPath>& accessible_paths)
-      : FUSEMounter(source_path,
-                    target_path,
-                    filesystem_type,
+      : FUSEMounter(filesystem_type,
                     mount_options,
                     platform,
                     process_reaper,
@@ -200,8 +196,8 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
         {my_files_path.value(), true /* writable */, true /* recursive */});
   }
   return std::make_unique<DrivefsMounter>(
-      "", target_path.value(), type(), mount_options, platform(),
-      process_reaper(), program_path().value(), user(), seccomp, paths);
+      type(), mount_options, platform(), process_reaper(),
+      program_path().value(), user(), seccomp, paths);
 }
 
 base::FilePath DrivefsHelper::GetValidatedDirectory(

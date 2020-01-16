@@ -194,7 +194,7 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
   mount_options.WhitelistOption(MountOptions::kOptionNoSymFollow);
   mount_options.Initialize(extended_options, false, "", "");
   MounterCompat mounter(std::make_unique<SystemMounter>("", platform()),
-                        avfs_path, mount_path, mount_options);
+                        mount_options);
 
   // SystemMounter uses a lazy-fallback-on-busy approach to unmounting, so no
   // need to replicate that here.
@@ -431,8 +431,8 @@ MountErrorType ArchiveManager::MountAVFSPath(const std::string& base_path,
   mount_options.Initialize(options, false, "", "");
 
   std::unique_ptr<FUSEMounter> fuse_mounter = std::make_unique<FUSEMounter>(
-      "", avfs_path, "avfs", mount_options, platform(), process_reaper(),
-      kAVFSMountProgram, kAVFSMountUser, kAVFSSeccompFilterPolicyFile,
+      "avfs", mount_options, platform(), process_reaper(), kAVFSMountProgram,
+      kAVFSMountUser, kAVFSSeccompFilterPolicyFile,
       std::vector<FUSEMounter::BindPath>({
           // This needs to be recursively bind mounted so that any external
           // media (mounted under /media) or user (under /home/chronos) mounts

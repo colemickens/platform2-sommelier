@@ -18,15 +18,11 @@ const char kMountUser[] = "fuse-exfat";
 
 const char ExFATMounter::kMounterType[] = "exfat";
 
-ExFATMounter::ExFATMounter(const std::string& source_path,
-                           const std::string& target_path,
-                           const std::string& filesystem_type,
+ExFATMounter::ExFATMounter(const std::string& filesystem_type,
                            const MountOptions& mount_options,
                            const Platform* platform,
                            brillo::ProcessReaper* process_reaper)
-    : FUSEMounter(source_path,
-                  target_path,
-                  filesystem_type,
+    : FUSEMounter(filesystem_type,
                   mount_options,
                   platform,
                   process_reaper,
