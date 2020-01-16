@@ -13,19 +13,12 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <shill/net/rtnl_handler.h>
 
 namespace arc_networkd {
 namespace {
 
-constexpr const char kArcDevicePrefix[] = "arc";
 constexpr std::array<const char*, 2> kEthernetInterfacePrefixes{{"eth", "usb"}};
 constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
-
-bool IsArcDevice(const std::string& ifname) {
-  return base::StartsWith(ifname, kArcDevicePrefix,
-                          base::CompareCase::INSENSITIVE_ASCII);
-}
 
 bool IsTerminaDevice(const std::string& ifname) {
   return base::StartsWith(ifname, kTerminaVmDevicePrefix,
@@ -66,11 +59,6 @@ DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
   DCHECK(forwarder_);
-
-  link_listener_ = std::make_unique<shill::RTNLListener>(
-      shill::RTNLHandler::kRequestLink,
-      Bind(&DeviceManager::LinkMsgHandler, weak_factory_.GetWeakPtr()));
-  shill::RTNLHandler::GetInstance()->Start(RTMGRP_LINK);
 
   shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
       &DeviceManager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
@@ -232,44 +220,6 @@ bool DeviceManager::Exists(const std::string& name) const {
 
 const std::string& DeviceManager::DefaultInterface() const {
   return default_ifname_;
-}
-
-void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
-  // This function now is only used for legacy IPv6 configuration for ARC
-  // container, and should be removed after ndproxy enabled for all boards
-
-  if (!msg.HasAttribute(IFLA_IFNAME)) {
-    LOG(ERROR) << "Link event message does not have IFLA_IFNAME";
-    return;
-  }
-
-  // Only consider virtual interfaces that were created for guests; for now this
-  // only includes those prefixed with 'arc'.
-  shill::ByteString b(msg.GetAttribute(IFLA_IFNAME));
-  std::string ifname(reinterpret_cast<const char*>(
-      b.GetSubstring(0, IFNAMSIZ).GetConstData()));
-  if (!IsArcDevice(ifname))
-    return;
-
-  bool link_up = msg.link_status().flags & IFF_UP;
-  Device* device = FindByHostInterface(ifname);
-
-  if (!device || !device->HostLinkUp(link_up))
-    return;
-
-  if (!link_up) {
-    LOG(INFO) << ifname << " is now down";
-    device->StopIPv6RoutingLegacy();
-    return;
-  }
-
-  // The link is now up.
-  LOG(INFO) << ifname << " is now up";
-
-  if (device->UsesDefaultInterface())
-    device->StartIPv6RoutingLegacy(default_ifname_);
-  else if (!device->IsAndroid())
-    device->StartIPv6RoutingLegacy(device->config().guest_ifname());
 }
 
 std::unique_ptr<Device> DeviceManager::MakeDevice(

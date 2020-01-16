@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
-#include <shill/net/rtnl_listener.h>
 
 #include "arc/network/address_manager.h"
 #include "arc/network/datapath.h"
@@ -157,13 +156,6 @@ class DeviceManager : public DeviceManagerBase {
   // Callback from Device, invoked when an IPv6 address is discovered and
   // assigned to the device.
   void OnIPv6AddressFound(Device* device);
-
-  // Callback from RTNetlink listener, invoked when an interface changes
-  // run state.
-  void LinkMsgHandler(const shill::RTNLMessage& msg);
-
-  // Listens for RTMGRP_LINK messages and invokes LinkMsgHandler.
-  std::unique_ptr<shill::RTNLListener> link_listener_;
 
   // Receives network device updates and notifications from shill.
   std::unique_ptr<ShillClient> shill_client_;
