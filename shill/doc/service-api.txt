@@ -500,12 +500,12 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			This property is included in get requests only
 			when the requester has sufficient privileges.
 
-		string EAP.CACertPEM [readwrite]
+		array{string} EAP.CACertPEM [readwrite]
 
-			An x509 CA certificate in PEM format; specifically
-			the base64 counterpart of the DER contents
-			surrounded by a "-----BEGIN CERTIFICATE-----" and
-			"-----END CERTIFICATE-----" line.  This certificate
+                        A list of x509 CA certificates in PEM format;
+                        specifically the base64 counterpart of the DER contents
+                        surrounded by a "-----BEGIN CERTIFICATE-----" and
+			"-----END CERTIFICATE-----" line.  These certificates
 			will be used to authenticate the remote RADIUS
 			server in the 802.1x authentication process.
 
