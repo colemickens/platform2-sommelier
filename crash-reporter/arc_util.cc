@@ -45,7 +45,6 @@ const char kSignatureField[] = "sig";
 
 const char kSilentKey[] = "silent";
 
-const char kBuildKey[] = "Build";
 const char kProcessKey[] = "Process";
 const char kSubjectKey[] = "Subject";
 

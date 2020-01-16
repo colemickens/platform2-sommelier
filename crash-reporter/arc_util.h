@@ -42,7 +42,6 @@ extern const char kSignatureField[];
 extern const char kSilentKey[];
 
 // Keys for crash log headers.
-extern const char kBuildKey[];
 extern const char kProcessKey[];
 extern const char kSubjectKey[];
 
