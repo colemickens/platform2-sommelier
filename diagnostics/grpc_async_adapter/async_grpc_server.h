@@ -17,6 +17,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/sequenced_task_runner.h>
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/support/async_unary_call.h>
 
 #include "diagnostics/grpc_async_adapter/grpc_completion_queue_dispatcher.h"
 #include "diagnostics/grpc_async_adapter/rpc_state.h"

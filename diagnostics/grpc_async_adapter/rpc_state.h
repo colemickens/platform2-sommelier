@@ -13,6 +13,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/support/async_unary_call.h>
 
 namespace base {
 class SequencedTaskRunner;

@@ -13,13 +13,10 @@
 #include <base/memory/ref_counted.h>
 #include <base/sequence_checker_impl.h>
 #include <base/threading/simple_thread.h>
+#include <grpcpp/grpcpp.h>
 
 namespace base {
 class SequencedTaskRunner;
-}
-
-namespace grpc {
-class CompletionQueue;
 }
 
 namespace diagnostics {
