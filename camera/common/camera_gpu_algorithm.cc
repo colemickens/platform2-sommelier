@@ -48,8 +48,12 @@ int32_t CameraGPUAlgorithm::RegisterBuffer(int buffer_fd) {
     LOGF(ERROR) << "Buffer already registered";
     return -EINVAL;
   }
+
   const int fd(HANDLE_EINTR(dup(buffer_fd)));
+  DCHECK_GE(fd, 0) << "Failed to dup fd to get size";
   const int64_t file_size = base::File(fd).GetLength();
+  DCHECK_GE(file_size, 0) << "Failed to get size";
+
   auto shm_handle =
       base::SharedMemoryHandle::ImportHandle(buffer_fd, file_size);
   auto shm = std::make_unique<base::SharedMemory>(shm_handle, false);
