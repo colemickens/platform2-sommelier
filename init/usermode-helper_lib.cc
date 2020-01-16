@@ -2,14 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/usermode-helper.h"
-
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+
+#include "init/usermode-helper.h"
 
 namespace usermode_helper {
 
 namespace {
+
+bool IsTestCaseFlag(const char* arg) {
+  return std::string_view(arg) == "--core2md_failure" ||
+         std::string_view(arg) == "--directory_failure";
+}
+
+bool IsFilterIn(const char* arg) {
+  return base::StartsWith(arg, "--filter_in=", base::CompareCase::SENSITIVE);
+}
 
 // Processes core dumps from the kernel when a crash is detected.
 // Controlled via /proc/sys/kernel/core_pattern.
@@ -30,7 +39,7 @@ bool ValidateCrashReporter(int argc, const char* argv[]) {
   // Allow for testing invocations.
   if (argc == 3 &&
       base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE) &&
-      base::StartsWith(argv[2], "--filter_in=", base::CompareCase::SENSITIVE)) {
+      IsFilterIn(argv[2])) {
     return true;
   }
 
@@ -41,11 +50,14 @@ bool ValidateCrashReporter(int argc, const char* argv[]) {
     return true;
   }
 
+  // Allow for log-collection-failure tests. Currently the test is being
+  // transitioned from autotest to Tast, having 2 different versions.
+  // TODO(crbug.com/1040335): Remove the former one after removing the
+  // logging_UserCrash autotest.
   if (argc == 4 &&
       base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE) &&
-      (std::string_view(argv[2]) == "--core2md_failure" ||
-       std::string_view(argv[2]) == "--directory_failure") &&
-      base::StartsWith(argv[3], "--filter_in=", base::CompareCase::SENSITIVE)) {
+      ((IsTestCaseFlag(argv[2]) && IsFilterIn(argv[3])) ||
+       (IsFilterIn(argv[2]) && IsTestCaseFlag(argv[3])))) {
     return true;
   }
 

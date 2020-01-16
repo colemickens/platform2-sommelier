@@ -4,10 +4,10 @@
 
 #include "init/usermode-helper.h"
 
+#include <gtest/gtest.h>
+
 #include <initializer_list>
 #include <vector>
-
-#include <gtest/gtest.h>
 
 namespace {
 // Convenience function.
@@ -31,6 +31,8 @@ TEST(ValidateProgramArgs, GoodCrashReporter) {
       {"/sbin/crash_reporter", "--user=foo", "--filter_in=blah"}));
   EXPECT_TRUE(ValidateProgramArgs({"/sbin/crash_reporter", "--user=foo",
                                    "--core2md_failure", "--filter_in=blah"}));
+  EXPECT_TRUE(ValidateProgramArgs({"/sbin/crash_reporter", "--user=foo",
+                                   "--filter_in=blah", "--core2md_failure"}));
   EXPECT_TRUE(ValidateProgramArgs({"/sbin/crash_reporter", "--user=foo",
                                    "--directory_failure", "--filter_in=blah"}));
   EXPECT_TRUE(ValidateProgramArgs(
