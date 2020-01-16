@@ -893,7 +893,7 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     } else {
       base::ScopedFD file(open(dst.value().c_str(),
                                O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK,
-                               0600) != 0);
+                               0600));
       if (!file.is_valid()) {
         PLOG(ERROR) << "Unable to create destination file";
         response.set_failure_reason("Unable to create destination file");
