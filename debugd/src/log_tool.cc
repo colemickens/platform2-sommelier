@@ -109,6 +109,10 @@ const std::vector<Log> kCommandLogs {
   {kFile, "bios_times", "/var/log/bios_times.txt"},
   {kCommand, "board-specific",
     "/usr/share/userfeedback/scripts/get_board_specific_info"},
+  // Slow or non-responsive block devices could cause this command to stall. Use
+  // a timeout to prevent this command from blocking log fetching. This command
+  // is expected to take O(100ms) in the normal case.
+  {kCommand, "blkid", "timeout -s KILL 5s /sbin/blkid", kRoot, kRoot},
   {kFile, "buddyinfo", "/proc/buddyinfo"},
   {kCommand, "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot,
     kRoot},
@@ -171,6 +175,8 @@ const std::vector<Log> kCommandLogs {
 #endif  // USE_IWLWIFI_DUMP
   {kCommand, "kernel-crashes",
     "cat /var/spool/crash/kernel.*.kcrash 2>/dev/null"},
+  {kCommand, "lsblk", "timeout -s KILL 5s lsblk -a", kRoot, kRoot,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect, true},
   {kCommand, "lsmod", "lsmod"},
   {kCommand, "lspci", "/usr/sbin/lspci"},
   {kCommand, "lsusb", "lsusb && lsusb -t"},
