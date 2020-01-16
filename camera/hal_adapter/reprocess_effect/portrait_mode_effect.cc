@@ -259,12 +259,16 @@ int32_t PortraitModeEffect::ReprocessRequest(
       condvar_.TimedWait(
           base::TimeDelta::FromSeconds(kPortraitProcessorTimeoutSecs));
       result = return_status_;
-      if (result != 0) {
-        LOGF(ERROR) << "Portrait processor failed: " << result;
-        return result;
-      }
     }
-    LOGF(INFO) << "Portrait processing finished";
+    LOGF(INFO) << "Portrait processing finished, result: " << result;
+    if (result != 0) {
+      // Portrait processing finishes with non-zero result when there's no human
+      // face in the image. Returns 0 here with the status set in the vendor tag
+      // by |result_metadata_runner|.
+      // TODO(kamesan): make the status returned from portrait library more
+      // fine-grained to filter critical errors.
+      return 0;
+    }
 
     result = ConvertRGBToYUV(output_rgb_shm.memory(), rgb_buf_stride,
                              v4l2_format, *output_ycbcr, width, height);
