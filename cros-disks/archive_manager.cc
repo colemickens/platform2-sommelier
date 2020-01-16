@@ -23,6 +23,7 @@
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_info.h"
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/system_mounter.h"
@@ -61,6 +62,38 @@ const char kAVFSModulesOption[] = "modules=subdir";
 const char kAVFSSubdirOptionPrefix[] = "subdir=";
 
 }  // namespace
+
+class ArchiveManager::ArchiveMountPoint : public MountPoint {
+ public:
+  ArchiveMountPoint(std::unique_ptr<MountPoint> mount_point,
+                    ArchiveManager* archive_manager)
+      : MountPoint(mount_point->path()),
+        mount_point_(std::move(mount_point)),
+        archive_manager_(archive_manager) {
+    DCHECK(mount_point_);
+    DCHECK(archive_manager_);
+  }
+
+  ~ArchiveMountPoint() override { DestructorUnmount(); }
+
+  void Release() override {
+    MountPoint::Release();
+    mount_point_->Release();
+  }
+
+ protected:
+  MountErrorType UnmountImpl() override {
+    MountErrorType error = mount_point_->Unmount();
+    if (error == MOUNT_ERROR_NONE) {
+      archive_manager_->RemoveMountVirtualPath(path().value());
+    }
+    return error;
+  }
+
+ private:
+  const std::unique_ptr<MountPoint> mount_point_;
+  ArchiveManager* const archive_manager_;
+};
 
 ArchiveManager::ArchiveManager(const std::string& mount_root,
                                Platform* platform,
@@ -122,11 +155,13 @@ bool ArchiveManager::CanMount(const std::string& source_path) const {
   return false;
 }
 
-MountErrorType ArchiveManager::DoMount(const std::string& source_path,
-                                       const std::string& source_format,
-                                       const std::vector<std::string>& options,
-                                       const std::string& mount_path,
-                                       MountOptions* applied_options) {
+std::unique_ptr<MountPoint> ArchiveManager::DoMountNew(
+    const std::string& source_path,
+    const std::string& source_format,
+    const std::vector<std::string>& options,
+    const base::FilePath& mount_path,
+    MountOptions* applied_options,
+    MountErrorType* error) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
@@ -140,13 +175,15 @@ MountErrorType ArchiveManager::DoMount(const std::string& source_path,
   if (avfs_path.empty()) {
     LOG(ERROR) << "Path " << quote(source_path)
                << " is not a supported archive";
-    return MOUNT_ERROR_UNSUPPORTED_ARCHIVE;
+    *error = MOUNT_ERROR_UNSUPPORTED_ARCHIVE;
+    return nullptr;
   }
 
   MountErrorType avfs_start_error = StartAVFS();
   if (avfs_start_error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to start AVFS mounts: " << avfs_start_error;
-    return avfs_start_error;
+    *error = avfs_start_error;
+    return nullptr;
   }
 
   // Perform a bind mount from the archive path under the AVFS mount
@@ -157,29 +194,23 @@ MountErrorType ArchiveManager::DoMount(const std::string& source_path,
   mount_options.WhitelistOption(MountOptions::kOptionNoSymFollow);
   mount_options.Initialize(extended_options, false, "", "");
   MounterCompat mounter(std::make_unique<SystemMounter>("", platform()),
-                        avfs_path, base::FilePath(mount_path), mount_options);
+                        avfs_path, mount_path, mount_options);
 
-  MountErrorType error_type = mounter.MountOld();
-  if (error_type != MOUNT_ERROR_NONE) {
-    return error_type;
+  // SystemMounter uses a lazy-fallback-on-busy approach to unmounting, so no
+  // need to replicate that here.
+  std::unique_ptr<MountPoint> mount_point =
+      mounter.Mount(avfs_path, mount_path, mount_options.options(), error);
+  if (mount_point) {
+    AddMountVirtualPath(mount_path.value(), avfs_path);
+    mount_point =
+        std::make_unique<ArchiveMountPoint>(std::move(mount_point), this);
   }
-
-  AddMountVirtualPath(mount_path, avfs_path);
-  return MOUNT_ERROR_NONE;
+  return mount_point;
 }
 
 MountErrorType ArchiveManager::DoUnmount(const std::string& path) {
-  CHECK(!path.empty()) << "Invalid path argument";
-
-  // Since all archives are read-only, always use lazy unmount.
-  const MountErrorType error = platform()->Unmount(path, MNT_DETACH);
-  if (error != MOUNT_ERROR_NONE) {
-    return error;
-  }
-
-  // DoUnmount() is always called with |path| being the mount path.
-  RemoveMountVirtualPath(path);
-  return MOUNT_ERROR_NONE;
+  NOTREACHED();
+  return MOUNT_ERROR_UNKNOWN;
 }
 
 std::string ArchiveManager::SuggestMountPath(

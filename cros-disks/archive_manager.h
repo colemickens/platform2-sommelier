@@ -60,11 +60,13 @@ class ArchiveManager : public MountManager {
   // mounter may decide to apply mount options different than |options|.
   // |applied_options| is used to return the mount options applied by the
   // mounter.
-  MountErrorType DoMount(const std::string& source_path,
-                         const std::string& source_format,
-                         const std::vector<std::string>& options,
-                         const std::string& mount_path,
-                         MountOptions* applied_options) override;
+  std::unique_ptr<MountPoint> DoMountNew(
+      const std::string& source_path,
+      const std::string& source_format,
+      const std::vector<std::string>& options,
+      const base::FilePath& mount_path,
+      MountOptions* applied_options,
+      MountErrorType* error) override;
 
   // Unmounts |path|. Returns true if |path| is unmounted successfully.
   MountErrorType DoUnmount(const std::string& path) override;
@@ -73,6 +75,10 @@ class ArchiveManager : public MountManager {
   std::string SuggestMountPath(const std::string& source_path) const override;
 
  private:
+  // MountPoint implementation that calls RemoveMountVirtualPath() on successful
+  // unmount.
+  class ArchiveMountPoint;
+
   // Type definition of a cache mapping a mount path to its source virtual path
   // in the AVFS mount.
   using VirtualPathMap = std::map<std::string, std::string>;
