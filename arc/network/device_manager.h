@@ -16,13 +16,35 @@
 #include "arc/network/address_manager.h"
 #include "arc/network/datapath.h"
 #include "arc/network/device.h"
-#include "arc/network/helper_process.h"
 #include "arc/network/ipc.pb.h"
 #include "arc/network/shill_client.h"
 
 namespace arc_networkd {
 using DeviceHandler = base::Callback<void(Device*)>;
 using NameHandler = base::Callback<void(const std::string&)>;
+
+// Interface to encapsulate traffic forwarding behaviors so individual services
+// are not exposed to dependents.
+class TrafficForwarder {
+ public:
+  virtual ~TrafficForwarder() = default;
+
+  virtual void StartForwarding(const std::string& ifname_physical,
+                               const std::string& ifname_virtual,
+                               uint32_t ipv4_addr_virtual,
+                               bool ipv6,
+                               bool multicast) = 0;
+
+  virtual void StopForwarding(const std::string& ifname_physical,
+                              const std::string& ifname_virtual,
+                              bool ipv6,
+                              bool multicast) = 0;
+
+  virtual bool ForwardsLegacyIPv6() const = 0;
+
+ protected:
+  TrafficForwarder() = default;
+};
 
 // Mockable base class for DeviceManager.
 class DeviceManagerBase {
@@ -75,9 +97,7 @@ class DeviceManager : public DeviceManagerBase {
   DeviceManager(std::unique_ptr<ShillClient> shill_client,
                 AddressManager* addr_mgr,
                 Datapath* datapath,
-                HelperProcess* mcast_proxy,
-                HelperProcess* nd_proxy,
-                bool legacy_ipv6 = false);
+                TrafficForwarder* forwarder);
   virtual ~DeviceManager();
 
   // Provided as part of DeviceManager for testing.
@@ -98,8 +118,6 @@ class DeviceManager : public DeviceManagerBase {
   // Invoked when a guest starts or stops.
   void OnGuestStart(GuestMessage::GuestType guest) override;
   void OnGuestStop(GuestMessage::GuestType guest) override;
-
-  void OnDeviceMessageFromNDProxy(const DeviceMessage& msg);
 
   // Used by a guest service to examine and potentially mutate tracked devices.
   void ProcessDevices(const DeviceHandler& handler) override;
@@ -165,12 +183,9 @@ class DeviceManager : public DeviceManagerBase {
   std::map<std::string, std::unique_ptr<Device>> devices_;
 
   Datapath* datapath_;
-  HelperProcess* mcast_proxy_;
-  HelperProcess* nd_proxy_;
+  TrafficForwarder* forwarder_;
 
   std::string default_ifname_;
-
-  bool legacy_ipv6_;
 
   base::WeakPtrFactory<DeviceManager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(DeviceManager);

@@ -31,13 +31,8 @@ class MockDeviceManager : public DeviceManager {
   MockDeviceManager(std::unique_ptr<ShillClient> shill_client,
                     AddressManager* addr_mgr,
                     Datapath* datapath,
-                    HelperProcess* mcast_proxy,
-                    HelperProcess* nd_proxy)
-      : DeviceManager(std::move(shill_client),
-                      addr_mgr,
-                      datapath,
-                      mcast_proxy,
-                      nd_proxy) {}
+                    TrafficForwarder* forwarder)
+      : DeviceManager(std::move(shill_client), addr_mgr, datapath, forwarder) {}
   ~MockDeviceManager() = default;
 
   MOCK_CONST_METHOD1(IsMulticastInterface, bool(const std::string& ifname));
@@ -60,6 +55,18 @@ class FakeAddressManager : public AddressManager {
   }
 };
 
+class FakeTrafficForwarder : public TrafficForwarder {
+ public:
+  FakeTrafficForwarder() = default;
+  void StartForwarding(
+      const std::string&, const std::string&, uint32_t, bool, bool) override {}
+  void StopForwarding(const std::string&,
+                      const std::string&,
+                      bool,
+                      bool) override {}
+  bool ForwardsLegacyIPv6() const override { return false; }
+};
+
 class DeviceManagerTest : public testing::Test {
  protected:
   DeviceManagerTest() = default;
@@ -68,8 +75,6 @@ class DeviceManagerTest : public testing::Test {
     fpr_ = std::make_unique<FakeProcessRunner>();
     fpr_->Capture(false);
     datapath_ = std::make_unique<MockDatapath>(fpr_.get());
-    dummy_mcast_proxy_ = std::make_unique<HelperProcess>();
-    dummy_nd_proxy_ = std::make_unique<HelperProcess>();
   }
 
   void TearDown() override {
@@ -86,8 +91,7 @@ class DeviceManagerTest : public testing::Test {
     shill_client_ = shill_client.get();
 
     auto mgr = std::make_unique<MockDeviceManager>(
-        std::move(shill_client), &addr_mgr_, datapath_.get(),
-        dummy_mcast_proxy_.get(), dummy_nd_proxy_.get());
+        std::move(shill_client), &addr_mgr_, datapath_.get(), &forwarder_);
     return mgr;
   }
 
@@ -96,11 +100,10 @@ class DeviceManagerTest : public testing::Test {
  private:
   std::unique_ptr<FakeShillClientHelper> shill_helper_;
   FakeAddressManager addr_mgr_;
+  FakeTrafficForwarder forwarder_;
 
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<FakeProcessRunner> fpr_;
-  std::unique_ptr<HelperProcess> dummy_mcast_proxy_;
-  std::unique_ptr<HelperProcess> dummy_nd_proxy_;
 
   // This is required because of the RT netlink handler.
   base::MessageLoopForIO msg_loop_;

@@ -27,12 +27,27 @@
 namespace arc_networkd {
 
 // Main class that runs the mainloop and responds to LAN interface changes.
-class Manager final : public brillo::DBusDaemon {
+class Manager final : public brillo::DBusDaemon, private TrafficForwarder {
  public:
   Manager(std::unique_ptr<HelperProcess> adb_proxy,
           std::unique_ptr<HelperProcess> mcast_proxy,
           std::unique_ptr<HelperProcess> nd_proxy);
   ~Manager();
+
+  // TrafficForwarder methods.
+
+  void StartForwarding(const std::string& ifname_physical,
+                       const std::string& ifname_virtual,
+                       uint32_t ipv4_addr_virtual,
+                       bool ipv6,
+                       bool multicast) override;
+
+  void StopForwarding(const std::string& ifname_physical,
+                      const std::string& ifname_virtual,
+                      bool ipv6,
+                      bool multicast) override;
+
+  bool ForwardsLegacyIPv6() const override;
 
  protected:
   int OnInit() override;
@@ -55,6 +70,9 @@ class Manager final : public brillo::DBusDaemon {
   // Callback from Daemon to notify that SIGTERM or SIGINT was received and
   // the daemon should clean up in preparation to exit.
   void OnShutdown(int* exit_code) override;
+
+  // Callback from NDProxy telling us to add a new IPv6 route.
+  void OnDeviceMessageFromNDProxy(const DeviceMessage& msg);
 
   // Handles DBus notification indicating ARC++ is booting up.
   std::unique_ptr<dbus::Response> OnArcStartup(dbus::MethodCall* method_call);

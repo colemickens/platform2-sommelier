@@ -5,6 +5,7 @@
 #include "arc/network/manager.h"
 
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <sys/prctl.h>
@@ -34,6 +35,14 @@ bool ShouldEnableNDProxyForArc() {
   static const char kLsbReleasePath[] = "/etc/lsb-release";
   static int kMinAndroidSdkVersion = 28;  // P
   static int kMinChromeMilestone = 80;
+
+  static bool checked = false;
+  static bool result = false;
+
+  if (checked)
+    return result;
+
+  checked = true;
 
   brillo::KeyValueStore store;
   if (!store.Load(base::FilePath(kLsbReleasePath))) {
@@ -71,6 +80,7 @@ bool ShouldEnableNDProxyForArc() {
   }
 
   LOG(INFO) << "NDProxy enabled for ARC";
+  result = true;
   return true;
 }
 
@@ -189,17 +199,19 @@ void Manager::InitialSetup() {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
                << " IPv6 functionality may be broken.";
   }
-  bool arc_legacy_ipv6 = !ShouldEnableNDProxyForArc();
   // Kernel proxy_ndp is only needed for legacy IPv6 configuration
-  if (arc_legacy_ipv6 &&
+  if (!ShouldEnableNDProxyForArc() &&
       runner.sysctl_w("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.proxy_ndp."
                << " IPv6 functionality may be broken.";
   }
 
+  nd_proxy_->RegisterDeviceMessageHandler(base::Bind(
+      &Manager::OnDeviceMessageFromNDProxy, weak_factory_.GetWeakPtr()));
+
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(bus_), &addr_mgr_, datapath_.get(),
-      mcast_proxy_.get(), nd_proxy_.get(), arc_legacy_ipv6);
+      static_cast<TrafficForwarder*>(this));
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
   cros_svc_ =
@@ -539,6 +551,88 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
   adb_proxy_->SendMessage(ipm);
   mcast_proxy_->SendMessage(ipm);
   nd_proxy_->SendMessage(ipm);
+}
+
+void Manager::StartForwarding(const std::string& ifname_physical,
+                              const std::string& ifname_virtual,
+                              uint32_t ipv4_addr_virtual,
+                              bool ipv6,
+                              bool multicast) {
+  if (ifname_physical.empty())
+    return;
+
+  IpHelperMessage ipm;
+  DeviceMessage* msg = ipm.mutable_device_message();
+  msg->set_dev_ifname(ifname_physical);
+  msg->set_guest_ip4addr(ipv4_addr_virtual);
+  msg->set_br_ifname(ifname_virtual);
+
+  if (ipv6) {
+    LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
+              << ifname_virtual;
+
+    if (!datapath_->AddIPv6Forwarding(ifname_physical, ifname_virtual)) {
+      LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
+                 << ifname_physical << " to " << ifname_virtual;
+    }
+    if (!datapath_->MaskInterfaceFlags(ifname_physical, IFF_ALLMULTI)) {
+      LOG(WARNING) << "Failed to setup all multicast mode for interface "
+                   << ifname_physical;
+    }
+    if (!datapath_->MaskInterfaceFlags(ifname_virtual, IFF_ALLMULTI)) {
+      LOG(WARNING) << "Failed to setup all multicast mode for interface "
+                   << ifname_virtual;
+    }
+    nd_proxy_->SendMessage(ipm);
+  }
+
+  if (multicast) {
+    LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
+              << " to " << ifname_virtual;
+    mcast_proxy_->SendMessage(ipm);
+  }
+}
+
+void Manager::StopForwarding(const std::string& ifname_physical,
+                             const std::string& ifname_virtual,
+                             bool ipv6,
+                             bool multicast) {
+  if (ifname_physical.empty())
+    return;
+
+  IpHelperMessage ipm;
+  DeviceMessage* msg = ipm.mutable_device_message();
+  msg->set_dev_ifname(ifname_physical);
+  msg->set_teardown(true);
+
+  if (ipv6) {
+    LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_physical << " to "
+              << ifname_virtual;
+
+    datapath_->RemoveIPv6Forwarding(ifname_physical, ifname_virtual);
+    nd_proxy_->SendMessage(ipm);
+  }
+
+  if (multicast) {
+    LOG(INFO) << "Stopping multicast forwarding from " << ifname_physical
+              << " to " << ifname_virtual;
+    mcast_proxy_->SendMessage(ipm);
+  }
+}
+
+bool Manager::ForwardsLegacyIPv6() const {
+  return !ShouldEnableNDProxyForArc();
+}
+
+void Manager::OnDeviceMessageFromNDProxy(const DeviceMessage& msg) {
+  LOG_IF(DFATAL, msg.dev_ifname().empty())
+      << "Received DeviceMessage w/ empty dev_ifname";
+
+  if (!datapath_->AddIPv6HostRoute(msg.dev_ifname(), msg.guest_ip6addr(),
+                                   128)) {
+    LOG(WARNING) << "Failed to setup the IPv6 route for interface "
+                 << msg.dev_ifname();
+  }
 }
 
 }  // namespace arc_networkd
