@@ -526,10 +526,20 @@ bool GetPluginRootDirectory(const string& vm_id,
 }
 
 bool CreatePluginRootHierarchy(const base::FilePath& root_path) {
+  base::FilePath etc_dir(root_path.Append("etc"));
   base::File::Error dir_error;
-  if (!CreateDirectoryAndGetError(root_path.Append("etc"), &dir_error)) {
+  if (!CreateDirectoryAndGetError(etc_dir, &dir_error)) {
     LOG(ERROR) << "Unable to create /etc in root directory for VM "
                << base::File::ErrorToString(dir_error);
+    return false;
+  }
+
+  // Note that this will be dangling (or rather point to concierge's timezone
+  // instance) until crosvm bind mounts /var/lib/timezone and
+  // /usr/share/zoneinfo into plugin jail.
+  if (!base::CreateSymbolicLink(base::FilePath("/var/lib/timezone/localtime"),
+                                etc_dir.Append("localtime"))) {
+    PLOG(ERROR) << "Unable to create /etc/localtime symlink";
     return false;
   }
 
