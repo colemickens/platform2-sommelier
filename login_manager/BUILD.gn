@@ -27,7 +27,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libchromeos-ui-${libbase_ver}",
     "libcontainer",
@@ -119,8 +119,8 @@ static_library("libsession_manager") {
   }
   libs = [
     "bootstat",
-    "installattributes-${libbase_ver}",
-    "policy-${libbase_ver}",
+    "installattributes",
+    "policy",
   ]
   deps = [
     ":login_manager-login_screen_storage-protos",
@@ -159,7 +159,7 @@ executable("session_manager") {
 if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
       "libcros_config",
     ]
