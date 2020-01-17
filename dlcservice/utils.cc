@@ -17,20 +17,18 @@ using std::pair;
 using std::set;
 using std::string;
 
-namespace {
-
-constexpr char kDlcDirAName[] = "dlc_a";
-constexpr char kDlcDirBName[] = "dlc_b";
-constexpr char kManifestName[] = "imageloader.json";
-
-// The directory inside a DLC module that contains all the DLC files.
-constexpr char kRootDirectoryInsideDlcModule[] = "root";
-
-}  // namespace
-
 namespace dlcservice {
 
 namespace utils {
+
+char kDlcDirAName[] = "dlc_a";
+char kDlcDirBName[] = "dlc_b";
+char kDlcPreloadAllowedName[] = "preload_allowed";
+
+char kDlcImageFileName[] = "dlc.img";
+char kManifestName[] = "imageloader.json";
+
+char kRootDirectoryInsideDlcModule[] = "root";
 
 FilePath GetDlcPath(const FilePath& dlc_root_path, const string& id) {
   return dlc_root_path.Append(id);

@@ -135,6 +135,19 @@ class DlcServiceTest : public testing::Test {
         .Times(1);
   }
 
+  int64_t GetFileSize(const base::FilePath& path) {
+    int64_t file_size;
+    EXPECT_TRUE(base::GetFileSize(path, &file_size));
+    return file_size;
+  }
+
+  void ResizeImageFile(const base::FilePath& image_path, int64_t image_size) {
+    constexpr uint32_t file_flags =
+        base::File::FLAG_WRITE | base::File::FLAG_OPEN;
+    base::File file(image_path, file_flags);
+    EXPECT_TRUE(file.SetLength(image_size));
+  }
+
   void CreateImageFileWithRightSize(const base::FilePath& image_path,
                                     const base::FilePath& manifest_path,
                                     const string& id,
@@ -147,7 +160,7 @@ class DlcServiceTest : public testing::Test {
                                     base::File::FLAG_READ |
                                     base::File::FLAG_CREATE;
     base::File file(image_path, file_flags);
-    file.SetLength(image_size);
+    EXPECT_TRUE(file.SetLength(image_size));
   }
 
   // Will modify DLC with |id| and |package| manifest file to allow preloading.
@@ -857,6 +870,34 @@ TEST_F(DlcServiceTest, StrongerInstalledDlcRefresh) {
     EXPECT_EQ(dlc_info.dlc_id(), kFirstDlc);
     EXPECT_TRUE(base::PathExists(root_path));
   }
+}
+
+TEST_F(DlcServiceTest, MimicUpdateRebootWherePreallocatedSizeIncreasedTest) {
+  // Check A and B images.
+  for (const auto& slot : {utils::kDlcDirAName, utils::kDlcDirBName})
+    EXPECT_TRUE(base::PathExists(
+        content_path_.Append(kFirstDlc).Append(kPackage).Append(slot).Append(
+            utils::kDlcImageFileName)));
+
+  base::FilePath inactive_img_path = utils::GetDlcImagePath(
+      content_path_, kFirstDlc, kPackage,
+      current_slot_ == BootSlot::Slot::A ? BootSlot::Slot::B
+                                         : BootSlot::Slot::A);
+
+  imageloader::Manifest manifest;
+  dlcservice::utils::GetDlcManifest(manifest_path_, kFirstDlc, kPackage,
+                                    &manifest);
+  int64_t inactive_img_size = manifest.preallocated_size();
+  int64_t new_inactive_img_size = inactive_img_size / 2;
+  EXPECT_TRUE(new_inactive_img_size < inactive_img_size);
+
+  ResizeImageFile(inactive_img_path, new_inactive_img_size);
+  EXPECT_EQ(new_inactive_img_size, GetFileSize(inactive_img_path));
+
+  DlcModuleList dlc_module_list;
+  EXPECT_TRUE(dlc_service_->GetInstalled(&dlc_module_list, nullptr));
+
+  EXPECT_EQ(inactive_img_size, GetFileSize(inactive_img_path));
 }
 
 }  // namespace dlcservice

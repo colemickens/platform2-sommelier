@@ -21,8 +21,16 @@ namespace dlcservice {
 
 namespace utils {
 
-constexpr char kDlcImageFileName[] = "dlc.img";
-constexpr char kDlcPreloadAllowedName[] = "preload_allowed";
+extern char kDlcDirAName[];
+extern char kDlcDirBName[];
+extern char kDlcPreloadAllowedName[];
+
+// Important DLC file names.
+extern char kDlcImageFileName[];
+extern char kManifestName[];
+
+// The directory inside a DLC module that contains all the DLC files.
+extern char kRootDirectoryInsideDlcModule[];
 
 template <typename BindedCallback>
 class ScopedCleanups {

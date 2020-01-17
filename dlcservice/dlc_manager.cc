@@ -435,12 +435,16 @@ class DlcManager::DlcManagerImpl {
     return true;
   }
 
-  // Validate that the inactive image for a |dlc_id| exists and create it if it
-  // doesn't.
+  // Validate that:
+  //  - [1] Inactive image for a |dlc_id| exists and create it if missing.
+  //    -> Failure to do so returns false.
+  //  - [2] Active and inactive images both are the same size and try fixing for
+  //        certain scenarios after update only.
+  //    -> Failure to do so only logs error.
   bool ValidateImageFiles(const string& id) {
     string mount_point;
     const string& package = GetDlcPackage(id);
-    FilePath inactive_slot_img_path = utils::GetDlcImagePath(
+    FilePath inactive_img_path = utils::GetDlcImagePath(
         content_dir_, id, package,
         current_boot_slot_ == BootSlot::Slot::A ? BootSlot::Slot::B
                                                 : BootSlot::Slot::A);
@@ -450,22 +454,51 @@ class DlcManager::DlcManagerImpl {
                                            &manifest)) {
       return false;
     }
-    int64_t img_size_manifest = manifest.preallocated_size();
+    int64_t max_allowed_img_size = manifest.preallocated_size();
 
-    if (!base::PathExists(inactive_slot_img_path)) {
-      LOG(WARNING) << "The DLC image " << inactive_slot_img_path.value()
+    // [1]
+    if (!base::PathExists(inactive_img_path)) {
+      LOG(WARNING) << "The DLC image " << inactive_img_path.value()
                    << " does not exist.";
       string err_code, err_msg;
       if (!CreateDlcPackagePath(id, package, &err_code, &err_msg)) {
         LOG(ERROR) << err_msg;
         return false;
       }
-      if (!CreateImageFile(inactive_slot_img_path, img_size_manifest)) {
-        LOG(ERROR) << "Failed to create DLC image:"
-                   << inactive_slot_img_path.value() << ".";
+      if (!CreateImageFile(inactive_img_path, max_allowed_img_size)) {
+        LOG(ERROR) << "Failed to create DLC image: "
+                   << inactive_img_path.value();
         return false;
       }
     }
+
+    // Different scenarios possible to hit this flow:
+    //  - Inactive and manifest size are the same -> Do nothing.
+    //
+    // TODO(crbug.com/943780): This requires further design updates to both
+    //  dlcservice and upate_engine in order to fully handle. Solution pending.
+    //  - Update applied and not rebooted -> Do nothing. A lot more corner cases
+    //    than just always keeping active and inactive image sizes the same.
+    //
+    //  - Update applied and rebooted -> Try fixing up inactive image.
+    // [2]
+    int64_t inactive_img_size;
+    if (!base::GetFileSize(inactive_img_path, &inactive_img_size)) {
+      LOG(ERROR) << "Failed to get DLC(" << id << ") size.";
+    } else {
+      // When |inactive_img_size| is less than the size permitted in the
+      // manifest, this means that we rebooted into an update.
+      if (inactive_img_size < max_allowed_img_size) {
+        // Only increasing size, the inactive DLC is still usable in case of
+        // reverts.
+        if (!ResizeFile(inactive_img_path, max_allowed_img_size)) {
+          LOG(ERROR)
+              << "Failed to increase inactive image, update_engine may "
+                 "face problems in updating when stateful is full later.";
+        }
+      }
+    }
+
     return true;
   }
 
