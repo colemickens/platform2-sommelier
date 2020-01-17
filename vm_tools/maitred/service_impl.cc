@@ -36,8 +36,8 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/posix/safe_strerror.h>
 #include <base/process/launch.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 using std::string;
 
@@ -51,7 +51,8 @@ constexpr char kLoopbackName[] = "lo";
 
 constexpr char kHostIpPath[] = "/run/host_ip";
 
-const std::vector<string> kDefaultNameservers = {"8.8.8.8", "8.8.4.4"};
+const std::vector<string> kDefaultNameservers = {
+    "8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844"};
 constexpr char kResolvConfOptions[] =
     "options single-request timeout:1 attempts:5\n";
 constexpr char kResolvConfPath[] = "/run/resolv.conf";
@@ -607,6 +608,15 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   }
   if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
     return grpc::Status(grpc::INTERNAL, "tremplin did not launch");
+  }
+
+  if (!init_->Spawn({"ndproxyd", "eth0", "lxdbr0"}, kLxdEnv, true /*respawn*/,
+                    true /*use_console*/, false /*wait_for_exit*/,
+                    &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn ndproxyd");
+  }
+  if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
+    return grpc::Status(grpc::INTERNAL, "ndproxyd did not launch");
   }
 
   return grpc::Status::OK;
