@@ -35,6 +35,8 @@ constexpr char kCryptohomeGCacheFreedDiskSpaceInMbHistogram[] =
     "Cryptohome.GCache.FreedDiskSpaceInMb";
 constexpr char kCryptohomeFreeDiskSpaceTotalTimeHistogram[] =
     "Cryptohome.FreeDiskSpaceTotalTime2";
+constexpr char kCryptohomeFreeDiskSpaceTotalFreedInMbHistogram[] =
+    "Cryptohome.FreeDiskSpaceTotalFreedInMb";
 constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
     "Cryptohome.DircryptoMigrationStartStatus";
 constexpr char kCryptohomeDircryptoMigrationEndStatusHistogram[] =
@@ -252,6 +254,16 @@ void ReportFreeDiskSpaceTotalTime(int ms) {
   }
   g_metrics->SendToUMA(kCryptohomeFreeDiskSpaceTotalTimeHistogram, ms, 1,
                        60 * 1000, 50);
+}
+
+void ReportFreeDiskSpaceTotalFreedInMb(int mb) {
+    if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 1, kMax = 1024 * 10, /* 10 GiB maximum */
+                kNumBuckets = 50;
+  g_metrics->SendToUMA(kCryptohomeFreeDiskSpaceTotalFreedInMbHistogram,
+            mb, kMin, kMax, kNumBuckets);
 }
 
 void ReportDircryptoMigrationStartStatus(MigrationType migration_type,

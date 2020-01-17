@@ -306,6 +306,10 @@ void ReportDeletedUserProfiles(int user_profile_count);
 // the "Cryptohome.FreeDiskSpaceTotalTime" histogram.
 void ReportFreeDiskSpaceTotalTime(int ms);
 
+// Reports total space freed by HomeDirs::FreeDiskSpace (in MiB) to
+// the "Cryptohome.FreeDiskSpaceTotalTime" histogram.
+void ReportFreeDiskSpaceTotalFreedInMb(int mb);
+
 // Reports removed GCache size by cryptohome to the
 // "Cryptohome.FreedGCacheDiskSpaceInMb" histogram.
 void ReportFreedGCacheDiskSpaceInMb(int mb);

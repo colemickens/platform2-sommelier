@@ -143,7 +143,9 @@ bool HomeDirs::IsFreableDiskSpaceAvaible() {
 }
 
 void HomeDirs::FreeDiskSpace() {
-  switch (GetFreeDiskSpaceState()) {
+  int64_t free_space = AmountOfFreeDiskSpace();
+
+  switch (GetFreeDiskSpaceState(free_space)) {
     case HomeDirs::FreeSpaceState::kAboveTarget:
     case HomeDirs::FreeSpaceState::kAboveThreshold:
       // Already have enough space. No need to clean up.
@@ -167,6 +169,16 @@ void HomeDirs::FreeDiskSpace() {
   FreeDiskSpaceInternal();
 
   ReportFreeDiskSpaceTotalTime(total_timer.Elapsed().InMilliseconds());
+
+  int64_t after_cleanup = AmountOfFreeDiskSpace();
+  if (GetFreeDiskSpaceState(after_cleanup) ==
+        HomeDirs::FreeSpaceState::kError) {
+    LOG(ERROR) << "Failed to get the amount of free disk space";
+    return;
+  }
+
+  ReportFreeDiskSpaceTotalFreedInMb(
+      MAX(0, after_cleanup - free_space) / 1024 / 1024);
 
   LOG(INFO) << "Disk cleanup complete.";
 }
