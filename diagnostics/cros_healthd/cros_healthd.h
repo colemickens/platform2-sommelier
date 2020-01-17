@@ -61,6 +61,9 @@ class CrosHealthd final
 
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
+  // Disconnect handler for |binding_set_|.
+  void OnDisconnect();
+
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // This should be the only connection to D-Bus. Use |connection_| to get the
@@ -92,8 +95,12 @@ class CrosHealthd final
   // chromeos::cros_healthd::mojom::CrosHealthdServiceFactory) with
   // any message pipes set up on top of received file descriptors. A new binding
   // is added whenever the BootstrapMojoConnection D-Bus method is called.
-  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>
+  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdServiceFactory,
+                   bool>
       binding_set_;
+  // Whether binding of the Mojo service was attempted. This flag is needed for
+  // detecting repeated Mojo bootstrapping attempts.
+  bool mojo_service_bind_attempted_ = false;
 
   // Connects BootstrapMojoConnection with the methods of the D-Bus object
   // exposed by the cros_healthd daemon.

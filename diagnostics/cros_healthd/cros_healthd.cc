@@ -47,6 +47,9 @@ CrosHealthd::CrosHealthd()
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
       battery_fetcher_.get(), routine_service_.get());
+
+  binding_set_.set_connection_error_handler(
+      base::Bind(&CrosHealthd::OnDisconnect, base::Unretained(this)));
 }
 
 CrosHealthd::~CrosHealthd() = default;
@@ -117,6 +120,20 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
 
   chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryRequest request;
   if (is_chrome) {
+    if (mojo_service_bind_attempted_) {
+      // This should not normally be triggered, since the other endpoint - the
+      // browser process - should bootstrap the Mojo connection only once, and
+      // when that process is killed the Mojo shutdown notification should have
+      // been received earlier. But handle this case to be on the safe side.
+      // After we restart, the browser process is expected to invoke the
+      // bootstrapping again.
+      ShutDownDueToMojoError(
+          "Repeated Mojo bootstrap request received" /* debug_reason */);
+      // It doesn't matter what we return here, this is just to satisfy the
+      // compiler. ShutDownDueToMojoError will kill cros_healthd.
+      return "";
+    }
+
     // Connect to mojo in the requesting process.
     mojo::IncomingInvitation invitation =
         mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
@@ -124,6 +141,7 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
     request = mojo::InterfaceRequest<
         chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
         invitation.ExtractMessagePipe(kCrosHealthdMojoConnectionChannelToken));
+    mojo_service_bind_attempted_ = true;
   } else {
     // Create a unique token which will allow the requesting process to connect
     // to us via mojo.
@@ -139,7 +157,7 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
         chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
         std::move(pipe));
   }
-  binding_set_.AddBinding(this /* impl */, std::move(request));
+  binding_set_.AddBinding(this /* impl */, std::move(request), is_chrome);
 
   VLOG(1) << "Successfully bootstrapped Mojo connection";
   return token;
@@ -164,6 +182,13 @@ void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {
   LOG(ERROR) << "Shutting down due to: " << debug_reason;
   mojo_service_.reset();
   Quit();
+}
+
+void CrosHealthd::OnDisconnect() {
+  // Only respond to disconnects caused by the browser. All others are
+  // recoverable.
+  if (binding_set_.dispatch_context())
+    ShutDownDueToMojoError("Lost mojo connection to browser.");
 }
 
 }  // namespace diagnostics
