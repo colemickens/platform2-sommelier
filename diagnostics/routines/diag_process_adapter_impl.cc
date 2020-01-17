@@ -21,7 +21,8 @@ DiagProcessAdapterImpl::~DiagProcessAdapterImpl() = default;
 
 base::TerminationStatus DiagProcessAdapterImpl::GetStatus(
     const base::ProcessHandle& handle) const {
-  return base::GetTerminationStatus(handle, nullptr);
+  int exit_code_unused;
+  return base::GetTerminationStatus(handle, &exit_code_unused);
 }
 
 bool DiagProcessAdapterImpl::StartProcess(const std::vector<std::string>& args,
