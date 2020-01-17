@@ -62,7 +62,6 @@ class MockDeviceInfo : public DeviceInfo {
               (const, override));
   MOCK_METHOD(bool, DeleteInterface, (int), (const, override));
   MOCK_METHOD(void, RegisterDevice, (const DeviceRefPtr&), (override));
-  MOCK_METHOD(void, DeregisterDevice, (const DeviceRefPtr&), (override));
   MOCK_METHOD(bool, SetHostname, (const std::string&), (const, override));
 
  private:

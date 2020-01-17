@@ -58,12 +58,6 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // messages, and registers it with the manager.
   virtual void RegisterDevice(const DeviceRefPtr& device);
 
-  // Remove |device| from this DeviceInfo.  This function should only
-  // be called for cellular devices because the lifetime of the
-  // cellular devices is controlled by the Modem object and its
-  // communication to modem manager, rather than by RTNL messages.
-  virtual void DeregisterDevice(const DeviceRefPtr& device);
-
   virtual DeviceRefPtr GetDevice(int interface_index) const;
   virtual bool GetMacAddress(int interface_index, ByteString* address) const;
 

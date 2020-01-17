@@ -47,10 +47,29 @@ Modem::Modem(const string& service,
 
 Modem::~Modem() {
   LOG(INFO) << "Modem destructed: " << path_;
-  if (device_) {
-    device_->DestroyService();
-    modem_info_->manager()->device_info()->DeregisterDevice(device_);
+  if (!device_) {
+    return;
   }
+
+  device_->DestroyService();
+  device_->StopLocationPolling();
+  // Under certain conditions, Cellular::StopModem may not be called before
+  // the Cellular device is destroyed. This happens if the dbus modem exported
+  // by the modem-manager daemon disappears soon after the modem is disabled,
+  // not giving shill enough time to complete the disable operation.
+  //
+  // In that case, the termination action associated with this cellular object
+  // may not have been removed.
+  modem_info_->manager()->RemoveTerminationAction(device_->link_name());
+
+  // Explicitly removes this object from being an observer to
+  // |home_provider_info_| and |serving_operator_info_| to avoid them from
+  // calling into this object while this object is being destructed.
+  device_->home_provider_info()->RemoveObserver(device_.get());
+  device_->serving_operator_info()->RemoveObserver(device_.get());
+
+  // The actual destruction of the Cellular interface occurs in DeviceInfo
+  // after an RTNL link delete message is received.
 }
 
 void Modem::Init() {

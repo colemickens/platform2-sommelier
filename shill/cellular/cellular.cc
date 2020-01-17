@@ -160,24 +160,7 @@ Cellular::Cellular(ModemInfo* modem_info,
   SLOG(this, 2) << "Cellular device " << this->link_name() << " initialized.";
 }
 
-Cellular::~Cellular() {
-  StopLocationPolling();
-
-  // Under certain conditions, Cellular::StopModem may not be
-  // called before the Cellular device is destroyed. This happens if the dbus
-  // modem exported by the modem-manager daemon disappears soon after the modem
-  // is disabled, not giving shill enough time to complete the disable
-  // operation.
-  // In that case, the termination action associated with this cellular object
-  // may not have been removed.
-  manager()->RemoveTerminationAction(link_name());
-
-  // Explicitly removes this object from being an observer to
-  // |home_provider_info_| and |serving_operator_info_| to avoid them from
-  // calling into this object while this object is being destructed.
-  home_provider_info_->RemoveObserver(this);
-  serving_operator_info_->RemoveObserver(this);
-}
+Cellular::~Cellular() = default;
 
 string Cellular::GetEquipmentIdentifier() const {
   // 3GPP devices are uniquely identified by IMEI, which has 15 decimal digits.

@@ -337,7 +337,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   SendMessageToDeviceInfo(*message);
   Mock::VerifyAndClearExpectations(device0.get());
 
-  // Deregister a Cellular device.
+  // Remove a Cellular device.
   scoped_refptr<MockDevice> device1(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device1;
@@ -345,7 +345,8 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
       .WillRepeatedly(Return(Technology::kCellular));
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
-  device_info_.DeregisterDevice(device1);
+  message = BuildLinkMessage(RTNLMessage::kModeDelete);
+  SendMessageToDeviceInfo(*message);
 }
 
 TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {

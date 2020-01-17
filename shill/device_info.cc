@@ -271,27 +271,6 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   }
 }
 
-void DeviceInfo::DeregisterDevice(const DeviceRefPtr& device) {
-  int interface_index = device->interface_index();
-
-  SLOG(this, 2) << __func__ << "(" << device->link_name() << ", "
-                << interface_index << ")";
-  CHECK_EQ(device->technology(), Technology::kCellular);
-
-  // Release reference to the device
-  map<int, Info>::iterator iter = infos_.find(interface_index);
-  if (iter != infos_.end()) {
-    SLOG(this, 2) << "Removing device from info for index: " << interface_index;
-    manager_->DeregisterDevice(device);
-    routing_table_->DeregisterDevice(device->interface_index(),
-                                     device->link_name());
-    // Release the reference to the device, but maintain the mapping
-    // for the index.  That will be cleaned up by an RTNL message.
-    iter->second.device = nullptr;
-  }
-  metrics()->DeregisterDevice(device->interface_index());
-}
-
 FilePath DeviceInfo::GetDeviceInfoPath(const string& iface_name,
                                        const string& path_name) {
   return device_info_root_.Append(iface_name).Append(path_name);
@@ -1094,8 +1073,7 @@ void DeviceInfo::RemoveInfo(int interface_index) {
   map<int, Info>::iterator iter = infos_.find(interface_index);
   if (iter != infos_.end()) {
     SLOG(this, 2) << "Removing info for device index: " << interface_index;
-    // Deregister the device if not deregistered yet. Cellular devices
-    // are deregistered through a call to DeviceInfo::DeregisterDevice.
+    // Deregister the device if not deregistered yet.
     if (iter->second.device.get()) {
       manager_->DeregisterDevice(iter->second.device);
       metrics()->DeregisterDevice(interface_index);

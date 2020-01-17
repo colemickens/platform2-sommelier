@@ -134,7 +134,6 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
 
   // Add expectations for the eventual |modem_| destruction.
   EXPECT_CALL(*cellular, DestroyService());
-  EXPECT_CALL(device_info_, DeregisterDevice(_));
 }
 
 TEST_F(ModemTest, EarlyDeviceProperties) {
@@ -207,7 +206,6 @@ TEST_F(ModemTest, CreateDevicePPP) {
 
   // Add expectations for the eventual |modem_| destruction.
   EXPECT_CALL(*cellular, DestroyService());
-  EXPECT_CALL(device_info_, DeregisterDevice(_));
 }
 
 TEST_F(ModemTest, GetDeviceParams) {
