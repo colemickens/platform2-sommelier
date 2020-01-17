@@ -34,6 +34,7 @@ proto_library("chromeos-config-protos") {
 
 shared_library("libcros_config") {
   sources = [
+    "libcros_config/configfs.cc",
     "libcros_config/cros_config.cc",
     "libcros_config/cros_config_fallback.cc",
     "libcros_config/cros_config_impl.cc",
