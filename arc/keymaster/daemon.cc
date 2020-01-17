@@ -93,9 +93,9 @@ void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
   {
     mojo::ScopedMessagePipeHandle child_pipe =
         invitation.ExtractMessagePipe("arc-keymaster-pipe");
-    mojo::MakeStrongBinding(
-        std::make_unique<KeymasterServer>(),
-        mojo::MakeRequest<arc::mojom::KeymasterServer>(std::move(child_pipe)));
+    mojo::MakeStrongBinding(std::make_unique<KeymasterServer>(),
+                            mojo::InterfaceRequest<arc::mojom::KeymasterServer>(
+                                std::move(child_pipe)));
   }
   {
     mojo::ScopedMessagePipeHandle child_pipe =
@@ -104,7 +104,7 @@ void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
     // TODO(b/147573396): remove strong binding to be able to use cert store.
     mojo::MakeStrongBinding(
         std::make_unique<CertStoreInstance>(),
-        mojo::MakeRequest<arc::keymaster::mojom::CertStoreInstance>(
+        mojo::InterfaceRequest<arc::keymaster::mojom::CertStoreInstance>(
             std::move(child_pipe)));
   }
   is_bound_ = true;

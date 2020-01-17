@@ -25,8 +25,8 @@ void CertStoreInstance::RequestSecurityTokenOperation() {
   LOG(INFO) << "CertStoreInstance::RequestSecurityTokenOperation";
   if (is_security_token_operation_proxy_ready_)
     return;
-  mojo::InterfaceRequest<mojom::SecurityTokenOperation> request(
-      &security_token_operation_proxy_);
+  mojo::InterfaceRequest<mojom::SecurityTokenOperation> request =
+      mojo::MakeRequest(&security_token_operation_proxy_);
   security_token_operation_proxy_.set_connection_error_handler(
       base::Bind(&CertStoreInstance::ResetSecurityTokenOperationProxy,
                  weak_ptr_factory_.GetWeakPtr()));
