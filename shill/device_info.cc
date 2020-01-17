@@ -179,7 +179,7 @@ DeviceInfo::~DeviceInfo() = default;
 void DeviceInfo::AddDeviceToBlackList(const string& device_name) {
   black_list_.insert(device_name);
   // Remove the current device info if it exist, since it will be out-dated.
-  RemoveInfo(GetIndex(device_name));
+  DeregisterDevice(GetIndex(device_name));
   // Request link info update to allow device info to be recreated.
   if (manager_->running()) {
     rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
@@ -189,7 +189,7 @@ void DeviceInfo::AddDeviceToBlackList(const string& device_name) {
 void DeviceInfo::RemoveDeviceFromBlackList(const string& device_name) {
   black_list_.erase(device_name);
   // Remove the current device info if it exist, since it will be out-dated.
-  RemoveInfo(GetIndex(device_name));
+  DeregisterDevice(GetIndex(device_name));
   // Request link info update to allow device info to be recreated.
   if (manager_->running()) {
     rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
@@ -667,7 +667,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
 
   if (IsRenamedBlacklistedDevice(msg)) {
     // Treat renamed blacklisted devices as new devices.
-    RemoveInfo(dev_index);
+    DeregisterDevice(dev_index);
   }
 
   bool new_device = !base::ContainsKey(infos_, dev_index) ||
@@ -749,7 +749,7 @@ void DeviceInfo::DelLinkMsgHandler(const RTNLMessage& msg) {
   // traffic through VPNs.
   manager_->vpn_provider()->RemoveAllowedInterface(link_name);
 
-  RemoveInfo(msg.interface_index());
+  DeregisterDevice(msg.interface_index());
 }
 
 DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
@@ -1069,7 +1069,7 @@ const DeviceInfo::Info* DeviceInfo::GetInfo(int interface_index) const {
   return &iter->second;
 }
 
-void DeviceInfo::RemoveInfo(int interface_index) {
+void DeviceInfo::DeregisterDevice(int interface_index) {
   map<int, Info>::iterator iter = infos_.find(interface_index);
   if (iter != infos_.end()) {
     SLOG(this, 2) << "Removing info for device index: " << interface_index;

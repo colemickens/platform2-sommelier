@@ -221,7 +221,10 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void RdnssMsgHandler(const RTNLMessage& msg);
 
   const Info* GetInfo(int interface_index) const;
-  void RemoveInfo(int interface_index);
+  // Deregister the Device instance (if any) from interested parties like
+  // Manager and Metrics, and remove the Info corresponding to this
+  // interface. No-op if there is no Info for this interface index.
+  void DeregisterDevice(int interface_index);
   void DelayDeviceCreation(int interface_index);
   void DelayedDeviceCreationTask();
   void RetrieveLinkStatistics(int interface_index, const RTNLMessage& msg);
