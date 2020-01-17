@@ -944,12 +944,12 @@ NSCam::v3::Imp::AppStreamMgr::FrameHandler::update(
     return;
   }
   //
-  FrameQueue::iterator itFrame = mFrameQueue.begin();
+  FrameQueue::iterator frame;
   for (auto iter = rvResult.begin(); iter != rvResult.end(); ++iter) {
     MUINT32 const frameNo = iter->second->frameNo;
-    for (; itFrame != mFrameQueue.end(); itFrame++) {
+    for (frame = mFrameQueue.begin(); frame != mFrameQueue.end(); frame++) {
       //
-      std::shared_ptr<FrameParcel>& pFrame = *itFrame;
+      std::shared_ptr<FrameParcel>& pFrame = *frame;
       if (frameNo != pFrame->frameNo) {
         continue;
       }
@@ -985,10 +985,10 @@ NSCam::v3::Imp::AppStreamMgr::FrameHandler::update(
       break;
     }
     //
-    if (itFrame == mFrameQueue.end()) {
+    if (frame == mFrameQueue.end()) {
       MY_LOGW("frameNo:%u is not in FrameQueue; its first frameNo:%u", frameNo,
               (*mFrameQueue.begin())->frameNo);
-      itFrame = mFrameQueue.begin();
+      frame = mFrameQueue.begin();
     }
   }
   //
