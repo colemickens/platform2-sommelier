@@ -33,4 +33,9 @@ bool FakeCrosConfig::GetString(const std::string& path,
   return true;
 }
 
+bool FakeCrosConfig::GetDeviceIndex(int* device_index_out) {
+  *device_index_out = 0;
+  return true;
+}
+
 }  // namespace brillo

@@ -127,6 +127,30 @@ TEST_F(CrosConfigTest, CheckCameraCount) {
   EXPECT_EQ("1", val);
 }
 
+TEST_F(CrosConfigTest, CheckDeviceIndex0) {
+  InitConfig("Some", 0);
+
+  int device_index;
+  ASSERT_TRUE(cros_config_.GetDeviceIndex(&device_index));
+  EXPECT_EQ(0, device_index);
+}
+
+TEST_F(CrosConfigTest, CheckDeviceIndex1) {
+  InitConfig("Some", 1);
+
+  int device_index;
+  ASSERT_TRUE(cros_config_.GetDeviceIndex(&device_index));
+  EXPECT_EQ(1, device_index);
+}
+
+TEST_F(CrosConfigTest, CheckDeviceIndex2) {
+  InitConfig("Another", 0);
+
+  int device_index;
+  ASSERT_TRUE(cros_config_.GetDeviceIndex(&device_index));
+  EXPECT_EQ(2, device_index);
+}
+
 TEST_F(CrosConfigTest, CheckFallbackImageName) {
   InitConfigInvalid();
 
@@ -157,6 +181,13 @@ TEST_F(CrosConfigTest, CheckFallbackInvalidProperty) {
 
   std::string val;
   EXPECT_FALSE(cros_config_.GetString("/firmware", "invalid-prop", &val));
+}
+
+TEST_F(CrosConfigTest, CheckFallbackDeviceIndex) {
+  InitConfigInvalid();
+
+  int device_index;
+  EXPECT_FALSE(cros_config_.GetDeviceIndex(&device_index));
 }
 
 int main(int argc, char** argv) {

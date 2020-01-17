@@ -36,6 +36,8 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
                  const std::string& property,
                  std::string* val_out) override;
 
+  bool GetDeviceIndex(int* device_index_out) override;
+
  private:
   using PathProp = std::pair<std::string, std::string>;
 

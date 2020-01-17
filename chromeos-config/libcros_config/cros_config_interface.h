@@ -36,6 +36,15 @@ class CrosConfigInterface {
                          const std::string& property,
                          std::string* val_out) = 0;
 
+  // Get a unique integer to the device identity within the identities
+  // supported by the current board. This will fail if the identity
+  // has not been initialized (e.g., Init has not been called) or the
+  // interface does not support this (e.g., the fallback interface for
+  // legacy boards).
+  // @device_index_out: Output parameter to place integer at.
+  // @return: true on success, false on failure.
+  virtual bool GetDeviceIndex(int* device_index_out) = 0;
+
   // Return true iff library debug logging is enabled.
   // Currently this checks for a non-empty CROS_CONFIG_DEBUG environment
   // variable.

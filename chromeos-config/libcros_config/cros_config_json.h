@@ -33,6 +33,8 @@ class CrosConfigJson : public CrosConfigImpl {
                  const std::string& prop,
                  std::string* val_out) override;
 
+  bool GetDeviceIndex(int* device_index_out) override;
+
   // CrosConfigImpl:
   bool SelectConfigByIdentity(const CrosConfigIdentity& identity) override;
   bool ReadConfigFile(const base::FilePath& filepath) override;
@@ -46,6 +48,8 @@ class CrosConfigJson : public CrosConfigImpl {
   std::unique_ptr<const base::Value> json_config_;
   // Owned by json_config_
   const base::DictionaryValue* config_dict_;  // Root of configs
+
+  int device_index_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfigJson);
 };

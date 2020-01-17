@@ -64,6 +64,8 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  const std::string& property,
                  std::string* val_out) override;
 
+  bool GetDeviceIndex(int* device_index_out) override;
+
   // @return true if the config file was not found during Init and
   //     mosys platform will be used, false otherwise
   bool FallbackModeEnabled() const { return fallback_mode_; }

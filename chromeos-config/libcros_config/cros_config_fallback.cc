@@ -71,4 +71,10 @@ bool CrosConfigFallback::GetString(const std::string& path,
   return false;
 }
 
+bool CrosConfigFallback::GetDeviceIndex(int* device_index_out) {
+  // On non-unibuild devices, there is no concept of a device identity
+  // within the build, so we always return false.
+  return false;
+}
+
 }  // namespace brillo

@@ -163,4 +163,11 @@ bool CrosConfig::GetString(const std::string& path,
   return cros_config_->GetString(path, property, val_out);
 }
 
+bool CrosConfig::GetDeviceIndex(int* device_index_out) {
+  if (!InitCheck()) {
+    return false;
+  }
+  return cros_config_->GetDeviceIndex(device_index_out);
+}
+
 }  // namespace brillo

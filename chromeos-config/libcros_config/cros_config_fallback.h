@@ -25,6 +25,8 @@ class CrosConfigFallback : public CrosConfigInterface {
                  const std::string& property,
                  std::string* val_out) override;
 
+  bool GetDeviceIndex(int* device_index_out) override;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(CrosConfigFallback);
 };

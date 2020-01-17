@@ -79,6 +79,7 @@ bool CrosConfigJson::SelectConfigByIdentityInternal(
     // SMBIOS name matches/dt-compatible, SKU matches, and VPD tag
     // matches. This is the config.
     config_dict_ = config_dict;
+    device_index_ = i;
     return true;
   }
   return false;
@@ -151,6 +152,14 @@ bool CrosConfigJson::GetString(const std::string& path,
     }
   }
   return false;
+}
+
+bool CrosConfigJson::GetDeviceIndex(int* device_index_out) {
+  if (!InitCheck()) {
+    return false;
+  }
+  *device_index_out = device_index_;
+  return true;
 }
 
 bool CrosConfigJson::ReadConfigFile(const base::FilePath& filepath) {
