@@ -693,7 +693,7 @@ bool Service::Init() {
   }
 
   dbus::ObjectProxy* debugd_proxy = bus_->GetObjectProxy(
-      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServiceName));
+      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));
   if (!debugd_proxy) {
     LOG(ERROR) << "Unable to get dbus proxy for " << debugd::kDebugdServiceName;
     return false;
