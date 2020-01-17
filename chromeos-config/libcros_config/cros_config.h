@@ -59,6 +59,16 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                    const std::string& name,
                    const std::string& customization_id);
 
+  // Mount a ConfigFS image. This method can be called before or
+  // instead of Init, and the optimized identity file inside of the
+  // ConfigFS image will be used for initialization instead of the
+  // default JSON file.
+  // @image_path: The path to the ConfigFS image.
+  // @mount_path: The directory to mount ConfigFS at.
+  // @return true on success, false on error.
+  bool MountConfigFS(const base::FilePath& image_path,
+                     const base::FilePath& mount_path);
+
   // CrosConfigInterface:
   bool GetString(const std::string& path,
                  const std::string& property,

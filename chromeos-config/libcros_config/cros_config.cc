@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include "chromeos-config/libcros_config/configfs.h"
 #include "chromeos-config/libcros_config/cros_config_fallback.h"
 #include "chromeos-config/libcros_config/cros_config_json.h"
 #include "chromeos-config/libcros_config/identity.h"
@@ -103,6 +104,66 @@ bool CrosConfig::InitForTest(const int sku_id,
   }
   return InitInternal(sku_id, json_path, arch, product_name_file,
                       product_sku_file, vpd_file);
+}
+
+bool CrosConfig::MountConfigFS(const base::FilePath& image_path,
+                               const base::FilePath& mount_path) {
+  base::FilePath private_dir;
+  base::FilePath v1_dir;
+
+  if (!SetupMountPath(mount_path, &private_dir, &v1_dir)) {
+    return false;
+  }
+
+  base::FilePath loop_device;
+  if (!SetupLoopDevice(image_path, &loop_device)) {
+    return false;
+  }
+
+  if (!Mount(loop_device, private_dir, kConfigFSPrivateFSType, 0)) {
+    return false;
+  }
+
+  const auto private_v1_dir = private_dir.Append(kConfigFSV1DirName);
+
+  if (!cros_config_) {
+    // Init hasn't been called yet (which is the typical case of using
+    // MountConfigFS).  We can use the identity stored inside of the
+    // ConfigFS for faster initialization.
+    const auto identity_path = private_v1_dir.Append(kConfigFSIdentityName);
+
+    if (!base::PathExists(identity_path)) {
+      // We have checks at build-time in cros_config_host that makes
+      // sure this file exists in the filesystem.  But it's worth the
+      // sanity check here too (in case a developer-constructed image
+      // was invalid).
+      CROS_CONFIG_LOG(ERROR) << identity_path.value() << " is missing!";
+      return false;
+    }
+    const auto arch = CrosConfigIdentity::CurrentSystemArchitecture();
+    base::FilePath vpd_file;
+    base::FilePath product_name_file;
+    base::FilePath product_sku_file;
+    if (!GetDefaultIdentityFiles(arch, &vpd_file, &product_name_file,
+                                 &product_sku_file)) {
+      return false;
+    }
+    if (!InitInternal(kDefaultSkuId, identity_path, arch, product_name_file,
+                      product_sku_file, vpd_file)) {
+      CROS_CONFIG_LOG(ERROR) << "Identity probing failed!";
+      return false;
+    }
+  }
+
+  int device_index;
+  if (!GetDeviceIndex(&device_index)) {
+    return false;
+  }
+  const auto device_config_dir =
+      private_v1_dir.Append(CrosConfigJson::kRootName)
+          .Append(CrosConfigJson::kConfigListName)
+          .Append(std::to_string(device_index));
+  return Bind(device_config_dir, v1_dir);
 }
 
 bool CrosConfig::InitInternal(const int sku_id,
