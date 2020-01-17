@@ -82,8 +82,10 @@ void DisplayCachedVpdInfo(
   DCHECK(!vpd.is_null());
 
   printf("sku_number\n");
-
-  printf("%s\n", vpd->sku_number.c_str());
+  if (vpd->sku_number.has_value())
+    printf("%s\n", vpd->sku_number.value().c_str());
+  else
+    printf("NA\n");
 }
 
 void DisplayCpuInfo(

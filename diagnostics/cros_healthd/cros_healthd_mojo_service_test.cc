@@ -10,6 +10,7 @@
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
@@ -22,6 +23,7 @@
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
+#include "diagnostics/cros_healthd/utils/vpd_utils.h"
 #include "mojo/cros_healthd.mojom.h"
 
 using testing::_;
@@ -88,8 +90,11 @@ class CrosHealthdMojoServiceTest : public testing::Test {
         dbus::ObjectPath(power_manager::kPowerManagerServicePath));
     battery_fetcher_ = std::make_unique<BatteryFetcher>(
         mock_debugd_proxy_.get(), mock_power_manager_proxy_.get());
-    service_ = std::make_unique<CrosHealthdMojoService>(battery_fetcher_.get(),
-                                                        &routine_service_);
+    fake_cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+    cached_vpd_fetcher_ =
+        std::make_unique<CachedVpdFetcher>(fake_cros_config_.get());
+    service_ = std::make_unique<CrosHealthdMojoService>(
+        battery_fetcher_.get(), cached_vpd_fetcher_.get(), &routine_service_);
   }
 
   CrosHealthdMojoService* service() { return service_.get(); }
@@ -104,6 +109,8 @@ class CrosHealthdMojoServiceTest : public testing::Test {
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_power_manager_proxy_;
   std::unique_ptr<BatteryFetcher> battery_fetcher_;
+  std::unique_ptr<brillo::FakeCrosConfig> fake_cros_config_;
+  std::unique_ptr<CachedVpdFetcher> cached_vpd_fetcher_;
   std::unique_ptr<CrosHealthdMojoService> service_;
 };
 

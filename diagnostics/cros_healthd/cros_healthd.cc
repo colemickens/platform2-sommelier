@@ -42,11 +42,18 @@ CrosHealthd::CrosHealthd()
   battery_fetcher_ = std::make_unique<BatteryFetcher>(debugd_proxy_.get(),
                                                       power_manager_proxy_);
 
+  cros_config_ = std::make_unique<brillo::CrosConfig>();
+  // Init should always succeed on unibuild boards.
+  CHECK(cros_config_->Init());
+
+  cached_vpd_fetcher_ = std::make_unique<CachedVpdFetcher>(cros_config_.get());
+
   routine_service_ =
       std::make_unique<CrosHealthdRoutineServiceImpl>(&routine_factory_impl_);
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
-      battery_fetcher_.get(), routine_service_.get());
+      battery_fetcher_.get(), cached_vpd_fetcher_.get(),
+      routine_service_.get());
 
   binding_set_.set_connection_error_handler(
       base::Bind(&CrosHealthd::OnDisconnect, base::Unretained(this)));

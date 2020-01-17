@@ -14,6 +14,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_object.h>
+#include <chromeos/chromeos-config/libcros_config/cros_config.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
@@ -24,6 +25,7 @@
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
+#include "diagnostics/cros_healthd/utils/vpd_utils.h"
 #include "mojo/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -83,6 +85,11 @@ class CrosHealthd final
   // |battery_fetcher_| is responsible for collecting all battery metrics (smart
   // and regular) by using the available D-Bus proxies.
   std::unique_ptr<BatteryFetcher> battery_fetcher_;
+  // Use |cros_config_| to determine which metrics a device supports.
+  std::unique_ptr<brillo::CrosConfig> cros_config_;
+  // |cached_vpd_fetcher_| is responsible for collecting cached VPD metrics and
+  // uses |cros_config_| to determine which of those metrics a device supports.
+  std::unique_ptr<CachedVpdFetcher> cached_vpd_fetcher_;
 
   // Production implementation of the CrosHealthdRoutineFactory interface. Will
   // be injected into |routine_service_|.

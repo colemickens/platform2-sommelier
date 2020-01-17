@@ -4,14 +4,23 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 
 #include "diagnostics/cros_healthd/utils/vpd_utils.h"
 
 namespace diagnostics {
+
+namespace {
+
+constexpr char kCachedVpdPropertiesPath[] = "/cros-healthd/cached-vpd";
+constexpr char kHasSkuNumberProperty[] = "has-sku-number";
+
+}  // namespace
 
 class Environment {
  public:
@@ -26,7 +35,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Generate a random string.
   std::string file_path(data, data + size);
 
-  auto cached_vpd_info = FetchCachedVpdInfo(base::FilePath(file_path));
+  std::unique_ptr<brillo::FakeCrosConfig> fake_cros_config =
+      std::make_unique<brillo::FakeCrosConfig>();
+  fake_cros_config->SetString(kCachedVpdPropertiesPath, kHasSkuNumberProperty,
+                              "true");
+  std::unique_ptr<CachedVpdFetcher> cached_vpd_fetcher =
+      std::make_unique<CachedVpdFetcher>(fake_cros_config.get());
+  auto cached_vpd_info =
+      cached_vpd_fetcher->FetchCachedVpdInfo(base::FilePath(file_path));
 
   return 0;
 }

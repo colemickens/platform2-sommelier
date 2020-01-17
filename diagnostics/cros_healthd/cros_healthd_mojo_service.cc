@@ -14,19 +14,22 @@
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 
-#include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "diagnostics/cros_healthd/utils/cpu_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
 #include "diagnostics/cros_healthd/utils/timezone_utils.h"
-#include "diagnostics/cros_healthd/utils/vpd_utils.h"
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 CrosHealthdMojoService::CrosHealthdMojoService(
-    BatteryFetcher* battery_fetcher, CrosHealthdRoutineService* routine_service)
-    : battery_fetcher_(battery_fetcher), routine_service_(routine_service) {
+    BatteryFetcher* battery_fetcher,
+    CachedVpdFetcher* cached_vpd_fetcher,
+    CrosHealthdRoutineService* routine_service)
+    : battery_fetcher_(battery_fetcher),
+      cached_vpd_fetcher_(cached_vpd_fetcher),
+      routine_service_(routine_service) {
   DCHECK(battery_fetcher_);
+  DCHECK(cached_vpd_fetcher_);
   DCHECK(routine_service_);
 }
 
@@ -99,8 +102,8 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
         break;
       }
       case ProbeCategoryEnum::kCachedVpdData: {
-        auto vpd_info = FetchCachedVpdInfo(base::FilePath("/"));
-        telemetry_info.vpd_info.Swap(&vpd_info);
+        telemetry_info.vpd_info =
+            cached_vpd_fetcher_->FetchCachedVpdInfo(base::FilePath("/"));
         break;
       }
       case ProbeCategoryEnum::kCpu: {
