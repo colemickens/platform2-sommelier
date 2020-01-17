@@ -14,6 +14,7 @@
 
 #include <base/bind.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/array_utils.h>
 #include <gmock/gmock.h>
@@ -207,19 +208,17 @@ class MockSocketQrtr : public SocketInterface {
 // Test framework for CardQrtr tests. Allows for the faking of modem -> cpu
 // responses with the use of CardReceiveData.
 class CardQrtrTest : public testing::Test {
- public:
-  CardQrtrTest() {
-    auto socket = std::make_unique<MockSocketQrtr>();
-    socket_ = socket.get();
-    card_ = CardQrtr::Create(std::move(socket), nullptr, nullptr);
-  }
-
  protected:
   // Fake modem initialization such that tests may jump right to sending QMI
   // commands
   void SetUp() override {
     fd_.reset(open(kQrtrFilename, O_RDWR | O_CREAT | O_TRUNC, 0777));
     ASSERT_TRUE(fd_.is_valid());
+
+    auto socket = std::make_unique<MockSocketQrtr>();
+    socket_ = socket.get();
+    card_ = CardQrtr::Create(std::move(socket), nullptr, nullptr);
+    ASSERT_NE(card_, nullptr);
 
     receive_ids_.clear();
   }

@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <libqrtr.h>
 
@@ -48,6 +49,7 @@ std::unique_ptr<CardQrtr> CardQrtr::Create(
   // Open the socket prior to passing to CardQrtr, such that it always has a
   // valid socket to write to.
   if (!socket || !socket->Open()) {
+    LOG(ERROR) << "Failed to open socket";
     return nullptr;
   }
   return std::unique_ptr<CardQrtr>(
