@@ -16,6 +16,7 @@
 #include "chromeos-config/libcros_config/identity.h"
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(mount, false, "Mount ChromeOS ConfigFS.");
   DEFINE_string(test_file, "",
                 "Override path to system config database for testing.");
   DEFINE_string(test_name, "", "Override platform name for testing.");
@@ -25,8 +26,9 @@ int main(int argc, char* argv[]) {
                "Override SKU ID for testing.");
   DEFINE_string(whitelabel_tag, "", "Override whitelabel tag for testing.");
 
-  std::string usage = "Chrome OS Model Configuration\n\nUsage: " +
-                      std::string(argv[0]) + " [flags] <path> <key>\n\n" +
+  std::string usage = "Chrome OS Model Configuration\n\nUsage:\n  " +
+                      std::string(argv[0]) + " [flags] <path> <key>\n  " +
+                      std::string(argv[0]) + " --mount <source> <target>\n\n" +
                       "Set CROS_CONFIG_DEBUG=1 in your environment to emit " +
                       "debug logging messages.\n";
   brillo::FlagHelper::Init(argc, argv, usage);
@@ -43,11 +45,12 @@ int main(int argc, char* argv[]) {
   logging::SetMinLogLevel(-3);
 
   brillo::CrosConfig cros_config;
-  if (FLAGS_test_file.empty()) {
+  bool init_for_testing = !FLAGS_test_file.empty();
+  if (!init_for_testing && !FLAGS_mount) {
     if (!cros_config.Init(FLAGS_test_sku_id)) {
       return 1;
     }
-  } else {
+  } else if (init_for_testing) {
     if (!cros_config.InitForTest(
             FLAGS_test_sku_id, base::FilePath(FLAGS_test_file),
             brillo::CrosConfigIdentity::CurrentSystemArchitecture(
@@ -63,6 +66,17 @@ int main(int argc, char* argv[]) {
     std::cerr << usage << "\nPass --help for more information." << std::endl;
     return 1;
   }
+
+  if (FLAGS_mount) {
+    const base::FilePath source(args[0]);
+    const base::FilePath target(args[1]);
+    if (!cros_config.MountConfigFS(source, target)) {
+      std::cerr << "ConfigFS Mount failed!" << std::endl;
+      return 1;
+    }
+    return 0;
+  }
+
   std::string path = args[0];
   std::string property = args[1];
 
