@@ -41,26 +41,36 @@ bool CrosConfig::InitCheck() const {
   return true;
 }
 
-bool CrosConfig::Init(const int sku_id) {
-  base::FilePath vpd_file(kWhitelabelTag);
-  if (!base::PathExists(vpd_file)) {
-    vpd_file = base::FilePath(kCustomizationId);
+bool CrosConfig::GetDefaultIdentityFiles(const SystemArchitecture arch,
+                                         base::FilePath* vpd_file_out,
+                                         base::FilePath* product_name_file_out,
+                                         base::FilePath* product_sku_file_out) {
+  *vpd_file_out = base::FilePath(kWhitelabelTag);
+  if (!base::PathExists(*vpd_file_out)) {
+    *vpd_file_out = base::FilePath(kCustomizationId);
   }
-
-  base::FilePath product_name_file;
-  base::FilePath product_sku_file;
-  SystemArchitecture arch = CrosConfigIdentity::CurrentSystemArchitecture();
   if (arch == SystemArchitecture::kX86) {
-    product_name_file = base::FilePath(kProductName);
-    product_sku_file = base::FilePath(kProductSku);
+    *product_name_file_out = base::FilePath(kProductName);
+    *product_sku_file_out = base::FilePath(kProductSku);
   } else if (arch == SystemArchitecture::kArm) {
-    product_name_file = base::FilePath(kDeviceTreeCompatiblePath);
-    product_sku_file = base::FilePath(kArmSkuId);
+    *product_name_file_out = base::FilePath(kDeviceTreeCompatiblePath);
+    *product_sku_file_out = base::FilePath(kArmSkuId);
   } else {
     CROS_CONFIG_LOG(ERROR) << "System architecture is unknown";
     return false;
   }
+  return true;
+}
 
+bool CrosConfig::Init(const int sku_id) {
+  base::FilePath vpd_file;
+  base::FilePath product_name_file;
+  base::FilePath product_sku_file;
+  const auto arch = CrosConfigIdentity::CurrentSystemArchitecture();
+  if (!GetDefaultIdentityFiles(arch, &vpd_file, &product_name_file,
+                               &product_sku_file)) {
+    return false;
+  }
   base::FilePath json_path(kConfigJsonPath);
   return InitInternal(sku_id, json_path, arch, product_name_file,
                       product_sku_file, vpd_file);

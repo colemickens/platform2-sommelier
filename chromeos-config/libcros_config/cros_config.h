@@ -69,6 +69,18 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool FallbackModeEnabled() const { return fallback_mode_; }
 
  private:
+  // Get the default identity files for the specified architecture.
+  // @arch: The current (or tested) system architecture.
+  // @vpd_file_out: Output file path for whitelabel tag or
+  //     customization id.
+  // @product_name_file_out: Output file path for SMBIOS name or
+  //     dt-compatible file.
+  // @product_sku_file_out: Output file path for SKU ID file.
+  bool GetDefaultIdentityFiles(const SystemArchitecture arch,
+                               base::FilePath* vpd_file_out,
+                               base::FilePath* product_name_file_out,
+                               base::FilePath* product_sku_file_out);
+
   // Internal init function used by Init and InitForTest.
   // @sku_id: SKU ID.
   // @json_path: Path to configuration file.
