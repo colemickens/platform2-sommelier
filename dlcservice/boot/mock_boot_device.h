@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_MOCK_BOOT_DEVICE_H_
-#define DLCSERVICE_MOCK_BOOT_DEVICE_H_
+#ifndef DLCSERVICE_BOOT_MOCK_BOOT_DEVICE_H_
+#define DLCSERVICE_BOOT_MOCK_BOOT_DEVICE_H_
 
-#include "dlcservice/boot_device.h"
+#include "dlcservice/boot/boot_device.h"
 
 #include <string>
 
@@ -26,4 +26,4 @@ class MockBootDevice : public BootDeviceInterface {
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_MOCK_BOOT_DEVICE_H_
+#endif  // DLCSERVICE_BOOT_MOCK_BOOT_DEVICE_H_

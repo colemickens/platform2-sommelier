@@ -12,9 +12,8 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <imageloader/dbus-proxies.h>
 
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/types.h"
-#include "dlcservice/utils.h"
 
 namespace dlcservice {
 

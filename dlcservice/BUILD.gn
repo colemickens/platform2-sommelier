@@ -13,6 +13,7 @@ group("all") {
     ":dlcservice_example_uninstall",
     ":dlcservice_util",
     ":libdlcservice",
+    ":libdlcservice_utils",
   ]
   if (use.test) {
     deps += [ ":dlcservice_tests" ]
@@ -45,6 +46,13 @@ pkg_config("target_defaults") {
   }
 }
 
+pkg_config("dlcservice_util_config") {
+  pkg_deps = [
+    "libdlcservice-client",
+    "libminijail",
+  ]
+}
+
 generate_dbus_adaptors("dlcservice_adaptors") {
   dbus_service_config = "dbus_adaptors/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/dlcservice/dbus_adaptors"
@@ -53,23 +61,33 @@ generate_dbus_adaptors("dlcservice_adaptors") {
   ]
 }
 
+# DLC utils related files.
+static_library("libdlcservice_utils") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "utils.cc",
+  ]
+}
+
+# DLC service related files.
 static_library("libdlcservice") {
   configs += [ ":target_defaults" ]
   libs = [ "rootdev" ]
   sources = [
-    "boot_device.cc",
-    "boot_slot.cc",
+    "boot/boot_device.cc",
+    "boot/boot_slot.cc",
     "daemon.cc",
-    "dbus_adaptor.cc",
+    "dbus_adaptors/dbus_adaptor.cc",
     "dlc_manager.cc",
     "dlc_service.cc",
-    "utils.cc",
   ]
   deps = [
     ":dlcservice_adaptors",
+    ":libdlcservice_utils",
   ]
 }
 
+# For dlcservice:
 executable("dlcservice") {
   configs += [ ":target_defaults" ]
   sources = [
@@ -80,13 +98,7 @@ executable("dlcservice") {
   ]
 }
 
-pkg_config("dlcservice_util_config") {
-  pkg_deps = [
-    "libdlcservice-client",
-    "libminijail",
-  ]
-}
-
+# For dlcservice_util:
 executable("dlcservice_util") {
   configs += [
     ":target_defaults",
@@ -94,10 +106,13 @@ executable("dlcservice_util") {
   ]
   sources = [
     "tools/dlc_service_util.cc",
-    "utils.cc",
+  ]
+  deps = [
+    ":libdlcservice_utils",
   ]
 }
 
+# For install example:
 executable("dlcservice_example_install") {
   configs += [
     ":target_defaults",
@@ -108,6 +123,7 @@ executable("dlcservice_example_install") {
   ]
 }
 
+# For uninstall example:
 executable("dlcservice_example_uninstall") {
   configs += [
     ":target_defaults",
@@ -118,6 +134,7 @@ executable("dlcservice_example_uninstall") {
   ]
 }
 
+# For test:
 if (use.test) {
   pkg_config("dlcservice_tests_config") {
     pkg_deps = [
@@ -134,8 +151,8 @@ if (use.test) {
       ":target_defaults",
     ]
     sources = [
-      "boot_device_test.cc",
-      "boot_slot_test.cc",
+      "boot/boot_device_test.cc",
+      "boot/boot_slot_test.cc",
       "dlc_service_test.cc",
       "utils_test.cc",
     ]
@@ -146,6 +163,7 @@ if (use.test) {
   }
 }
 
+# For fuzzer
 if (use.fuzzer) {
   pkg_config("dlcservice_fuzzer_config") {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
@@ -170,7 +188,7 @@ if (use.fuzzer) {
       ":target_defaults",
     ]
     sources = [
-      "boot_device_fuzzer.cc",
+      "boot/boot_device_fuzzer.cc",
     ]
     deps = [
       ":libdlcservice",

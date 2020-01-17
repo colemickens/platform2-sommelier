@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_DBUS_ADAPTOR_H_
-#define DLCSERVICE_DBUS_ADAPTOR_H_
+#ifndef DLCSERVICE_DBUS_ADAPTORS_DBUS_ADAPTOR_H_
+#define DLCSERVICE_DBUS_ADAPTORS_DBUS_ADAPTOR_H_
 
 #include <memory>
 #include <string>
@@ -55,4 +55,4 @@ class DBusAdaptor : public org::chromium::DlcServiceInterfaceAdaptor,
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_DBUS_ADAPTOR_H_
+#endif  // DLCSERVICE_DBUS_ADAPTORS_DBUS_ADAPTOR_H_

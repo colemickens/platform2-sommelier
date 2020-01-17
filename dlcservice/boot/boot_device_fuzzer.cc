@@ -6,7 +6,7 @@
 
 #include <base/logging.h>
 
-#include "dlcservice/boot_device.h"
+#include "dlcservice/boot/boot_device.h"
 
 class Environment {
  public:

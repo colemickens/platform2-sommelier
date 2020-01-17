@@ -20,9 +20,9 @@
 #include <update_engine/dbus-constants.h>
 #include <update_engine/dbus-proxy-mocks.h>
 
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_slot.h"
+#include "dlcservice/boot/mock_boot_device.h"
 #include "dlcservice/dlc_service.h"
-#include "dlcservice/mock_boot_device.h"
 #include "dlcservice/utils.h"
 
 using std::move;

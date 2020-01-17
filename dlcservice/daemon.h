@@ -12,7 +12,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_connection.h>
 
-#include "dlcservice/dbus_adaptor.h"
+#include "dlcservice/dbus_adaptors/dbus_adaptor.h"
 
 namespace dlcservice {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_slot.h"
 
 #include <limits.h>
 #include <utility>
@@ -11,7 +11,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
-#include "dlcservice/boot_device.h"
+#include "dlcservice/boot/boot_device.h"
 
 using std::string;
 using std::unique_ptr;

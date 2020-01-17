@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_BOOT_SLOT_H_
-#define DLCSERVICE_BOOT_SLOT_H_
+#ifndef DLCSERVICE_BOOT_BOOT_SLOT_H_
+#define DLCSERVICE_BOOT_BOOT_SLOT_H_
 
 #include <memory>
 #include <string>
@@ -55,4 +55,4 @@ class BootSlot {
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_BOOT_SLOT_H_
+#endif  // DLCSERVICE_BOOT_BOOT_SLOT_H_

@@ -18,7 +18,7 @@
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_manager.h"
 #include "dlcservice/types.h"
 

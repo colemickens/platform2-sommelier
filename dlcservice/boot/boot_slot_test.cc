@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_slot.h"
 
 #include <utility>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "dlcservice/mock_boot_device.h"
+#include "dlcservice/boot/mock_boot_device.h"
 
 namespace dlcservice {
 

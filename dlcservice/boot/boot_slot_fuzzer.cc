@@ -6,8 +6,8 @@
 
 #include <base/logging.h>
 
-#include "dlcservice/boot_device.h"
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_device.h"
+#include "dlcservice/boot/boot_slot.h"
 
 namespace dlcservice {
 

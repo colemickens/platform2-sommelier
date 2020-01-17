@@ -14,7 +14,7 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <libimageloader/manifest.h>
 
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {

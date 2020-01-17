@@ -17,7 +17,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 
-#include "dlcservice/boot_slot.h"
 #include "dlcservice/utils.h"
 
 using base::Callback;

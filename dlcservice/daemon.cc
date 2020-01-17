@@ -11,8 +11,8 @@
 #include <chromeos/dbus/dlcservice/dbus-constants.h>
 #include <sysexits.h>
 
-#include "dlcservice/boot_device.h"
-#include "dlcservice/boot_slot.h"
+#include "dlcservice/boot/boot_device.h"
+#include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_service.h"
 
 namespace dlcservice {

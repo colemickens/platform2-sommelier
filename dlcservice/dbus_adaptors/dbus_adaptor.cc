@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dlcservice/dbus_adaptor.h"
+#include "dlcservice/dbus_adaptors/dbus_adaptor.h"
 
 #include <memory>
 #include <string>

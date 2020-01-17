@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_BOOT_DEVICE_H_
-#define DLCSERVICE_BOOT_DEVICE_H_
+#ifndef DLCSERVICE_BOOT_BOOT_DEVICE_H_
+#define DLCSERVICE_BOOT_BOOT_DEVICE_H_
 
 #include <string>
 
@@ -43,4 +43,4 @@ class BootDevice : public BootDeviceInterface {
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_BOOT_DEVICE_H_
+#endif  // DLCSERVICE_BOOT_BOOT_DEVICE_H_
