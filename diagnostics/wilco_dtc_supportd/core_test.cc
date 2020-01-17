@@ -582,61 +582,74 @@ TEST_F(StartedCoreTest, HandleRequestBluetoothDataNotification) {
   adapters[1].powered = false;
   adapters[1].connected_devices_count = 2;
 
-  {
-    base::RunLoop run_loop;
-
-    core_delegate()->bluetooth_event_service()->EmitBluetoothAdapterDataChanged(
-        adapters);
-
-    run_loop.RunUntilIdle();
-  }
-
   FakeWilcoDtc fake_wilco_dtc(wilco_dtc_grpc_uri(),
                               wilco_dtc_supportd_grpc_uri());
   FakeWilcoDtc fake_ui_message_receiver_wilco_dtc(
       ui_message_receiver_wilco_dtc_grpc_uri(), wilco_dtc_supportd_grpc_uri());
 
-  auto bluetooth_callback =
-      [](const base::Closure& callback,
-         grpc_api::HandleBluetoothDataChangedRequest* request_out,
-         const grpc_api::HandleBluetoothDataChangedRequest& request) {
-        DCHECK(request_out);
-        *request_out = request;
-        callback.Run();
-      };
+  {
+    base::RunLoop run_loop;
+    auto barrier_closure = BarrierClosure(2, run_loop.QuitClosure());
 
-  base::RunLoop run_loop;
-  auto barrier_closure = BarrierClosure(3, run_loop.QuitClosure());
+    auto update_callback = base::BindRepeating(
+        [](const base::Closure& callback,
+           const grpc_api::HandleBluetoothDataChangedRequest&) {
+          callback.Run();
+        },
+        barrier_closure);
 
-  grpc_api::HandleBluetoothDataChangedRequest
-      fake_wilco_dtc_bluetooth_grpc_request;
-  grpc_api::HandleBluetoothDataChangedRequest
-      fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request;
+    fake_wilco_dtc.set_bluetooth_data_changed_callback(update_callback);
+    fake_ui_message_receiver_wilco_dtc.set_bluetooth_data_changed_callback(
+        update_callback);
 
-  fake_wilco_dtc.set_bluetooth_data_changed_callback(
-      base::BindRepeating(bluetooth_callback, barrier_closure,
-                          &fake_wilco_dtc_bluetooth_grpc_request));
-  fake_ui_message_receiver_wilco_dtc.set_bluetooth_data_changed_callback(
-      base::BindRepeating(
-          bluetooth_callback, barrier_closure,
-          &fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request));
+    core_delegate()->bluetooth_event_service()->EmitBluetoothAdapterDataChanged(
+        adapters);
 
-  fake_wilco_dtc.RequestBluetoothDataNotification(
-      grpc_api::RequestBluetoothDataNotificationRequest{},
-      base::Bind(
-          [](base::Closure barrier_closure,
-             std::unique_ptr<
-                 grpc_api::RequestBluetoothDataNotificationResponse>) {
-            barrier_closure.Run();
-          },
-          barrier_closure));
+    run_loop.Run();
+  }
 
-  run_loop.Run();
+  {
+    auto bluetooth_callback =
+        [](const base::Closure& callback,
+           grpc_api::HandleBluetoothDataChangedRequest* request_out,
+           const grpc_api::HandleBluetoothDataChangedRequest& request) {
+          DCHECK(request_out);
+          *request_out = request;
+          callback.Run();
+        };
 
-  EXPECT_THAT(fake_wilco_dtc_bluetooth_grpc_request,
-              BluetoothAdaptersEquals(adapters));
-  EXPECT_THAT(fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request,
-              BluetoothAdaptersEquals(adapters));
+    base::RunLoop run_loop;
+    auto barrier_closure = BarrierClosure(3, run_loop.QuitClosure());
+
+    grpc_api::HandleBluetoothDataChangedRequest
+        fake_wilco_dtc_bluetooth_grpc_request;
+    grpc_api::HandleBluetoothDataChangedRequest
+        fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request;
+    fake_wilco_dtc.set_bluetooth_data_changed_callback(
+        base::BindRepeating(bluetooth_callback, barrier_closure,
+                            &fake_wilco_dtc_bluetooth_grpc_request));
+    fake_ui_message_receiver_wilco_dtc.set_bluetooth_data_changed_callback(
+        base::BindRepeating(
+            bluetooth_callback, barrier_closure,
+            &fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request));
+
+    fake_wilco_dtc.RequestBluetoothDataNotification(
+        grpc_api::RequestBluetoothDataNotificationRequest{},
+        base::Bind(
+            [](base::Closure barrier_closure,
+               std::unique_ptr<
+                   grpc_api::RequestBluetoothDataNotificationResponse>) {
+              barrier_closure.Run();
+            },
+            barrier_closure));
+
+    run_loop.Run();
+
+    EXPECT_THAT(fake_wilco_dtc_bluetooth_grpc_request,
+                BluetoothAdaptersEquals(adapters));
+    EXPECT_THAT(fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request,
+                BluetoothAdaptersEquals(adapters));
+  }
 }
 
 // Tests for the Core class with the already established Mojo
