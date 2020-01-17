@@ -49,8 +49,8 @@ class ModelImplTest : public testing::Test {
 TEST_F(ModelImplTest, TestBadModel) {
   // Pass nullptr instead of a valid model.
   ModelPtr model_ptr;
-  const ModelImpl model_impl(model_inputs_, model_outputs_, nullptr /*model*/,
-                             mojo::MakeRequest(&model_ptr), "TestModel");
+  ModelImpl::Create(model_inputs_, model_outputs_, nullptr /*model*/,
+                    mojo::MakeRequest(&model_ptr), "TestModel");
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Ensure that creating a graph executor fails.
@@ -79,8 +79,8 @@ TEST_F(ModelImplTest, TestExampleModel) {
 
   // Create model object.
   ModelPtr model_ptr;
-  const ModelImpl model_impl(model_inputs_, model_outputs_, std::move(model),
-                             mojo::MakeRequest(&model_ptr), "TestModel");
+  ModelImpl::Create(model_inputs_, model_outputs_, std::move(model),
+                    mojo::MakeRequest(&model_ptr), "TestModel");
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Create a graph executor.
@@ -142,8 +142,9 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
 
   // Create model object.
   ModelPtr model_ptr;
-  const ModelImpl model_impl(model_inputs_, model_outputs_, std::move(model),
-                             mojo::MakeRequest(&model_ptr), "TestModel");
+  const ModelImpl* model_impl =
+      ModelImpl::Create(model_inputs_, model_outputs_, std::move(model),
+                        mojo::MakeRequest(&model_ptr), "TestModel");
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Create one graph executor.
@@ -161,7 +162,7 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(cge1_callback_done);
   ASSERT_TRUE(graph_executor_1_ptr.is_bound());
-  ASSERT_EQ(model_impl.num_graph_executors_for_testing(), 1);
+  ASSERT_EQ(model_impl->num_graph_executors_for_testing(), 1);
 
   // Create another graph executor.
   bool cge2_callback_done = false;
@@ -178,18 +179,18 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(cge2_callback_done);
   ASSERT_TRUE(graph_executor_2_ptr.is_bound());
-  ASSERT_EQ(model_impl.num_graph_executors_for_testing(), 2);
+  ASSERT_EQ(model_impl->num_graph_executors_for_testing(), 2);
 
   // Destroy one graph executor.
   graph_executor_1_ptr.reset();
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(graph_executor_2_ptr.is_bound());
-  ASSERT_EQ(model_impl.num_graph_executors_for_testing(), 1);
+  ASSERT_EQ(model_impl->num_graph_executors_for_testing(), 1);
 
   // Destroy the other graph executor.
   graph_executor_2_ptr.reset();
   base::RunLoop().RunUntilIdle();
-  ASSERT_EQ(model_impl.num_graph_executors_for_testing(), 0);
+  ASSERT_EQ(model_impl->num_graph_executors_for_testing(), 0);
 }
 
 }  // namespace

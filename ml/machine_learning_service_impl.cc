@@ -30,11 +30,6 @@ constexpr char kSystemModelDir[] = "/opt/google/chrome/ml_models/";
 // or |LoadFlatBufferModel|) requests
 constexpr char kMetricsRequestName[] = "LoadModelResult";
 
-// To avoid passing a lambda as a base::Closure.
-void DeleteModelImpl(const ModelImpl* const model_impl) {
-  delete model_impl;
-}
-
 }  // namespace
 
 MachineLearningServiceImpl::MachineLearningServiceImpl(
@@ -89,13 +84,10 @@ void MachineLearningServiceImpl::LoadBuiltinModel(
     return;
   }
 
-  // Use a connection error handler to strongly bind |model_impl| to |request|.
-  ModelImpl* const model_impl = new ModelImpl(
-      metadata.required_inputs, metadata.required_outputs, std::move(model),
-      std::move(request), metadata.metrics_model_name);
+  ModelImpl::Create(metadata.required_inputs, metadata.required_outputs,
+                    std::move(model), std::move(request),
+                    metadata.metrics_model_name);
 
-  model_impl->set_connection_error_handler(
-      base::Bind(&DeleteModelImpl, base::Unretained(model_impl)));
   callback.Run(LoadModelResult::OK);
 
   request_metrics.FinishRecordingPerformanceMetrics();
@@ -128,15 +120,12 @@ void MachineLearningServiceImpl::LoadFlatBufferModel(
     return;
   }
 
-  // Use a connection error handler to strongly bind |model_impl| to |request|.
-  ModelImpl* model_impl = new ModelImpl(
+  ModelImpl::Create(
       std::map<std::string, int>(spec->inputs.begin(), spec->inputs.end()),
       std::map<std::string, int>(spec->outputs.begin(), spec->outputs.end()),
       std::move(model), std::move(model_string_impl), std::move(request),
       spec->metrics_model_name);
 
-  model_impl->set_connection_error_handler(
-      base::Bind(&DeleteModelImpl, base::Unretained(model_impl)));
   callback.Run(LoadModelResult::OK);
 
   request_metrics.FinishRecordingPerformanceMetrics();

@@ -36,6 +36,31 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
   // of (presumably the backing data for |model|) and that is guaranteed to be
   // destroyed *after* |model|. This is required by function
   // |tflite::FlatBufferModel::BuildFromBuffer|.
+  //
+  // The RAM of the returned model is not owned by the caller. The model object
+  // will be deleted when the corresponding mojo connection meets error.
+  static ModelImpl* Create(
+      std::map<std::string, int> required_inputs,
+      std::map<std::string, int> required_outputs,
+      std::unique_ptr<tflite::FlatBufferModel> model,
+      std::unique_ptr<std::string> model_string,
+      chromeos::machine_learning::mojom::ModelRequest request,
+      const std::string& metrics_model_name);
+
+  // Use when constructed from file where no need to pass the |model_string|.
+  // The RAM of the returned model is not owned by the caller. The model object
+  // will be deleted when the corresponding mojo connection meets error.
+  static ModelImpl* Create(
+      std::map<std::string, int> required_inputs,
+      std::map<std::string, int> required_outputs,
+      std::unique_ptr<tflite::FlatBufferModel> model,
+      chromeos::machine_learning::mojom::ModelRequest request,
+      const std::string& metrics_model_name);
+
+  int num_graph_executors_for_testing() const;
+
+ private:
+  // Constructor is private, call |Create| to create objects.
   ModelImpl(std::map<std::string, int> required_inputs,
             std::map<std::string, int> required_outputs,
             std::unique_ptr<tflite::FlatBufferModel> model,
@@ -43,18 +68,8 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
             chromeos::machine_learning::mojom::ModelRequest request,
             const std::string& metrics_model_name);
 
-  // Use when constructed from file where no need to pass the |model_string|.
-  ModelImpl(std::map<std::string, int> required_inputs,
-            std::map<std::string, int> required_outputs,
-            std::unique_ptr<tflite::FlatBufferModel> model,
-            chromeos::machine_learning::mojom::ModelRequest request,
-            const std::string& metrics_model_name);
-
   void set_connection_error_handler(base::Closure connection_error_handler);
 
-  int num_graph_executors_for_testing() const;
-
- private:
   // chromeos::machine_learning::mojom::Model:
   void CreateGraphExecutor(
       chromeos::machine_learning::mojom::GraphExecutorRequest request,

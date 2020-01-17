@@ -13,6 +13,16 @@
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
 
+namespace {
+
+// Callback for self-owned ModelImpl's to delete themselves upon connection
+// error.
+void DeleteModelImpl(const ml::ModelImpl* const model_impl) {
+  delete model_impl;
+}
+
+}  // namespace
+
 namespace ml {
 
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
@@ -22,6 +32,39 @@ using ::chromeos::machine_learning::mojom::ModelRequest;
 
 // Base name for UMA metrics related to CreateGraphExecutor calls
 constexpr char kMetricsRequestName[] = "CreateGraphExecutorResult";
+
+ModelImpl* ModelImpl::Create(
+    std::map<std::string, int> required_inputs,
+    std::map<std::string, int> required_outputs,
+    std::unique_ptr<tflite::FlatBufferModel> model,
+    std::unique_ptr<std::string> model_string,
+    chromeos::machine_learning::mojom::ModelRequest request,
+    const std::string& metrics_model_name) {
+  auto model_impl = new ModelImpl(
+      std::move(required_inputs), std::move(required_outputs), std::move(model),
+      std::move(model_string), std::move(request), metrics_model_name);
+  // Use a connection error handler to strongly bind |model_impl| to |request|.
+  model_impl->set_connection_error_handler(
+      base::Bind(&DeleteModelImpl, base::Unretained(model_impl)));
+
+  return model_impl;
+}
+
+ModelImpl* ModelImpl::Create(
+    std::map<std::string, int> required_inputs,
+    std::map<std::string, int> required_outputs,
+    std::unique_ptr<tflite::FlatBufferModel> model,
+    chromeos::machine_learning::mojom::ModelRequest request,
+    const std::string& metrics_model_name) {
+  auto model_impl = new ModelImpl(
+      std::move(required_inputs), std::move(required_outputs), std::move(model),
+      nullptr, std::move(request), metrics_model_name);
+  // Use a connection error handler to strongly bind |model_impl| to |request|.
+  model_impl->set_connection_error_handler(
+      base::Bind(&DeleteModelImpl, base::Unretained(model_impl)));
+
+  return model_impl;
+}
 
 ModelImpl::ModelImpl(std::map<std::string, int> required_inputs,
                      std::map<std::string, int> required_outputs,
@@ -35,18 +78,6 @@ ModelImpl::ModelImpl(std::map<std::string, int> required_inputs,
       model_(std::move(model)),
       binding_(this, std::move(request)),
       metrics_model_name_(metrics_model_name) {}
-
-ModelImpl::ModelImpl(std::map<std::string, int> required_inputs,
-                     std::map<std::string, int> required_outputs,
-                     std::unique_ptr<tflite::FlatBufferModel> model,
-                     ModelRequest request,
-                     const std::string& metrics_model_name)
-    : ModelImpl(std::move(required_inputs),
-                std::move(required_outputs),
-                std::move(model),
-                nullptr,
-                std::move(request),
-                metrics_model_name) {}
 
 void ModelImpl::set_connection_error_handler(
     base::Closure connection_error_handler) {
