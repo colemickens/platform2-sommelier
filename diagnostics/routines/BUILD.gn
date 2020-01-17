@@ -7,7 +7,7 @@ import("//common-mk/pkg_config.gni")
 # The urandom tool executable.
 pkg_config("urandom_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
 }
@@ -22,7 +22,7 @@ executable("urandom") {
 # The smartctl-check tool executable.
 pkg_config("smartctl-check_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libdebugd-client",
   ]
@@ -39,7 +39,7 @@ executable("smartctl-check") {
 # Library that provides the diagnostic routine interface.
 pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
 }

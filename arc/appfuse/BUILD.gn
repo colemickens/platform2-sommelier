@@ -19,7 +19,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "fuse",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
   defines = [ "FUSE_USE_VERSION=26" ]

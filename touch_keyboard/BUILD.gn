@@ -41,7 +41,7 @@ executable("touch_keyboard_handler") {
 }
 
 pkg_config("touchkb_haptic_test_config") {
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }
 
 executable("touchkb_haptic_test") {

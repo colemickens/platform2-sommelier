@@ -20,7 +20,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "vboot_host",
   ]
   include_dirs = [ "${sysroot}/usr/include/verity" ]

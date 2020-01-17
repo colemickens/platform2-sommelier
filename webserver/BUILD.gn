@@ -23,7 +23,7 @@ group("all") {
 }
 
 default_pkg_deps = [
-  "libbrillo-${libbase_ver}",
+  "libbrillo",
   "libchrome-${libbase_ver}",
   "libpermission_broker-client",
 ]

@@ -125,7 +125,7 @@ executable("sommelier") {
 
 executable("wayland_demo") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "wayland-client",
   ]
@@ -137,7 +137,7 @@ executable("wayland_demo") {
 
 executable("x11_demo") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
   libs = [ "X11" ]

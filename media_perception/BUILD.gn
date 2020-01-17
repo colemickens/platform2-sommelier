@@ -75,7 +75,7 @@ generate_mojom_bindings("media_perception_mojo_bindings") {
 static_library("media_perception_service_lib") {
   all_dependent_pkg_deps = [
     "libchrome-${libbase_ver}",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libmojo-${libbase_ver}",
   ]
   configs += [ ":target_defaults" ]
@@ -95,9 +95,9 @@ static_library("media_perception_service_lib") {
     "output_manager.cc",
     "producer_impl.cc",
     "proto_mojom_conversion.cc",
-    "video_frame_handler_impl.cc",
     "shared_memory_provider.cc",
     "video_capture_service_client_impl.cc",
+    "video_frame_handler_impl.cc",
   ]
   pkg_deps = [
     "libcras",

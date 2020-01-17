@@ -49,7 +49,7 @@ static_library("libcrash") {
 
 pkg_config("libcrash_reporter_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libdebugd-client",
     "libpcrecpp",
@@ -113,7 +113,7 @@ executable("crash_reporter") {
 
 pkg_config("libcrash_sender_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
     "libminijail",
@@ -161,7 +161,7 @@ pkg_config("anomaly_detector_config") {
   # part of it, which has a different pkg-config name, but the same library.
   libs = [ "systemd" ]
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
     "re2",
@@ -244,7 +244,7 @@ if (use.test || use.fuzzer) {
 if (use.test) {
   pkg_config("test_helper_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
     ]

@@ -17,7 +17,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "libchrome-${libbase_ver}",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "protobuf",
   ]
 }
@@ -74,7 +74,7 @@ if (use.test) {
       ":target_defaults",
     ]
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
     ]
     deps = [

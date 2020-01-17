@@ -20,7 +20,7 @@ generate_mojom_bindings("cups_proxy_mojo_bindings") {
 
 pkg_config("cups_proxy_common_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmicrohttpd",
     "libmojo-${libbase_ver}",

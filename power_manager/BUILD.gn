@@ -58,7 +58,7 @@ pkg_config("target_defaults") {
   defines = [ "USE_BUFFET=${use.buffet}" ]
 
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libcros_config",
     "libudev",
@@ -553,7 +553,7 @@ if (use.fuzzer) {
 if (use.fuzzer) {
   pkg_config("fuzzer_config") {
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
     ]
   }

@@ -101,7 +101,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "dbus-1",
     "libtirpc",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "re2",
   ]
@@ -388,7 +388,7 @@ static_library("libshill") {
   sources += net_sources
   libs = [
     "bootstat",
-    "policy-${libbase_ver}",
+    "policy",
     "rootdev",
     "rt",
   ]

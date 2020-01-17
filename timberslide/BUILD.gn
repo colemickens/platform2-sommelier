@@ -16,7 +16,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "libchrome-${libbase_ver}",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libmetrics-${libbase_ver}",
     "re2",
   ]

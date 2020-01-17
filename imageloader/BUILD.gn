@@ -27,7 +27,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "devmapper",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libcrypto",
     "libminijail",
@@ -96,7 +96,7 @@ static_library("libimageloader_static") {
 }
 
 pkg_config("imageloader_config") {
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }
 
 executable("imageloader") {
@@ -117,7 +117,7 @@ executable("imageloader") {
 if (use.test) {
   pkg_config("run_tests_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libcrypto",
     ]
   }

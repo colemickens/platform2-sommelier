@@ -20,21 +20,21 @@ config("target_defaults") {
 
 pkg_config("cli_defaults") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
 }
 
 pkg_config("test_defaults") {
   pkg_deps = [
-    "libbrillo-test-${libbase_ver}",
+    "libbrillo-test",
     "libchrome-test-${libbase_ver}",
   ]
 }
 
 pkg_config("sealed_storage_dependent_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "openssl",
 

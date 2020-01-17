@@ -38,7 +38,7 @@ shared_library("libcamera_hal") {
   configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "cros-camera-android-headers",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libcamera_client",
     "libcamera_common",
     "libcbm",

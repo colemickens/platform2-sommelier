@@ -19,7 +19,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libcrypto",
     "libmetrics-${libbase_ver}",
@@ -54,7 +54,7 @@ static_library("usb_bouncer_common") {
 }
 
 pkg_config("usb_bouncer_pkg_deps") {
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }
 
 executable("usb_bouncer") {
@@ -73,7 +73,7 @@ executable("usb_bouncer") {
 if (use.test) {
   pkg_config("run_tests_pkg_deps") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libcrypto",
     ]
   }

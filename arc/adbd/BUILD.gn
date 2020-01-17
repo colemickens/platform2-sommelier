@@ -20,7 +20,7 @@ group("all") {
 
 pkg_config("config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
 }

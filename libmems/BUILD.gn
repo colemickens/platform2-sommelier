@@ -17,7 +17,7 @@ group("all") {
 
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libiio",
   ]
@@ -47,7 +47,7 @@ shared_library("libmems_test_support") {
 if (use.test) {
   pkg_config("libmems_testrunner_pkg_deps") {
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
       "libiio",
     ]

@@ -15,7 +15,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":firewall_fuzzer",
-      ":port_tracker_fuzzer"
+      ":port_tracker_fuzzer",
     ]
   }
 }
@@ -23,7 +23,7 @@ group("all") {
 pkg_config("target_defaults_deps") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libudev",
     "libusb-1.0",
@@ -49,7 +49,7 @@ static_library("libpermission_broker") {
   deps = [
     ":permission_broker_adaptors",
   ]
-  libs = [ "policy-${libbase_ver}" ]
+  libs = [ "policy" ]
   sources = [
     "allow_group_tty_device_rule.cc",
     "allow_hidraw_device_rule.cc",
@@ -91,7 +91,7 @@ executable("permission_broker") {
 if (use.test) {
   pkg_config("permission_broker_test_config") {
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
     ]
   }

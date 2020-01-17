@@ -31,7 +31,7 @@ pkg_config("target_defaults") {
     defines = [ "FP_ON_POWER_BUTTON" ]
   }
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libcros_config",
     "libmetrics-${libbase_ver}",

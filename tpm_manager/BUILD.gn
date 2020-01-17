@@ -24,7 +24,7 @@ group("all") {
 pkg_config("target_default_deps") {
   # This is a list of pkg-config dependencies
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libtpmcrypto",
     "openssl",
@@ -219,7 +219,7 @@ static_library("tpm_manager_test") {
 if (use.test) {
   pkg_config("tpm_manager_testrunner_config") {
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
     ]
   }

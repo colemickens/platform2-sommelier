@@ -19,7 +19,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "google-lpa",
     "jsoncpp",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "openssl",
     "re2",

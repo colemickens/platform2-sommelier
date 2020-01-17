@@ -29,7 +29,7 @@ executable("arc-keymasterd") {
     "main.cc",
   ]
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
   ]

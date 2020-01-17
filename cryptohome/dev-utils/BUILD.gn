@@ -12,7 +12,7 @@ group("all") {
 
 pkg_config("cryptohome-tpm-live-test_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
     "openssl",

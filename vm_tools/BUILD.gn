@@ -31,7 +31,7 @@ executable("vshd") {
     "vsh/vshd.cc",
   ]
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "protobuf",
     "vm_protos",
     "libchrome-${libbase_ver}",

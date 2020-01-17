@@ -48,7 +48,7 @@ shared_library("libcros_config") {
 }
 
 pkg_config("cros_config_config") {
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }
 
 executable("cros_config") {

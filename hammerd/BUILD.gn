@@ -26,7 +26,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "fmap",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
     "libpcrecpp",

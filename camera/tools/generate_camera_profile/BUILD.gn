@@ -14,5 +14,5 @@ executable("generate_camera_profile") {
     "//camera/tools/generate_camera_profile.cc",
   ]
   configs += [ "//camera/build:cros_camera_common" ]
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }

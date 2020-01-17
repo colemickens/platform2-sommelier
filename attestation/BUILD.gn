@@ -29,7 +29,7 @@ config("local_proto_include") {
 pkg_config("target_defaults") {
   pkg_deps = [
     # This is a list of pkg-config dependencies
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
   if (use.fuzzer) {
@@ -230,7 +230,7 @@ executable("attestationd") {
 if (use.test) {
   pkg_config("attestation_testrunner_config") {
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
     ]
   }

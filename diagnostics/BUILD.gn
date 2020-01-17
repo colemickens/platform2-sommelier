@@ -55,7 +55,7 @@ generate_mojom_bindings("diagnostics_mojo_bindings") {
 pkg_config("libcros_healthd_mojo_adapter_pkg_deps") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
     "system_api",
@@ -76,7 +76,7 @@ source_set("libcros_healthd_mojo_adapter") {
 pkg_config("libcros_healthd_utils_pkg_deps") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
     "libdebugd-client",
@@ -107,7 +107,7 @@ source_set("libcros_healthd_utils") {
 pkg_config("libcros_healthd_pkg_deps") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
     "libdebugd-client",
@@ -133,7 +133,7 @@ source_set("libcros_healthd") {
 pkg_config("libwilco_dtc_supportd_pkg_deps") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
     "libdebugd-client",
@@ -177,7 +177,7 @@ source_set("libwilco_dtc_supportd") {
 
 # The cros_healthd daemon executable.
 pkg_config("cros_healthd_pkg_deps") {
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }
 
 executable("cros_healthd") {
@@ -192,7 +192,7 @@ executable("cros_healthd") {
 # The cros_healthd_helper executable.
 pkg_config("cros_healthd_helper_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "re2",
   ]
@@ -208,7 +208,7 @@ executable("cros_healthd_helper") {
 # The diag tool executable.
 pkg_config("diag_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
 }
@@ -226,7 +226,7 @@ executable("diag") {
 
 # The wilco_dtc_supportd daemon executable.
 pkg_config("wilco_dtc_supportd_pkg_deps") {
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }
 
 executable("wilco_dtc_supportd") {
@@ -241,7 +241,7 @@ executable("wilco_dtc_supportd") {
 # The telemetry tool executable.
 pkg_config("telem_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
 }

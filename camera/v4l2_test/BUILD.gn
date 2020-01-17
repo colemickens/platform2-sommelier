@@ -32,7 +32,7 @@ executable("media_v4l2_test") {
   ]
 
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libyuv",
     "re2",

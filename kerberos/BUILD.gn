@@ -54,7 +54,7 @@ proto_library("container-protos") {
 pkg_config("libkerberos_config") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libminijail",
     "libpasswordprovider",
@@ -90,7 +90,7 @@ static_library("libkerberos") {
 
 pkg_config("kerberosd_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
     "libminijail",
@@ -125,7 +125,7 @@ executable("kerberosd") {
 if (use.test) {
   pkg_config("kerberos_test_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
       "libmetrics-${libbase_ver}",
@@ -170,7 +170,7 @@ if (use.test) {
 if (use.fuzzer) {
   pkg_config("fuzzer_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libchrome-${libbase_ver}",
       "libmetrics-${libbase_ver}",
       "libminijail",

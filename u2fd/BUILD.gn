@@ -23,7 +23,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libsession_manager-client",
   ]
@@ -66,7 +66,7 @@ static_library("libu2fd") {
     "util.cc",
     "webauthn_handler.cc",
   ]
-  libs = [ "policy-${libbase_ver}" ]
+  libs = [ "policy" ]
   deps = [
     ":user_state_proto",
     "//common-mk/external_dependencies:policy-protos",
@@ -78,7 +78,7 @@ executable("u2fd") {
   sources = [
     "main.cc",
   ]
-  libs = [ "policy-${libbase_ver}" ]
+  libs = [ "policy" ]
   deps = [
     ":libu2fd",
   ]
@@ -132,7 +132,7 @@ if (use.test) {
 
   pkg_config("u2fd_test_config") {
     pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
+      "libbrillo-test",
       "libchrome-test-${libbase_ver}",
     ]
   }

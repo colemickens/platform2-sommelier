@@ -132,7 +132,7 @@ generate_dbus_proxies("cryptohome-key-delegate-proxies") {
 
 pkg_config("libcrosplatform_dependent_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libecryptfs",
     "libmetrics-${libbase_ver}",
@@ -167,7 +167,7 @@ static_library("libcrosplatform") {
 pkg_config("libcrostpm_dependent_config") {
   pkg_deps = [
     "glib-2.0",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "openssl",
   ]
@@ -265,8 +265,8 @@ pkg_config("libcryptohome_dependent_config") {
   pkg_deps = [
     "dbus-glib-1",
     "glib-2.0",
-    "libbrillo-${libbase_ver}",
-    "libbrillo-glib-${libbase_ver}",
+    "libbrillo",
+    "libbrillo-glib",
     "libchrome-${libbase_ver}",
   ]
 }
@@ -322,7 +322,7 @@ static_library("libcryptohome") {
     "attestation",
     "chaps",
     "hwsec",
-    "policy-${libbase_ver}",
+    "policy",
     "tpm_manager",
   ]
   all_dependent_configs = [ ":libcryptohome_dependent_config" ]
@@ -428,7 +428,7 @@ if (use.tpm2) {
 
   pkg_config("libnvram-boot-lockbox_dependent_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libchrome-${libbase_ver}",
     ]
   }

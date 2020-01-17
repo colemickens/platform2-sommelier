@@ -21,7 +21,7 @@ pkg_config("target_defaults") {
   libs = [ "mount" ]
 
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libcap",
     "libchrome-${libbase_ver}",
     "libminijail",

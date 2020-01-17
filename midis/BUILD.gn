@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
 import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
@@ -25,7 +25,7 @@ generate_mojom_bindings("midis_mojo_bindings") {
 
 pkg_config("midis_common_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
     "alsa",

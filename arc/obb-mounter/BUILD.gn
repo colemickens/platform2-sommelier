@@ -21,7 +21,7 @@ group("all") {
 pkg_config("target_defaults_pkg_config") {
   pkg_deps = [
     "fuse",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libcap",
   ]

@@ -19,7 +19,7 @@ pkg_config("target_defaults") {
   # include runtime_probe.pb.h properly.
   cflags = [ "-I${sysroot}/usr/include/runtime_probe/proto_bindings" ]
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear

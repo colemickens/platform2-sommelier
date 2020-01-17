@@ -32,7 +32,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
 
 pkg_config("ml_common_pkg_deps") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
     "libmojo-${libbase_ver}",

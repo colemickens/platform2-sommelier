@@ -88,7 +88,7 @@ action("policy_code_generator") {
 pkg_config("libauthpolicy_config") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libsession_manager-client",
     "libpcrecpp",
@@ -129,8 +129,8 @@ static_library("libauthpolicy") {
     "tgt_manager.cc",
   ]
   libs = [
-    "installattributes-${libbase_ver}",
-    "policy-${libbase_ver}",
+    "installattributes",
+    "policy",
   ]
   deps = [
     ":container-protos",
@@ -143,7 +143,7 @@ static_library("libauthpolicy") {
 
 pkg_config("authpolicy_parser_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libcap",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
@@ -196,7 +196,7 @@ executable("authpolicyd") {
 if (use.test) {
   pkg_config("authpolicy_test_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libcap",
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
@@ -355,7 +355,7 @@ if (use.test) {
 if (use.fuzzer) {
   pkg_config("preg_parser_fuzzer_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
+      "libbrillo",
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
     ]

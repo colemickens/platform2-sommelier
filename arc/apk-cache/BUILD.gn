@@ -29,7 +29,7 @@ static_library("libapk-cache-cleaner") {
 
 pkg_config("apk-cache-cleaner_config") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "sqlite3",
   ]

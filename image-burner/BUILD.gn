@@ -23,8 +23,8 @@ pkg_config("target_defaults") {
     "dbus-1",
     "dbus-glib-1",
     "gobject-2.0",
-    "libbrillo-${libbase_ver}",
-    "libbrillo-glib-${libbase_ver}",
+    "libbrillo",
+    "libbrillo-glib",
     "libchrome-${libbase_ver}",
   ]
 }

@@ -24,7 +24,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "libchrome-${libbase_ver}",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libcros_config",
     "libshill-client",
     "liblzma",

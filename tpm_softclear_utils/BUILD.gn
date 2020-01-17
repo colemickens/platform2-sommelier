@@ -21,7 +21,7 @@ executable("tpm_softclear") {
   deps = [
     ":utility_library",
   ]
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [ "libbrillo" ]
 }
 
 pkg_config("target_defaults") {

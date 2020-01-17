@@ -19,7 +19,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libpasswordprovider",
     "smbclient",
@@ -108,7 +108,7 @@ executable("smbproviderd") {
   sources = [
     "smbprovider_main.cc",
   ]
-  libs = [ "installattributes-${libbase_ver}" ]
+  libs = [ "installattributes" ]
 }
 
 # Unit tests.

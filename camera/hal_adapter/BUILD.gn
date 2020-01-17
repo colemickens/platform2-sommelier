@@ -17,7 +17,7 @@ pkg_config("target_defaults") {
   ]
   pkg_deps = [
     "cros-camera-android-headers",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libcab",
     "libcamera_client",
     "libcamera_common",

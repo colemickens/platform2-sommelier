@@ -42,13 +42,13 @@ group("all") {
 
 shared_library("libmetrics-${libbase_ver}") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libsession_manager-client",
   ]
   configs += [ "//common-mk:visibility_default" ]
   cflags_cc = [ "-fno-exceptions" ]
-  libs = [ "policy-${libbase_ver}" ]
+  libs = [ "policy" ]
   sources = [
     "c_metrics_library.cc",
     "cumulative_metrics.cc",
@@ -67,7 +67,7 @@ shared_library("libmetrics-${libbase_ver}") {
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
     "dbus-1",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
     "libpcrecpp",
   ]
@@ -201,7 +201,7 @@ if (use.test) {
       "metrics_library_test.cc",
       "serialization/serialization_utils_test.cc",
     ]
-    libs = [ "policy-${libbase_ver}" ]
+    libs = [ "policy" ]
   }
   executable("process_meter_test") {
     configs += [

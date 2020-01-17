@@ -37,7 +37,7 @@ group("host") {
 pkg_config("host_target_defaults_pkgs") {
   pkg_deps = [
     "libarcnetwork-util",
-    "libbrillo-${libbase_ver}",
+    "libbrillo",
     "libchrome-${libbase_ver}",
   ]
 }
