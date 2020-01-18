@@ -17,6 +17,13 @@
 
 namespace dlcservice {
 
+namespace {
+
+constexpr char kDlcPreloadedImageRootpath[] =
+    "/mnt/stateful_partition/var_overlay/cache/dlc-images";
+
+}  // namespace
+
 // kDlcServiceServiceName is defined in
 // chromeos/dbus/dlcservice/dbus-constants.h
 Daemon::Daemon() : DBusServiceDaemon(kDlcServiceServiceName) {}
@@ -45,7 +52,7 @@ void Daemon::RegisterDBusObjectsAsync(
           bus_for_proxies_),
       std::make_unique<BootSlot>(std::make_unique<BootDevice>()),
       base::FilePath(imageloader::kDlcManifestRootpath),
-      base::FilePath(dlcservice::kDlcPreloadedImageRootpath),
+      base::FilePath(kDlcPreloadedImageRootpath),
       base::FilePath(imageloader::kDlcImageRootpath),
       base::FilePath(imageloader::kDlcMetadataRootpath));
 

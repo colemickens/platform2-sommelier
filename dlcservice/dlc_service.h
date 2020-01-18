@@ -24,15 +24,12 @@
 
 namespace dlcservice {
 
-constexpr size_t kUECheckTimeout = 5;
-
-constexpr char kDlcPreloadedImageRootpath[] =
-    "/mnt/stateful_partition/var_overlay/cache/dlc-images";
-
 // DlcService manages life-cycles of DLCs (Downloadable Content) and provides an
 // API for the rest of the system to install/uninstall DLCs.
 class DlcService {
  public:
+  static const size_t kUECheckTimeout = 5;
+
   // |DlcService| calls the registered implementation of this class when a
   // |StatusResult| signal needs to be propagated.
   class Observer {

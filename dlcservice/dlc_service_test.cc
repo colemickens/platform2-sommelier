@@ -43,7 +43,6 @@ constexpr char kSecondDlc[] = "Second-Dlc";
 constexpr char kThirdDlc[] = "Third-Dlc";
 constexpr char kPackage[] = "Package";
 
-constexpr char kManifestName[] = "imageloader.json";
 constexpr char kManifestWithPreloadAllowedName[] =
     "imageloader-preload-allowed.json";
 
@@ -110,9 +109,10 @@ class DlcServiceTest : public testing::Test {
     // Create DLC manifest sub-directories.
     for (auto&& id : {kFirstDlc, kSecondDlc, kThirdDlc}) {
       base::CreateDirectory(manifest_path_.Append(id).Append(kPackage));
-      base::CopyFile(
-          testdata_path_.Append(id).Append(kPackage).Append(kManifestName),
-          manifest_path_.Append(id).Append(kPackage).Append(kManifestName));
+      base::CopyFile(testdata_path_.Append(id).Append(kPackage).Append(
+                         utils::kManifestName),
+                     manifest_path_.Append(id).Append(kPackage).Append(
+                         utils::kManifestName));
     }
 
     // Create mocks with default behaviors.
@@ -167,7 +167,8 @@ class DlcServiceTest : public testing::Test {
   void SetUpDlcPreloadAllowed(const string& id, const string& package) {
     auto from = testdata_path_.Append(id).Append(kPackage).Append(
         kManifestWithPreloadAllowedName);
-    auto to = manifest_path_.Append(id).Append(kPackage).Append(kManifestName);
+    auto to =
+        manifest_path_.Append(id).Append(kPackage).Append(utils::kManifestName);
     EXPECT_TRUE(base::PathExists(from));
     EXPECT_TRUE(base::PathExists(to));
     EXPECT_TRUE(base::CopyFile(from, to));
@@ -740,8 +741,9 @@ TEST_F(DlcServiceTest, UpdateEngineFailSafeTest) {
   for (const string& dlc_id : dlc_ids)
     EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
 
-  MessageLoopRunUntil(&loop_, base::TimeDelta::FromSeconds(kUECheckTimeout * 2),
-                      base::Bind([]() { return false; }));
+  MessageLoopRunUntil(
+      &loop_, base::TimeDelta::FromSeconds(DlcService::kUECheckTimeout * 2),
+      base::Bind([]() { return false; }));
 
   for (const string& dlc_id : dlc_ids)
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
@@ -767,8 +769,9 @@ TEST_F(DlcServiceTest, UpdateEngineFailAfterSignalsSafeTest) {
   status_result.set_is_install(true);
   dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
 
-  MessageLoopRunUntil(&loop_, base::TimeDelta::FromSeconds(kUECheckTimeout * 2),
-                      base::Bind([]() { return false; }));
+  MessageLoopRunUntil(
+      &loop_, base::TimeDelta::FromSeconds(DlcService::kUECheckTimeout * 2),
+      base::Bind([]() { return false; }));
 
   for (const string& dlc_id : dlc_ids)
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
@@ -825,8 +828,9 @@ TEST_F(DlcServiceTest, PeriodCheckUpdateEngineInstallSignalRaceChecker) {
 
   EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
 
-  MessageLoopRunUntil(&loop_, base::TimeDelta::FromSeconds(kUECheckTimeout * 5),
-                      base::Bind([]() { return false; }));
+  MessageLoopRunUntil(
+      &loop_, base::TimeDelta::FromSeconds(DlcService::kUECheckTimeout * 5),
+      base::Bind([]() { return false; }));
 
   for (const string& dlc_id : dlc_ids)
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
