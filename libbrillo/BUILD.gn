@@ -624,7 +624,7 @@ if (use.fuzzer) {
 
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
 
-    pkg_deps = [ "libchrome" ]
+    pkg_deps = [ "libchrome-${libbase_ver}" ]
 
     include_dirs = [ "../libbrillo" ]
 
