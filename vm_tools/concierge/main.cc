@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
 #include "vm_tools/concierge/service.h"
@@ -17,6 +18,7 @@ int main(int argc, char** argv) {
   base::FileDescriptorWatcher watcher(&message_loop);
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  brillo::FlagHelper::Init(argc, argv, "vm_concierge service");
 
   if (argc != 1) {
     LOG(ERROR) << "Unexpected command line arguments";
