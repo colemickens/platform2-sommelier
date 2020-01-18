@@ -1345,6 +1345,12 @@ TEST_F(DeviceInfoTechnologyTest, Loopback) {
   EXPECT_EQ(Technology::kLoopback, GetDeviceTechnology());
 }
 
+// As long as it's not named 'veth*', we should detect it as Ethernet.
+TEST_F(DeviceInfoTechnologyTest, Veth) {
+  CreateInfoFile("uevent", "xxx");
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology("veth"));
+}
+
 TEST_F(DeviceInfoTechnologyTest, PPP) {
   CreateInfoFile("type", base::NumberToString(ARPHRD_PPP));
   EXPECT_EQ(Technology::kPPP, GetDeviceTechnology());
