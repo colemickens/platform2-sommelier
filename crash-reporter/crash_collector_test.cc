@@ -1225,14 +1225,10 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
       .WillRepeatedly(Return(mock_object_proxy.get()));
   std::unique_ptr<dbus::Response> empty_response;
   std::unique_ptr<dbus::ErrorResponse> empty_error_response;
-  EXPECT_CALL(*mock_object_proxy,
-              MIGRATE_CallMethodWithErrorCallback(_, 0, _, _))
+  EXPECT_CALL(*mock_object_proxy, DoCallMethodWithErrorCallback(_, 0, _, _))
       .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout_ms,
-                           dbus::ObjectProxy::ResponseCallback
-                               MIGRATE_WrapObjectProxyCallback(callback),
-                           dbus::ObjectProxy::ErrorCallback
-                               MIGRATE_WrapObjectProxyCallback(
-                                   error_callback)) {
+                           dbus::ObjectProxy::ResponseCallback* callback,
+                           dbus::ObjectProxy::ErrorCallback* error_callback) {
         // We can't copy or move the method_call object, and it will be
         // destroyed shortly after this lambda ends, so we must validate its
         // contents inside the lambda.
@@ -1293,18 +1289,14 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
           empty_response = dbus::Response::FromMethodCall(method_call);
           base::ThreadTaskRunnerHandle::Get()->PostTask(
               FROM_HERE,
-              base::BindOnce(
-                  std::move(MIGRATE_WrapObjectProxyCallback(callback)),
-                  empty_response.get()));
+              base::BindOnce(std::move(*callback), empty_response.get()));
         } else {
           empty_error_response = dbus::ErrorResponse::FromMethodCall(
               method_call, "org.freedesktop.DBus.Error.Failed",
               "Things didn't work");
           base::ThreadTaskRunnerHandle::Get()->PostTask(
-              FROM_HERE,
-              base::BindOnce(
-                  std::move(MIGRATE_WrapObjectProxyCallback(error_callback)),
-                  empty_error_response.get()));
+              FROM_HERE, base::BindOnce(std::move(*error_callback),
+                                        empty_error_response.get()));
         }
       }));
 
