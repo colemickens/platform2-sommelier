@@ -26,6 +26,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "vm_tools/common/spawn_util.h"
+#include "vm_tools/garcon/arc_sideload.h"
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/icon_finder.h"
@@ -432,10 +433,14 @@ grpc::Status ServiceImpl::ConfigureForArcSideload(
     grpc::ServerContext* ctx,
     const vm_tools::container::ConfigureForArcSideloadRequest* request,
     vm_tools::container::ConfigureForArcSideloadResponse* response) {
-  LOG(ERROR) << "ConfigureForArcSideload is not implemented yet.";
+  bool success = ArcSideload::Enable(response->mutable_failure_reason());
   response->set_status(
-      vm_tools::container::ConfigureForArcSideloadResponse::FAILED);
-  response->set_failure_reason("Arc++ sideload is not implemented yet.");
+      success ? vm_tools::container::ConfigureForArcSideloadResponse::SUCCEEDED
+              : vm_tools::container::ConfigureForArcSideloadResponse::FAILED);
+  if (!success) {
+    LOG(ERROR) << "Arc sideload configuration failed: "
+               << response->failure_reason();
+  }
   return grpc::Status::OK;
 }
 
