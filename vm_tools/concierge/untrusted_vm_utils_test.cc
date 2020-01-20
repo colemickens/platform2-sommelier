@@ -46,7 +46,7 @@ class UntrustedVMUtilsTest : public ::testing::Test {
 
     // Sets an expectation that the mock proxy's CallMethodAndBlock() will use
     // CreateMockProxyResponse() to return responses.
-    EXPECT_CALL(*debugd_proxy_.get(), MIGRATE_MockCallMethodAndBlock(_, _))
+    EXPECT_CALL(*debugd_proxy_.get(), CallMethodAndBlock(_, _))
         .WillRepeatedly(
             Invoke(this, &UntrustedVMUtilsTest::CreateMockProxyResponse));
   }
@@ -98,22 +98,22 @@ class UntrustedVMUtilsTest : public ::testing::Test {
   std::unique_ptr<UntrustedVMUtils> untrusted_vm_utils_;
 
  private:
-  MIGRATE_WrapObjectProxyResponseType(dbus::Response)
-      CreateMockProxyResponse(dbus::MethodCall* method_call, int timeout_ms) {
+  std::unique_ptr<dbus::Response> CreateMockProxyResponse(
+      dbus::MethodCall* method_call, int timeout_ms) {
     if (method_call->GetInterface() != debugd::kDebugdInterface) {
       LOG(ERROR) << "Unexpected method call: " << method_call->ToString();
-      return MIGRATE_WrapObjectProxyResponseEmpty;
+      return std::unique_ptr<dbus::Response>();
     }
 
     std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
     if (method_call->GetMember() != debugd::kSetSchedulerConfigurationV2) {
       LOG(ERROR) << "Unexpected method call: " << method_call->ToString();
-      return MIGRATE_WrapObjectProxyResponseEmpty;
+      return std::unique_ptr<dbus::Response>();
     }
 
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(true);
-    return MIGRATE_WrapObjectProxyResponseConversion(response);
+    return response;
   }
 
   scoped_refptr<dbus::MockBus> mock_bus_;

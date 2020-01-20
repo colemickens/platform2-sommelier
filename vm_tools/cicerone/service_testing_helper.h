@@ -244,8 +244,7 @@ class ServiceTestingHelper {
 
   // Posts a task to call the given callback.
   void CallServiceAvailableCallback(
-      dbus::ObjectProxy::WaitForServiceToBeAvailableCallback
-          MIGRATE_WrapObjectProxyCallback(callback));
+      dbus::ObjectProxy::WaitForServiceToBeAvailableCallback* callback);
 
   // Number of times Service called its quit closure.
   int quit_closure_called_count_;

@@ -40,27 +40,24 @@ constexpr char kDefaultPluginVmContainerName[] = "penguin";
 //
 // Does not confirm method name (a.k.a. GetMethod) or interface name; use
 // HasMethodName and HasInterfaceName for that.
-MIGRATE_WrapObjectProxyResponseType(dbus::Response)
-    ProtoMethodCallHelper(dbus::MethodCall* method_call,
-                          google::protobuf::MessageLite* protobuf) {
+std::unique_ptr<dbus::Response> ProtoMethodCallHelper(
+    dbus::MethodCall* method_call, google::protobuf::MessageLite* protobuf) {
   dbus::MessageReader reader(method_call);
   EXPECT_TRUE(reader.PopArrayOfBytesAsProto(protobuf));
   EXPECT_FALSE(reader.HasMoreData());
 
   // MockObjectProxy will take ownership of the created Response object. See
   // comments in MockObjectProxy.
-  return MIGRATE_WrapObjectProxyResponseConversion(
-      dbus::Response::CreateEmpty());
+  return dbus::Response::CreateEmpty();
 }
 
 // Same, but for method calls that just have a string.
-MIGRATE_WrapObjectProxyResponseType(dbus::Response)
-    StringMethodCallHelper(dbus::MethodCall* method_call, std::string* s) {
+std::unique_ptr<dbus::Response> StringMethodCallHelper(
+    dbus::MethodCall* method_call, std::string* s) {
   dbus::MessageReader reader(method_call);
   EXPECT_TRUE(reader.PopString(s));
   EXPECT_FALSE(reader.HasMoreData());
-  return MIGRATE_WrapObjectProxyResponseConversion(
-      dbus::Response::CreateEmpty());
+  return dbus::Response::CreateEmpty();
 }
 
 // Same but for signals
@@ -90,7 +87,7 @@ TEST(ContainerListenerImplTest,
       }));
   std::string unregister_hostname;
   EXPECT_CALL(test_framework.get_mock_crosdns_service_proxy(),
-              MIGRATE_MockCallMethodAndBlock(
+              CallMethodAndBlock(
                   AllOf(HasInterfaceName(crosdns::kCrosDnsInterfaceName),
                         HasMethodName(crosdns::kRemoveHostnameIpMappingMethod)),
                   _))
@@ -139,7 +136,7 @@ void ValidUpdateApplicationListCallShouldProduceDBusMessageGeneric(
   vm_tools::apps::ApplicationList dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      MIGRATE_MockCallMethodAndBlock(
+      CallMethodAndBlock(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(
@@ -393,7 +390,7 @@ void LongerUpdateApplicationListCallShouldProduceDBusMessageGeneric(
   vm_tools::apps::ApplicationList dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      MIGRATE_MockCallMethodAndBlock(
+      CallMethodAndBlock(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(
@@ -447,7 +444,7 @@ void ValidOpenUrlCallShouldProduceDBusMessageGeneric(bool plugin_vm) {
   std::string resulting_url;
   EXPECT_CALL(
       test_framework.get_mock_url_handler_service_proxy(),
-      MIGRATE_MockCallMethodAndBlock(
+      CallMethodAndBlock(
           AllOf(HasInterfaceName(chromeos::kUrlHandlerServiceInterface),
                 HasMethodName(chromeos::kUrlHandlerServiceOpenUrlMethod)),
           _))
@@ -646,7 +643,7 @@ TEST(ContainerListenerImplTest, ValidOpenTerminalCallShouldProduceDBusMessage) {
   vm_tools::apps::TerminalParams dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      MIGRATE_MockCallMethodAndBlock(
+      CallMethodAndBlock(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(
@@ -689,7 +686,7 @@ TEST(ContainerListenerImplTest,
   vm_tools::apps::MimeTypes dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      MIGRATE_MockCallMethodAndBlock(
+      CallMethodAndBlock(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(
