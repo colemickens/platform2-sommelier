@@ -36,33 +36,30 @@ class DBusProxyTest : public testing::Test {
 };
 
 TEST_F(DBusProxyTest, GetKeyInfo) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    GetKeyInfoRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ("label", request_proto.key_label());
-    EXPECT_EQ("username", request_proto.username());
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    GetKeyInfoReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    reply_proto.set_key_type(KEY_TYPE_ECC);
-    reply_proto.set_key_usage(KEY_USAGE_SIGN);
-    reply_proto.set_public_key("public_key");
-    reply_proto.set_certify_info("certify_info");
-    reply_proto.set_certify_info_signature("signature");
-    reply_proto.set_certificate("certificate");
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        GetKeyInfoRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        EXPECT_EQ("label", request_proto.key_label());
+        EXPECT_EQ("username", request_proto.username());
+        // Create reply protobuf.
+        auto response = dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        GetKeyInfoReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        reply_proto.set_key_type(KEY_TYPE_ECC);
+        reply_proto.set_key_usage(KEY_USAGE_SIGN);
+        reply_proto.set_public_key("public_key");
+        reply_proto.set_certify_info("certify_info");
+        reply_proto.set_certify_info_signature("signature");
+        reply_proto.set_certificate("certificate");
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -85,27 +82,24 @@ TEST_F(DBusProxyTest, GetKeyInfo) {
 }
 
 TEST_F(DBusProxyTest, GetEndorsementInfo) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    GetEndorsementInfoRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    GetEndorsementInfoReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    reply_proto.set_ek_public_key("public_key");
-    reply_proto.set_ek_certificate("certificate");
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        GetEndorsementInfoRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        // Create reply protobuf.
+        auto response = dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        GetEndorsementInfoReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        reply_proto.set_ek_public_key("public_key");
+        reply_proto.set_ek_certificate("certificate");
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -123,30 +117,27 @@ TEST_F(DBusProxyTest, GetEndorsementInfo) {
 }
 
 TEST_F(DBusProxyTest, GetAttestationKeyInfo) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    GetAttestationKeyInfoRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    GetAttestationKeyInfoReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    reply_proto.set_public_key("public_key");
-    reply_proto.set_public_key_tpm_format("public_key_tpm_format");
-    reply_proto.set_certificate("certificate");
-    reply_proto.mutable_pcr0_quote()->set_quote("pcr0");
-    reply_proto.mutable_pcr1_quote()->set_quote("pcr1");
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        GetAttestationKeyInfoRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        // Create reply protobuf.
+        auto response = dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        GetAttestationKeyInfoReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        reply_proto.set_public_key("public_key");
+        reply_proto.set_public_key_tpm_format("public_key_tpm_format");
+        reply_proto.set_certificate("certificate");
+        reply_proto.mutable_pcr0_quote()->set_quote("pcr0");
+        reply_proto.mutable_pcr1_quote()->set_quote("pcr1");
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -167,31 +158,28 @@ TEST_F(DBusProxyTest, GetAttestationKeyInfo) {
 }
 
 TEST_F(DBusProxyTest, ActivateAttestationKey) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    ActivateAttestationKeyRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ("encrypted1",
-              request_proto.encrypted_certificate().asym_ca_contents());
-    EXPECT_EQ("encrypted2",
-              request_proto.encrypted_certificate().sym_ca_attestation());
-    EXPECT_TRUE(request_proto.save_certificate());
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    ActivateAttestationKeyReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    reply_proto.set_certificate("certificate");
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        ActivateAttestationKeyRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        EXPECT_EQ("encrypted1",
+                  request_proto.encrypted_certificate().asym_ca_contents());
+        EXPECT_EQ("encrypted2",
+                  request_proto.encrypted_certificate().sym_ca_attestation());
+        EXPECT_TRUE(request_proto.save_certificate());
+        // Create reply protobuf.
+        auto response = dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        ActivateAttestationKeyReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        reply_proto.set_certificate("certificate");
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -211,32 +199,29 @@ TEST_F(DBusProxyTest, ActivateAttestationKey) {
 }
 
 TEST_F(DBusProxyTest, CreateCertifiableKey) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    CreateCertifiableKeyRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ("label", request_proto.key_label());
-    EXPECT_EQ(KEY_TYPE_ECC, request_proto.key_type());
-    EXPECT_EQ(KEY_USAGE_SIGN, request_proto.key_usage());
-    EXPECT_EQ("user", request_proto.username());
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    CreateCertifiableKeyReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    reply_proto.set_public_key("public_key");
-    reply_proto.set_certify_info("certify_info");
-    reply_proto.set_certify_info_signature("signature");
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        CreateCertifiableKeyRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        EXPECT_EQ("label", request_proto.key_label());
+        EXPECT_EQ(KEY_TYPE_ECC, request_proto.key_type());
+        EXPECT_EQ(KEY_USAGE_SIGN, request_proto.key_usage());
+        EXPECT_EQ("user", request_proto.username());
+        // Create reply protobuf.
+        auto response = dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        CreateCertifiableKeyReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        reply_proto.set_public_key("public_key");
+        reply_proto.set_certify_info("certify_info");
+        reply_proto.set_certify_info_signature("signature");
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -259,29 +244,27 @@ TEST_F(DBusProxyTest, CreateCertifiableKey) {
 }
 
 TEST_F(DBusProxyTest, Decrypt) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    DecryptRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ("label", request_proto.key_label());
-    EXPECT_EQ("user", request_proto.username());
-    EXPECT_EQ("data", request_proto.encrypted_data());
-    // Create reply protobuf.
-    std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    DecryptReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    reply_proto.set_decrypted_data("data");
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        DecryptRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        EXPECT_EQ("label", request_proto.key_label());
+        EXPECT_EQ("user", request_proto.username());
+        EXPECT_EQ("data", request_proto.encrypted_data());
+        // Create reply protobuf.
+        std::unique_ptr<dbus::Response> response =
+            dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        DecryptReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        reply_proto.set_decrypted_data("data");
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -300,29 +283,26 @@ TEST_F(DBusProxyTest, Decrypt) {
 }
 
 TEST_F(DBusProxyTest, Sign) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    SignRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ("label", request_proto.key_label());
-    EXPECT_EQ("user", request_proto.username());
-    EXPECT_EQ("data", request_proto.data_to_sign());
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    SignReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    reply_proto.set_signature("signature");
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        SignRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        EXPECT_EQ("label", request_proto.key_label());
+        EXPECT_EQ("user", request_proto.username());
+        EXPECT_EQ("data", request_proto.data_to_sign());
+        // Create reply protobuf.
+        auto response = dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        SignReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        reply_proto.set_signature("signature");
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -341,27 +321,24 @@ TEST_F(DBusProxyTest, Sign) {
 }
 
 TEST_F(DBusProxyTest, RegisterKeyWithChapsToken) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      dbus::MockObjectProxy::ResponseCallback
-      MIGRATE_WrapObjectProxyCallback(response_callback)) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    RegisterKeyWithChapsTokenRequest request_proto;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ("label", request_proto.key_label());
-    EXPECT_EQ("user", request_proto.username());
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    RegisterKeyWithChapsTokenReply reply_proto;
-    reply_proto.set_status(STATUS_SUCCESS);
-    writer.AppendProtoAsArrayOfBytes(reply_proto);
-    std::move(MIGRATE_WrapObjectProxyCallback(response_callback))
-        .Run(response.get());
-  };
-  EXPECT_CALL(*mock_object_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  auto fake_dbus_call =
+      [](dbus::MethodCall* method_call,
+         dbus::MockObjectProxy::ResponseCallback* response_callback) {
+        // Verify request protobuf.
+        dbus::MessageReader reader(method_call);
+        RegisterKeyWithChapsTokenRequest request_proto;
+        EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+        EXPECT_EQ("label", request_proto.key_label());
+        EXPECT_EQ("user", request_proto.username());
+        // Create reply protobuf.
+        auto response = dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(response.get());
+        RegisterKeyWithChapsTokenReply reply_proto;
+        reply_proto.set_status(STATUS_SUCCESS);
+        writer.AppendProtoAsArrayOfBytes(reply_proto);
+        std::move(*response_callback).Run(response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
