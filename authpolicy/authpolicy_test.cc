@@ -168,15 +168,14 @@ base::ScopedFD MakePasswordFd() {
 void DoNothing(bool /* unused */) {}
 
 // Creates a D-Bus response with the given |response_str| as message.
-MIGRATE_WrapObjectProxyResponseType(dbus::Response)
-    RespondWithString(dbus::MethodCall* method_call,
-                      const std::string& response_str) {
+std::unique_ptr<dbus::Response> RespondWithString(
+    dbus::MethodCall* method_call, const std::string& response_str) {
   method_call->SetSerial(kDBusSerial);
   std::unique_ptr<dbus::Response> response =
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   writer.AppendString(response_str);
-  return MIGRATE_WrapObjectProxyResponseConversion(response);
+  return response;
 }
 
 // If |error| is ERROR_NONE, parses |proto_blob| into the |proto| if given.
@@ -468,26 +467,26 @@ class AuthPolicyTest : public testing::Test {
         .WillOnce(Return(mock_session_manager_proxy_.get()));
     EXPECT_CALL(
         *mock_session_manager_proxy_,
-        MIGRATE_CallMethodWithErrorCallback(
+        DoCallMethodWithErrorCallback(
             IsMethod(login_manager::kSessionManagerStoreUnsignedPolicyEx), _, _,
             _))
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::StubCallStorePolicyMethod));
     EXPECT_CALL(
         *mock_session_manager_proxy_,
-        MIGRATE_MockCallMethodAndBlockWithErrorDetails(
+        CallMethodAndBlockWithErrorDetails(
             IsMethod(login_manager::kSessionManagerListStoredComponentPolicies),
             _, _))
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::StubListComponentIdsMethod));
-    EXPECT_CALL(*mock_session_manager_proxy_,
-                MIGRATE_ConnectToSignal(
-                    login_manager::kSessionManagerInterface,
-                    login_manager::kSessionStateChangedSignal, _, _))
+    EXPECT_CALL(
+        *mock_session_manager_proxy_,
+        DoConnectToSignal(login_manager::kSessionManagerInterface,
+                          login_manager::kSessionStateChangedSignal, _, _))
         .WillOnce((SaveArg<2>(&session_state_changed_callback_)));
     EXPECT_CALL(
         *mock_session_manager_proxy_.get(),
-        MIGRATE_MockCallMethodAndBlockWithErrorDetails(
+        CallMethodAndBlockWithErrorDetails(
             IsMethod(login_manager::kSessionManagerRetrieveSessionState), _, _))
         .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout,
                             dbus::ScopedDBusError* error) {
@@ -503,7 +502,7 @@ class AuthPolicyTest : public testing::Test {
         .WillOnce(Return(mock_cryptohome_proxy_.get()));
 
     // Make Cryptohome's GetSanitizedUsername call return kSanitizedUsername.
-    ON_CALL(*mock_cryptohome_proxy_, MIGRATE_MockCallMethodAndBlock(_, _))
+    ON_CALL(*mock_cryptohome_proxy_, CallMethodAndBlock(_, _))
         .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout) {
           return RespondWithString(method_call, kSanitizedUsername);
         }));
@@ -529,9 +528,8 @@ class AuthPolicyTest : public testing::Test {
   void StubCallStorePolicyMethod(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
-      ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(callback),
-      dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
-          error_callback)) {
+      ObjectProxy::ResponseCallback* callback,
+      dbus::ObjectProxy::ErrorCallback* error_callback) {
     // Safety check to make sure that old values are not carried along.
     if (!store_policy_called_) {
       EXPECT_FALSE(user_policy_validated_);
@@ -580,24 +578,23 @@ class AuthPolicyTest : public testing::Test {
 
     // Answer authpolicy with an empty response to signal that policy has been
     // stored.
-    EXPECT_FALSE(MIGRATE_WrapObjectProxyCallback(callback).is_null());
-    std::move(MIGRATE_WrapObjectProxyCallback(callback))
-        .Run(Response::CreateEmpty().get());
+    EXPECT_FALSE((*callback).is_null());
+    std::move(*callback).Run(Response::CreateEmpty().get());
   }
 
   // Stub method called by the Session Manager mock to list stored component
   // policy ids.
-  MIGRATE_WrapObjectProxyResponseType(dbus::Response)
-      StubListComponentIdsMethod(dbus::MethodCall* method_call,
-                                 int /* timeout_ms */,
-                                 dbus::ScopedDBusError* error) {
+  std::unique_ptr<dbus::Response> StubListComponentIdsMethod(
+      dbus::MethodCall* method_call,
+      int /* timeout_ms */,
+      dbus::ScopedDBusError* error) {
     method_call->SetSerial(kDBusSerial);
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
     writer.AppendArrayOfStrings(stored_extension_ids_);
 
     // Note: The mock wraps this back into a std::unique_ptr.
-    return MIGRATE_WrapObjectProxyResponseConversion(response);
+    return response;
   }
 
   void TearDown() override {
