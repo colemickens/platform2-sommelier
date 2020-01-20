@@ -237,7 +237,7 @@ class DlcServiceUtil : public brillo::Daemon {
     for (const auto& dlc_module_info : dlc_module_list_.dlc_module_infos()) {
       std::cout << dlc_module_info.dlc_id() << std::endl;
       if (!quiet) {
-        if (!DlcServiceUtil::PrintDlcDetails(dlc_module_info.dlc_id()))
+        if (!DlcServiceUtil::PrintDlcDetails(dlc_module_info))
           LOG(ERROR) << "Failed to print details of DLC '"
                      << dlc_module_info.dlc_id() << "'.";
       }
@@ -245,10 +245,10 @@ class DlcServiceUtil : public brillo::Daemon {
   }
 
   // Prints the information contained in the manifest of a DLC.
-  static bool PrintDlcDetails(const string& dlc_id) {
+  static bool PrintDlcDetails(const DlcModuleInfo& dlc_info) {
     base::FilePath manifest_root =
         base::FilePath(imageloader::kDlcManifestRootpath);
-    base::FilePath dlc_path = manifest_root.Append(dlc_id);
+    base::FilePath dlc_path = manifest_root.Append(dlc_info.dlc_id());
     // TODO(ahassani): This is a workaround. We need to get the list of packages
     // in the |GetInstalled()| or a separate signal. But for now since we just
     // have one package per DLC, this would work.
@@ -260,8 +260,8 @@ class DlcServiceUtil : public brillo::Daemon {
     string package = *(packages.begin());
 
     imageloader::Manifest manifest;
-    if (!dlcservice::utils::GetDlcManifest(manifest_root, dlc_id, package,
-                                           &manifest)) {
+    if (!dlcservice::utils::GetDlcManifest(manifest_root, dlc_info.dlc_id(),
+                                           package, &manifest)) {
       LOG(ERROR) << "Failed to get DLC module manifest.";
       return false;
     }
@@ -287,6 +287,7 @@ class DlcServiceUtil : public brillo::Daemon {
         break;
     }
     std::cout << "\tdlc_path: " << dlc_path.value() << std::endl;
+    std::cout << "\tdlc_root: " << dlc_info.dlc_root() << std::endl;
     return true;
   }
 
