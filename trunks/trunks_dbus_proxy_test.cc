@@ -10,7 +10,6 @@
 
 #include <base/bind.h>
 #include <base/threading/thread.h>
-#include <dbus/mock_object_proxy.h>  // To introduce migrate macro only. TODO(crbug.com/909719): remove after libchrome uprev
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
