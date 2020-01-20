@@ -23,10 +23,8 @@ void StubHandleMethod(const std::string& expected_interface_name,
                       const std::string& error_message,
                       dbus::MethodCall* method_call,
                       int timeout_ms,
-                      dbus::ObjectProxy::ResponseCallback
-                          MIGRATE_WrapObjectProxyCallback(callback),
-                      dbus::ObjectProxy::ErrorCallback
-                          MIGRATE_WrapObjectProxyCallback(error_callback));
+                      dbus::ObjectProxy::ResponseCallback* callback,
+                      dbus::ObjectProxy::ErrorCallback* error_callback);
 
 }  // namespace bluetooth
 

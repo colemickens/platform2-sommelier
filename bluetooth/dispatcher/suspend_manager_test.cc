@@ -24,7 +24,7 @@ using ::testing::SaveArg;
 ACTION_TEMPLATE(MovePointee,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(pointer)) {
-  *pointer = std::move(MIGRATE_WrapObjectProxyCallback(::std::get<k>(args)));
+  *pointer = std::move(*(::std::get<k>(args)));
 }
 
 namespace bluetooth {
@@ -80,19 +80,17 @@ class SuspendManagerTest : public ::testing::Test {
 
     // Save the callbacks of various power manager events so we can call them
     // to test later.
-    EXPECT_CALL(*power_manager_proxy_, MIGRATE_WaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*power_manager_proxy_, DoWaitForServiceToBeAvailable(_))
         .WillOnce(MovePointee<0>(&power_manager_available_callback_));
     EXPECT_CALL(*power_manager_proxy_, SetNameOwnerChangedCallback(_))
         .WillOnce(SaveArg<0>(&power_manager_name_owner_changed_callback_));
-    EXPECT_CALL(
-        *power_manager_proxy_,
-        MIGRATE_ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kSuspendImminentSignal, _, _))
+    EXPECT_CALL(*power_manager_proxy_,
+                DoConnectToSignal(power_manager::kPowerManagerInterface,
+                                  power_manager::kSuspendImminentSignal, _, _))
         .WillOnce(SaveArg<2>(&suspend_imminent_signal_callback_));
-    EXPECT_CALL(
-        *power_manager_proxy_,
-        MIGRATE_ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kSuspendDoneSignal, _, _))
+    EXPECT_CALL(*power_manager_proxy_,
+                DoConnectToSignal(power_manager::kPowerManagerInterface,
+                                  power_manager::kSuspendDoneSignal, _, _))
         .WillOnce(SaveArg<2>(&suspend_done_signal_callback_));
 
     // Initialize the suspend manager. This should trigger it to register
@@ -110,8 +108,7 @@ class SuspendManagerTest : public ::testing::Test {
   // if it receives unexpected method name.
   void StubBluezCallMethod(dbus::MethodCall* method_call,
                            int timeout_ms,
-                           dbus::ObjectProxy::ResponseCallback
-                               MIGRATE_WrapObjectProxyCallback(callback)) {
+                           dbus::ObjectProxy::ResponseCallback* callback) {
     if (!expected_bluez_method_call_)
       FAIL() << "Bluez shouldn't receive any method call.";
 
@@ -124,11 +121,11 @@ class SuspendManagerTest : public ::testing::Test {
       if (simulates_bluez_long_return_) {
         // Pretend that bluez can't call the callback now.
         bluez_callback_ =
-            base::BindOnce(std::move(MIGRATE_WrapObjectProxyCallback(callback)),
+            base::BindOnce(std::move(*callback),
                            dbus::Response::FromMethodCall(method_call).get());
       } else {
-        std::move(MIGRATE_WrapObjectProxyCallback(callback))
-            .Run(dbus::Response::FromMethodCall(method_call).get());
+        std::move(*callback).Run(
+            dbus::Response::FromMethodCall(method_call).get());
       }
       return;
     }
@@ -146,8 +143,7 @@ class SuspendManagerTest : public ::testing::Test {
   void StubPowerManagerCallMethod(
       dbus::MethodCall* method_call,
       int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
-          callback)) {
+      dbus::ObjectProxy::ResponseCallback* callback) {
     if (!is_power_manager_available_)
       FAIL() << "Power manager is not available.";
 
@@ -157,14 +153,14 @@ class SuspendManagerTest : public ::testing::Test {
     if (method_call->GetInterface() == power_manager::kPowerManagerInterface) {
       if (method_call->GetMember() ==
           power_manager::kRegisterSuspendDelayMethod) {
-        StubPowerManagerCallRegisterSuspendDelay(
-            method_call, std::move(MIGRATE_WrapObjectProxyCallback(callback)));
+        StubPowerManagerCallRegisterSuspendDelay(method_call,
+                                                 std::move(*callback));
         return;
       }
       if (method_call->GetMember() ==
           power_manager::kHandleSuspendReadinessMethod) {
-        StubPowerManagerCallHandleSuspendReadiness(
-            method_call, std::move(MIGRATE_WrapObjectProxyCallback(callback)));
+        StubPowerManagerCallHandleSuspendReadiness(method_call,
+                                                   std::move(*callback));
         return;
       }
     }
@@ -177,10 +173,8 @@ class SuspendManagerTest : public ::testing::Test {
   void StubPowerManagerCallMethodWithErrorCallback(
       dbus::MethodCall* method_call,
       int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
-          callback),
-      dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
-          error_callback)) {
+      dbus::ObjectProxy::ResponseCallback* callback,
+      dbus::ObjectProxy::ErrorCallback* error_callback) {
     StubPowerManagerCallMethod(method_call, timeout_ms, callback);
   }
 
@@ -304,14 +298,13 @@ class SuspendManagerTest : public ::testing::Test {
 
 TEST_F(SuspendManagerTest, PowerManagerNotAvailable) {
   // There should be no calls to power manager.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .Times(0);
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _)).Times(0);
   // Start without power manager available event.
 
   // Bluez HandleSuspendImminent shouldn't be called.
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _)).Times(0);
   // HandleSuspendReadiness shouldn't be called.
   expected_suspend_readiness_.reset();
 
@@ -324,15 +317,14 @@ TEST_F(SuspendManagerTest, PowerManagerNotAvailable) {
 
 TEST_F(SuspendManagerTest, PowerManagerAvailableFailure) {
   // There should be no calls to power manager.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .Times(0);
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _)).Times(0);
   // Start with power manager available event, but it's a failure event.
   TriggerPowerManagerAvailable(false);
 
   // Bluez HandleSuspendImminent shouldn't be called.
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _)).Times(0);
   // HandleSuspendReadiness shouldn't be called.
   expected_suspend_readiness_.reset();
 
@@ -345,8 +337,7 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableFailure) {
 
 TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(
           this,
           &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
@@ -356,7 +347,7 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
   // Bluez HandleSuspendImminent should be called after SuspendImminent signal.
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendImminent);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
   // HandleSuspendReadiness should be called after HandleSuspendImminent
   // finishes.
@@ -364,7 +355,7 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
       std::make_unique<power_manager::SuspendReadinessInfo>();
   expected_suspend_readiness_->set_delay_id(kDelayId);
   expected_suspend_readiness_->set_suspend_id(kSuspendId);
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
 
   // Trigger suspend imminent signal.
@@ -373,7 +364,7 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
   // Bluez HandleSuspendDone should be called after SuspendDone signal.
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendDone);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
 
   // Trigger suspend done signal.
@@ -383,8 +374,7 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
 TEST_F(SuspendManagerTest, PowerManagerAvailableTwice) {
   // Power manager should receive one RegisterSuspendDelay after it's available
   // even though we receive double available signals.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(
           this,
           &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
@@ -395,8 +385,7 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableTwice) {
 
 TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(
           this,
           &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
@@ -406,7 +395,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Bluez HandleSuspendImminent should be called after SuspendImminent signal.
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendImminent);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
   // HandleSuspendReadiness should be called after HandleSuspendImminent
   // finishes.
@@ -414,7 +403,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
       std::make_unique<power_manager::SuspendReadinessInfo>();
   expected_suspend_readiness_->set_delay_id(kDelayId);
   expected_suspend_readiness_->set_suspend_id(kSuspendId);
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
 
   // Trigger suspend imminent signal.
@@ -423,7 +412,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Bluez HandleSuspendDone should be called after SuspendDone signal.
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendDone);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
 
   // Trigger suspend done signal.
@@ -432,7 +421,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Bluez HandleSuspendDone should be called after power manager is down
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendDone);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
 
   // Simulate power manager losing name owner. The subsequent SuspendImminent
@@ -440,7 +429,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   TriggerPowerManagerNameOwnerChanged(":1.234", "");
 
   // Bluez HandleSuspendImminent shouldn't be called.
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _)).Times(0);
   // HandleSuspendReadiness shouldn't be called.
   expected_suspend_readiness_.reset();
   // Trigger suspend imminent signal.
@@ -448,8 +437,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
 
   // Simulate power manager getting name ownership.
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(
           this,
           &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
@@ -459,8 +447,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
 // SignalDone happens while HandleSuspendImminent is still in progress.
 TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarly) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(
           this,
           &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
@@ -474,18 +461,18 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarly) {
   // Bluez HandleSuspendImminent should be called after SuspendImminent signal.
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendImminent);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
   // HandleSuspendReadiness shouldn't be called yet, since bluez is still in
   // progress doing HandleSuspendImminent.
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _)).Times(0);
 
   // Trigger suspend imminent signal.
   EmitSuspendImminentSignal(kSuspendId);
 
   // Bluez HandleSuspendDone shouldn't be called after SuspendDone signal,
   // since the current HandleSuspendImminent is still in progress.
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _)).Times(0);
 
   // Trigger suspend done signal while HandleSuspendImminent is still in
   // progress.
@@ -493,10 +480,10 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarly) {
 
   // Even after bluez returns, HandleSuspendReadiness shouldn't be called, but
   // bluez HandleSuspendDone should be called to undo the suspend preparation.
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _)).Times(0);
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendDone);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
 
   // HandleSuspendImminent finishes.
@@ -508,8 +495,7 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarly) {
 // progress.
 TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   // Power manager should receive RegisterSuspendDelay after it's available.
-  EXPECT_CALL(*power_manager_proxy_,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(
           this,
           &SuspendManagerTest::StubPowerManagerCallMethodWithErrorCallback));
@@ -523,18 +509,18 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   // Bluez HandleSuspendImminent should be called after SuspendImminent signal.
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendImminent);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
   // HandleSuspendReadiness shouldn't be called yet, since bluez is still in
   // progress doing HandleSuspendImminent.
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _)).Times(0);
 
   // Trigger suspend imminent signal.
   EmitSuspendImminentSignal(kSuspendId);
 
   // Bluez HandleSuspendDone shouldn't be called after SuspendDone signal,
   // since the current HandleSuspendImminent is still in progress.
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _)).Times(0);
 
   // Trigger suspend done signal while HandleSuspendImminent is still in
   // progress.
@@ -542,10 +528,10 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
 
   // Even after bluez returns, HandleSuspendReadiness shouldn't be called, but
   // bluez HandleSuspendDone should be called to undo the suspend preparation.
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _)).Times(0);
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendDone);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
 
   // HandleSuspendImminent finishes.
@@ -553,7 +539,7 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
 
   // Here the HandleSuspendDone is still in progress. When the next
   // SuspendImminent happens we shouldn't make any call to bluez.
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _)).Times(0);
 
   // Trigger suspend imminent signal with different suspend id.
   EmitSuspendImminentSignal(kSuspendId + 1);
@@ -562,7 +548,7 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   // finishes.
   expected_bluez_method_call_ =
       std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendImminent);
-  EXPECT_CALL(*bluez_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*bluez_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
 
   // HandleSuspendDone finishes.
@@ -574,7 +560,7 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
       std::make_unique<power_manager::SuspendReadinessInfo>();
   expected_suspend_readiness_->set_delay_id(kDelayId);
   expected_suspend_readiness_->set_suspend_id(kSuspendId + 1);
-  EXPECT_CALL(*power_manager_proxy_, MIGRATE_CallMethod(_, _, _))
+  EXPECT_CALL(*power_manager_proxy_, DoCallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
 
   // HandleSuspendImminent finishes.

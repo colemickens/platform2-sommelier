@@ -63,9 +63,8 @@ TEST_F(AdvertisingManagerInterfaceHandlerTest,
   EXPECT_CALL(*bus_, GetObjectProxy("", object_path))
       .WillOnce(testing::Return(mock_object_proxy.get()));
   EXPECT_CALL(*mock_object_proxy,
-              MIGRATE_MockCallMethodAndBlock(::testing::_, ::testing::_))
-      .WillOnce(::testing::Return(testing::ByMove(
-          std::move(MIGRATE_WrapObjectProxyResponseConversion(response)))));
+              CallMethodAndBlock(::testing::_, ::testing::_))
+      .WillOnce(::testing::Return(testing::ByMove(std::move(response))));
   EXPECT_CALL(*mock_libnewblue_, HciAdvSetEnable(::testing::_))
       .WillOnce(testing::Return(true));
   EXPECT_TRUE(

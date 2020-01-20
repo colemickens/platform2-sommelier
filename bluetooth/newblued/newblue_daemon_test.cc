@@ -397,7 +397,7 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillRepeatedly(Return(bluez_object_proxy_.get()));
     EXPECT_CALL(*bluez_object_proxy_, SetNameOwnerChangedCallback(_))
         .Times(AnyNumber());
-    EXPECT_CALL(*bluez_object_proxy_, MIGRATE_ConnectToSignal(_, _, _, _))
+    EXPECT_CALL(*bluez_object_proxy_, DoConnectToSignal(_, _, _, _))
         .Times(AnyNumber());
 
     dbus::ObjectPath bluetooth_object_path(

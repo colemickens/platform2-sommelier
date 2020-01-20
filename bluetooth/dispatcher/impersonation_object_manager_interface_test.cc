@@ -60,11 +60,6 @@ constexpr int kTestIntPropertyValue = 7;
 constexpr char kTestStringPropertyValue[] = "some property value";
 constexpr bool kTestBoolPropertyValue = true;
 
-typedef dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
-    ResponseCallbackInMock);
-typedef dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
-    ErrorCallbackInMock);
-
 }  // namespace
 
 class TestInterfaceHandler : public InterfaceHandler {
@@ -158,36 +153,28 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
   void StubHandlePropertiesSet(
       dbus::MethodCall* method_call,
       int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
-          callback),
-      dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
-          error_callback)) {
+      dbus::ObjectProxy::ResponseCallback* callback,
+      dbus::ObjectProxy::ErrorCallback* error_callback) {
     StubHandleMethod(dbus::kPropertiesInterface, dbus::kPropertiesSet,
                      kTestMethodCallString, kTestResponseString,
                      /* error_name */ "", /* error_message */ "", method_call,
                      timeout_ms, callback, error_callback);
   }
 
-  void StubHandleTestMethod1(
-      dbus::MethodCall* method_call,
-      int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
-          callback),
-      dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
-          error_callback)) {
+  void StubHandleTestMethod1(dbus::MethodCall* method_call,
+                             int timeout_ms,
+                             dbus::ObjectProxy::ResponseCallback* callback,
+                             dbus::ObjectProxy::ErrorCallback* error_callback) {
     StubHandleMethod(kTestInterfaceName1, kTestMethodName1,
                      kTestMethodCallString, kTestResponseString,
                      /* error_name */ "", /* error_message */ "", method_call,
                      timeout_ms, callback, error_callback);
   }
 
-  void StubHandleTestMethod2(
-      dbus::MethodCall* method_call,
-      int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback MIGRATE_WrapObjectProxyCallback(
-          callback),
-      dbus::ObjectProxy::ErrorCallback MIGRATE_WrapObjectProxyCallback(
-          error_callback)) {
+  void StubHandleTestMethod2(dbus::MethodCall* method_call,
+                             int timeout_ms,
+                             dbus::ObjectProxy::ResponseCallback* callback,
+                             dbus::ObjectProxy::ErrorCallback* error_callback) {
     StubHandleMethod(kTestInterfaceName1, kTestMethodName2,
                      kTestMethodCallString, kTestResponseString,
                      /* error_name */ "", /* error_message */ "", method_call,
@@ -229,8 +216,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
       void (ImpersonationObjectManagerInterfaceTest::*stub_method_handler)(
           dbus::MethodCall*,
           int,
-          ResponseCallbackInMock,
-          ErrorCallbackInMock)) {
+          dbus::ObjectProxy::ResponseCallback*,
+          dbus::ObjectProxy::ErrorCallback*)) {
     scoped_refptr<dbus::MockObjectProxy> object_proxy1 =
         new dbus::MockObjectProxy(forwarding_bus.get(), kTestServiceName1,
                                   object_path);
@@ -243,7 +230,7 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     method_call.SetSerial(kTestSerial);
     dbus::MessageWriter writer(&method_call);
     writer.AppendString(kTestMethodCallString);
-    EXPECT_CALL(*object_proxy1, MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+    EXPECT_CALL(*object_proxy1, DoCallMethodWithErrorCallback(_, _, _, _))
         .WillOnce(Invoke(this, stub_method_handler));
     std::unique_ptr<dbus::Response> saved_response;
     tested_method_handler->Run(
@@ -273,8 +260,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
       void (ImpersonationObjectManagerInterfaceTest::*stub_method_handler)(
           dbus::MethodCall*,
           int,
-          ResponseCallbackInMock,
-          ErrorCallbackInMock)) {
+          dbus::ObjectProxy::ResponseCallback*,
+          dbus::ObjectProxy::ErrorCallback*)) {
     scoped_refptr<dbus::MockObjectProxy> object_proxy1 =
         new dbus::MockObjectProxy(forwarding_bus.get(), kTestServiceName1,
                                   object_path);
@@ -294,9 +281,9 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     writer.AppendString(kTestMethodCallString);
 
     // Check that the object proxies of both services receive method forwarding.
-    EXPECT_CALL(*object_proxy1, MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+    EXPECT_CALL(*object_proxy1, DoCallMethodWithErrorCallback(_, _, _, _))
         .WillOnce(Invoke(this, stub_method_handler));
-    EXPECT_CALL(*object_proxy2, MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+    EXPECT_CALL(*object_proxy2, DoCallMethodWithErrorCallback(_, _, _, _))
         .WillOnce(Invoke(this, stub_method_handler));
 
     std::unique_ptr<dbus::Response> saved_response;

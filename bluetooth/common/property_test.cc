@@ -67,7 +67,7 @@ TEST_F(PropertySetTest, PropertyFactory) {
       &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
 
   int expected_value = 3;
-  EXPECT_CALL(*object_proxy, MIGRATE_MockCallMethodAndBlock(_, _)).Times(1);
+  EXPECT_CALL(*object_proxy, CallMethodAndBlock(_, _)).Times(1);
   property->SetAndBlock(expected_value);
   property->ReplaceValueWithSetValue();
   property->set_valid(true);
@@ -88,7 +88,7 @@ TEST_F(PropertySetTest, PropertyFactory) {
 
   // Now set property to another value.
   expected_value = 4;
-  EXPECT_CALL(*object_proxy, MIGRATE_MockCallMethodAndBlock(_, _)).Times(1);
+  EXPECT_CALL(*object_proxy, CallMethodAndBlock(_, _)).Times(1);
   property->SetAndBlock(expected_value);
   property->ReplaceValueWithSetValue();
   property->set_valid(true);

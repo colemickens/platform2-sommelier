@@ -31,7 +31,7 @@ using ::testing::SaveArgPointee;
 ACTION_TEMPLATE(MovePointee,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(pointer)) {
-  *pointer = std::move(MIGRATE_WrapObjectProxyCallback(::std::get<k>(args)));
+  *pointer = std::move(*(::std::get<k>(args)));
 }
 
 namespace bluetooth {
@@ -185,14 +185,14 @@ TEST_F(AgentManagerInterfaceHandlerTest, DisplayPasskey) {
 
   // Before any client registers as an agent, DisplayPasskey won't call any
   // agent.
-  EXPECT_CALL(*agent_object_proxy, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*agent_object_proxy, DoCallMethod(_, _, _)).Times(0);
   agent_manager_interface_handler_->DisplayPasskey(kTestDeviceAddress,
                                                    kTestPasskey);
   RegisterAgent(register_agent_method_handler);
 
   // A client has registered as an agent but has not requested to become the
   // default agent. So DisplayPasskey should still not call any agent.
-  EXPECT_CALL(*agent_object_proxy, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*agent_object_proxy, DoCallMethod(_, _, _)).Times(0);
   agent_manager_interface_handler_->DisplayPasskey(kTestDeviceAddress,
                                                    kTestPasskey);
   SetDefaultAgent(request_default_agent_method_handler);
@@ -206,7 +206,7 @@ TEST_F(AgentManagerInterfaceHandlerTest, DisplayPasskey) {
       bluetooth_agent::kBluetoothAgentInterface,
       bluetooth_agent::kDisplayPasskey);
   EXPECT_CALL(*agent_object_proxy,
-              MIGRATE_CallMethod(MethodCallEq(&expected_method_call), _, _))
+              DoCallMethod(MethodCallEq(&expected_method_call), _, _))
       .Times(1);
   agent_manager_interface_handler_->DisplayPasskey(kTestDeviceAddress,
                                                    kTestPasskey);
@@ -229,7 +229,7 @@ TEST_F(AgentManagerInterfaceHandlerTest, DisplayPasskey) {
 
   // After the client unregisters from an agent, DisplayPasskey won't call any
   // agent.
-  EXPECT_CALL(*agent_object_proxy, MIGRATE_CallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*agent_object_proxy, DoCallMethod(_, _, _)).Times(0);
   agent_manager_interface_handler_->DisplayPasskey(kTestDeviceAddress,
                                                    kTestPasskey);
 }
@@ -250,8 +250,7 @@ TEST_F(AgentManagerInterfaceHandlerTest, RequestAuthorization) {
 
   // Before any client registers as an agent, RequestAuthorization won't call
   // any agent.
-  EXPECT_CALL(*agent_object_proxy,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*agent_object_proxy, DoCallMethodWithErrorCallback(_, _, _, _))
       .Times(0);
   agent_manager_interface_handler_->RequestAuthorization(kTestDeviceAddress);
 
@@ -259,8 +258,7 @@ TEST_F(AgentManagerInterfaceHandlerTest, RequestAuthorization) {
 
   // A client has registered as an agent but has not requested to become the
   // default agent. So RequestAuthorization should still not call any agent.
-  EXPECT_CALL(*agent_object_proxy,
-              MIGRATE_CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*agent_object_proxy, DoCallMethodWithErrorCallback(_, _, _, _))
       .Times(0);
   agent_manager_interface_handler_->RequestAuthorization(kTestDeviceAddress);
 
@@ -278,8 +276,8 @@ TEST_F(AgentManagerInterfaceHandlerTest, RequestAuthorization) {
       bluetooth_agent::kBluetoothAgentInterface,
       bluetooth_agent::kRequestAuthorization);
   EXPECT_CALL(*agent_object_proxy,
-              MIGRATE_CallMethodWithErrorCallback(
-                  MethodCallEq(&expected_method_call), _, _, _))
+              DoCallMethodWithErrorCallback(MethodCallEq(&expected_method_call),
+                                            _, _, _))
       .Times(1)
       .WillOnce(
           DoAll(MovePointee<2>(&callback), MovePointee<3>(&error_callback)));
