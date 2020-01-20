@@ -149,6 +149,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   obfuscated_username - Obfuscated username field of the Credentials
   virtual bool AreSameUser(const std::string& obfuscated_username);
 
+  // Returns the session that this mount is for. Can be null.
+  virtual const UserSession* GetCurrentUserSession() const;
+
   // Tests if the given credentials would decrypt the user's cryptohome key
   //
   // Parameters

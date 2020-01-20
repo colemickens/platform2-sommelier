@@ -919,13 +919,29 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   bool InitForChallengeResponseAuth(CryptohomeErrorCode* error_code);
 
   // Called on Mount thread. This triggers the credentials verification steps
-  // that are specific to challenge-response keys, before scheduling
-  // CompleteChallengeResponseCheckKeyEx().
+  // that are specific to challenge-response keys, going through
+  // {TryLightweightChallengeResponseCheckKeyEx(),
+  // OnLightweightChallengeResponseCheckKeyExDone()} and/or
+  // {DoFullChallengeResponseCheckKeyEx(),
+  // OnFullChallengeResponseCheckKeyExDone()}.
   void DoChallengeResponseCheckKeyEx(
       std::unique_ptr<AccountIdentifier> identifier,
       std::unique_ptr<AuthorizationRequest> authorization,
       DBusGMethodInvocation* context);
-  void CompleteChallengeResponseCheckKeyEx(
+  void TryLightweightChallengeResponseCheckKeyEx(
+      std::unique_ptr<AccountIdentifier> identifier,
+      std::unique_ptr<AuthorizationRequest> authorization,
+      DBusGMethodInvocation* context);
+  void OnLightweightChallengeResponseCheckKeyExDone(
+      std::unique_ptr<AccountIdentifier> identifier,
+      std::unique_ptr<AuthorizationRequest> authorization,
+      DBusGMethodInvocation* context,
+      bool is_key_valid);
+  void DoFullChallengeResponseCheckKeyEx(
+      std::unique_ptr<AccountIdentifier> identifier,
+      std::unique_ptr<AuthorizationRequest> authorization,
+      DBusGMethodInvocation* context);
+  void OnFullChallengeResponseCheckKeyExDone(
       DBusGMethodInvocation* context, std::unique_ptr<Credentials> credentials);
 
   // Called on Mount thread. This triggers the credentials generation steps that

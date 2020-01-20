@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -137,6 +138,29 @@ bool IsOsTestImage() {
   }
   return base::StartsWith(chromeos_release_track, "test",
                           base::CompareCase::SENSITIVE);
+}
+
+// Whether the key can be used for lightweight challenge-response authentication
+// check against the given user session.
+bool KeyMatchesForLightweightChallengeResponseCheck(
+    const KeyData& key_data, const UserSession& session) {
+  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+  DCHECK_EQ(key_data.challenge_response_key_size(), 1);
+  if (session.key_data().type() != KeyData::KEY_TYPE_CHALLENGE_RESPONSE ||
+      session.key_data().label().empty() ||
+      session.key_data().label() != key_data.label())
+    return false;
+  if (session.key_data().challenge_response_key_size() != 1) {
+    // Using multiple challenge-response keys at once is currently unsupported.
+    return false;
+  }
+  if (session.key_data().challenge_response_key(0).public_key_spki_der() !=
+      key_data.challenge_response_key(0).public_key_spki_der()) {
+    LOG(WARNING) << "Public key mismatch for lightweight challenge-response "
+                    "authentication check";
+    return false;
+  }
+  return true;
 }
 
 }  // anonymous namespace
@@ -2306,12 +2330,6 @@ void Service::DoChallengeResponseCheckKeyEx(
     SendReply(context, reply);
     return;
   }
-
-  const std::string& account_id = GetAccountId(*identifier);
-  const std::string obfuscated_username =
-      BuildObfuscatedUsername(account_id, system_salt_);
-  const KeyData key_data = authorization->key().data();
-
   if (!authorization->has_key_delegate() ||
       !authorization->key_delegate().has_dbus_service_name()) {
     LOG(ERROR) << "Cannot do challenge-response authentication without key "
@@ -2320,9 +2338,104 @@ void Service::DoChallengeResponseCheckKeyEx(
     SendReply(context, reply);
     return;
   }
+  if (!authorization->key().data().challenge_response_key_size()) {
+    LOG(ERROR) << "Missing challenge-response key information";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+  if (authorization->key().data().challenge_response_key_size() > 1) {
+    LOG(ERROR)
+        << "Using multiple challenge-response keys at once is unsupported";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+
+  // Begin from attempting a lightweight check that doesn't use the vault keyset
+  // or heavy TPM operations, and therefore is faster than the full check and
+  // also works in case the mount is ephemeral.
+  TryLightweightChallengeResponseCheckKeyEx(std::move(identifier),
+                                            std::move(authorization), context);
+}
+
+void Service::TryLightweightChallengeResponseCheckKeyEx(
+    std::unique_ptr<AccountIdentifier> identifier,
+    std::unique_ptr<AuthorizationRequest> authorization,
+    DBusGMethodInvocation* context) {
+  DCHECK_EQ(authorization->key().data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+  DCHECK(challenge_credentials_helper_);
+
+  const std::string& account_id = GetAccountId(*identifier);
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(account_id, system_salt_);
+
+  base::Optional<KeyData> found_session_key_data;
+  {
+    base::AutoLock lock(mounts_lock_);
+    for (const auto& mount_pair : mounts_) {
+      const scoped_refptr<cryptohome::Mount>& mount = mount_pair.second;
+      if (mount->AreSameUser(obfuscated_username) &&
+          mount->GetCurrentUserSession() &&
+          KeyMatchesForLightweightChallengeResponseCheck(
+              authorization->key().data(), *mount->GetCurrentUserSession())) {
+        found_session_key_data = mount->GetCurrentUserSession()->key_data();
+        break;
+      }
+    }
+  }
+  if (!found_session_key_data) {
+    // No matching user session found, so fall back to the full check.
+    OnLightweightChallengeResponseCheckKeyExDone(std::move(identifier),
+                                                 std::move(authorization),
+                                                 context, /*success=*/false);
+    return;
+  }
+
+  // Attempt the lightweight check against the found user session.
   auto key_challenge_service = std::make_unique<KeyChallengeServiceImpl>(
       system_dbus_connection_.Connect(),
       authorization->key_delegate().dbus_service_name());
+  challenge_credentials_helper_->VerifyKey(
+      account_id, *found_session_key_data, std::move(key_challenge_service),
+      base::BindOnce(&Service::OnLightweightChallengeResponseCheckKeyExDone,
+                     base::Unretained(this), std::move(identifier),
+                     std::move(authorization), base::Unretained(context)));
+}
+
+void Service::OnLightweightChallengeResponseCheckKeyExDone(
+    std::unique_ptr<AccountIdentifier> identifier,
+    std::unique_ptr<AuthorizationRequest> authorization,
+    DBusGMethodInvocation* context,
+    bool success) {
+  if (!success) {
+    DoFullChallengeResponseCheckKeyEx(std::move(identifier),
+                                      std::move(authorization), context);
+    return;
+  }
+
+  // Note that the LE credentials are not reset here, since we don't have the
+  // full credentials after the lightweight check.
+  SendReply(context, BaseReply());
+}
+
+void Service::DoFullChallengeResponseCheckKeyEx(
+    std::unique_ptr<AccountIdentifier> identifier,
+    std::unique_ptr<AuthorizationRequest> authorization,
+    DBusGMethodInvocation* context) {
+  DCHECK_EQ(authorization->key().data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+  DCHECK(challenge_credentials_helper_);
+
+  const std::string& account_id = GetAccountId(*identifier);
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(account_id, system_salt_);
+  auto key_challenge_service = std::make_unique<KeyChallengeServiceImpl>(
+      system_dbus_connection_.Connect(),
+      authorization->key_delegate().dbus_service_name());
+
+  BaseReply reply;
 
   if (!homedirs_->Exists(obfuscated_username)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
@@ -2339,14 +2452,14 @@ void Service::DoChallengeResponseCheckKeyEx(
     return;
   }
   challenge_credentials_helper_->Decrypt(
-      account_id, key_data,
+      account_id, authorization->key().data(),
       vault_keyset->serialized().signature_challenge_info(),
       std::move(key_challenge_service),
-      base::Bind(&Service::CompleteChallengeResponseCheckKeyEx,
+      base::Bind(&Service::OnFullChallengeResponseCheckKeyExDone,
                  base::Unretained(this), base::Unretained(context)));
 }
 
-void Service::CompleteChallengeResponseCheckKeyEx(
+void Service::OnFullChallengeResponseCheckKeyExDone(
     DBusGMethodInvocation* context, std::unique_ptr<Credentials> credentials) {
   if (!credentials) {
     LOG(ERROR) << "Key checking failed due to failure to obtain "

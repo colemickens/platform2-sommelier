@@ -814,6 +814,10 @@ bool Mount::AreSameUser(const std::string& obfuscated_username) {
   return current_user_->CheckUser(obfuscated_username);
 }
 
+const UserSession* Mount::GetCurrentUserSession() const {
+  return current_user_;
+}
+
 bool Mount::AreValid(const Credentials& credentials) {
   // If the current logged in user matches, use the UserSession to verify the
   // credentials.  This is less costly than a trip to the TPM, and only verifies
