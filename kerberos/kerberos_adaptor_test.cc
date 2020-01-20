@@ -108,10 +108,10 @@ TResponse ParseResponse(const ByteArray& response_blob) {
 }
 
 // Stub RetrievePrimarySession Session Manager method.
-MIGRATE_WrapObjectProxyResponseType(dbus::Response)
-    StubRetrievePrimarySession(dbus::MethodCall* method_call,
-                               int /* timeout_ms */,
-                               dbus::ScopedDBusError* /* error */) {
+std::unique_ptr<dbus::Response> StubRetrievePrimarySession(
+    dbus::MethodCall* method_call,
+    int /* timeout_ms */,
+    dbus::ScopedDBusError* /* error */) {
   // Respond with username = kUser and sanitized_username = kUserHash.
   method_call->SetSerial(kDBusSerial);
   auto response = dbus::Response::FromMethodCall(method_call);
@@ -120,7 +120,7 @@ MIGRATE_WrapObjectProxyResponseType(dbus::Response)
   writer.AppendString(kUserHash);
 
   // Note: The mock wraps this back into a std::unique_ptr.
-  return MIGRATE_WrapObjectProxyResponseConversion(response);
+  return response;
 }
 
 }  // namespace
@@ -275,7 +275,7 @@ TEST_F(KerberosAdaptorTest, RetrievesPrimarySession) {
               GetObjectProxy(login_manager::kSessionManagerServiceName, _))
       .WillOnce(Return(mock_session_manager_proxy.get()));
   EXPECT_CALL(*mock_session_manager_proxy,
-              MIGRATE_MockCallMethodAndBlockWithErrorDetails(_, _, _))
+              CallMethodAndBlockWithErrorDetails(_, _, _))
       .WillOnce(Invoke(&StubRetrievePrimarySession));
 
   // Recreate an adaptor, but don't call set_storage_dir_for_testing().
