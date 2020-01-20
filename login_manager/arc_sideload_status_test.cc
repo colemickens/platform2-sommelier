@@ -22,13 +22,12 @@ namespace login_manager {
 ACTION_TEMPLATE(RunCallback,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(p0)) {
-  return std::move(MIGRATE_WrapObjectProxyCallback(::testing::get<k>(args)))
-      .Run(p0);
+  return std::move(*(::testing::get<k>(args))).Run(p0);
 }
 
-#define EXPECT_DBUS_CALL_THEN_CALLBACK(method_call, response)          \
-  EXPECT_CALL(*boot_lockbox_proxy_,                                    \
-              MIGRATE_CallMethod(DBusMethodCallEq(method_call), _, _)) \
+#define EXPECT_DBUS_CALL_THEN_CALLBACK(method_call, response)    \
+  EXPECT_CALL(*boot_lockbox_proxy_,                              \
+              DoCallMethod(DBusMethodCallEq(method_call), _, _)) \
       .WillOnce(RunCallback<2>(response));
 
 void EnableCallbackAdaptor(ArcSideloadStatusInterface::Status* status,
@@ -72,7 +71,7 @@ class ArcSideloadStatusTest : public ::testing::Test {
   }
 
   void ExpectBootLockboxServiceToBeAvailable(bool available) {
-    EXPECT_CALL(*boot_lockbox_proxy_, MIGRATE_WaitForServiceToBeAvailable(_))
+    EXPECT_CALL(*boot_lockbox_proxy_, DoWaitForServiceToBeAvailable(_))
         .WillOnce(RunCallback<0>(available));
   }
 

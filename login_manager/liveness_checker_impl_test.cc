@@ -40,12 +40,12 @@ class LivenessCheckerImplTest : public ::testing::Test {
   }
 
   void ExpectUnAckedLivenessPing() {
-    EXPECT_CALL(*object_proxy_.get(), MIGRATE_CallMethod(_, _, _)).Times(1);
+    EXPECT_CALL(*object_proxy_.get(), DoCallMethod(_, _, _)).Times(1);
   }
 
   // Expect two pings, the first with a response.
   void ExpectLivenessPingResponsePing() {
-    EXPECT_CALL(*object_proxy_.get(), MIGRATE_CallMethod(_, _, _))
+    EXPECT_CALL(*object_proxy_.get(), DoCallMethod(_, _, _))
         .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
         .WillOnce(Return());
   }
@@ -55,7 +55,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
   // 2) Last ping was ACK'd, so expect a no-op during this run.
   // 3) Caller should expect action during this run; Quit after it.
   void ExpectPingResponsePingCheckPingAndQuit() {
-    EXPECT_CALL(*object_proxy_.get(), MIGRATE_CallMethod(_, _, _))
+    EXPECT_CALL(*object_proxy_.get(), DoCallMethod(_, _, _))
         .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
         .WillOnce(Return())
         .WillOnce(InvokeWithoutArgs(brillo::MessageLoop::current(),
@@ -71,10 +71,8 @@ class LivenessCheckerImplTest : public ::testing::Test {
  private:
   void Respond(dbus::MethodCall* method_call,
                int timeout_ms,
-               dbus::ObjectProxy::ResponseCallback
-                   MIGRATE_WrapObjectProxyCallback(callback)) {
-    std::move(MIGRATE_WrapObjectProxyCallback(callback))
-        .Run(dbus::Response::CreateEmpty().get());
+               dbus::ObjectProxy::ResponseCallback* callback) {
+    std::move(*callback).Run(dbus::Response::CreateEmpty().get());
   }
 
   DISALLOW_COPY_AND_ASSIGN(LivenessCheckerImplTest);
