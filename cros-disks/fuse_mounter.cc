@@ -25,6 +25,7 @@
 #include <base/callback_helpers.h>
 #include <base/files/file.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <brillo/process_reaper.h>
@@ -51,6 +52,10 @@ class FUSEMountPoint : public MountPoint {
       : MountPoint(path), platform_(platform) {}
 
   ~FUSEMountPoint() override { DestructorUnmount(); }
+
+  base::WeakPtr<FUSEMountPoint> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
 
  private:
   // MountPoint overrides:
@@ -82,6 +87,8 @@ class FUSEMountPoint : public MountPoint {
   }
 
   const Platform* platform_;
+
+  base::WeakPtrFactory<FUSEMountPoint> weak_factory_{this};
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(FUSEMountPoint);
 };
@@ -341,13 +348,8 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
       [](const Platform* platform, const std::string& target_path) {
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
         LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
-            << "Cannot unmount FUSE mount point " << quote(target_path) << ": "
-            << unmount_error;
-
-        if (!platform->RemoveEmptyDirectory(target_path)) {
-          PLOG(ERROR) << "Cannot remove FUSE mount point "
-                      << quote(target_path);
-        }
+            << "Cannot unmount FUSE mount point " << quote(target_path)
+            << " after launch failure: " << unmount_error;
       },
       platform_, target_path.value()));
 
@@ -414,18 +416,50 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     return nullptr;
   }
 
-  // At this point, the FUSE daemon has successfully started, so repurpose
-  // the FUSE cleanup closure runner to run on daemon quitting.
+  // At this point, the FUSE daemon has successfully started. Release the
+  // cleanup closure which is only intended to cleanup on failure.
+  ignore_result(fuse_cleanup_runner.Release());
+
+  std::unique_ptr<FUSEMountPoint> mount_point =
+      std::make_unique<FUSEMountPoint>(target_path, platform_);
+
+  // Add a watcher that cleans up the FUSE mount when the process exits.
   // This is defined as in-jail "init" process, denoted by pid(),
   // terminates, which happens only when the last process in the jailed PID
   // namespace terminates.
   process_reaper_->WatchForChild(
       FROM_HERE, mount_process->pid(),
-      base::BindOnce(CleanUpCallback, fuse_cleanup_runner.Release(),
+      base::BindOnce(CleanUpCallback,
+                     base::BindOnce(
+                         [](base::WeakPtr<FUSEMountPoint> mount_point,
+                            const Platform* platform) {
+                           if (!mount_point) {
+                             // If |mount_point| has been deleted, it was
+                             // already unmounted and cleaned up due to a
+                             // request from the browser (or logout). In this
+                             // case, there's nothing to do.
+                             return;
+                           }
+
+                           MountErrorType unmount_error =
+                               mount_point->Unmount();
+                           LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
+                               << "Cannot unmount FUSE mount point "
+                               << quote(mount_point->path())
+                               << " after process exit: " << unmount_error;
+
+                           if (!platform->RemoveEmptyDirectory(
+                                   mount_point->path().value())) {
+                             PLOG(ERROR) << "Cannot remove FUSE mount point "
+                                         << quote(mount_point->path().value())
+                                         << " after process exit";
+                           }
+                         },
+                         mount_point->GetWeakPtr(), platform_),
                      target_path));
 
   *error = MOUNT_ERROR_NONE;
-  return std::make_unique<FUSEMountPoint>(target_path, platform_);
+  return std::move(mount_point);
 }
 
 std::unique_ptr<SandboxedProcess> FUSEMounter::CreateSandboxedProcess() const {

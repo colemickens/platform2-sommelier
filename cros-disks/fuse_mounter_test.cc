@@ -261,7 +261,6 @@ TEST_F(FUSEMounterTest, MountPoint_UnmountBusy) {
 
 TEST_F(FUSEMounterTest, AppFailed) {
   EXPECT_CALL(platform_, Unmount(_, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).WillOnce(Return(true));
   EXPECT_CALL(mounter_, InvokeMountTool(_)).WillOnce(Return(1));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
