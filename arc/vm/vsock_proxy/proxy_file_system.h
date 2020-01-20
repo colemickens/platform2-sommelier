@@ -119,6 +119,8 @@ class ProxyFileSystem {
   // from multiple threads.
   std::map<int64_t, State> handle_map_;
   base::Lock handle_map_lock_;
+
+  scoped_refptr<base::TaskRunner> init_task_runner_;
 };
 
 }  // namespace arc

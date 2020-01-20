@@ -20,6 +20,7 @@ namespace arc {
 
 // FuseMount mounts a FUSE file system on the specified path and dispatches
 // incoming requests to the specified operation handler functions.
+// FuseMount must be destroyed on the same thread where it was created.
 class FuseMount {
  public:
   FuseMount(const base::FilePath& mount_path, const std::string& name);

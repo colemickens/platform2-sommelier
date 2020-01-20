@@ -17,6 +17,7 @@
 #include <base/strings/string_piece.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task_runner.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 #include "arc/vm/vsock_proxy/fuse_mount.h"
 
@@ -82,9 +83,27 @@ ProxyFileSystem::ProxyFileSystem(
       delegate_task_runner_(delegate_task_runner),
       mount_path_(mount_path) {}
 
-ProxyFileSystem::~ProxyFileSystem() = default;
+ProxyFileSystem::~ProxyFileSystem() {
+  if (init_task_runner_) {
+    base::WaitableEvent stopped(
+        base::WaitableEvent::ResetPolicy::MANUAL,
+        base::WaitableEvent::InitialState::NOT_SIGNALED);
+    init_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](ProxyFileSystem* proxy_file_system, base::WaitableEvent* done) {
+              proxy_file_system->fuse_mount_ = nullptr;
+              done->Signal();
+            },
+            base::Unretained(this), &stopped));
+    stopped.Wait();
+  }
+}
 
 bool ProxyFileSystem::Init() {
+  DCHECK(!init_task_runner_) << "Init can only be called once.";
+  init_task_runner_ = base::ThreadTaskRunnerHandle::Get();
+
   const std::string path_str = mount_path_.value();
   const char* fuse_argv[] = {
       "",  // Dummy argv[0].
