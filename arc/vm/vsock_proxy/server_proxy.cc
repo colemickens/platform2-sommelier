@@ -209,7 +209,7 @@ base::ScopedFD ServerProxy::ConvertProtoToFileDescriptor(
       ssize_t size = base::UnixDomainSocket::RecvMsg(
           virtwl_context_.get(), &dummy_data, sizeof(dummy_data), &fds);
       if (size != sizeof(dummy_data)) {
-        PLOG(ERROR) << "Failed to recieve a message";
+        PLOG(ERROR) << "Failed to receive a message";
         return {};
       }
       if (fds.size() != 1) {
