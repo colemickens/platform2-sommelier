@@ -155,15 +155,7 @@ void ShillClient::OnServicePropertyChange(const std::string& property_name,
     return;
   }
 
-  const std::string ipconfig_method{it->second.TryGet<std::string>()};
-  if (ipconfig_method == shill::kTypeIPv6 ||
-      ipconfig_method == shill::kTypeDHCP6) {
-    // If the default IPConfig is IPv6, wait for IPv4 to be configured. This
-    // will show up as a new IPConfig.
-    return;
-  }
-
-  // This is an IPv4 config, so use it as the default IPConfig for nameservers.
+  // Use it as the default IPConfig for nameservers.
   if (default_ipconfig_proxy_) {
     default_ipconfig_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
   }
