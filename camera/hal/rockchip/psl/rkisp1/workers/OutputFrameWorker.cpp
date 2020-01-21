@@ -110,8 +110,7 @@ status_t OutputFrameWorker::allocListenerProcessBuffers()
                                               mFormat.height(),
                                               mFormat.bytesperline(),
                                               mFormat.pixelformat(),
-                                              mCameraId,
-                                              PAGE_ALIGN(mFormat.sizeimage()));
+                                              mCameraId);
         if (frame->processBuffer.get() == nullptr)
             return NO_MEMORY;
 
@@ -598,8 +597,7 @@ OutputFrameWorker::getOutputBufferForListener()
                     mFormat.height(),
                     mFormat.bytesperline(),
                     mFormat.pixelformat(),
-                    mCameraId,
-                    mBuffers[0].length());
+                    mCameraId);
         } else {
             LOGE("bad type for stream buffer %d", mNode->getMemoryType());
             return nullptr;
