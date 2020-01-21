@@ -38,6 +38,8 @@ class KerberosArtifactSynchronizer {
   // Sets up Keberos for user with |account_identifier|.
   // |account_identifier| is run with the result. If |allow_credentials_update|
   // is false it may only be called once per instance.
+  // If |account_identifier| is empty, credential files will not be created
+  // or will be removed.
   void SetupKerberos(const std::string& account_identifier,
                      SetupKerberosCallback callback);
 
@@ -76,6 +78,13 @@ class KerberosArtifactSynchronizer {
                                              const std::string& interface_name,
                                              const std::string& signal_name,
                                              bool success);
+
+  // Remove Kerberos credential files.
+  void RemoveFiles(SetupKerberosCallback callback);
+
+  // Remove a file at a given |path|. Returns true if the remove succeeds,
+  // false if it fails.
+  bool RemoveFile(const std::string& path);
 
   bool is_kerberos_setup_ = false;
   const std::string krb5_conf_path_;

@@ -27,11 +27,18 @@ KerberosArtifactSynchronizer::KerberosArtifactSynchronizer(
 
 void KerberosArtifactSynchronizer::SetupKerberos(
     const std::string& account_identifier, SetupKerberosCallback callback) {
-  if (!allow_credentials_update_ && !account_identifier_.empty() &&
-      account_identifier_ != account_identifier) {
-    LOG(ERROR) << "Kerberos is already set up for a differnet user";
-    std::move(callback).Run(false /* success */);
-    return;
+  if (!allow_credentials_update_) {
+    if (account_identifier.empty()) {
+      LOG(ERROR) << "Kerberos user account identifier is empty";
+      std::move(callback).Run(false /* success */);
+      return;
+    }
+    if (!account_identifier_.empty() &&
+        account_identifier_ != account_identifier) {
+      LOG(ERROR) << "Kerberos is already set up for a different user";
+      std::move(callback).Run(false /* success */);
+      return;
+    }
   }
 
   if (is_kerberos_setup_ && account_identifier_ == account_identifier) {
@@ -41,6 +48,19 @@ void KerberosArtifactSynchronizer::SetupKerberos(
   }
 
   account_identifier_ = account_identifier;
+
+  if (account_identifier_.empty()) {
+    if (is_kerberos_setup_) {
+      // Empty account identifier means there is no ticket available.
+      // If Kerberos was already set up, remove existing credential files.
+      RemoveFiles(std::move(callback));
+    } else {
+      // Credential files were not created yet, so just return with success.
+      std::move(callback).Run(true /* success */);
+    }
+    return;
+  }
+
   GetFiles(std::move(callback));
 }
 
@@ -151,6 +171,21 @@ bool KerberosArtifactSynchronizer::WriteFile(const std::string& path,
   const base::FilePath file_path(path);
   if (!base::ImportantFileWriter::WriteFileAtomically(file_path, blob)) {
     LOG(ERROR) << "Failed to write file " << file_path.value();
+    return false;
+  }
+  return true;
+}
+
+void KerberosArtifactSynchronizer::RemoveFiles(SetupKerberosCallback callback) {
+  bool success = RemoveFile(krb5_conf_path_) && RemoveFile(krb5_ccache_path_);
+  LOG_IF(ERROR, !success)
+      << "KerberosArtifactSynchronizer failed to remove Kerberos files";
+  std::move(callback).Run(success);
+}
+
+bool KerberosArtifactSynchronizer::RemoveFile(const std::string& path) {
+  if (!base::DeleteFile(base::FilePath(path), false /* recursive */)) {
+    LOG(ERROR) << "Failed to delete file " << path;
     return false;
   }
   return true;
