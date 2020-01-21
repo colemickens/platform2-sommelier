@@ -286,8 +286,9 @@ message GetEcTelemetryResponse {
 // CrosHealthdDiagnosticsService. Encoded in all messages whose implementations
 // depend on a good connection to CrosHealthdDiagnosticsService.
 enum RoutineServiceStatus {
-  ROUTINE_SERVICE_STATUS_OK = 0;           // Good connection to cros_healthd.
-  ROUTINE_SERVICE_STATUS_UNAVAILABLE = 1;  // No connection to cros_healthd.
+  ROUTINE_SERVICE_STATUS_UNSET = 0;
+  ROUTINE_SERVICE_STATUS_OK = 1;           // Good connection to cros_healthd.
+  ROUTINE_SERVICE_STATUS_UNAVAILABLE = 2;  // No connection to cros_healthd.
 }
 
 // Enumeration of each of the diagnostics routines the platform may support.
@@ -332,7 +333,8 @@ message GetAvailableRoutinesRequest {}
 message GetAvailableRoutinesResponse {
   repeated DiagnosticRoutine routines = 1;
 
-  // Status of the connection to cros_healthd.
+  // Status of the connection to cros_healthd. Guaranteed to be distinct from
+  // |ROUTINE_SERVICE_STATUS_UNSET|.
   RoutineServiceStatus service_status = 2;
 }
 
@@ -387,7 +389,8 @@ message RunRoutineResponse {
 
   DiagnosticRoutineStatus status = 2;
 
-  // Status of the connection to cros_healthd.
+  // Status of the connection to cros_healthd. Guaranteed to be distinct from
+  // |ROUTINE_SERVICE_STATUS_UNSET|.
   RoutineServiceStatus service_status = 3;
 }
 
@@ -434,7 +437,8 @@ message GetRoutineUpdateResponse {
   // be used to give the user more detail on a routine reporting
   // ROUTINE_STATUS_ERROR or ROUTINE_STATUS_FAILED.
   string status_message = 6;
-  // Status of the connection to cros_healthd.
+  // Status of the connection to cros_healthd. Guaranteed to be distinct from
+  // |ROUTINE_SERVICE_STATUS_UNSET|.
   RoutineServiceStatus service_status = 7;
 }
 
