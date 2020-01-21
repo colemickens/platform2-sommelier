@@ -6,9 +6,10 @@
 
 #include <linux/limits.h>
 
-#include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <rootdev/rootdev.h>
+
+#include "dlcservice/utils.h"
 
 using base::FilePath;
 using std::string;
@@ -19,7 +20,7 @@ bool BootDevice::IsRemovableDevice(const string& device) {
   string sysfs_block = SysfsBlockDevice(device);
   string removable;
   if (sysfs_block.empty() ||
-      !base::ReadFileToString(FilePath(sysfs_block).Append("removable"),
+      !base::ReadFileToString(JoinPaths(sysfs_block, "removable"),
                               &removable)) {
     return false;
   }
@@ -49,7 +50,7 @@ string BootDevice::SysfsBlockDevice(const string& device) {
   if (device_path.DirName().value() != "/dev") {
     return "";
   }
-  return FilePath("/sys/block").Append(device_path.BaseName()).value();
+  return JoinPaths("/sys/block", device_path.BaseName()).value();
 }
 
 }  // namespace dlcservice

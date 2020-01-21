@@ -110,8 +110,8 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
   if (unique_dlc_module_list_to_install.dlc_module_infos_size() == 0) {
     DlcModuleList dlc_module_list;
     dlc_manager_->FinishInstall(&dlc_module_list, &err_code, &err_msg);
-    InstallStatus install_status = utils::CreateInstallStatus(
-        Status::COMPLETED, kErrorNone, dlc_module_list, 1.);
+    InstallStatus install_status =
+        CreateInstallStatus(Status::COMPLETED, kErrorNone, dlc_module_list, 1.);
     SendOnInstallStatusSignal(install_status);
     return true;
   }
@@ -196,7 +196,7 @@ bool DlcService::GetInstalled(DlcModuleList* dlc_module_list_out,
 
 void DlcService::SendFailedSignalAndCleanup() {
   SendOnInstallStatusSignal(
-      utils::CreateInstallStatus(Status::FAILED, kErrorInternal, {}, 0.));
+      CreateInstallStatus(Status::FAILED, kErrorInternal, {}, 0.));
   string err_code, err_msg;
   if (!dlc_manager_->CancelInstall(&err_code, &err_msg))
     LogAndSetError(nullptr, err_code, err_msg);
@@ -309,7 +309,7 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
     // means that only a single growth from 0.0 to 1.0 for progress reporting
     // will happen.
     case Operation::DOWNLOADING:
-      SendOnInstallStatusSignal(utils::CreateInstallStatus(
+      SendOnInstallStatusSignal(CreateInstallStatus(
           Status::RUNNING, kErrorNone, {}, status_result.progress()));
       FALLTHROUGH;
     default:
@@ -347,14 +347,14 @@ void DlcService::OnStatusUpdateAdvancedSignal(
   DlcModuleList dlc_module_list;
   if (!dlc_manager_->FinishInstall(&dlc_module_list, &err_code, &err_msg)) {
     LogAndSetError(nullptr, err_code, err_msg);
-    InstallStatus install_status = utils::CreateInstallStatus(
+    InstallStatus install_status = CreateInstallStatus(
         Status::FAILED, kErrorInternal, dlc_module_list, 0.);
     SendOnInstallStatusSignal(install_status);
     return;
   }
 
-  InstallStatus install_status = utils::CreateInstallStatus(
-      Status::COMPLETED, kErrorNone, dlc_module_list, 1.);
+  InstallStatus install_status =
+      CreateInstallStatus(Status::COMPLETED, kErrorNone, dlc_module_list, 1.);
   SendOnInstallStatusSignal(install_status);
 }
 

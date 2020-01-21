@@ -7,7 +7,6 @@
 
 #include "dlcservice/dlc_manager.h"
 
-#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/message_loops/message_loop.h>
@@ -27,76 +26,6 @@ namespace dlcservice {
 // Keep kDlcMetadataFilePingActive in sync with update_engine's.
 const char kDlcMetadataFilePingActive[] = "active";
 const char kDlcMetadataActiveValue[] = "1";
-
-namespace {
-
-// Permissions for DLC module directories.
-constexpr mode_t kDlcModuleDirectoryPerms = 0755;
-
-// Creates a directory with permissions required for DLC modules.
-bool CreateDirWithDlcPermissions(const FilePath& path) {
-  File::Error file_err;
-  if (!base::CreateDirectoryAndGetError(path, &file_err)) {
-    LOG(ERROR) << "Failed to create directory '" << path.value()
-               << "': " << File::ErrorToString(file_err);
-    return false;
-  }
-  if (!base::SetPosixFilePermissions(path, kDlcModuleDirectoryPerms)) {
-    LOG(ERROR) << "Failed to set directory permissions for '" << path.value()
-               << "'";
-    return false;
-  }
-  return true;
-}
-
-// Creates a directory with an empty image file and resizes it to the given
-// size.
-bool CreateImageFile(const FilePath& path, int64_t image_size) {
-  if (!CreateDirWithDlcPermissions(path.DirName())) {
-    return false;
-  }
-  File file(path, File::FLAG_CREATE | File::FLAG_WRITE);
-  if (!file.IsValid()) {
-    LOG(ERROR) << "Failed to create image file '" << path.value()
-               << "': " << File::ErrorToString(file.error_details());
-    return false;
-  }
-  if (!file.SetLength(image_size)) {
-    LOG(ERROR) << "Failed to reserve backup file for DLC module image '"
-               << path.value() << "'";
-    return false;
-  }
-  return true;
-}
-
-bool ResizeFile(const base::FilePath& path, int64_t new_size) {
-  base::File f(path, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-  if (!f.IsValid()) {
-    LOG(ERROR) << "Failed to open image file to resize '" << path.value()
-               << "': " << File::ErrorToString(f.error_details());
-    return false;
-  }
-  if (!f.SetLength(new_size)) {
-    PLOG(ERROR) << "Failed to set length (" << new_size << ") for "
-                << path.value();
-    return false;
-  }
-  return true;
-}
-
-bool CopyAndResizeFile(const base::FilePath& from,
-                       const base::FilePath& to,
-                       int64_t new_size) {
-  if (!base::CopyFile(from, to)) {
-    PLOG(ERROR) << "Failed to copy from (" << from.value() << ") to ("
-                << to.value() << ").";
-    return false;
-  }
-  ResizeFile(to, new_size);
-  return true;
-}
-
-}  // namespace
 
 class DlcManager::DlcManagerImpl {
  public:
@@ -118,7 +47,7 @@ class DlcManager::DlcManagerImpl {
       LOG(FATAL) << "Can not get current boot slot.";
 
     // Initialize supported DLC modules.
-    supported_ = utils::ScanDirectory(manifest_dir_);
+    supported_ = ScanDirectory(manifest_dir_);
   }
   ~DlcManagerImpl() = default;
 
@@ -186,7 +115,7 @@ class DlcManager::DlcManagerImpl {
   bool FinishInstall(DlcRootMap* installed, string* err_code, string* err_msg) {
     *installed = installing_;
 
-    utils::ScopedCleanups<base::Callback<void()>> scoped_cleanups;
+    ScopedCleanups<base::Callback<void()>> scoped_cleanups;
 
     for (const auto& dlc : installing_) {
       const string& id = dlc.first;
@@ -292,7 +221,7 @@ class DlcManager::DlcManagerImpl {
 
  private:
   string GetDlcPackage(const string& id) {
-    return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
+    return *(ScanDirectory(JoinPaths(manifest_dir_, id)).begin());
   }
 
   // Returns true if the DLC module has a boolean true for 'preload-allowed'
@@ -300,8 +229,7 @@ class DlcManager::DlcManagerImpl {
   bool IsDlcPreloadAllowed(const base::FilePath& dlc_manifest_path,
                            const std::string& id) {
     imageloader::Manifest manifest;
-    if (!utils::GetDlcManifest(dlc_manifest_path, id, GetDlcPackage(id),
-                               &manifest)) {
+    if (!GetDlcManifest(dlc_manifest_path, id, GetDlcPackage(id), &manifest)) {
       // Failing to read the manifest will be considered a preloading blocker.
       return false;
     }
@@ -313,7 +241,7 @@ class DlcManager::DlcManagerImpl {
                       string* err_msg) {
     // Create the DLC ID metadata directory with correct permissions if it
     // doesn't exist.
-    FilePath metadata_path_local = utils::GetDlcPath(metadata_dir_, id);
+    FilePath metadata_path_local = JoinPaths(metadata_dir_, id);
     if (!base::PathExists(metadata_path_local)) {
       if (!CreateDirWithDlcPermissions(metadata_path_local)) {
         *err_code = kErrorInternal;
@@ -331,8 +259,7 @@ class DlcManager::DlcManagerImpl {
       return false;
     }
     FilePath active_metadata =
-        utils::GetDlcPath(metadata_dir_, id)
-            .Append(dlcservice::kDlcMetadataFilePingActive);
+        JoinPaths(metadata_dir_, id, dlcservice::kDlcMetadataFilePingActive);
     base::ScopedFILE active_metadata_fp(base::OpenFile(active_metadata, "w"));
     if (active_metadata_fp == nullptr) {
       *err_code = kErrorInternal;
@@ -354,9 +281,8 @@ class DlcManager::DlcManagerImpl {
                             const string& package,
                             string* err_code,
                             string* err_msg) {
-    FilePath content_path_local = utils::GetDlcPath(content_dir_, id);
-    FilePath content_package_path =
-        utils::GetDlcPackagePath(content_dir_, id, package);
+    FilePath content_path_local = JoinPaths(content_dir_, id);
+    FilePath content_package_path = JoinPaths(content_dir_, id, package);
 
     // Create the DLC ID directory with correct permissions.
     if (!CreateDirWithDlcPermissions(content_path_local)) {
@@ -384,7 +310,7 @@ class DlcManager::DlcManagerImpl {
     }
 
     const string& package = GetDlcPackage(id);
-    FilePath content_path_local = utils::GetDlcPath(content_dir_, id);
+    FilePath content_path_local = JoinPaths(content_dir_, id);
 
     if (base::PathExists(content_path_local)) {
       *err_code = kErrorInternal;
@@ -400,8 +326,7 @@ class DlcManager::DlcManagerImpl {
     // it will likely fail for modules >= 2 GiB in size.
     // https://crbug.com/904539
     imageloader::Manifest manifest;
-    if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id, package,
-                                           &manifest)) {
+    if (!dlcservice::GetDlcManifest(manifest_dir_, id, package, &manifest)) {
       *err_code = kErrorInternal;
       *err_msg = "Failed to create DLC(" + id + ") manifest.";
       return false;
@@ -416,8 +341,8 @@ class DlcManager::DlcManagerImpl {
 
     // Creates image A.
     FilePath image_a_path =
-        utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::A);
-    if (!CreateImageFile(image_a_path, image_size)) {
+        GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::A);
+    if (!CreateFile(image_a_path, image_size)) {
       *err_code = kErrorInternal;
       *err_msg = "Failed to create slot A DLC(" + id + ") image file.";
       return false;
@@ -425,8 +350,8 @@ class DlcManager::DlcManagerImpl {
 
     // Creates image B.
     FilePath image_b_path =
-        utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::B);
-    if (!CreateImageFile(image_b_path, image_size)) {
+        GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::B);
+    if (!CreateFile(image_b_path, image_size)) {
       *err_code = kErrorInternal;
       *err_msg = "Failed to create slot B DLC(" + id + ") image file.";
       return false;
@@ -444,14 +369,13 @@ class DlcManager::DlcManagerImpl {
   bool ValidateImageFiles(const string& id) {
     string mount_point;
     const string& package = GetDlcPackage(id);
-    FilePath inactive_img_path = utils::GetDlcImagePath(
+    FilePath inactive_img_path = GetDlcImagePath(
         content_dir_, id, package,
         current_boot_slot_ == BootSlot::Slot::A ? BootSlot::Slot::B
                                                 : BootSlot::Slot::A);
 
     imageloader::Manifest manifest;
-    if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id, package,
-                                           &manifest)) {
+    if (!dlcservice::GetDlcManifest(manifest_dir_, id, package, &manifest)) {
       return false;
     }
     int64_t max_allowed_img_size = manifest.preallocated_size();
@@ -465,7 +389,7 @@ class DlcManager::DlcManagerImpl {
         LOG(ERROR) << err_msg;
         return false;
       }
-      if (!CreateImageFile(inactive_img_path, max_allowed_img_size)) {
+      if (!CreateFile(inactive_img_path, max_allowed_img_size)) {
         LOG(ERROR) << "Failed to create DLC image: "
                    << inactive_img_path.value();
         return false;
@@ -503,8 +427,8 @@ class DlcManager::DlcManagerImpl {
   }
 
   bool DeleteInternal(const string& id, string* err_code, string* err_msg) {
-    for (const auto& path : {utils::GetDlcPath(content_dir_, id),
-                             utils::GetDlcPath(metadata_dir_, id)}) {
+    for (const auto& path :
+         {JoinPaths(content_dir_, id), JoinPaths(metadata_dir_, id)}) {
       if (!base::DeleteFile(path, true)) {
         *err_code = kErrorInternal;
         *err_msg = base::StringPrintf("DLC folder(%s) could not be deleted.",
@@ -520,17 +444,15 @@ class DlcManager::DlcManagerImpl {
   bool RefreshPreloadedCopier(const string& id) {
     const string& package = GetDlcPackage(id);
     FilePath image_preloaded_path =
-        preloaded_content_dir_.Append(id).Append(package).Append(
-            utils::kDlcImageFileName);
+        JoinPaths(preloaded_content_dir_, id, package, kDlcImageFileName);
     FilePath image_a_path =
-        utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::A);
+        GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::A);
     FilePath image_b_path =
-        utils::GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::B);
+        GetDlcImagePath(content_dir_, id, package, BootSlot::Slot::B);
 
     // Check the size of file to copy is valid.
     imageloader::Manifest manifest;
-    if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id, package,
-                                           &manifest)) {
+    if (!dlcservice::GetDlcManifest(manifest_dir_, id, package, &manifest)) {
       LOG(ERROR) << "Failed to get DLC(" << id << " module manifest.";
       return false;
     }
@@ -581,7 +503,7 @@ class DlcManager::DlcManagerImpl {
   void RefreshPreloaded() {
     string err_code, err_msg;
     // Load all preloaded DLC modules into |content_dir_| one by one.
-    for (auto id : utils::ScanDirectory(preloaded_content_dir_)) {
+    for (auto id : ScanDirectory(preloaded_content_dir_)) {
       if (!IsDlcPreloadAllowed(manifest_dir_, id)) {
         LOG(ERROR) << "Preloading for DLC(" << id << ") is not allowed.";
         continue;
@@ -609,9 +531,8 @@ class DlcManager::DlcManagerImpl {
 
       // Delete the preloaded DLC only after both copies into A and B succeed as
       // well as mounting.
-      FilePath image_preloaded_path = preloaded_content_dir_.Append(id)
-                                          .Append(GetDlcPackage(id))
-                                          .Append(utils::kDlcImageFileName);
+      FilePath image_preloaded_path = JoinPaths(
+          preloaded_content_dir_, id, GetDlcPackage(id), kDlcImageFileName);
       if (!base::DeleteFile(image_preloaded_path.DirName().DirName(), true)) {
         LOG(ERROR) << "Failed to delete preloaded DLC(" << id << ").";
         continue;
@@ -624,7 +545,7 @@ class DlcManager::DlcManagerImpl {
   // actions.
   void RefreshInstalled() {
     // Recheck installed DLC modules.
-    for (auto installed_dlc_id : utils::ScanDirectory(content_dir_)) {
+    for (auto installed_dlc_id : ScanDirectory(content_dir_)) {
       if (supported_.find(installed_dlc_id) == supported_.end()) {
         LOG(ERROR) << "Found unsupported DLC(" << installed_dlc_id
                    << ") installed, will delete.";
@@ -666,7 +587,7 @@ class DlcManager::DlcManagerImpl {
         installed_.erase(installed_dlc_module_itr++);
       } else {
         installed_dlc_module_root =
-            utils::GetDlcRootInModulePath(FilePath(mount_point)).value();
+            GetDlcRootInModulePath(FilePath(mount_point)).value();
         ++installed_dlc_module_itr;
       }
     }
@@ -708,8 +629,8 @@ bool DlcManager::IsInstalling() {
 }
 
 DlcModuleList DlcManager::GetInstalled() {
-  return utils::ToDlcModuleList(impl_->GetInstalled(),
-                                [](DlcId, DlcRoot) { return true; });
+  return ToDlcModuleList(impl_->GetInstalled(),
+                         [](DlcId, DlcRoot) { return true; });
 }
 
 void DlcManager::LoadDlcModuleImages() {
@@ -723,7 +644,7 @@ bool DlcManager::InitInstall(const DlcModuleList& dlc_module_list,
   CHECK(err_code);
   CHECK(err_msg);
   DlcRootMap dlc_root_map =
-      utils::ToDlcRootMap(dlc_module_list, [](DlcModuleInfo) { return true; });
+      ToDlcRootMap(dlc_module_list, [](DlcModuleInfo) { return true; });
 
   if (dlc_module_list.dlc_module_infos().empty()) {
     *err_code = kErrorInvalidDlc;
@@ -742,8 +663,8 @@ bool DlcManager::InitInstall(const DlcModuleList& dlc_module_list,
 
 DlcModuleList DlcManager::GetMissingInstalls() {
   // Only return the DLC(s) that aren't already installed.
-  return utils::ToDlcModuleList(
-      impl_->GetInstalling(), [](DlcId, DlcRoot root) { return root.empty(); });
+  return ToDlcModuleList(impl_->GetInstalling(),
+                         [](DlcId, DlcRoot root) { return root.empty(); });
 }
 
 bool DlcManager::FinishInstall(DlcModuleList* dlc_module_list,
@@ -757,12 +678,11 @@ bool DlcManager::FinishInstall(DlcModuleList* dlc_module_list,
   if (!impl_->FinishInstall(&dlc_root_map, err_code, err_msg))
     return false;
 
-  *dlc_module_list =
-      utils::ToDlcModuleList(dlc_root_map, [](DlcId id, DlcRoot root) {
-        CHECK(!id.empty());
-        CHECK(!root.empty());
-        return true;
-      });
+  *dlc_module_list = ToDlcModuleList(dlc_root_map, [](DlcId id, DlcRoot root) {
+    CHECK(!id.empty());
+    CHECK(!root.empty());
+    return true;
+  });
   return true;
 }
 

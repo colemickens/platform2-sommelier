@@ -19,8 +19,6 @@ using std::string;
 
 namespace dlcservice {
 
-namespace utils {
-
 char kDlcDirAName[] = "dlc_a";
 char kDlcDirBName[] = "dlc_b";
 char kDlcPreloadAllowedName[] = "preload_allowed";
@@ -30,21 +28,71 @@ char kManifestName[] = "imageloader.json";
 
 char kRootDirectoryInsideDlcModule[] = "root";
 
-FilePath GetDlcPath(const FilePath& dlc_root_path, const string& id) {
-  return dlc_root_path.Append(id);
+const mode_t kDlcModuleDirectoryPerms = 0755;
+
+bool CreateDirWithDlcPermissions(const base::FilePath& path) {
+  base::File::Error file_err;
+  if (!base::CreateDirectoryAndGetError(path, &file_err)) {
+    LOG(ERROR) << "Failed to create directory '" << path.value()
+               << "': " << base::File::ErrorToString(file_err);
+    return false;
+  }
+  if (!base::SetPosixFilePermissions(path, kDlcModuleDirectoryPerms)) {
+    LOG(ERROR) << "Failed to set directory permissions for '" << path.value()
+               << "'";
+    return false;
+  }
+  return true;
 }
 
-FilePath GetDlcPackagePath(const FilePath& dlc_root_path,
-                           const string& id,
-                           const string& package) {
-  return GetDlcPath(dlc_root_path, id).Append(package);
+bool CreateFile(const base::FilePath& path, int64_t size) {
+  if (!CreateDirWithDlcPermissions(path.DirName())) {
+    return false;
+  }
+  base::File file(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  if (!file.IsValid()) {
+    LOG(ERROR) << "Failed to create file at " << path.value() << " reason: "
+               << base::File::ErrorToString(file.error_details());
+    return false;
+  }
+  if (!file.SetLength(size)) {
+    LOG(ERROR) << "Failed to set legnth (" << size << ") for " << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool ResizeFile(const base::FilePath& path, int64_t size) {
+  base::File f(path, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+  if (!f.IsValid()) {
+    LOG(ERROR) << "Failed to open file to resize '" << path.value()
+               << "': " << base::File::ErrorToString(f.error_details());
+    return false;
+  }
+  if (!f.SetLength(size)) {
+    PLOG(ERROR) << "Failed to set length (" << size << ") for " << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool CopyAndResizeFile(const base::FilePath& from,
+                       const base::FilePath& to,
+                       int64_t size) {
+  if (!base::CopyFile(from, to)) {
+    PLOG(ERROR) << "Failed to copy from (" << from.value() << ") to ("
+                << to.value() << ").";
+    return false;
+  }
+  ResizeFile(to, size);
+  return true;
 }
 
 FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,
                          const string& id,
                          const string& package,
                          BootSlot::Slot slot) {
-  return GetDlcPackagePath(dlc_module_root_path, id, package)
+  return JoinPaths(dlc_module_root_path, id, package)
       .Append(slot == BootSlot::Slot::A ? kDlcDirAName : kDlcDirBName)
       .Append(kDlcImageFileName);
 }
@@ -56,7 +104,7 @@ bool GetDlcManifest(const FilePath& dlc_manifest_path,
                     imageloader::Manifest* manifest_out) {
   string dlc_json_str;
   FilePath dlc_manifest_file =
-      GetDlcPackagePath(dlc_manifest_path, id, package).Append(kManifestName);
+      JoinPaths(dlc_manifest_path, id, package, kManifestName);
 
   if (!base::ReadFileToString(dlc_manifest_file, &dlc_json_str)) {
     LOG(ERROR) << "Failed to read DLC manifest file '"
@@ -73,7 +121,7 @@ bool GetDlcManifest(const FilePath& dlc_manifest_path,
 }
 
 FilePath GetDlcRootInModulePath(const FilePath& dlc_mount_point) {
-  return dlc_mount_point.Append(kRootDirectoryInsideDlcModule);
+  return JoinPaths(dlc_mount_point, kRootDirectoryInsideDlcModule);
 }
 
 set<string> ScanDirectory(const FilePath& dir) {
@@ -123,7 +171,5 @@ dlcservice::InstallStatus CreateInstallStatus(
   install_status.set_progress(progress);
   return install_status;
 }
-
-}  // namespace utils
 
 }  // namespace dlcservice

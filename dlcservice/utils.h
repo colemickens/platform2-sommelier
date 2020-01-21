@@ -11,6 +11,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <libimageloader/manifest.h>
 
@@ -18,8 +19,6 @@
 #include "dlcservice/types.h"
 
 namespace dlcservice {
-
-namespace utils {
 
 extern char kDlcDirAName[];
 extern char kDlcDirBName[];
@@ -31,6 +30,9 @@ extern char kManifestName[];
 
 // The directory inside a DLC module that contains all the DLC files.
 extern char kRootDirectoryInsideDlcModule[];
+
+// Permissions for DLC module directories.
+extern const mode_t kDlcModuleDirectoryPerms;
 
 template <typename BindedCallback>
 class ScopedCleanups {
@@ -50,14 +52,30 @@ class ScopedCleanups {
   DISALLOW_COPY_AND_ASSIGN(ScopedCleanups<BindedCallback>);
 };
 
-// Returns the path to a DLC module ID's based directory given |id|.
-base::FilePath GetDlcPath(const base::FilePath& dlc_root_path,
-                          const std::string& id);
+template <typename Arg>
+base::FilePath JoinPaths(Arg&& path) {
+  return base::FilePath(path);
+}
 
-// Returns the path to a DLC module base directory given the |id| and |package|.
-base::FilePath GetDlcPackagePath(const base::FilePath& dlc_root_path,
-                                 const std::string& id,
-                                 const std::string& package);
+template <typename Arg, typename... Args>
+base::FilePath JoinPaths(Arg&& path, Args&&... paths) {
+  return base::FilePath(path).Append(JoinPaths(paths...));
+}
+
+// Creates a directory with permissions required for DLC modules.
+bool CreateDirWithDlcPermissions(const base::FilePath& path);
+
+// Creates a directory with an empty file and resizes it.
+bool CreateFile(const base::FilePath& path, int64_t size);
+
+// Resizes an existing file, failure if file does not exist or failure to
+// resize.
+bool ResizeFile(const base::FilePath& path, int64_t size);
+
+// Copies and then resizes the copied file.
+bool CopyAndResizeFile(const base::FilePath& from,
+                       const base::FilePath& to,
+                       int64_t size);
 
 // Returns the path to a DLC module image given the |id| and |package|.
 base::FilePath GetDlcImagePath(const base::FilePath& dlc_module_root_path,
@@ -93,7 +111,6 @@ dlcservice::InstallStatus CreateInstallStatus(
     const dlcservice::DlcModuleList& dlc_module_list,
     double progress);
 
-}  // namespace utils
 }  // namespace dlcservice
 
 #endif  // DLCSERVICE_UTILS_H_
