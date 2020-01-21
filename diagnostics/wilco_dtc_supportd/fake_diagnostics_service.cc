@@ -16,9 +16,18 @@ FakeDiagnosticsService::~FakeDiagnosticsService() = default;
 
 bool FakeDiagnosticsService::GetCrosHealthdDiagnosticsService(
     mojo_ipc::CrosHealthdDiagnosticsServiceRequest service) {
+  // In situations where cros_healthd is unresponsive, the delegate wouldn't
+  // know this, and would think that it had passed along the service request
+  // and everything is fine. However, nothing would bind that request.
+  if (!is_responsive_)
+    return true;
+
+  // In situations where wilco_dtc_supportd's mojo service hasn't been set up
+  // yet, the delegate would realize this and report failure.
   if (!is_available_)
     return false;
 
+  // When there are no errors with the request, it will be bound.
   service_binding_.Bind(std::move(service));
   return true;
 }
@@ -63,8 +72,16 @@ void FakeDiagnosticsService::RunSmartctlCheckRoutine(
   callback.Run(run_routine_response_.Clone());
 }
 
-void FakeDiagnosticsService::SetMojoServiceNotAvailableResponse() {
-  is_available_ = false;
+void FakeDiagnosticsService::SetMojoServiceIsAvailable(bool is_available) {
+  is_available_ = is_available;
+}
+
+void FakeDiagnosticsService::SetMojoServiceIsResponsive(bool is_responsive) {
+  is_responsive_ = is_responsive;
+}
+
+void FakeDiagnosticsService::ResetMojoConnection() {
+  service_binding_.Close();
 }
 
 void FakeDiagnosticsService::SetGetAvailableRoutinesResponse(

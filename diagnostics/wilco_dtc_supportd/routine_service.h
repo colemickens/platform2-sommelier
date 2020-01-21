@@ -5,7 +5,10 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
 
+#include <cstddef>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -64,12 +67,30 @@ class RoutineService final {
       const GetRoutineUpdateRequestToServiceCallback& callback);
 
  private:
+  // Forwards and wraps the result of a GetAvailableRoutines call into a gRPC
+  // response.
+  void ForwardGetAvailableRoutinesResponse(
+      size_t callback_key,
+      const std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>&
+          mojo_routines);
+  // Forwards and wraps the result of a RunRoutine call into a gRPC response.
+  void ForwardRunRoutineResponse(
+      size_t callback_key,
+      chromeos::cros_healthd::mojom::RunRoutineResponsePtr response);
+  // Forwards and wraps the result of a GetRoutineUpdate call into a gRPC
+  // response.
+  void ForwardGetRoutineUpdateResponse(
+      size_t callback_key,
+      chromeos::cros_healthd::mojom::RoutineUpdatePtr response);
+
   // Binds |service_ptr_| to an implementation of CrosHealthdDiagnosticsService,
   // if it is not already bound. Returns false if wilco_dtc_supportd's mojo
   // service is not yet running and the binding cannot be attempted.
   bool BindCrosHealthdDiagnosticsServiceIfNeeded();
   // Disconnect handler called if the mojo connection to cros_healthd is lost.
   void OnDisconnect();
+  // Runs all in flight callbacks.
+  void RunInFlightCallbacks();
 
   // Unowned. Should outlive this instance.
   Delegate* delegate_ = nullptr;
@@ -78,6 +99,36 @@ class RoutineService final {
   //
   // In production this interface is implemented by the cros_healthd process.
   chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServicePtr service_ptr_;
+
+  // The following three maps each hold in flight callbacks to |service_ptr_|.
+  // In case the remote mojo endpoint closes while there are any in flight
+  // callbacks, the disconnect handler will call those callbacks with error
+  // responses. This allows wilco_dtc_supportd to remain responsive if
+  // cros_healthd dies.
+  std::unordered_map<size_t, GetAvailableRoutinesToServiceCallback>
+      get_available_routines_callbacks_;
+  std::unordered_map<size_t, RunRoutineToServiceCallback>
+      run_routine_callbacks_;
+  // This map needs to also store the uuids, so the callbacks can be run from
+  // inside the disconnect handler, which otherwise doesn't have access to the
+  // uuid.
+  std::unordered_map<size_t,
+                     std::pair<int, GetRoutineUpdateRequestToServiceCallback>>
+      get_routine_update_callbacks_;
+
+  // Generators for the keys used in the in flight callback maps. Note that our
+  // generation is very simple - just increment the appropriate generator when
+  // a call is dispatched to cros_healthd. Since the maps are only tracking
+  // callbacks which are in flight, we don't anticipate having very many stored
+  // at a time, and there should never be collisions if size_t wraps back
+  // around to zero. If a collision were to happen, wilco_dtc_supportd would
+  // just restart.
+  size_t next_get_available_routines_key_ = 0;
+  size_t next_run_routine_key_ = 0;
+  size_t next_get_routine_update_key_ = 0;
+
+  // Must be the last class member.
+  base::WeakPtrFactory<RoutineService> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(RoutineService);
 };

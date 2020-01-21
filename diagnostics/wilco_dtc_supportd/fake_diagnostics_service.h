@@ -56,7 +56,14 @@ class FakeDiagnosticsService final
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's
   // mojo service being established.
-  void SetMojoServiceNotAvailableResponse();
+  void SetMojoServiceIsAvailable(bool is_available);
+
+  // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
+  // situations where cros_healthd is unresponsive.
+  void SetMojoServiceIsResponsive(bool is_responsive);
+
+  // Resets the mojo connection.
+  void ResetMojoConnection();
 
   // Sets the response to any GetAvailableRoutines IPCs received.
   void SetGetAvailableRoutinesResponse(
@@ -98,6 +105,8 @@ class FakeDiagnosticsService final
 
   // Determines whether or not the service should present itself as available.
   bool is_available_ = true;
+  // Determines whether or not the service should present itself as responsive.
+  bool is_responsive_ = true;
 
   DISALLOW_COPY_AND_ASSIGN(FakeDiagnosticsService);
 };

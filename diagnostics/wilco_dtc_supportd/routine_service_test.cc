@@ -279,7 +279,7 @@ TEST_F(RoutineServiceTest, NoRebindService) {
 
   // Tell the service to respond with an error if a second bootstrapping is
   // requested.
-  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+  diagnostics_service()->SetMojoServiceIsAvailable(false);
 
   // Send another request. This shouldn't see an error, because it shouldn't try
   // to bootstrap the mojo connection a second time.
@@ -295,7 +295,7 @@ TEST_F(RoutineServiceTest, NoRebindService) {
 // Test that the routine service handles a GetAvailableRoutines request sent
 // before wilco_dtc_supportd's mojo service is established.
 TEST_F(RoutineServiceTest, GetAvailableRoutinesNoService) {
-  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+  diagnostics_service()->SetMojoServiceIsAvailable(false);
 
   const auto reply = ExecuteGetAvailableRoutines();
   EXPECT_EQ(reply.routines_size(), 0);
@@ -306,7 +306,7 @@ TEST_F(RoutineServiceTest, GetAvailableRoutinesNoService) {
 // Test that the routine service handles a RunRoutine request sent before
 // wilco_dtc_supportd's mojo service is established.
 TEST_F(RoutineServiceTest, RunRoutineNoService) {
-  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+  diagnostics_service()->SetMojoServiceIsAvailable(false);
 
   const auto response = ExecuteRunRoutine(MakeSmartctlCheckRoutineRequest());
   EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
@@ -318,7 +318,7 @@ TEST_F(RoutineServiceTest, RunRoutineNoService) {
 // Test that the routine service handles a GetRoutineUpdate request sent before
 // wilco_dtc_supportd's mojo service is established.
 TEST_F(RoutineServiceTest, GetRoutineUpdateNoService) {
-  diagnostics_service()->SetMojoServiceNotAvailableResponse();
+  diagnostics_service()->SetMojoServiceIsAvailable(false);
 
   const auto update_response = ExecuteGetRoutineUpdate(
       0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
@@ -331,6 +331,121 @@ TEST_F(RoutineServiceTest, GetRoutineUpdateNoService) {
   EXPECT_EQ(update_response.status_message(), "");
   EXPECT_EQ(update_response.service_status(),
             grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+}
+
+// Test that the routine service can recover from an early gRPC request if
+// wilco_dtc_supportd's mojo service is established later.
+TEST_F(RoutineServiceTest, RecoverFromNoServiceRequest) {
+  // Deal with a request sent before the mojo service is available.
+  diagnostics_service()->SetMojoServiceIsAvailable(false);
+
+  const auto unavailable_reply = ExecuteGetAvailableRoutines();
+  EXPECT_EQ(unavailable_reply.routines_size(), 0);
+  EXPECT_EQ(unavailable_reply.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+  base::RunLoop().RunUntilIdle();
+
+  // Make the mojo service available, and make sure a valid response is
+  // received.
+  diagnostics_service()->SetMojoServiceIsAvailable(true);
+  diagnostics_service()->SetGetAvailableRoutinesResponse(
+      {mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity,
+       mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth,
+       mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck,
+       mojo_ipc::DiagnosticRoutineEnum::kUrandom});
+
+  const auto reply = ExecuteGetAvailableRoutines();
+  EXPECT_THAT(
+      reply.routines(),
+      ElementsAreArray(
+          {grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
+           grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM}));
+  EXPECT_EQ(reply.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
+}
+
+// Test that the routine service handles a GetAvailableRoutines request sent
+// when cros_healthd is unresponsive.
+TEST_F(RoutineServiceTest, GetAvailableRoutinesUnresponsiveService) {
+  diagnostics_service()->SetMojoServiceIsResponsive(false);
+
+  const auto reply = ExecuteGetAvailableRoutines();
+  EXPECT_EQ(reply.routines_size(), 0);
+  EXPECT_EQ(reply.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+}
+
+// Test that the routine service handles a RunRoutine request sent when
+// cros_healthd is unresponsive.
+TEST_F(RoutineServiceTest, RunRoutineUnresponsiveService) {
+  diagnostics_service()->SetMojoServiceIsResponsive(false);
+
+  const auto response = ExecuteRunRoutine(MakeSmartctlCheckRoutineRequest());
+  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+  EXPECT_EQ(response.uuid(), 0);
+  EXPECT_EQ(response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+}
+
+// Test that the routine service handles a GetRoutineUpdate request sent when
+// cros_healthd is unresponsive.
+TEST_F(RoutineServiceTest, GetRoutineUpdateUnresponsiveService) {
+  diagnostics_service()->SetMojoServiceIsResponsive(false);
+
+  constexpr int kUuid = 11;
+  const auto update_response = ExecuteGetRoutineUpdate(
+      kUuid, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
+      false /* include_output */);
+  EXPECT_EQ(update_response.uuid(), kUuid);
+  EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_ERROR);
+  EXPECT_EQ(update_response.progress_percent(), 0);
+  EXPECT_EQ(update_response.user_message(),
+            grpc_api::ROUTINE_USER_MESSAGE_UNSET);
+  EXPECT_EQ(update_response.output(), "");
+  EXPECT_EQ(update_response.status_message(), "");
+  EXPECT_EQ(update_response.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+}
+
+// Test that the routine service can recover from a dropped connection.
+TEST_F(RoutineServiceTest, RecoverFromDroppedConnection) {
+  // Establish a valid connection.
+  diagnostics_service()->SetGetAvailableRoutinesResponse(
+      {mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity,
+       mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth,
+       mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck,
+       mojo_ipc::DiagnosticRoutineEnum::kUrandom});
+
+  const auto reply = ExecuteGetAvailableRoutines();
+  EXPECT_THAT(
+      reply.routines(),
+      ElementsAreArray(
+          {grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
+           grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM}));
+  EXPECT_EQ(reply.service_status(), grpc_api::ROUTINE_SERVICE_STATUS_OK);
+
+  // Reset the connection, make cros_healthd unresponsive, and check to see that
+  // the routine service responds appropriately.
+  diagnostics_service()->ResetMojoConnection();
+  diagnostics_service()->SetMojoServiceIsResponsive(false);
+
+  const auto dropped_reply = ExecuteGetAvailableRoutines();
+  EXPECT_EQ(dropped_reply.routines_size(), 0);
+  EXPECT_EQ(dropped_reply.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+
+  // Set cros_healthd as available again, and make sure the routine service can
+  // get valid responses.
+  diagnostics_service()->SetMojoServiceIsResponsive(true);
+  constexpr uint32_t kExpectedId = 77;
+  diagnostics_service()->SetRunSomeRoutineResponse(
+      kExpectedId, mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+
+  const auto reconnected_reply =
+      ExecuteRunRoutine(MakeSmartctlCheckRoutineRequest());
+  EXPECT_EQ(reconnected_reply.uuid(), kExpectedId);
+  EXPECT_EQ(reconnected_reply.status(), grpc_api::ROUTINE_STATUS_RUNNING);
+  EXPECT_EQ(reconnected_reply.service_status(),
+            grpc_api::ROUTINE_SERVICE_STATUS_OK);
 }
 
 // Tests for the GetRoutineUpdate() method of RoutineService when an
