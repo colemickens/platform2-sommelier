@@ -262,9 +262,6 @@ class TerminaVm final : public VmInterface {
   // Handle to the VM process.
   brillo::ProcessImpl process_;
 
-  // Handle to logger(1) process.
-  brillo::ProcessImpl logger_process_;
-
   // Stub for making RPC requests to the maitre'd process inside the VM.
   std::unique_ptr<vm_tools::Maitred::Stub> stub_;
 
