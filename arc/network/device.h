@@ -173,8 +173,9 @@ class Device {
   std::string HostInterfaceName() const;
   bool UsesDefaultInterface() const;
 
-  void RegisterIPv6SetupHandler(const DeviceHandler& handler);
-  void RegisterIPv6TeardownHandler(const DeviceHandler& handler);
+  void RegisterIPv6Handlers(const DeviceHandler& up_handler,
+                            const DeviceHandler& down_handler);
+  void UnregisterIPv6Handlers();
 
   // Returns true if the link status changed.
   bool HostLinkUp(bool link_up);

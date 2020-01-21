@@ -570,10 +570,6 @@ bool ArcService::ContainerImpl::Start(int32_t pid) {
     }
   }
 
-  dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
-      guest(), base::Bind(&ArcService::ContainerImpl::SetupIPv6,
-                          weak_factory_.GetWeakPtr()));
-
   LOG(INFO) << "ARC++ network service started {pid: " << pid_ << "}";
   return true;
 }
@@ -621,10 +617,21 @@ bool ArcService::ContainerImpl::OnStartDevice(Device* device) {
     return false;
   }
 
+  // Setup callback for legacy IPv6 discovery, if applicable.
+  if (device->options().ipv6_enabled &&
+      device->options().find_ipv6_routes_legacy) {
+    device->RegisterIPv6Handlers(
+        base::Bind(&ArcService::ContainerImpl::SetupIPv6,
+                   weak_factory_.GetWeakPtr()),
+        base::Bind(&ArcService::ContainerImpl::TeardownIPv6,
+                   weak_factory_.GetWeakPtr()));
+  }
+
   // Signal the container that the network device is ready.
   if (device->IsAndroid()) {
     datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
   }
+
   dev_mgr_->StartForwarding(*device);
   return true;
 }
@@ -640,6 +647,8 @@ void ArcService::ContainerImpl::OnStopDevice(Device* device) {
   if (!device->IsAndroid()) {
     datapath_->RemoveInterface(ArcVethHostName(device->ifname()));
   }
+
+  device->UnregisterIPv6Handlers();
 }
 
 void ArcService::ContainerImpl::OnDefaultInterfaceChanged(
@@ -760,9 +769,6 @@ void ArcService::ContainerImpl::HostLinkMsgHandler(
 }
 
 void ArcService::ContainerImpl::SetupIPv6(Device* device) {
-  device->RegisterIPv6TeardownHandler(base::Bind(
-      &ArcService::ContainerImpl::TeardownIPv6, weak_factory_.GetWeakPtr()));
-
   auto& ipv6_config = device->ipv6_config();
   if (ipv6_config.ifname.empty())
     return;

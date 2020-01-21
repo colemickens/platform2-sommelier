@@ -59,8 +59,6 @@ class DeviceManagerBase {
                                             const DeviceHandler& handler) = 0;
   virtual void RegisterDefaultInterfaceChangedHandler(
       GuestMessage::GuestType guest, const NameHandler& handler) = 0;
-  virtual void RegisterDeviceIPv6AddressFoundHandler(
-      GuestMessage::GuestType guest, const DeviceHandler& handler) = 0;
   virtual void UnregisterAllGuestHandlers(GuestMessage::GuestType guest) = 0;
 
   // Invoked when a guest starts or stops.
@@ -110,8 +108,6 @@ class DeviceManager : public DeviceManagerBase {
                                     const DeviceHandler& handler) override;
   void RegisterDefaultInterfaceChangedHandler(
       GuestMessage::GuestType guest, const NameHandler& handler) override;
-  void RegisterDeviceIPv6AddressFoundHandler(
-      GuestMessage::GuestType guest, const DeviceHandler& handler) override;
   void UnregisterAllGuestHandlers(GuestMessage::GuestType guest) override;
 
   // Invoked when a guest starts or stops.
@@ -153,10 +149,6 @@ class DeviceManager : public DeviceManagerBase {
   // (e.g. "eth0", "wlan0", etc).
   void OnDevicesChanged(const std::set<std::string>& devices);
 
-  // Callback from Device, invoked when an IPv6 address is discovered and
-  // assigned to the device.
-  void OnIPv6AddressFound(Device* device);
-
   // Receives network device updates and notifications from shill.
   std::unique_ptr<ShillClient> shill_client_;
 
@@ -167,7 +159,6 @@ class DeviceManager : public DeviceManagerBase {
   // |devices_|.
   std::map<GuestMessage::GuestType, DeviceHandler> add_handlers_;
   std::map<GuestMessage::GuestType, DeviceHandler> rm_handlers_;
-  std::map<GuestMessage::GuestType, DeviceHandler> ipv6_handlers_;
   std::map<GuestMessage::GuestType, NameHandler> default_iface_handlers_;
 
   // Connected devices keyed by the interface name.

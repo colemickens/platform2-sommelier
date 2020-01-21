@@ -21,6 +21,7 @@ void DoNothing() {}
 
 class DeviceTest : public testing::Test {
  public:
+  void IPv6Up(Device* device) {}
   void IPv6Down(Device* device) { ipv6_down_ = true; }
 
  protected:
@@ -69,7 +70,8 @@ TEST_F(DeviceTest, IsAndroid) {
 
 TEST_F(DeviceTest, IPv6TeardownHandlerCalledOnDisable) {
   auto dev = NewDevice("foo");
-  dev->RegisterIPv6TeardownHandler(
+  dev->RegisterIPv6Handlers(
+      base::Bind(&DeviceTest::IPv6Up, base::Unretained(this)),
       base::Bind(&DeviceTest::IPv6Down, base::Unretained(this)));
   dev->StopIPv6RoutingLegacy();
   EXPECT_TRUE(ipv6_down_);

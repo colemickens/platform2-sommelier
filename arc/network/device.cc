@@ -170,12 +170,15 @@ void Device::StopIPv6RoutingLegacy() {
   ipv6_config_.clear();
 }
 
-void Device::RegisterIPv6SetupHandler(const DeviceHandler& handler) {
-  ipv6_up_handler_ = handler;
+void Device::RegisterIPv6Handlers(const DeviceHandler& up_handler,
+                                  const DeviceHandler& down_handler) {
+  ipv6_up_handler_ = up_handler;
+  ipv6_down_handler_ = down_handler;
 }
 
-void Device::RegisterIPv6TeardownHandler(const DeviceHandler& handler) {
-  ipv6_down_handler_ = handler;
+void Device::UnregisterIPv6Handlers() {
+  ipv6_up_handler_.Reset();
+  ipv6_down_handler_.Reset();
 }
 
 void Device::OnGuestStart(GuestMessage::GuestType guest) {

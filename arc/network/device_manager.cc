@@ -111,11 +111,6 @@ void DeviceManager::RegisterDeviceRemovedHandler(GuestMessage::GuestType guest,
   rm_handlers_[guest] = handler;
 }
 
-void DeviceManager::RegisterDeviceIPv6AddressFoundHandler(
-    GuestMessage::GuestType guest, const DeviceHandler& handler) {
-  ipv6_handlers_[guest] = handler;
-}
-
 void DeviceManager::RegisterDefaultInterfaceChangedHandler(
     GuestMessage::GuestType guest, const NameHandler& handler) {
   default_iface_handlers_[guest] = handler;
@@ -124,7 +119,6 @@ void DeviceManager::RegisterDefaultInterfaceChangedHandler(
 void DeviceManager::UnregisterAllGuestHandlers(GuestMessage::GuestType guest) {
   add_handlers_.erase(guest);
   rm_handlers_.erase(guest);
-  ipv6_handlers_.erase(guest);
   default_iface_handlers_.erase(guest);
 }
 
@@ -165,12 +159,6 @@ bool DeviceManager::AddWithContext(const std::string& name,
   LOG(INFO) << "Adding device " << *dev;
   auto* device = dev.get();
   devices_.emplace(name, std::move(dev));
-
-  if (device->options().ipv6_enabled &&
-      device->options().find_ipv6_routes_legacy) {
-    device->RegisterIPv6SetupHandler(base::Bind(
-        &DeviceManager::OnIPv6AddressFound, weak_factory_.GetWeakPtr()));
-  }
 
   for (auto& h : add_handlers_) {
     h.second.Run(device);
@@ -381,9 +369,4 @@ void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
     Add(name);
 }
 
-void DeviceManager::OnIPv6AddressFound(Device* device) {
-  for (const auto& h : ipv6_handlers_) {
-    h.second.Run(device);
-  }
-}
 }  // namespace arc_networkd
