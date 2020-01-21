@@ -172,12 +172,15 @@ bool MetricsLibrary::AreMetricsEnabled() {
     bool metrics_policy = false;
     if (device_policy && device_policy->GetMetricsEnabled(&metrics_policy)) {
       metrics_enabled = metrics_policy;
+      VLOG(2) << "AreMetricsEnabled: " << metrics_enabled << " (device policy)";
     } else if (device_policy && device_policy->IsEnterpriseManaged()) {
       metrics_enabled = true;
+      VLOG(2) << "AreMetricsEnabled: 1 (enterprise managed)";
     } else {
       metrics_enabled = ConsentId(&id_unused);
+      VLOG(2) << "AreMetricsEnabled: " << metrics_enabled
+              << "(consent ID file)";
     }
-
     cached_enabled_ = (metrics_enabled && !IsGuestMode());
   }
   return cached_enabled_;
