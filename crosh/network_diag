@@ -116,11 +116,6 @@ get_iflist () {
   ls /sys/class/net/ | egrep -v '^(lo|sit)'
 }
 
-# Return the interface name that has the default route
-get_default_if () {
-  route -n | awk '/^0.0.0.0/ { print $2; exit 0 }'
-}
-
 # Return IP address of a given network interface
 get_if_addr () {
   ifc="$1"
