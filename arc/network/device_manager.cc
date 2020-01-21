@@ -65,16 +65,19 @@ DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
                              AddressManager* addr_mgr,
                              Datapath* datapath,
                              HelperProcess* mcast_proxy,
-                             HelperProcess* nd_proxy)
+                             HelperProcess* nd_proxy,
+                             bool legacy_ipv6)
     : shill_client_(std::move(shill_client)),
       addr_mgr_(addr_mgr),
       datapath_(datapath),
       mcast_proxy_(mcast_proxy),
-      nd_proxy_(nd_proxy) {
+      nd_proxy_(nd_proxy),
+      legacy_ipv6_(legacy_ipv6) {
   DCHECK(shill_client_);
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
   CHECK(mcast_proxy_);
+  CHECK(nd_proxy_);
 
   link_listener_ = std::make_unique<shill::RTNLListener>(
       shill::RTNLHandler::kRequestLink,
@@ -87,11 +90,8 @@ DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
       base::Bind(&DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
   shill_client_->ScanDevices(
       base::Bind(&DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
-  if (nd_proxy) {
-    nd_proxy->RegisterDeviceMessageHandler(
-        base::Bind(&DeviceManager::OnDeviceMessageFromNDProxy,
-                   weak_factory_.GetWeakPtr()));
-  }
+  nd_proxy_->RegisterDeviceMessageHandler(base::Bind(
+      &DeviceManager::OnDeviceMessageFromNDProxy, weak_factory_.GetWeakPtr()));
 }
 
 DeviceManager::~DeviceManager() {
@@ -303,7 +303,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   Device::Options opts{
       .fwd_multicast = false,
       .ipv6_enabled = false,
-      .find_ipv6_routes_legacy = !nd_proxy_,
+      .find_ipv6_routes_legacy = legacy_ipv6_,
       .use_default_interface = false,
       .is_android = false,
       .is_sticky = false,
@@ -328,6 +328,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       // this can be removed.
       host_ifname = "arc_br1";
       guest_ifname = "arc1";
+      opts.find_ipv6_routes_legacy = false;
     }
 
     opts.ipv6_enabled = true;
@@ -337,6 +338,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     opts.is_sticky = true;
   } else if (IsTerminaDevice(name)) {
     opts.ipv6_enabled = true;
+    opts.find_ipv6_routes_legacy = false;
     opts.fwd_multicast = true;
     opts.use_default_interface = true;
     opts.is_sticky = true;
@@ -449,7 +451,8 @@ void DeviceManager::StartForwarding(const Device& device) {
   IpHelperMessage ipm;
   *ipm.mutable_device_message() = msg;
 
-  if (nd_proxy_ && device.options().ipv6_enabled) {
+  if (device.options().ipv6_enabled &&
+      !device.options().find_ipv6_routes_legacy) {
     if (!datapath_->AddIPv6Forwarding(ifname_physical, ifname_virtual)) {
       LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
                  << ifname_physical << " to " << ifname_virtual;
@@ -484,7 +487,8 @@ void DeviceManager::StopForwarding(const Device& device) {
   IpHelperMessage ipm;
   *ipm.mutable_device_message() = msg;
 
-  if (nd_proxy_ && device.options().ipv6_enabled) {
+  if (device.options().ipv6_enabled &&
+      !device.options().find_ipv6_routes_legacy) {
     datapath_->RemoveIPv6Forwarding(ifname_physical, ifname_virtual);
     nd_proxy_->SendMessage(ipm);
   }

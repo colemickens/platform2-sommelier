@@ -32,7 +32,7 @@ class MockDeviceManager : public DeviceManager {
                     AddressManager* addr_mgr,
                     Datapath* datapath,
                     HelperProcess* mcast_proxy,
-                    HelperProcess* nd_proxy = nullptr)
+                    HelperProcess* nd_proxy)
       : DeviceManager(std::move(shill_client),
                       addr_mgr,
                       datapath,
@@ -69,6 +69,7 @@ class DeviceManagerTest : public testing::Test {
     fpr_->Capture(false);
     datapath_ = std::make_unique<MockDatapath>(fpr_.get());
     dummy_mcast_proxy_ = std::make_unique<HelperProcess>();
+    dummy_nd_proxy_ = std::make_unique<HelperProcess>();
   }
 
   void TearDown() override {
@@ -84,9 +85,9 @@ class DeviceManagerTest : public testing::Test {
     auto shill_client = shill_helper_->FakeClient();
     shill_client_ = shill_client.get();
 
-    auto mgr = std::make_unique<MockDeviceManager>(std::move(shill_client),
-                                                   &addr_mgr_, datapath_.get(),
-                                                   dummy_mcast_proxy_.get());
+    auto mgr = std::make_unique<MockDeviceManager>(
+        std::move(shill_client), &addr_mgr_, datapath_.get(),
+        dummy_mcast_proxy_.get(), dummy_nd_proxy_.get());
     return mgr;
   }
 
@@ -99,6 +100,7 @@ class DeviceManagerTest : public testing::Test {
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<FakeProcessRunner> fpr_;
   std::unique_ptr<HelperProcess> dummy_mcast_proxy_;
+  std::unique_ptr<HelperProcess> dummy_nd_proxy_;
 
   // This is required because of the RT netlink handler.
   base::MessageLoopForIO msg_loop_;

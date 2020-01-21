@@ -30,7 +30,7 @@ namespace arc_networkd {
 namespace {
 constexpr int kSubprocessRestartDelayMs = 900;
 
-bool ShouldEnableNDProxy() {
+bool ShouldEnableNDProxyForArc() {
   static const char kLsbReleasePath[] = "/etc/lsb-release";
   static int kMinAndroidSdkVersion = 28;  // P
   static int kMinChromeMilestone = 80;
@@ -45,42 +45,43 @@ bool ShouldEnableNDProxy() {
 
   std::string value;
   if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
-    LOG(ERROR) << "NDProxy disabled - cannot determine Android SDK version";
+    LOG(ERROR) << "NDProxy disabled for ARC - cannot determine Android version";
     return false;
   }
   int ver = 0;
   if (!base::StringToInt(value.c_str(), &ver)) {
-    LOG(ERROR) << "NDProxy disabled - invalid Android SDK version";
+    LOG(ERROR) << "NDProxy disabled for ARC - invalid Android version";
     return false;
   }
   if (ver < kMinAndroidSdkVersion) {
-    LOG(INFO) << "NDProxy disabled for Android SDK " << value;
+    LOG(INFO) << "NDProxy disabled for ARC version " << value;
     return false;
   }
 
   if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
-    LOG(ERROR) << "NDProxy disabled - cannot determine ChromeOS milestone";
+    LOG(ERROR)
+        << "NDProxy disabled for ARC - cannot determine ChromeOS milestone";
     return false;
   }
   if (!base::StringToInt(value.c_str(), &ver)) {
-    LOG(ERROR) << "NDProxy disabled - invalid ChromeOS milestone";
+    LOG(ERROR) << "NDProxy disabled for ARC - invalid ChromeOS milestone";
     return false;
   }
   if (ver < kMinChromeMilestone) {
-    LOG(INFO) << "NDProxy disabled for ChromeOS milestone " << value;
+    LOG(INFO) << "NDProxy disabled for ARC on ChromeOS milestone " << value;
     return false;
   }
 
   if (!store.GetString("CHROMEOS_RELEASE_BOARD", &value)) {
-    LOG(ERROR) << "NDProxy disabled - cannot determine board";
+    LOG(ERROR) << "NDProxy disabled for ARC - cannot determine board";
     return false;
   }
   if (std::find(kSupportedBoards.begin(), kSupportedBoards.end(), value) ==
       kSupportedBoards.end()) {
-    LOG(INFO) << "NDProxy disabled for board " << value;
+    LOG(INFO) << "NDProxy disabled for ARC on board " << value;
     return false;
   }
-  LOG(INFO) << "NDProxy enabled";
+  LOG(INFO) << "NDProxy enabled for ARC";
   return true;
 }
 
@@ -199,8 +200,9 @@ void Manager::InitialSetup() {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
                << " IPv6 functionality may be broken.";
   }
+  bool arc_legacy_ipv6 = !ShouldEnableNDProxyForArc();
   // Kernel proxy_ndp is only needed for legacy IPv6 configuration
-  if (!ShouldEnableNDProxy() &&
+  if (arc_legacy_ipv6 &&
       runner.SysctlWrite("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.proxy_ndp."
                << " IPv6 functionality may be broken.";
@@ -208,7 +210,7 @@ void Manager::InitialSetup() {
 
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(bus_), &addr_mgr_, datapath_.get(),
-      mcast_proxy_.get(), ShouldEnableNDProxy() ? nd_proxy_.get() : nullptr);
+      mcast_proxy_.get(), nd_proxy_.get(), arc_legacy_ipv6);
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
   cros_svc_ =

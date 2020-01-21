@@ -76,7 +76,8 @@ class DeviceManager : public DeviceManagerBase {
                 AddressManager* addr_mgr,
                 Datapath* datapath,
                 HelperProcess* mcast_proxy,
-                HelperProcess* nd_proxy = nullptr);
+                HelperProcess* nd_proxy,
+                bool legacy_ipv6 = false);
   virtual ~DeviceManager();
 
   // Provided as part of DeviceManager for testing.
@@ -168,6 +169,8 @@ class DeviceManager : public DeviceManagerBase {
   HelperProcess* nd_proxy_;
 
   std::string default_ifname_;
+
+  bool legacy_ipv6_;
 
   base::WeakPtrFactory<DeviceManager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(DeviceManager);

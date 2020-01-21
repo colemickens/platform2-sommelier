@@ -67,15 +67,24 @@ void HelperProcess::Launch() {
 
 void HelperProcess::SendMessage(
     const google::protobuf::MessageLite& proto) const {
+  if (!msg_dispatcher_) {
+    return;
+  }
   msg_dispatcher_->SendMessage(proto);
 }
 
 void HelperProcess::Listen() {
+  if (!msg_dispatcher_) {
+    return;
+  }
   msg_dispatcher_->Start();
 }
 
 void HelperProcess::RegisterDeviceMessageHandler(
     const base::Callback<void(const DeviceMessage&)>& handler) {
+  if (!msg_dispatcher_) {
+    return;
+  }
   msg_dispatcher_->RegisterDeviceMessageHandler(handler);
 }
 
