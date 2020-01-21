@@ -276,6 +276,13 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
   if (!SetSysctl("/proc/sys/net/ipv4/ip_forward", "1", &error)) {
     return grpc::Status(grpc::INTERNAL, error);
   }
+  // accept_ra = 2: To accept RA packet even if forwarding == 1
+  if (!SetSysctl(base::StringPrintf("/proc/sys/net/ipv6/conf/%s/accept_ra",
+                                    kInterfaceName)
+                     .c_str(),
+                 "2", &error)) {
+    return grpc::Status(grpc::INTERNAL, error);
+  }
   if (!SetSysctl("/proc/sys/net/ipv6/conf/all/forwarding", "1", &error)) {
     return grpc::Status(grpc::INTERNAL, error);
   }
