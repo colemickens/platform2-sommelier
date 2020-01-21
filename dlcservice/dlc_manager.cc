@@ -190,19 +190,19 @@ class DlcManager::DlcManagerImpl {
 
     for (const auto& dlc : installing_) {
       const string& id = dlc.first;
-      string cleanup_err_code, cleanup_err_msg;
       auto cleanup = base::Bind(
           [](Callback<bool()> unmounter, Callback<bool()> deleter,
-             string* err_msg) {
-            unmounter.Run();
+             string* err_code, string* err_msg) {
+            if (!unmounter.Run())
+              LOG(ERROR) << *err_code << ":" << *err_msg;
             if (!deleter.Run())
-              LOG(ERROR) << *err_msg;
+              LOG(ERROR) << *err_code << ":" << *err_msg;
           },
           base::Bind(&DlcManagerImpl::Unmount, base::Unretained(this), id,
-                     &cleanup_err_code, &cleanup_err_msg),
+                     err_code, err_msg),
           base::Bind(&DlcManagerImpl::Delete, base::Unretained(this), id,
-                     &cleanup_err_code, &cleanup_err_msg),
-          &cleanup_err_msg);
+                     err_code, err_msg),
+          err_code, err_msg);
       scoped_cleanups.Insert(cleanup);
     }
 
@@ -284,7 +284,7 @@ class DlcManager::DlcManagerImpl {
     }
     if (!success) {
       *err_code = kErrorInternal;
-      *err_msg = "Imageloader UnloadDlcImage() call failed.";
+      *err_msg = "Imageloader UnloadDlcImage() call failed for DLC: " + id;
       return false;
     }
     return true;
