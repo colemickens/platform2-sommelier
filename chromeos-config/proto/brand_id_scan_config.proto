@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package chromeos_config;
+
+// Brand information required to identify a BrandConfig. For example, given a
+// set of BrandConfig payloads, a device could probe hardware and match against
+// each BrandIdScanConfig to determine which BrandConfig to use.
+message BrandIdScanConfig {
+    // 'whitelabel_tag' value set in the VPD.
+    // See https://chromeos.google.com/partner/dlm/docs/factory/vpd.html#field-whitelabel_tag.
+    string whitelabel_tag = 1;
+}

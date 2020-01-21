@@ -27,6 +27,7 @@ proto_library("chromeos-config-protos") {
   proto_in_dir = "proto"
   proto_out_dir = "include/chromeos-config/proto_bindings"
   sources = [
+    "${proto_in_dir}/brand_id_scan_config.proto",
     "${proto_in_dir}/design_variant_id_scan_config.proto",
   ]
 }
