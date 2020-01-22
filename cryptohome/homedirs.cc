@@ -143,7 +143,7 @@ bool HomeDirs::IsFreableDiskSpaceAvaible() {
 }
 
 void HomeDirs::FreeDiskSpace() {
-  int64_t free_space = AmountOfFreeDiskSpace();
+  auto free_space = AmountOfFreeDiskSpace();
 
   switch (GetFreeDiskSpaceState(free_space)) {
     case HomeDirs::FreeSpaceState::kAboveTarget:
@@ -157,7 +157,7 @@ void HomeDirs::FreeDiskSpace() {
       break;
 
     case HomeDirs::FreeSpaceState::kError:
-      LOG(ERROR) << "Failed to get the amount of free space";
+      LOG(ERROR) << "Failed to get the amount of free disk space";
       return;
     default:
       LOG(ERROR) << "Unhandled free disk state";
@@ -180,15 +180,14 @@ void HomeDirs::FreeDiskSpace() {
 
   ReportFreeDiskSpaceTotalTime(total_timer.Elapsed().InMilliseconds());
 
-  int64_t after_cleanup = AmountOfFreeDiskSpace();
-  if (GetFreeDiskSpaceState(after_cleanup) ==
-        HomeDirs::FreeSpaceState::kError) {
+  auto after_cleanup = AmountOfFreeDiskSpace();
+  if (!after_cleanup) {
     LOG(ERROR) << "Failed to get the amount of free disk space";
     return;
   }
 
   ReportFreeDiskSpaceTotalFreedInMb(
-      MAX(0, after_cleanup - free_space) / 1024 / 1024);
+      MAX(0, after_cleanup.value() - free_space.value()) / 1024 / 1024);
 
   LOG(INFO) << "Disk cleanup complete.";
 }
@@ -213,8 +212,8 @@ void HomeDirs::FreeDiskSpaceInternal() {
     HomeDirs::DeleteCacheCallback(dir.shadow);
   }
 
-  int64_t freeDiskSpace = AmountOfFreeDiskSpace();
-  if (freeDiskSpace < 0) {
+  auto freeDiskSpace = AmountOfFreeDiskSpace();
+  if (!freeDiskSpace) {
     LOG(ERROR) << "Failed to get the amount of free space";
     return;
   }
@@ -231,10 +230,15 @@ void HomeDirs::FreeDiskSpaceInternal() {
     HomeDirs::DeleteGCacheTmpCallback(dir.shadow);
   }
 
-  const int64_t old_free_disk_space = freeDiskSpace;
+  const auto old_free_disk_space = freeDiskSpace;
   freeDiskSpace = AmountOfFreeDiskSpace();
+  if (!freeDiskSpace) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    return;
+  }
 
-  const int64_t freed_gcache_space = freeDiskSpace - old_free_disk_space;
+  const int64_t freed_gcache_space = freeDiskSpace.value() -
+    old_free_disk_space.value();
   // Report only if something was deleted.
   if (freed_gcache_space > 0) {
     ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
@@ -266,9 +270,7 @@ void HomeDirs::FreeDiskSpaceInternal() {
     HomeDirs::DeleteAndroidCacheCallback(dir.shadow);
   }
 
-  freeDiskSpace = AmountOfFreeDiskSpace();
-
-  switch (GetFreeDiskSpaceState(freeDiskSpace)) {
+  switch (GetFreeDiskSpaceState()) {
     case HomeDirs::FreeSpaceState::kAboveTarget:
       ReportDiskCleanupProgress(
         DiskCleanupProgress::kAndroidCacheCleanedAboveTarget);
@@ -376,8 +378,14 @@ int HomeDirs::DeleteUserProfiles(const std::vector<HomeDir>& homedirs) {
   return deleted_users_count;
 }
 
-int64_t HomeDirs::AmountOfFreeDiskSpace() const {
-  return platform_->AmountOfFreeDiskSpace(shadow_root_);
+base::Optional<int64_t> HomeDirs::AmountOfFreeDiskSpace() const {
+  int64_t free_space = platform_->AmountOfFreeDiskSpace(shadow_root_);
+
+  if (free_space < 0) {
+    return base::nullopt;
+  } else {
+    return free_space;
+  }
 }
 
 HomeDirs::FreeSpaceState HomeDirs::GetFreeDiskSpaceState() const {
@@ -385,17 +393,18 @@ HomeDirs::FreeSpaceState HomeDirs::GetFreeDiskSpaceState() const {
 }
 
 HomeDirs::FreeSpaceState HomeDirs::GetFreeDiskSpaceState(
-    int64_t free_disk_space) const {
+    base::Optional<int64_t> free_disk_space) const {
 
-  if (free_disk_space < 0) {
+  if (!free_disk_space) {
     return HomeDirs::FreeSpaceState::kError;
   }
 
-  if (free_disk_space >= kTargetFreeSpaceAfterCleanup) {
+  int64_t value = free_disk_space.value();
+  if (value >= kTargetFreeSpaceAfterCleanup) {
     return HomeDirs::FreeSpaceState::kAboveTarget;
-  } else if (free_disk_space >= kFreeSpaceThresholdToTriggerCleanup) {
+  } else if (value >= kFreeSpaceThresholdToTriggerCleanup) {
     return HomeDirs::FreeSpaceState::kAboveThreshold;
-  } else if (free_disk_space >= kFreeSpaceThresholdToTriggerAggressiveCleanup) {
+  } else if (value >= kFreeSpaceThresholdToTriggerAggressiveCleanup) {
     return HomeDirs::FreeSpaceState::kNeedNormalCleanup;
   } else {
     return HomeDirs::FreeSpaceState::kNeedAggressiveCleanup;

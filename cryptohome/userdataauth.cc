@@ -2313,11 +2313,12 @@ void UserDataAuth::LowDiskCallback() {
   DCHECK(!disable_threading_);
 
   bool low_disk_space_signal_emitted = false;
-  int64_t free_disk_space = homedirs_->AmountOfFreeDiskSpace();
-  if (free_disk_space < 0) {
-    LOG(ERROR) << "Error getting free disk space, got: " << free_disk_space;
-  } else if (free_disk_space < kFreeSpaceThresholdToTriggerCleanup) {
-    low_disk_space_callback_.Run(static_cast<uint64_t>(free_disk_space));
+  auto free_disk_space = homedirs_->AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Error getting free disk space";
+  } else if (free_disk_space.value() < kFreeSpaceThresholdToTriggerCleanup) {
+    low_disk_space_callback_.Run(
+      static_cast<uint64_t>(free_disk_space.value()));
     low_disk_space_signal_emitted = true;
   }
 

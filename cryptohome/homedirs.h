@@ -95,9 +95,9 @@ class HomeDirs {
   // it goes up to |kTargetFreeSpaceAfterCleanup|.
   virtual void FreeDiskSpace();
 
-  // Return the available disk space in bytes for home directories, or -1 on
-  // failure.
-  virtual int64_t AmountOfFreeDiskSpace() const;
+  // Return the available disk space in bytes for home directories, or nullopt
+  // on failure.
+  virtual base::Optional<int64_t> AmountOfFreeDiskSpace() const;
 
   // Determines the state of the free disk space based on the following
   // thresholds:
@@ -109,7 +109,7 @@ class HomeDirs {
   //                      kFreeSpaceThresholdToTriggerAggressiveCleanup
   //   kNeedAggressiveCleanup: kFreeSpaceThresholdToTriggerAggressiveCleanup >
   //                      free_disk_space
-  virtual FreeSpaceState GetFreeDiskSpaceState(int64_t free_disk_space) const;
+  virtual FreeSpaceState GetFreeDiskSpaceState(base::Optional<int64_t>) const;
 
   // Uses AmountOfFreeDiskSpace to get the current amount of free disk space and
   // to determine the state of the free disk space.

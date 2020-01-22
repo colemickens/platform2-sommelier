@@ -3552,7 +3552,7 @@ void Service::UpdateCurrentUserActivityTimestamp() {
 // Called on Mount thread.
 void Service::LowDiskCallback() {
   bool low_disk_space_signal_emitted = false;
-  int64_t free_disk_space = homedirs_->AmountOfFreeDiskSpace();
+  auto free_disk_space = homedirs_->AmountOfFreeDiskSpace();
   auto free_space_state = homedirs_->GetFreeDiskSpaceState(free_disk_space);
   if (free_space_state == HomeDirs::FreeSpaceState::kError) {
     LOG(ERROR) << "Error getting free disk space";
@@ -3560,7 +3560,7 @@ void Service::LowDiskCallback() {
         free_space_state == HomeDirs::FreeSpaceState::kNeedAggressiveCleanup) {
     g_signal_emit(cryptohome_, low_disk_space_signal_,
                   0 /* signal detail (not used) */,
-                  static_cast<uint64_t>(free_disk_space));
+                  static_cast<uint64_t>(free_disk_space.value()));
     low_disk_space_signal_emitted = true;
   }
 

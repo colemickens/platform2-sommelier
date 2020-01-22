@@ -81,7 +81,8 @@ class MockHomeDirs : public HomeDirs {
               (override));
   MOCK_METHOD(bool, ForceRemoveKeyset, (const std::string&, int), (override));
   MOCK_METHOD(bool, MoveKeyset, (const std::string&, int, int), (override));
-  MOCK_METHOD(int64_t, AmountOfFreeDiskSpace, (), (const, override));
+  MOCK_METHOD(base::Optional<int64_t>, AmountOfFreeDiskSpace,
+              (), (const, override));
   MOCK_METHOD(int32_t, GetUnmountedAndroidDataCount, (), (override));
 
   MOCK_METHOD(bool,
