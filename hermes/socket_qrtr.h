@@ -5,15 +5,16 @@
 #ifndef HERMES_SOCKET_QRTR_H_
 #define HERMES_SOCKET_QRTR_H_
 
+#include <memory>
+
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
-#include <base/message_loop/message_loop.h>
 
 #include "hermes/socket_interface.h"
 
 namespace hermes {
 
-class SocketQrtr : public SocketInterface,
-                   public base::MessageLoopForIO::Watcher {
+class SocketQrtr : public SocketInterface {
  public:
   struct PacketMetadata {
     uint32_t port;
@@ -42,16 +43,13 @@ class SocketQrtr : public SocketInterface,
   int Send(const void* data, size_t size, const void* metadata) override;
 
  private:
-  // base::MesageLoopForIO::Watcher methods.
-  void OnFileCanReadWithoutBlocking(int socket) override;
-  void OnFileCanWriteWithoutBlocking(int socket) override;
+  void OnFileCanReadWithoutBlocking();
 
  private:
   base::ScopedFD socket_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   DataAvailableCallback cb_;
-  // FileDescriptorWatcher to watch QRTR socket for |CallWhenDataAvailable|.
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
 };
 
 }  // namespace hermes

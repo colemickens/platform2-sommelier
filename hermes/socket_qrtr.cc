@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
+#include <base/bind.h>
+
 #include "hermes/socket_qrtr.h"
 
 #include <libqrtr.h>
@@ -14,7 +18,7 @@ constexpr uint8_t kQrtrPort = 0;
 
 namespace hermes {
 
-SocketQrtr::SocketQrtr() : watcher_(FROM_HERE) {}
+SocketQrtr::SocketQrtr() = default;
 
 void SocketQrtr::SetDataAvailableCallback(DataAvailableCallback cb) {
   cb_ = cb;
@@ -31,18 +35,23 @@ bool SocketQrtr::Open() {
     return false;
   }
 
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          socket_.get(), true /* persistent */,
-          base::MessageLoopForIO::WATCH_READ, &watcher_, this)) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      socket_.get(),
+      base::BindRepeating(&SocketQrtr::OnFileCanReadWithoutBlocking,
+                          base::Unretained(this)));
+
+  if (!watcher_) {
     LOG(ERROR) << "Failed to set up WatchFileDescriptor";
     socket_.reset();
     return false;
   }
+
   return true;
 }
 
 void SocketQrtr::Close() {
   if (IsValid()) {
+    watcher_ = nullptr;
     qrtr_close(socket_.get());
     socket_.reset();
   }
@@ -85,14 +94,10 @@ int SocketQrtr::Send(const void* data, size_t size, const void* metadata) {
   return qrtr_sendto(socket_.get(), node, port, data, size);
 }
 
-void SocketQrtr::OnFileCanReadWithoutBlocking(int socket) {
+void SocketQrtr::OnFileCanReadWithoutBlocking() {
   if (cb_) {
     cb_.Run(this);
   }
-}
-
-void SocketQrtr::OnFileCanWriteWithoutBlocking(int socket) {
-  NOTREACHED() << "Not watching file descriptor for write";
 }
 
 }  // namespace hermes
