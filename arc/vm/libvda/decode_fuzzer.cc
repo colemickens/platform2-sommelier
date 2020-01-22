@@ -293,7 +293,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         // SharedMemoryHandle passed from SharedMemory maps to FileDescriptor on
         // POSIX with auto_close parameter set to false.
         base::SharedMemoryHandle handle(shm.TakeHandle());
-        fd = handle.fd;
+        fd = handle.GetHandle();
       }
       // Ownership of the FD is passed. We don't hold the fd out of the output
       // buffer as we're not interested in the buffer content when fuzzing.
