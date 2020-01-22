@@ -8,7 +8,7 @@
 #include <sys/types.h>
 
 #include <base/logging.h>
-#include <base/posix/unix_domain_socket_linux.h>
+#include <base/posix/unix_domain_socket.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 
 #include "imageloader/ipc.pb.h"
