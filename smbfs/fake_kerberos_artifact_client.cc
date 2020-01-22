@@ -30,9 +30,9 @@ void FakeKerberosArtifactClient::ConnectToKerberosFilesChangedSignal(
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
   signal_callback_ = std::move(signal_callback);
 
-  on_connected_callback.Run(authpolicy::kAuthPolicyInterface,
-                            authpolicy::kUserKerberosFilesChangedSignal,
-                            true /* success */);
+  std::move(on_connected_callback)
+      .Run(authpolicy::kAuthPolicyInterface,
+           authpolicy::kUserKerberosFilesChangedSignal, true /* success */);
 }
 
 void FakeKerberosArtifactClient::FireSignal() {

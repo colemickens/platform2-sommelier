@@ -11,9 +11,9 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-#include <base/id_map.h>
 #include <base/macros.h>
 #include <base/threading/thread.h>
 
@@ -142,6 +142,17 @@ class SmbFilesystem : public Filesystem {
   // number.
   std::string ShareFilePathFromInode(ino_t inode) const;
 
+  // Registers an open file and returns a handle to that file. Always returns a
+  // non-zero handle.
+  uint64_t AddOpenFile(SMBCFILE* file);
+
+  // Removes |handle| from the open file table.
+  void RemoveOpenFile(uint64_t handle);
+
+  // Returns the open file referred to by |handle|. Returns nullptr if |handle|
+  // does not exist.
+  SMBCFILE* LookupOpenFile(uint64_t handle) const;
+
   // Callback function for obtaining authentication credentials. Set by calling
   // smbc_setFunctionAuthDataWithContext() and called from libsmbclient.
   static void GetUserAuth(SMBCCTX* context,
@@ -160,7 +171,9 @@ class SmbFilesystem : public Filesystem {
   const std::unique_ptr<SmbCredential> credentials_;
   base::Thread samba_thread_;
   InodeMap inode_map_{FUSE_ROOT_ID};
-  IDMap<SMBCFILE*, uint64_t> open_files_;
+
+  std::unordered_map<uint64_t, SMBCFILE*> open_files_;
+  uint64_t open_files_seq_ = 1;
 
   SMBCCTX* context_ = nullptr;
   smbc_close_fn smbc_close_ctx_ = nullptr;

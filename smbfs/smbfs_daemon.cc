@@ -17,8 +17,8 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
+#include <mojo/public/cpp/platform/platform_channel.h>
+#include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "smbfs/dbus-proxies.h"
@@ -245,7 +245,7 @@ bool SmbFsDaemon::InitMojo() {
       base::ThreadTaskRunnerHandle::Get(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
-  mojo::edk::PlatformChannelPair channel;
+  mojo::PlatformChannel channel;
 
   // The SmbFs service is hosted in the browser, so is expected to
   // already be running when this starts. If this is not the case, the D-Bus
@@ -253,15 +253,16 @@ bool SmbFsDaemon::InitMojo() {
   org::chromium::SmbFsProxy dbus_proxy(bus_, kSmbFsServiceName);
   brillo::ErrorPtr error;
   if (!dbus_proxy.OpenIpcChannel(
-          mojo_id_, channel.PassClientHandle().get().handle, &error)) {
+          mojo_id_, channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD(),
+          &error)) {
     return false;
   }
 
-  mojo::edk::SetParentPipeHandle(channel.PassServerHandle());
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());
 
-  mojom::SmbFsBootstrapRequest request;
-  request.Bind(mojo::edk::CreateChildMessagePipe("smbfs-bootstrap"));
-  bootstrap_binding_.Bind(std::move(request));
+  bootstrap_binding_.Bind(mojom::SmbFsBootstrapRequest(
+      invitation.ExtractMessagePipe("smbfs-bootstrap")));
   bootstrap_binding_.set_connection_error_handler(
       base::Bind(&SmbFsDaemon::OnConnectionError, base::Unretained(this)));
 

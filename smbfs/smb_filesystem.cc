@@ -172,6 +172,31 @@ std::string SmbFilesystem::ShareFilePathFromInode(ino_t inode) const {
   return MakeShareFilePath(file_path);
 }
 
+uint64_t SmbFilesystem::AddOpenFile(SMBCFILE* file) {
+  uint64_t handle = open_files_seq_++;
+  // Disallow wrap around.
+  CHECK(handle);
+  open_files_[handle] = file;
+  return handle;
+}
+
+void SmbFilesystem::RemoveOpenFile(uint64_t handle) {
+  auto it = open_files_.find(handle);
+  if (it == open_files_.end()) {
+    NOTREACHED() << "File handle not found";
+    return;
+  }
+  open_files_.erase(it);
+}
+
+SMBCFILE* SmbFilesystem::LookupOpenFile(uint64_t handle) const {
+  const auto it = open_files_.find(handle);
+  if (it == open_files_.end()) {
+    return nullptr;
+  }
+  return it->second;
+}
+
 // static
 void SmbFilesystem::GetUserAuth(SMBCCTX* context,
                                 const char* server,
@@ -337,7 +362,7 @@ void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
   SMBCFILE* file = nullptr;
   base::ScopedClosureRunner file_closer;
   if (file_handle) {
-    file = open_files_.Lookup(*file_handle);
+    file = LookupOpenFile(*file_handle);
     if (!file) {
       request->ReplyError(EBADF);
       return;
@@ -400,7 +425,7 @@ void SmbFilesystem::OpenInternal(std::unique_ptr<OpenRequest> request,
     return;
   }
 
-  request->ReplyOpen(open_files_.Add(file));
+  request->ReplyOpen(AddOpenFile(file));
 }
 
 void SmbFilesystem::Create(std::unique_ptr<CreateRequest> request,
@@ -442,7 +467,7 @@ void SmbFilesystem::CreateInternal(std::unique_ptr<CreateRequest> request,
     return;
   }
 
-  uint64_t handle = open_files_.Add(file);
+  uint64_t handle = AddOpenFile(file);
 
   ino_t inode = inode_map_.IncInodeRef(file_path);
   struct stat entry_stat = MakeStat(inode, {0});
@@ -476,7 +501,7 @@ void SmbFilesystem::ReadInternal(std::unique_ptr<BufRequest> request,
     return;
   }
 
-  SMBCFILE* file = open_files_.Lookup(file_handle);
+  SMBCFILE* file = LookupOpenFile(file_handle);
   if (!file) {
     request->ReplyError(EBADF);
     return;
@@ -525,7 +550,7 @@ void SmbFilesystem::WriteInternal(std::unique_ptr<WriteRequest> request,
     return;
   }
 
-  SMBCFILE* file = open_files_.Lookup(file_handle);
+  SMBCFILE* file = LookupOpenFile(file_handle);
   if (!file) {
     request->ReplyError(EBADF);
     return;
@@ -568,7 +593,7 @@ void SmbFilesystem::ReleaseInternal(std::unique_ptr<SimpleRequest> request,
     return;
   }
 
-  SMBCFILE* file = open_files_.Lookup(file_handle);
+  SMBCFILE* file = LookupOpenFile(file_handle);
   if (!file) {
     request->ReplyError(EBADF);
     return;
@@ -579,7 +604,7 @@ void SmbFilesystem::ReleaseInternal(std::unique_ptr<SimpleRequest> request,
     return;
   }
 
-  open_files_.Remove(file_handle);
+  RemoveOpenFile(file_handle);
   request->ReplyOk();
 }
 
@@ -611,7 +636,7 @@ void SmbFilesystem::OpenDirInternal(std::unique_ptr<OpenRequest> request,
     return;
   }
 
-  request->ReplyOpen(open_files_.Add(dir));
+  request->ReplyOpen(AddOpenFile(dir));
 }
 
 void SmbFilesystem::ReadDir(std::unique_ptr<DirentryRequest> request,
@@ -638,7 +663,7 @@ void SmbFilesystem::ReadDirInternal(std::unique_ptr<DirentryRequest> request,
     return;
   }
 
-  SMBCFILE* dir = open_files_.Lookup(file_handle);
+  SMBCFILE* dir = LookupOpenFile(file_handle);
   if (!dir) {
     request->ReplyError(EBADF);
     return;
@@ -723,7 +748,7 @@ void SmbFilesystem::ReleaseDirInternal(std::unique_ptr<SimpleRequest> request,
     return;
   }
 
-  SMBCFILE* dir = open_files_.Lookup(file_handle);
+  SMBCFILE* dir = LookupOpenFile(file_handle);
   if (!dir) {
     request->ReplyError(EBADF);
     return;
@@ -734,7 +759,7 @@ void SmbFilesystem::ReleaseDirInternal(std::unique_ptr<SimpleRequest> request,
     return;
   }
 
-  open_files_.Remove(file_handle);
+  RemoveOpenFile(file_handle);
   request->ReplyOk();
 }
 

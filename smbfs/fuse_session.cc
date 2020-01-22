@@ -319,7 +319,7 @@ FuseSession::~FuseSession() {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   // Ensure |stop_callback_| isn't called as a result of destruction.
-  stop_callback_ = {};
+  stop_callback_.Reset();
 
   if (session_) {
     // Disconnect the channel from the fuse_session before destroying them both.
