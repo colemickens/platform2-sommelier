@@ -19,8 +19,6 @@ namespace arc_networkd {
 namespace {
 
 constexpr const char kArcDevicePrefix[] = "arc";
-constexpr const char kVpnInterfaceHostPattern[] = "tun";
-constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
 constexpr std::array<const char*, 2> kEthernetInterfacePrefixes{{"eth", "usb"}};
 constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
 
@@ -31,11 +29,6 @@ bool IsArcDevice(const std::string& ifname) {
 
 bool IsTerminaDevice(const std::string& ifname) {
   return base::StartsWith(ifname, kTerminaVmDevicePrefix,
-                          base::CompareCase::INSENSITIVE_ASCII);
-}
-
-bool IsHostVpnInterface(const std::string& ifname) {
-  return base::StartsWith(ifname, kVpnInterfaceHostPattern,
                           base::CompareCase::INSENSITIVE_ASCII);
 }
 
@@ -361,15 +354,6 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       opts.fwd_multicast = IsMulticastInterface(name);
     }
     guest_ifname = name;
-    // Android VPNs and native VPNs use the same "tun%d" name pattern for VPN
-    // tun interfaces. To distinguish between both and avoid name collisions
-    // native VPN interfaces are not exposed with their exact names inside the
-    // ARC network namespace. This additional naming convention is not known to
-    // Chrome and ARC has to fix names in ArcNetworkBridge.java when receiving
-    // NetworkConfiguration mojo objects from Chrome.
-    if (IsHostVpnInterface(guest_ifname)) {
-      guest_ifname = kVpnInterfaceGuestPrefix + guest_ifname;
-    }
     // TODO(crbug/726815) Also enable |ipv6_enabled| for cellular networks
     // once IPv6 is enabled on cellular networks in shill.
     opts.ipv6_enabled =

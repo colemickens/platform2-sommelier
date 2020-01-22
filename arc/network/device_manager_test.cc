@@ -228,20 +228,6 @@ TEST_F(DeviceManagerTest, MakeDevice_TerminaVm) {
   EXPECT_TRUE(tvm->options().is_sticky);
 }
 
-TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
-  auto mgr = NewManager();
-  auto tun0 = mgr->MakeDevice("tun0");
-  const auto& cfg = tun0->config();
-  EXPECT_EQ(cfg.host_ifname(), "arc_tun0");
-  EXPECT_EQ(cfg.guest_ifname(), "cros_tun0");
-  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
-  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
-  EXPECT_FALSE(tun0->options().ipv6_enabled);
-  EXPECT_FALSE(tun0->options().is_android);
-  EXPECT_FALSE(tun0->options().use_default_interface);
-  EXPECT_FALSE(tun0->options().is_sticky);
-}
-
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
   auto mgr = NewManager();
   std::vector<std::unique_ptr<Device>> devices;
