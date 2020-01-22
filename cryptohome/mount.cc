@@ -810,15 +810,16 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   return false;
 }
 
-bool Mount::AreSameUser(const Credentials& credentials) {
-  return current_user_->CheckUser(credentials);
+bool Mount::AreSameUser(const std::string& obfuscated_username) {
+  return current_user_->CheckUser(obfuscated_username);
 }
 
 bool Mount::AreValid(const Credentials& credentials) {
   // If the current logged in user matches, use the UserSession to verify the
   // credentials.  This is less costly than a trip to the TPM, and only verifies
   // a user during their logged in session.
-  if (current_user_->CheckUser(credentials)) {
+  if (current_user_->CheckUser(
+          credentials.GetObfuscatedUsername(system_salt_))) {
     return current_user_->Verify(credentials);
   }
   return false;

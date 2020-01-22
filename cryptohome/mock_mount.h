@@ -26,7 +26,7 @@ class MockMount : public Mount {
                UserOldestActivityTimestampCache*,
                PreMountCallback pre_mount_callback),
               (override));
-  MOCK_METHOD(bool, AreSameUser, (const Credentials&), (override));
+  MOCK_METHOD(bool, AreSameUser, (const std::string&), (override));
   MOCK_METHOD(bool, AreValid, (const Credentials&), (override));
   MOCK_METHOD(bool,
               MountCryptohome,

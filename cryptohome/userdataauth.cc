@@ -1451,7 +1451,8 @@ void UserDataAuth::ContinueMountWithCredentials(
   if (user_mount->IsMounted()) {
     LOG(INFO) << "Mount exists. Rechecking credentials.";
     // Attempt a short-circuited credential test.
-    if (user_mount->AreSameUser(*credentials) &&
+    if (user_mount->AreSameUser(
+            credentials->GetObfuscatedUsername(system_salt_)) &&
         user_mount->AreValid(*credentials)) {
       std::move(on_done).Run(reply);
       homedirs_->ResetLECredentials(*credentials);
@@ -1620,9 +1621,12 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CheckKey(
   Credentials credentials(account_id.c_str(), SecureBlob(auth_secret));
   credentials.set_key_data(request.authorization_request().key().data());
 
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+
   bool found_valid_credentials = false;
   for (const auto& mount_pair : mounts_) {
-    if (mount_pair.second->AreSameUser(credentials)) {
+    if (mount_pair.second->AreSameUser(obfuscated_username)) {
       found_valid_credentials = mount_pair.second->AreValid(credentials);
       break;
     }
@@ -1634,7 +1638,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CheckKey(
     return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
   } else {
     // Cover different keys for the same user with homedirs.
-    if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+    if (!homedirs_->Exists(obfuscated_username)) {
       return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
     }
 

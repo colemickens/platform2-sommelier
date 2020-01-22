@@ -48,7 +48,7 @@ TEST_F(UserSessionTest, CheckUserTest) {
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(credentials));
-  EXPECT_TRUE(session.CheckUser(credentials));
+  EXPECT_TRUE(session.CheckUser(credentials.GetObfuscatedUsername(salt)));
 }
 
 TEST_F(UserSessionTest, ReInitTest) {
@@ -58,8 +58,8 @@ TEST_F(UserSessionTest, ReInitTest) {
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(credentials));
   EXPECT_TRUE(session.SetUser(credentials_new));
-  EXPECT_FALSE(session.CheckUser(credentials));
-  EXPECT_TRUE(session.CheckUser(credentials_new));
+  EXPECT_FALSE(session.CheckUser(credentials.GetObfuscatedUsername(salt)));
+  EXPECT_TRUE(session.CheckUser(credentials_new.GetObfuscatedUsername(salt)));
 }
 
 TEST_F(UserSessionTest, ResetTest) {
@@ -68,7 +68,7 @@ TEST_F(UserSessionTest, ResetTest) {
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(credentials));
   session.Reset();
-  EXPECT_FALSE(session.CheckUser(credentials));
+  EXPECT_FALSE(session.CheckUser(credentials.GetObfuscatedUsername(salt)));
 }
 
 TEST_F(UserSessionTest, VerifyTest) {

@@ -7,6 +7,8 @@
 
 #include "cryptohome/user_session.h"
 
+#include <string>
+
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
@@ -21,7 +23,7 @@ class MockUserSession : public UserSession {
   MOCK_METHOD(void, Init, (const brillo::SecureBlob&), (override));
   MOCK_METHOD(bool, SetUser, (const Credentials&), (override));
   MOCK_METHOD(void, Reset, (), (override));
-  MOCK_METHOD(bool, CheckUser, (const Credentials&), (const, override));
+  MOCK_METHOD(bool, CheckUser, (const std::string&), (const, override));
   MOCK_METHOD(bool, Verify, (const Credentials&), (const, override));
   MOCK_METHOD(void, set_key_index, (int), (override));
 

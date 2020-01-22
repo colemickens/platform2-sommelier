@@ -61,14 +61,12 @@ void UserSession::Reset() {
   key_data_.Clear();
 }
 
-bool UserSession::CheckUser(const Credentials& credentials) const {
-  std::string username = credentials.GetObfuscatedUsername(username_salt_);
-
-  return (username.compare(obfuscated_username_) == 0);
+bool UserSession::CheckUser(const std::string& obfuscated_username) const {
+  return obfuscated_username_ == obfuscated_username;
 }
 
 bool UserSession::Verify(const Credentials& credentials) const {
-  if (!CheckUser(credentials)) {
+  if (!CheckUser(credentials.GetObfuscatedUsername(username_salt_))) {
     return false;
   }
   // If the incoming credentials have no label, then just

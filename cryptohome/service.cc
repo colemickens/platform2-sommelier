@@ -1081,12 +1081,15 @@ void Service::DoCheckKeyEx(std::unique_ptr<AccountIdentifier> identifier,
                                      authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+
   BaseReply reply;
   bool found_valid_credentials = false;
   {
     base::AutoLock _lock(mounts_lock_);
     for (const auto& mount_pair : mounts_) {
-      if (mount_pair.second->AreSameUser(credentials)) {
+      if (mount_pair.second->AreSameUser(obfuscated_username)) {
         found_valid_credentials = mount_pair.second->AreValid(credentials);
         break;
       }
@@ -1100,7 +1103,7 @@ void Service::DoCheckKeyEx(std::unique_ptr<AccountIdentifier> identifier,
   }
   // Fallthrough to HomeDirs to cover different keys for the same user.
 
-  if (homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+  if (homedirs_->Exists(obfuscated_username)) {
     if (homedirs_->AreCredentialsValid(credentials)) {
       homedirs_->ResetLECredentials(credentials);
     } else {
@@ -2020,7 +2023,8 @@ gboolean Service::Mount(const gchar *userid,
     // TODO(wad) This tests against the stored credentials, not the TPM.
     // If mounts are "repopulated", then a trip through the TPM would be needed.
     LOG(INFO) << "Mount exists. Rechecking credentials.";
-    if (!user_mount->AreSameUser(credentials) ||
+    if (!user_mount->AreSameUser(
+            credentials.GetObfuscatedUsername(system_salt_)) ||
         !user_mount->AreValid(credentials)) {
       // Need to take a trip through the TPM.
       if (!homedirs_->AreCredentialsValid(credentials)) {
@@ -2553,7 +2557,8 @@ void Service::ContinueMountExWithCredentials(
   if (user_mount->IsMounted()) {
     LOG(INFO) << "Mount exists. Rechecking credentials.";
     // Attempt a short-circuited credential test.
-    if (user_mount->AreSameUser(*credentials) &&
+    if (user_mount->AreSameUser(
+            credentials->GetObfuscatedUsername(system_salt_)) &&
         user_mount->AreValid(*credentials)) {
       SendReply(context, reply);
       homedirs_->ResetLECredentials(*credentials);

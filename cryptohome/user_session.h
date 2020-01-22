@@ -49,8 +49,8 @@ class UserSession {
   // Checks that the user supplied is the user associated with this session
   //
   // Parameters
-  //   username - The user to check this session against
-  virtual bool CheckUser(const Credentials& username) const;
+  //   obfuscated_username - The user to check this session against
+  virtual bool CheckUser(const std::string& obfuscated_username) const;
 
   // Checks that the user's credentials successfully decrypt the ciphertext
   // associated with this session (and are therefore valid for this user).
