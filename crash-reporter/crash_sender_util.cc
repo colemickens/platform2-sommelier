@@ -537,9 +537,9 @@ base::File Sender::AcquireLockFileOrDie() {
   base::TimeDelta wait_for_lock_file = base::TimeDelta::FromMinutes(5);
 
   if (IsCrashTestInProgress()) {
-    // When running logging_CrashSender's sender_single_instance test, don't
-    // wait a full 5 minutes before completing the test.
-    wait_for_lock_file = base::TimeDelta::FromSeconds(5);
+    // When running crash.SenderLock test, don't wait a full 5 minutes before
+    // completing the test.
+    wait_for_lock_file = base::TimeDelta::FromSeconds(1);
   }
 
   base::Time stop_time = clock_->Now() + wait_for_lock_file;
@@ -547,7 +547,7 @@ base::File Sender::AcquireLockFileOrDie() {
     if (lock_file.Lock() == base::File::FILE_OK) {
       return lock_file;
     }
-    const base::TimeDelta kSleepTime = base::TimeDelta::FromSeconds(10);
+    const base::TimeDelta kSleepTime = base::TimeDelta::FromSeconds(1);
     if (sleep_function_.is_null()) {
       base::PlatformThread::Sleep(kSleepTime);
     } else {
