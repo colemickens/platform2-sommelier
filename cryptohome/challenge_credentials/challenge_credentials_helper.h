@@ -126,19 +126,15 @@ class ChallengeCredentialsHelper final {
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback);
 
-  // Verifies whether the specified cryptographic key may be used to decrypt
-  // the specified vault keyset. This operation involves cryptographic
-  // challenge(s) of the specified key. This method is intended as a
-  // lightweight analog of Decrypt() for cases where the actual credentials
-  // aren't needed.
+  // Verifies that the specified cryptographic key is available and can be used
+  // for authentication. This operation involves making challenge request(s)
+  // against the key. This method is intended as a lightweight analog of
+  // Decrypt() for cases where the actual credentials aren't needed.
   //
   // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
-  // |keyset_challenge_info| is the encrypted representation of secrets as
-  // created via GenerateNew().
   // The result is reported via |callback|.
   void VerifyKey(const std::string& account_id,
                  const KeyData& key_data,
-                 const KeysetSignatureChallengeInfo& keyset_challenge_info,
                  std::unique_ptr<KeyChallengeService> key_challenge_service,
                  VerifyKeyCallback callback);
 
@@ -171,6 +167,12 @@ class ChallengeCredentialsHelper final {
       DecryptCallback original_callback,
       Tpm::TpmRetryAction retry_action,
       std::unique_ptr<Credentials> credentials);
+
+  // Wrapper for the completion callback of VerifyKey(). Cleans up resources
+  // associated with the operation and forwards results to the original
+  // callback.
+  void OnVerifyKeyCompleted(VerifyKeyCallback original_callback,
+                            bool is_key_valid);
 
   // Non-owned.
   Tpm* const tpm_;

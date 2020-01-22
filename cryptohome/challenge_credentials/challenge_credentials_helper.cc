@@ -12,6 +12,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_generate_new_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_verify_key_operation.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/signature_sealing_backend.h"
@@ -82,18 +83,18 @@ void ChallengeCredentialsHelper::Decrypt(
 void ChallengeCredentialsHelper::VerifyKey(
     const std::string& account_id,
     const KeyData& key_data,
-    const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     VerifyKeyCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
   CancelRunningOperation();
-  DCHECK(!key_challenge_service_);
-  // TODO(emaxx, https://crbug.com/842791): This should generate a random
-  // challenge, request its signature, and verify the signature
-  // programmatically.
-  NOTIMPLEMENTED() << "ChallengeCredentialsHelper::VerifyKey";
+  key_challenge_service_ = std::move(key_challenge_service);
+  operation_ = std::make_unique<ChallengeCredentialsVerifyKeyOperation>(
+      key_challenge_service_.get(), tpm_, account_id, key_data,
+      base::BindOnce(&ChallengeCredentialsHelper::OnVerifyKeyCompleted,
+                     base::Unretained(this), std::move(callback)));
+  operation_->Start();
 }
 
 void ChallengeCredentialsHelper::StartDecryptOperation(
@@ -155,6 +156,14 @@ void ChallengeCredentialsHelper::OnDecryptCompleted(
   } else {
     std::move(original_callback).Run(std::move(credentials));
   }
+}
+
+void ChallengeCredentialsHelper::OnVerifyKeyCompleted(
+    VerifyKeyCallback original_callback,
+    bool is_key_valid) {
+  DCHECK(thread_checker_.CalledOnValidThread());
+  CancelRunningOperation();
+  std::move(original_callback).Run(is_key_valid);
 }
 
 }  // namespace cryptohome

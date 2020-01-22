@@ -285,6 +285,7 @@ static_library("libcryptohome") {
     "../challenge_credentials/challenge_credentials_generate_new_operation.cc",
     "../challenge_credentials/challenge_credentials_helper.cc",
     "../challenge_credentials/challenge_credentials_operation.cc",
+    "../challenge_credentials/challenge_credentials_verify_key_operation.cc",
     "../chaps_client_factory.cc",
     "../credentials.cc",
     "../cryptohome_event_source.cc",
