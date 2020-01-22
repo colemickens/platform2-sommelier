@@ -33,6 +33,7 @@ interface MachineLearningService {
       => (LoadModelResult result);
   // The FlatbufferModelSpec contains both of the flatbuffer content and the
   // metadata.
-  LoadFlatBufferModel(FlatBufferModelSpec spec, Model& request)
+  LoadFlatBufferModel(FlatBufferModelSpec spec,
+                      Model& request)
       => (LoadModelResult result);
 };
