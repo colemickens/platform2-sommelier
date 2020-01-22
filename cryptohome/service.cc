@@ -1302,7 +1302,7 @@ gboolean Service::MassRemoveKeys(GArray* account_id,
     request.reset(nullptr);
 
   // If PBs don't parse, the validation in the handler will catch it.
-    PostTask(
+  PostTask(
       FROM_HERE,
       base::Bind(&Service::DoMassRemoveKeys, base::Unretained(this),
                  base::Owned(identifier.release()),
