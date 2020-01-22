@@ -33,8 +33,6 @@ extern const char kAndroidLegacyDevice[];
 // Reserved name for the Android device for ARCVM.
 // TODO(garrick): This can be removed
 extern const char kAndroidVmDevice[];
-// Reserved name prefix for Termina VM devices;
-extern const char kTerminaVmDevicePrefix[];
 
 // Encapsulates a physical (e.g. eth0) or proxy (e.g. arc) network device and
 // its configuration spec (interfaces, addresses) on the host and in the
@@ -165,12 +163,7 @@ class Device {
 
   bool IsAndroid() const;
   bool IsArc() const;
-  bool IsCrostini() const;
 
-  // Host interface name for Termina devices is only determined on creation, so
-  // this function needs to be used rather than directly reading from config().
-  // This is a hack and should be cleaned up by b/145483351.
-  std::string HostInterfaceName() const;
   bool UsesDefaultInterface() const;
 
   void RegisterIPv6Handlers(const DeviceHandler& up_handler,

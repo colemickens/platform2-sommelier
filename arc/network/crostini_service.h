@@ -5,7 +5,8 @@
 #ifndef ARC_NETWORK_CROSTINI_SERVICE_H_
 #define ARC_NETWORK_CROSTINI_SERVICE_H_
 
-#include <set>
+#include <map>
+#include <memory>
 #include <string>
 
 #include <base/memory/weak_ptr.h>
@@ -16,43 +17,27 @@
 
 namespace arc_networkd {
 
-// Crostini networking service hanlding address allocation and TAP device
+// Crostini networking service handling address allocation and TAP device
 // management for Termina VMs.
 class CrostiniService {
  public:
-  class Context : public Device::Context {
-   public:
-    Context() = default;
-    ~Context() = default;
-
-    bool IsLinkUp() const override;
-
-    int32_t CID() const;
-    void SetCID(int32_t cid);
-    const std::string& TAP() const;
-    void SetTAP(const std::string& tap);
-
-   private:
-    int32_t cid_;
-    std::string tap_;
-
-    DISALLOW_COPY_AND_ASSIGN(Context);
-  };
-
   // |dev_mgr| and |datapath| cannot be null.
   CrostiniService(DeviceManagerBase* dev_mgr, Datapath* datapath);
-  ~CrostiniService();
+  ~CrostiniService() = default;
 
   bool Start(int32_t cid);
   void Stop(int32_t cid);
 
-  void OnDeviceAdded(Device* device);
-  void OnDeviceRemoved(Device* device);
+  const Device* const TAP(int32_t cid) const;
 
  private:
+  bool AddTAP(int32_t cid);
+  void OnDefaultInterfaceChanged(const std::string& ifname);
+
   DeviceManagerBase* dev_mgr_;
   Datapath* datapath_;
-  std::set<int32_t> cids_;
+  // Mapping of VM CIDs to TAP devices
+  std::map<int32_t, std::unique_ptr<Device>> taps_;
 
   base::WeakPtrFactory<CrostiniService> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(CrostiniService);

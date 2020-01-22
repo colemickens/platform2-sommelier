@@ -24,9 +24,6 @@ namespace arc_networkd {
 const char kAndroidDevice[] = "arc0";
 const char kAndroidLegacyDevice[] = "android";
 const char kAndroidVmDevice[] = "arcvm";
-// Prefix used to identify devices created for Termina that hold the configured
-// TAP interface for it VM.
-const char kTerminaVmDevicePrefix[] = "tvm";
 
 namespace {
 constexpr int kMaxRandomAddressTries = 3;
@@ -97,21 +94,6 @@ bool Device::IsAndroid() const {
 
 bool Device::IsArc() const {
   return guest_ == GuestMessage::ARC;
-}
-
-bool Device::IsCrostini() const {
-  // TODO(garrick): Update as necessary.
-  return guest_ == GuestMessage::TERMINA_VM;
-}
-
-std::string Device::HostInterfaceName() const {
-  if (IsCrostini()) {
-    auto ctx = dynamic_cast<const CrostiniService::Context*>(ctx_.get());
-    if (ctx) {
-      return ctx->TAP();
-    }
-  }
-  return config().host_ifname();
 }
 
 bool Device::UsesDefaultInterface() const {

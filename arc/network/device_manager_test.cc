@@ -218,19 +218,6 @@ TEST_F(DeviceManagerTest, MakeDevice_AndroidVm) {
   EXPECT_TRUE(arc0->options().is_sticky);
 }
 
-TEST_F(DeviceManagerTest, MakeDevice_TerminaVm) {
-  auto mgr = NewManager();
-  auto tvm = mgr->MakeDevice("tvm3");
-  const auto& cfg = tvm->config();
-  EXPECT_EQ(cfg.host_ifname(), "");
-  EXPECT_EQ(cfg.guest_ifname(), "");
-  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 25));
-  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 26));
-  EXPECT_TRUE(cfg.lxd_ipv4_subnet());
-  EXPECT_TRUE(tvm->options().ipv6_enabled);
-  EXPECT_TRUE(tvm->options().is_sticky);
-}
-
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
   auto mgr = NewManager();
   std::vector<std::unique_ptr<Device>> devices;

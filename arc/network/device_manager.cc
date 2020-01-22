@@ -16,14 +16,8 @@
 
 namespace arc_networkd {
 namespace {
-
 constexpr std::array<const char*, 2> kEthernetInterfacePrefixes{{"eth", "usb"}};
 constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
-
-bool IsTerminaDevice(const std::string& ifname) {
-  return base::StartsWith(ifname, kTerminaVmDevicePrefix,
-                          base::CompareCase::INSENSITIVE_ASCII);
-}
 
 bool IsEthernetInterface(const std::string& ifname) {
   for (const auto& prefix : kEthernetInterfacePrefixes) {
@@ -250,20 +244,6 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     opts.use_default_interface = true;
     opts.is_android = true;
     opts.is_sticky = true;
-  } else if (IsTerminaDevice(name)) {
-    opts.ipv6_enabled = true;
-    opts.find_ipv6_routes_legacy = false;
-    opts.fwd_multicast = true;
-    opts.use_default_interface = true;
-    opts.is_sticky = true;
-    guest = AddressManager::Guest::VM_TERMINA;
-    lxd_subnet =
-        addr_mgr_->AllocateIPv4Subnet(AddressManager::Guest::CONTAINER);
-    if (!lxd_subnet) {
-      LOG(ERROR) << "lxd subnet already in use or unavailable."
-                 << " Cannot make device: " << name;
-      return nullptr;
-    }
   } else {
     if (name == kAndroidDevice) {
       host_ifname = "arcbr0";
@@ -341,7 +321,7 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
 void DeviceManager::StartForwarding(const Device& device) {
   forwarder_->StartForwarding(
       device.UsesDefaultInterface() ? default_ifname_ : device.ifname(),
-      device.HostInterfaceName(), device.config().guest_ipv4_addr(),
+      device.config().host_ifname(), device.config().guest_ipv4_addr(),
       device.options().ipv6_enabled &&
           !device.options().find_ipv6_routes_legacy,
       device.options().fwd_multicast);
@@ -350,7 +330,7 @@ void DeviceManager::StartForwarding(const Device& device) {
 void DeviceManager::StopForwarding(const Device& device) {
   forwarder_->StopForwarding(
       device.UsesDefaultInterface() ? default_ifname_ : device.ifname(),
-      device.HostInterfaceName(), device.options().ipv6_enabled,
+      device.config().host_ifname(), device.options().ipv6_enabled,
       device.options().fwd_multicast);
 }
 
@@ -367,6 +347,10 @@ void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
 
   for (const std::string& name : devices)
     Add(name);
+}
+
+AddressManager* DeviceManager::addr_mgr() const {
+  return addr_mgr_;
 }
 
 }  // namespace arc_networkd

@@ -24,16 +24,10 @@ CrostiniService::CrostiniService(DeviceManagerBase* dev_mgr, Datapath* datapath)
   DCHECK(dev_mgr_);
   DCHECK(datapath_);
 
-  dev_mgr_->RegisterDeviceAddedHandler(
+  dev_mgr_->RegisterDefaultInterfaceChangedHandler(
       GuestMessage::TERMINA_VM,
-      base::Bind(&CrostiniService::OnDeviceAdded, base::Unretained(this)));
-  dev_mgr_->RegisterDeviceRemovedHandler(
-      GuestMessage::TERMINA_VM,
-      base::Bind(&CrostiniService::OnDeviceRemoved, base::Unretained(this)));
-}
-
-CrostiniService::~CrostiniService() {
-  dev_mgr_->UnregisterAllGuestHandlers(GuestMessage::TERMINA_VM);
+      base::Bind(&CrostiniService::OnDefaultInterfaceChanged,
+                 base::Unretained(this)));
 }
 
 bool CrostiniService::Start(int32_t cid) {
@@ -41,91 +35,110 @@ bool CrostiniService::Start(int32_t cid) {
     LOG(ERROR) << "Invalid VM cid " << cid;
     return false;
   }
+  if (taps_.find(cid) != taps_.end()) {
+    LOG(WARNING) << "Already started for {cid: " << cid << "}";
+    return false;
+  }
 
-  cids_.insert(cid);
+  if (!AddTAP(cid))
+    return false;
+
   LOG(INFO) << "Crostini network service started for {cid: " << cid << "}";
-
-  // Add a new Termina device.
-  auto ctx = std::make_unique<Context>();
-  ctx->SetCID(cid);
-  dev_mgr_->AddWithContext(
-      base::StringPrintf("%s%d", kTerminaVmDevicePrefix, cid), std::move(ctx));
-
+  dev_mgr_->StartForwarding(*taps_[cid].get());
   return true;
 }
 
 void CrostiniService::Stop(int32_t cid) {
-  if (cids_.erase(cid) == 0) {
+  const auto it = taps_.find(cid);
+  if (it == taps_.end()) {
     LOG(WARNING) << "Unknown {cid: " << cid << "}";
     return;
   }
 
-  // Remove the device.
-  dev_mgr_->Remove(base::StringPrintf("%s%d", kTerminaVmDevicePrefix, cid));
+  const auto* dev = it->second.get();
+  dev_mgr_->StopForwarding(*dev);
+  datapath_->RemoveInterface(dev->config().host_ifname());
+  taps_.erase(it);
 
   LOG(INFO) << "Crostini network service stopped for {cid: " << cid << "}";
 }
 
-void CrostiniService::OnDeviceAdded(Device* device) {
-  if (!device->IsCrostini())
-    return;
+const Device* const CrostiniService::TAP(int32_t cid) const {
+  const auto it = taps_.find(cid);
+  if (it == taps_.end()) {
+    return nullptr;
+  }
+  return it->second.get();
+}
 
-  auto ctx = dynamic_cast<Context*>(device->context());
-  if (!ctx) {
-    LOG(ERROR) << "Context missing for " << device->ifname();
-    return;
+bool CrostiniService::AddTAP(int32_t cid) {
+  auto* const addr_mgr = dev_mgr_->addr_mgr();
+  auto ipv4_subnet =
+      addr_mgr->AllocateIPv4Subnet(AddressManager::Guest::VM_TERMINA);
+  if (!ipv4_subnet) {
+    LOG(ERROR)
+        << "Subnet already in use or unavailable. Cannot make device for cid "
+        << cid;
+    return false;
+  }
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
+  if (!host_ipv4_addr) {
+    LOG(ERROR) << "Host address already in use or unavailable. Cannot make "
+                  "device for cid "
+               << cid;
+    return false;
+  }
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  if (!guest_ipv4_addr) {
+    LOG(ERROR) << "VM address already in use or unavailable. Cannot make "
+                  "device for cid "
+               << cid;
+    return false;
+  }
+  auto lxd_subnet =
+      addr_mgr->AllocateIPv4Subnet(AddressManager::Guest::CONTAINER);
+  if (!lxd_subnet) {
+    LOG(ERROR) << "lxd subnet already in use or unavailable."
+               << " Cannot make device for cid " << cid;
+    return false;
   }
 
-  LOG(INFO) << "Starting device " << device->ifname();
-
-  const auto& config = device->config();
-  const auto mac_addr = config.guest_mac_addr();
-  std::string tap =
+  const auto mac_addr = addr_mgr->GenerateMacAddress();
+  const std::string tap =
       datapath_->AddTAP("" /* auto-generate name */, &mac_addr,
-                        config.host_ipv4_subnet_addr(), vm_tools::kCrosVmUser);
+                        host_ipv4_addr.get(), vm_tools::kCrosVmUser);
   if (tap.empty()) {
-    LOG(ERROR) << "Failed to create TAP device for VM";
-    return;
+    LOG(ERROR) << "Failed to create TAP device for cid " << cid;
+    return false;
   }
 
-  ctx->SetTAP(tap);
-  dev_mgr_->StartForwarding(*device);
-}
+  auto config = std::make_unique<Device::Config>(
+      tap, "", mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
+      std::move(guest_ipv4_addr), std::move(lxd_subnet));
 
-void CrostiniService::OnDeviceRemoved(Device* device) {
-  if (!device->IsCrostini())
-    return;
+  Device::Options opts{
+      .fwd_multicast = true,
+      .ipv6_enabled = true,
+      .find_ipv6_routes_legacy = false,
+      .use_default_interface = true,
+      .is_android = false,
+      .is_sticky = true,
+  };
 
-  auto ctx = dynamic_cast<Context*>(device->context());
-  if (!ctx) {
-    LOG(ERROR) << "Context missing for " << device->ifname();
-    return;
-  }
-
-  datapath_->RemoveInterface(ctx->TAP());
-}
-
-// Context
-
-bool CrostiniService::Context::IsLinkUp() const {
-  // Unused.
+  taps_.emplace(cid, std::make_unique<Device>(tap, std::move(config), opts,
+                                              GuestMessage::TERMINA_VM));
   return true;
 }
 
-int32_t CrostiniService::Context::CID() const {
-  return cid_;
-}
+void CrostiniService::OnDefaultInterfaceChanged(const std::string& ifname) {
+  for (const auto& t : taps_)
+    dev_mgr_->StopForwarding(*t.second.get());
 
-void CrostiniService::Context::SetCID(int32_t cid) {
-  cid_ = cid;
-}
+  if (ifname.empty())
+    return;
 
-const std::string& CrostiniService::Context::TAP() const {
-  return tap_;
-}
-
-void CrostiniService::Context::SetTAP(const std::string& tap) {
-  tap_ = tap;
+  for (const auto& t : taps_)
+    dev_mgr_->StartForwarding(*t.second.get());
 }
 
 }  // namespace arc_networkd

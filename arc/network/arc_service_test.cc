@@ -62,6 +62,7 @@ class MockDeviceManager : public DeviceManagerBase {
   MOCK_METHOD1(Remove, bool(const std::string&));
   MOCK_METHOD1(StartForwarding, void(const Device&));
   MOCK_METHOD1(StopForwarding, void(const Device&));
+  MOCK_CONST_METHOD0(addr_mgr, AddressManager*());
 };
 
 std::unique_ptr<Device> MakeDevice(const std::string& name,

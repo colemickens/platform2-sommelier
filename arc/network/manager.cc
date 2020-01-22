@@ -485,36 +485,34 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
     return dbus_response;
   }
 
-  // Populate the response with the known devices.
-  auto build_resp = [](int32_t cid, patchpanel::TerminaVmStartupResponse* resp,
-                       Device* device) {
-    auto* ctx = dynamic_cast<CrostiniService::Context*>(device->context());
-    if (!ctx || ctx->TAP().empty() || ctx->CID() != cid)
-      return;
+  const auto* const tap = cros_svc_->TAP(cid);
+  if (!tap) {
+    LOG(DFATAL) << "TAP device missing";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
-    const auto& config = device->config();
-    auto* dev = resp->mutable_device();
-    dev->set_ifname(ctx->TAP());
-    const auto* subnet = config.ipv4_subnet();
-    if (!subnet) {
-      LOG(ERROR) << "Missing required subnet for " << device->ifname();
-      return;
-    }
-    auto* resp_subnet = dev->mutable_ipv4_subnet();
-    resp_subnet->set_base_addr(subnet->BaseAddress());
-    resp_subnet->set_prefix_len(subnet->PrefixLength());
-    subnet = config.lxd_ipv4_subnet();
-    if (!subnet) {
-      LOG(ERROR) << "Missing required lxd subnet for " << device->ifname();
-      return;
-    }
-    resp_subnet = resp->mutable_container_subnet();
-    resp_subnet->set_base_addr(subnet->BaseAddress());
-    resp_subnet->set_prefix_len(subnet->PrefixLength());
-  };
-
-  device_mgr_->ProcessDevices(
-      base::Bind(build_resp, cid, base::Unretained(&response)));
+  const auto& config = tap->config();
+  auto* dev = response.mutable_device();
+  dev->set_ifname(config.host_ifname());
+  const auto* subnet = config.ipv4_subnet();
+  if (!subnet) {
+    LOG(DFATAL) << "Missing required subnet for {cid: " << cid << "}";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  auto* resp_subnet = dev->mutable_ipv4_subnet();
+  resp_subnet->set_base_addr(subnet->BaseAddress());
+  resp_subnet->set_prefix_len(subnet->PrefixLength());
+  subnet = config.lxd_ipv4_subnet();
+  if (!subnet) {
+    LOG(DFATAL) << "Missing required lxd subnet for {cid: " << cid << "}";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  resp_subnet = response.mutable_container_subnet();
+  resp_subnet->set_base_addr(subnet->BaseAddress());
+  resp_subnet->set_prefix_len(subnet->PrefixLength());
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
