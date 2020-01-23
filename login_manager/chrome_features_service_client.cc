@@ -21,7 +21,7 @@ ChromeFeaturesServiceClient::~ChromeFeaturesServiceClient() = default;
 
 void ChromeFeaturesServiceClient::IsFeatureEnabled(
     const std::string& feature_name, IsFeatureEnabledCallback callback) {
-  proxy_->WaitForServiceToBeAvailable(base::Bind(
+  proxy_->WaitForServiceToBeAvailable(base::BindOnce(
       &ChromeFeaturesServiceClient::OnWaitForServiceForIsFeatureEnabled,
       weak_ptr_factory_.GetWeakPtr(), feature_name, std::move(callback)));
 }
@@ -46,8 +46,9 @@ void ChromeFeaturesServiceClient::CallIsFeatureEnabled(
   writer.AppendString(feature_name);
   proxy_->CallMethod(
       &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::Bind(&ChromeFeaturesServiceClient::HandlelIsFeatureEnabledResponse,
-                 weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+      base::BindOnce(
+          &ChromeFeaturesServiceClient::HandlelIsFeatureEnabledResponse,
+          weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void ChromeFeaturesServiceClient::HandlelIsFeatureEnabledResponse(

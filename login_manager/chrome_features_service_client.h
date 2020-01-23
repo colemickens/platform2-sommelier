@@ -28,9 +28,8 @@ class ChromeFeaturesServiceClient {
   // Async call to check whether given feature is enabled. |enabled| is
   // base::nullopt if there is error calling the service. Otherwise,
   // |enable.value()| indicates whether the feature is enabled or not.
-  // TODO(crbug.com/909719): Convert to OnceCallback.
   using IsFeatureEnabledCallback =
-      base::Callback<void(base::Optional<bool> enabled)>;
+      base::OnceCallback<void(base::Optional<bool> enabled)>;
   void IsFeatureEnabled(const std::string& feature_name,
                         IsFeatureEnabledCallback callback);
 
