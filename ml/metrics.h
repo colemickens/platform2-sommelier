@@ -20,11 +20,14 @@ namespace ml {
 // Threading: Create and use on a single sequence.
 class Metrics {
  public:
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  // |kMaxValue| must equal to the maximum value in this enum.
   enum class MojoConnectionEvent {
     kBootstrapRequested = 0,
-    kBootstrapSucceeded,
-    kConnectionError,
-    kMax
+    kBootstrapSucceeded = 1,
+    kConnectionError = 2,
+    kMaxValue = kConnectionError
   };
 
   Metrics();

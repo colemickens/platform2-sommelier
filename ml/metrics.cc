@@ -119,9 +119,9 @@ void Metrics::UpdateAndRecordMetrics(
 }
 
 void Metrics::RecordMojoConnectionEvent(const MojoConnectionEvent event) {
-  metrics_library_.SendEnumToUMA(kMojoConnectionEventMetricName,
-                                 static_cast<int>(event),
-                                 static_cast<int>(MojoConnectionEvent::kMax));
+  metrics_library_.SendEnumToUMA(
+      kMojoConnectionEventMetricName, static_cast<int>(event),
+      static_cast<int>(MojoConnectionEvent::kMaxValue) + 1);
 }
 
 }  // namespace ml
