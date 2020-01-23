@@ -26,6 +26,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/callback.h>
 #include <brillo/glib/dbus.h>
 
@@ -101,8 +102,7 @@ class DBusReply : public CryptohomeEventBase {
 
   // No output argument version
   explicit DBusReply(DBusGMethodInvocation* context) {
-    // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev.
-    cleanup_callback_ = base::BindOnce([]() {});
+    cleanup_callback_ = base::DoNothing::Once();
     send_reply_ = base::BindOnce(
         [](DBusGMethodInvocation* context_to_send) {
           dbus_g_method_return(context_to_send);

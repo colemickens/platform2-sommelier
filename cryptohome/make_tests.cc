@@ -225,8 +225,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   EXPECT_CALL(platform, DirectoryExists(shadow_root))
     .WillRepeatedly(Return(true));
   mount->Init(&platform, &crypto, &timestamp_cache,
-              // TODO(crbug.com/909719): replace with base::DoNothing;
-              base::Bind([]() {}));
+              base::DoNothing());
 
   cryptohome::Crypto::PasswordToPasskey(password,
                                         sec_salt,

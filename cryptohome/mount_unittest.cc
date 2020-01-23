@@ -620,8 +620,7 @@ TEST_P(MountTest, BadInitTest) {
     .WillOnce(DoAll(SetArgPointee<1>(1002), Return(true)));
   EXPECT_FALSE(
       mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get(),
-                   // TODO(crbug.com/909719): replace with base::DoNothing;
-                   base::BindRepeating([]() {})));
+                   base::DoNothing()));
   ASSERT_FALSE(mount_->AreValid(credentials));
 }
 
@@ -855,8 +854,7 @@ class ChapsDirectoryTest : public ::testing::Test {
         user_timestamp_cache_(new UserOldestActivityTimestampCache()) {
     crypto_.set_platform(&platform_);
     mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get(),
-                 // TODO(crbug.com/909719): replace with base::DoNothing;
-                 base::BindRepeating([]() {}));
+                 base::DoNothing());
     mount_->chaps_user_ = kChapsUID;
     mount_->default_access_group_ = kSharedGID;
     // By default, set stats to the expected values.
