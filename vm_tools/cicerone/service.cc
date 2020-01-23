@@ -731,6 +731,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   proto.set_owner_id(owner_id);
   proto.set_container_username(username);
   proto.set_container_homedir(homedir);
+  proto.set_ipv4_address(string_ip);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
   *result = true;
