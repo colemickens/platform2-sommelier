@@ -4,6 +4,8 @@
 
 #include "shill/dbus/dhcpcd_proxy.h"
 
+#include <base/bind_helpers.h>
+
 #include "shill/logging.h"
 
 using std::string;
@@ -25,8 +27,7 @@ DHCPCDProxy::DHCPCDProxy(const scoped_refptr<dbus::Bus>& bus,
 }
 
 DHCPCDProxy::~DHCPCDProxy() {
-  // TODO(crbug.com/909719): Replace by base::DoNothing when uprevved.
-  dhcpcd_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+  dhcpcd_proxy_->ReleaseObjectProxy(base::DoNothing());
 }
 
 void DHCPCDProxy::Rebind(const string& interface) {

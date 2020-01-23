@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 
 #include "shill/logging.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -38,8 +39,7 @@ SupplicantBSSProxy::SupplicantBSSProxy(const scoped_refptr<dbus::Bus>& bus,
 }
 
 SupplicantBSSProxy::~SupplicantBSSProxy() {
-  // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev.
-  bss_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+  bss_proxy_->ReleaseObjectProxy(base::DoNothing());
 }
 
 void SupplicantBSSProxy::PropertiesChanged(

@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 
 #include "shill/logging.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -60,8 +61,7 @@ SupplicantNetworkProxy::SupplicantNetworkProxy(
 }
 
 SupplicantNetworkProxy::~SupplicantNetworkProxy() {
-  // TODO(crbug.com/909719): Use base::DoNothing after uprev.
-  network_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+  network_proxy_->ReleaseObjectProxy(base::DoNothing());
 }
 
 bool SupplicantNetworkProxy::SetEnabled(bool enabled) {

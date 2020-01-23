@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 
 #include "shill/logging.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
@@ -117,8 +118,7 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
 }
 
 SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {
-  // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev.
-  interface_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+  interface_proxy_->ReleaseObjectProxy(base::DoNothing());
 }
 
 bool SupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
