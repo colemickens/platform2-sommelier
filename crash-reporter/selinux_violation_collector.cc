@@ -14,6 +14,8 @@
 namespace {
 constexpr char kExecName[] = "selinux-violation";
 constexpr char kSignatureKey[] = "sig";
+// Truncate "comm" strings longer than this
+constexpr size_t kMaxCommLen = 128;
 }  // namespace
 
 using base::FilePath;
@@ -86,7 +88,21 @@ bool SELinuxViolationCollector::Collect() {
   if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr))
     return true;
 
-  std::string dump_basename = FormatDumpBasename(kExecName, time(nullptr), 0);
+  // Give crash files more unique names by taking the "comm" identifier
+  // (if one is present) and adding it to the "selinux-violation" prefix.
+  std::string name_prefix = kExecName;
+
+  std::string comm_key = "comm=\"";
+  std::string::size_type comm = content.find(comm_key);
+  if (comm != std::string::npos) {
+    std::string::size_type key_start = comm + comm_key.size();
+    std::string::size_type key_end = content.find("\"", key_start);
+    std::string::size_type substr_len = key_end - key_start;
+    substr_len = substr_len > kMaxCommLen ? kMaxCommLen : substr_len;
+    name_prefix += "_" + content.substr(key_start, substr_len);
+  }
+
+  std::string dump_basename = FormatDumpBasename(name_prefix, time(nullptr), 0);
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
 
