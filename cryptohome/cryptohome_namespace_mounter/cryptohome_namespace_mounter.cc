@@ -12,6 +12,7 @@
 
 #include <sys/types.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include <memory>
 
@@ -38,6 +39,24 @@
 using base::FilePath;
 
 namespace {
+
+// Forks a child process that immediately prints |message| and crashes.
+// This is useful to report an error through crash reporting without taking down
+// the entire cryptohome-namespace-mounter process, therefore allowing it to
+// clean up and exit normally. This ensures the process doesn't leave mounts
+// laying around.
+void ForkAndCrash(const std::string& message) {
+  pid_t child_pid = fork();
+
+  if (child_pid < 0) {
+    PLOG(ERROR) << "fork() failed";
+  } else if (child_pid == 0) {
+    // Child process: crash with |message|.
+    LOG(FATAL) << message;
+  }
+  // |child_pid| > 0
+  // Parent process: return normally.
+}
 
 void TearDown(cryptohome::MountHelper* mounter) {
   mounter->TearDownEphemeralMount();
@@ -89,7 +108,7 @@ int main(int argc, char** argv) {
       base::Bind(&TearDown, base::Unretained(&mounter)));
 
   if (!mounter.PerformEphemeralMount(request.username())) {
-    LOG(ERROR) << "PerformEphemeralMount failed";
+    ForkAndCrash("PerformEphemeralMount failed");
     return EX_SOFTWARE;
   }
   VLOG(1) << "PerformEphemeralMount succeeded";
@@ -100,7 +119,7 @@ int main(int argc, char** argv) {
   }
 
   if (!cryptohome::WriteProtobuf(STDOUT_FILENO, response)) {
-    LOG(ERROR) << "Failed to write response protobuf";
+    ForkAndCrash("Failed to write response protobuf");
     return EX_OSERR;
   }
   VLOG(1) << "Sent protobuf";
