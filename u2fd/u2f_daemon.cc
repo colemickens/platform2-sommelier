@@ -299,8 +299,8 @@ void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation,
 
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
       std::move(allowlisting_util), request_presence, user_state_.get(),
-      &tpm_proxy_, &metrics_library_, allow_g2f_attestation,
-      legacy_kh_fallback_);
+      &tpm_proxy_, &metrics_library_, legacy_kh_fallback_,
+      allow_g2f_attestation);
 }
 
 void U2fDaemon::CreateU2fHid() {
