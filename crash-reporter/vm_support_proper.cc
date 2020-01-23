@@ -6,8 +6,29 @@
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/constants/vm_tools.h>
+#include <grpcpp/grpcpp.h>
+
+#include <sys/socket.h>
+#include <utility>
+
+#include <linux/vm_sockets.h>
 
 #include "crash-reporter/user_collector.h"
+
+VmSupportProper::VmSupportProper() {
+  std::string addr = base::StringPrintf("vsock:%u:%u", VMADDR_CID_HOST,
+                                        vm_tools::kCrashListenerPort);
+
+  // It's safe to use an unencrypted/authenticated channel here because the
+  // whole channel exists within a single machine, and so we can rely on the
+  // kernel to provide us with confidentiality and integrity. Our usage of a
+  // vsock address guarantees this.
+  auto channel =
+      grpc::CreateChannel(std::move(addr), grpc::InsecureChannelCredentials());
+  stub_ = std::make_unique<vm_tools::cicerone::CrashListener::Stub>(
+      std::move(channel));
+}
 
 void VmSupportProper::AddMetadata(UserCollector* collector) {
   // TODO(hollingum): implement me.
@@ -17,6 +38,14 @@ void VmSupportProper::FinishCrash(const base::FilePath& crash_meta_path) {
   LOG(INFO) << "A program crashed in the VM and was logged at: "
             << crash_meta_path.value();
   // TODO(hollingum): implement me.
+}
+
+bool VmSupportProper::GetMetricsConsent() {
+  grpc::ClientContext ctx;
+  vm_tools::EmptyMessage request;
+  vm_tools::cicerone::MetricsConsentResponse response;
+  grpc::Status status = stub_->CheckMetricsConsent(&ctx, request, &response);
+  return status.ok() && response.consent_granted();
 }
 
 bool VmSupportProper::ShouldDump(pid_t pid, std::string* out_reason) {

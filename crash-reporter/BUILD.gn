@@ -105,6 +105,14 @@ pkg_config("crash_reporter_config") {
     "libmetrics-${libbase_ver}",
     "libminijail",
   ]
+
+  if (use.kvm_guest) {
+    pkg_deps += [
+      "grpc++",
+      "protobuf",
+      "vm_protos",
+    ]
+  }
 }
 
 executable("crash_reporter") {
@@ -112,7 +120,10 @@ executable("crash_reporter") {
   sources = [
     "crash_reporter.cc",
   ]
-  defines = [ "USE_CHEETS=${use.cheets}" ]
+  defines = [
+    "USE_CHEETS=${use.cheets}",
+    "USE_KVM_GUEST=${use.kvm_guest}",
+  ]
   deps = [
     ":libcrash",
     ":libcrash_reporter",
@@ -232,6 +243,14 @@ if (use.test || use.fuzzer) {
       "libshill-client-test",
       "libdebugd-client-test",
     ]
+
+    if (use.kvm_guest) {
+      pkg_deps += [
+        "grpc++",
+        "protobuf",
+        "vm_protos",
+      ]
+    }
   }
 
   static_library("libcrash_test_util") {

@@ -30,6 +30,9 @@ class VmSupport {
   // use to identify the necessary crash files.
   virtual void FinishCrash(const base::FilePath& crash_meta_path) = 0;
 
+  // Query the host for metrics consent state.
+  virtual bool GetMetricsConsent() = 0;
+
   // Perform extra checks to exclude |collector|'s crash for software CrOS
   // doesn't care about (i.e. non first-party apps e.g. gedit). Returns |true|
   // if we care about this crash, and if we don't explains why in |out_reason|.
