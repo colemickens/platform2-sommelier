@@ -52,20 +52,20 @@ MinijailedProcessRunner& Datapath::runner() const {
 bool Datapath::AddBridge(const std::string& ifname,
                          const std::string& ipv4_addr) {
   // Configure the persistent Chrome OS bridge interface with static IP.
-  if (process_runner_->Run({kBrctlPath, "addbr", ifname}) != 0) {
+  if (process_runner_->brctl("addbr", {ifname}) != 0) {
     return false;
   }
 
-  if (process_runner_->Run({kIfConfigPath, ifname, ipv4_addr, "netmask",
-                            kDefaultNetmask, "up"}) != 0) {
+  if (process_runner_->ifconfig(
+          ifname, {ipv4_addr, "netmask", kDefaultNetmask, "up"}) != 0) {
     RemoveBridge(ifname);
     return false;
   }
 
   // See nat.conf in chromeos-nat-init for the rest of the NAT setup rules.
-  if (process_runner_->Run({kIpTablesPath, "-t", "mangle", "-A", "PREROUTING",
-                            "-i", ifname, "-j", "MARK", "--set-mark", "1",
-                            "-w"}) != 0) {
+  if (process_runner_->iptables("mangle",
+                                {"-A", "PREROUTING", "-i", ifname, "-j", "MARK",
+                                 "--set-mark", "1", "-w"}) != 0) {
     RemoveBridge(ifname);
     return false;
   }
@@ -74,15 +74,15 @@ bool Datapath::AddBridge(const std::string& ifname,
 }
 
 void Datapath::RemoveBridge(const std::string& ifname) {
-  process_runner_->Run({kIpTablesPath, "-t", "mangle", "-D", "PREROUTING", "-i",
-                        ifname, "-j", "MARK", "--set-mark", "1", "-w"});
-  process_runner_->Run({kIfConfigPath, ifname, "down"});
-  process_runner_->Run({kBrctlPath, "delbr", ifname});
+  process_runner_->iptables("mangle", {"-D", "PREROUTING", "-i", ifname, "-j",
+                                       "MARK", "--set-mark", "1", "-w"});
+  process_runner_->ifconfig(ifname, {"down"});
+  process_runner_->brctl("delbr", {ifname});
 }
 
 bool Datapath::AddToBridge(const std::string& br_ifname,
                            const std::string& ifname) {
-  return (process_runner_->Run({kBrctlPath, "addif", br_ifname, ifname}) == 0);
+  return (process_runner_->brctl("addif", {br_ifname, ifname}) == 0);
 }
 
 std::string Datapath::AddTAP(const std::string& name,
@@ -191,7 +191,7 @@ std::string Datapath::AddTAP(const std::string& name,
 }
 
 void Datapath::RemoveTAP(const std::string& ifname) {
-  process_runner_->Run({kIpPath, "tuntap", "del", ifname, "mode", "tap"});
+  process_runner_->ip("tuntap", "del", {ifname, "mode", "tap"});
 }
 
 std::string Datapath::AddVirtualBridgedInterface(const std::string& ifname,
@@ -201,19 +201,19 @@ std::string Datapath::AddVirtualBridgedInterface(const std::string& ifname,
   const std::string peer = ArcVethPeerName(ifname);
 
   RemoveInterface(veth);
-  if (process_runner_->Run({kIpPath, "link", "add", veth, "type", "veth",
-                            "peer", "name", peer}) != 0) {
+  if (process_runner_->ip("link", "add",
+                          {veth, "type", "veth", "peer", "name", peer}) != 0) {
     return "";
   }
 
-  if (process_runner_->Run({kIfConfigPath, veth, "up"}) != 0) {
+  if (process_runner_->ifconfig(veth, {"up"}) != 0) {
     RemoveInterface(veth);
     RemoveInterface(peer);
     return "";
   }
 
-  if (process_runner_->Run({kIpPath, "link", "set", "dev", peer, "addr",
-                            mac_addr, "down"}) != 0) {
+  if (process_runner_->ip("link", "set",
+                          {"dev", peer, "addr", mac_addr, "down"}) != 0) {
     RemoveInterface(veth);
     RemoveInterface(peer);
     return "";
@@ -229,7 +229,7 @@ std::string Datapath::AddVirtualBridgedInterface(const std::string& ifname,
 }
 
 void Datapath::RemoveInterface(const std::string& ifname) {
-  process_runner_->Run({kIpPath, "link", "delete", ifname}, false /* log */);
+  process_runner_->ip("link", "delete", {ifname}, false /*log_failures*/);
 }
 
 bool Datapath::AddInterfaceToContainer(int ns,
@@ -238,8 +238,8 @@ bool Datapath::AddInterfaceToContainer(int ns,
                                        const std::string& dst_ipv4,
                                        bool fwd_multicast) {
   const std::string pid = base::IntToString(ns);
-  return (process_runner_->Run(
-              {kIpPath, "link", "set", src_ifname, "netns", pid}) == 0) &&
+  return (process_runner_->ip("link", "set", {src_ifname, "netns", pid}) ==
+          0) &&
          (process_runner_->AddInterfaceToContainer(src_ifname, dst_ifname,
                                                    dst_ipv4, kDefaultNetmask,
                                                    fwd_multicast, pid) == 0);
@@ -248,12 +248,11 @@ bool Datapath::AddInterfaceToContainer(int ns,
 bool Datapath::AddLegacyIPv4DNAT(const std::string& ipv4_addr) {
   // Forward "unclaimed" packets to Android to allow inbound connections
   // from devices on the LAN.
-  if (process_runner_->Run(
-          {kIpTablesPath, "-t", "nat", "-N", "dnat_arc", "-w"}) != 0)
+  if (process_runner_->iptables("nat", {"-N", "dnat_arc", "-w"}) != 0)
     return false;
 
-  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "dnat_arc", "-j",
-                            "DNAT", "--to-destination", ipv4_addr, "-w"}) !=
+  if (process_runner_->iptables("nat", {"-A", "dnat_arc", "-j", "DNAT",
+                                        "--to-destination", ipv4_addr, "-w"}) !=
       0) {
     RemoveLegacyIPv4DNAT();
     return false;
@@ -261,27 +260,26 @@ bool Datapath::AddLegacyIPv4DNAT(const std::string& ipv4_addr) {
 
   // This chain is dynamically updated whenever the default interface
   // changes.
-  if (process_runner_->Run(
-          {kIpTablesPath, "-t", "nat", "-N", "try_arc", "-w"}) != 0) {
+  if (process_runner_->iptables("nat", {"-N", "try_arc", "-w"}) != 0) {
     RemoveLegacyIPv4DNAT();
     return false;
   }
 
-  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING",
-                            "-m", "socket", "--nowildcard", "-j", "ACCEPT",
-                            "-w"}) != 0) {
+  if (process_runner_->iptables(
+          "nat", {"-A", "PREROUTING", "-m", "socket", "--nowildcard", "-j",
+                  "ACCEPT", "-w"}) != 0) {
     RemoveLegacyIPv4DNAT();
     return false;
   }
 
-  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING",
-                            "-p", "tcp", "-j", "try_arc", "-w"}) != 0) {
+  if (process_runner_->iptables("nat", {"-A", "PREROUTING", "-p", "tcp", "-j",
+                                        "try_arc", "-w"}) != 0) {
     RemoveLegacyIPv4DNAT();
     return false;
   }
 
-  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING",
-                            "-p", "udp", "-j", "try_arc", "-w"}) != 0) {
+  if (process_runner_->iptables("nat", {"-A", "PREROUTING", "-p", "udp", "-j",
+                                        "try_arc", "-w"}) != 0) {
     RemoveLegacyIPv4DNAT();
     return false;
   }
@@ -290,45 +288,45 @@ bool Datapath::AddLegacyIPv4DNAT(const std::string& ipv4_addr) {
 }
 
 void Datapath::RemoveLegacyIPv4DNAT() {
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-p",
-                        "udp", "-j", "try_arc", "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-p",
-                        "tcp", "-j", "try_arc", "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-m",
-                        "socket", "--nowildcard", "-j", "ACCEPT", "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-X", "try_arc", "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "dnat_arc", "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-X", "dnat_arc", "-w"});
+  process_runner_->iptables(
+      "nat", {"-D", "PREROUTING", "-p", "udp", "-j", "try_arc", "-w"});
+  process_runner_->iptables(
+      "nat", {"-D", "PREROUTING", "-p", "tcp", "-j", "try_arc", "-w"});
+  process_runner_->iptables("nat", {"-D", "PREROUTING", "-m", "socket",
+                                    "--nowildcard", "-j", "ACCEPT", "-w"});
+  process_runner_->iptables("nat", {"-F", "try_arc", "-w"});
+  process_runner_->iptables("nat", {"-X", "try_arc", "-w"});
+  process_runner_->iptables("nat", {"-F", "dnat_arc", "-w"});
+  process_runner_->iptables("nat", {"-X", "dnat_arc", "-w"});
 }
 
 bool Datapath::AddLegacyIPv4InboundDNAT(const std::string& ifname) {
-  return (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc",
-                                "-i", ifname, "-j", "dnat_arc", "-w"}) != 0);
+  return (process_runner_->iptables("nat", {"-A", "try_arc", "-i", ifname, "-j",
+                                            "dnat_arc", "-w"}) != 0);
 }
 
 void Datapath::RemoveLegacyIPv4InboundDNAT() {
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"});
+  process_runner_->iptables("nat", {"-F", "try_arc", "-w"});
 }
 
 bool Datapath::AddInboundIPv4DNAT(const std::string& ifname,
                                   const std::string& ipv4_addr) {
   // Direct ingress IP traffic to existing sockets.
-  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING",
-                            "-i", ifname, "-m", "socket", "--nowildcard", "-j",
-                            "ACCEPT", "-w"}) != 0)
+  if (process_runner_->iptables(
+          "nat", {"-A", "PREROUTING", "-i", ifname, "-m", "socket",
+                  "--nowildcard", "-j", "ACCEPT", "-w"}) != 0)
     return false;
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
-  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING",
-                            "-i", ifname, "-p", "tcp", "-j", "DNAT",
-                            "--to-destination", ipv4_addr, "-w"}) != 0) {
+  if (process_runner_->iptables(
+          "nat", {"-A", "PREROUTING", "-i", ifname, "-p", "tcp", "-j", "DNAT",
+                  "--to-destination", ipv4_addr, "-w"}) != 0) {
     RemoveInboundIPv4DNAT(ifname, ipv4_addr);
     return false;
   }
-  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING",
-                            "-i", ifname, "-p", "udp", "-j", "DNAT",
-                            "--to-destination", ipv4_addr, "-w"}) != 0) {
+  if (process_runner_->iptables(
+          "nat", {"-A", "PREROUTING", "-i", ifname, "-p", "udp", "-j", "DNAT",
+                  "--to-destination", ipv4_addr, "-w"}) != 0) {
     RemoveInboundIPv4DNAT(ifname, ipv4_addr);
     return false;
   }
@@ -338,25 +336,25 @@ bool Datapath::AddInboundIPv4DNAT(const std::string& ifname,
 
 void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
                                      const std::string& ipv4_addr) {
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
-                        ifname, "-p", "udp", "-j", "DNAT", "--to-destination",
-                        ipv4_addr, "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
-                        ifname, "-p", "tcp", "-j", "DNAT", "--to-destination",
-                        ipv4_addr, "-w"});
-  process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
-                        ifname, "-m", "socket", "--nowildcard", "-j", "ACCEPT",
-                        "-w"});
+  process_runner_->iptables(
+      "nat", {"-D", "PREROUTING", "-i", ifname, "-p", "udp", "-j", "DNAT",
+              "--to-destination", ipv4_addr, "-w"});
+  process_runner_->iptables(
+      "nat", {"-D", "PREROUTING", "-i", ifname, "-p", "tcp", "-j", "DNAT",
+              "--to-destination", ipv4_addr, "-w"});
+  process_runner_->iptables(
+      "nat", {"-D", "PREROUTING", "-i", ifname, "-m", "socket", "--nowildcard",
+              "-j", "ACCEPT", "-w"});
 }
 
 bool Datapath::AddOutboundIPv4(const std::string& ifname) {
-  return process_runner_->Run({kIpTablesPath, "-t", "filter", "-A", "FORWARD",
-                               "-o", ifname, "-j", "ACCEPT", "-w"}) == 0;
+  return process_runner_->iptables("filter", {"-A", "FORWARD", "-o", ifname,
+                                              "-j", "ACCEPT", "-w"}) == 0;
 }
 
 void Datapath::RemoveOutboundIPv4(const std::string& ifname) {
-  process_runner_->Run({kIpTablesPath, "-t", "filter", "-D", "FORWARD", "-o",
-                        ifname, "-j", "ACCEPT", "-w"});
+  process_runner_->iptables(
+      "filter", {"-D", "FORWARD", "-o", ifname, "-j", "ACCEPT", "-w"});
 }
 
 bool Datapath::MaskInterfaceFlags(const std::string& ifname,
@@ -391,14 +389,14 @@ bool Datapath::AddIPv6GatewayRoutes(const std::string& ifname,
   std::string ipv6_addr_cidr =
       ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
 
-  process_runner_->Run(
-      {kIpPath, "-6", "addr", "add", ipv6_addr_cidr, "dev", ifname});
+  process_runner_->ip6("addr", "add", {ipv6_addr_cidr, "dev", ifname});
 
-  process_runner_->Run({kIpPath, "-6", "route", "add", ipv6_router, "dev",
-                        ifname, "table", std::to_string(routing_table)});
+  process_runner_->ip6(
+      "route", "add",
+      {ipv6_router, "dev", ifname, "table", std::to_string(routing_table)});
 
-  process_runner_->Run({kIpPath, "-6", "route", "add", "default", "via",
-                        ipv6_router, "dev", ifname, "table",
+  process_runner_->ip6("route", "add",
+                       {"default", "via", ipv6_router, "dev", ifname, "table",
                         std::to_string(routing_table)});
   return true;
 }
@@ -411,13 +409,14 @@ void Datapath::RemoveIPv6GatewayRoutes(const std::string& ifname,
   std::string ipv6_addr_cidr =
       ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
 
-  process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
-                        ipv6_router, "dev", ifname, "table",
+  process_runner_->ip6("route", "del",
+                       {"default", "via", ipv6_router, "dev", ifname, "table",
                         std::to_string(routing_table)});
-  process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router, "dev",
-                        ifname, "table", std::to_string(routing_table)});
-  process_runner_->Run(
-      {kIpPath, "-6", "addr", "del", ipv6_addr_cidr, "dev", ifname}, false);
+  process_runner_->ip6(
+      "route", "del",
+      {ipv6_router, "dev", ifname, "table", std::to_string(routing_table)});
+  process_runner_->ip6("addr", "del", {ipv6_addr_cidr, "dev", ifname},
+                       false /*log_failures*/);
 }
 
 bool Datapath::AddIPv6HostRoute(const std::string& ifname,
@@ -426,8 +425,8 @@ bool Datapath::AddIPv6HostRoute(const std::string& ifname,
   std::string ipv6_addr_cidr =
       ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
 
-  return process_runner_->Run({kIpPath, "-6", "route", "replace",
-                               ipv6_addr_cidr, "dev", ifname}) == 0;
+  return process_runner_->ip6("route", "replace",
+                              {ipv6_addr_cidr, "dev", ifname}) == 0;
 }
 
 void Datapath::RemoveIPv6HostRoute(const std::string& ifname,
@@ -436,37 +435,39 @@ void Datapath::RemoveIPv6HostRoute(const std::string& ifname,
   std::string ipv6_addr_cidr =
       ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
 
-  process_runner_->Run(
-      {kIpPath, "-6", "route", "del", ipv6_addr_cidr, "dev", ifname});
+  process_runner_->ip6("route", "del", {ipv6_addr_cidr, "dev", ifname});
 }
 
 bool Datapath::AddIPv6Neighbor(const std::string& ifname,
                                const std::string& ipv6_addr) {
-  return process_runner_->Run({kIpPath, "-6", "neigh", "add", "proxy",
-                               ipv6_addr, "dev", ifname}) == 0;
+  return process_runner_->ip6("neigh", "add",
+                              {"proxy", ipv6_addr, "dev", ifname}) == 0;
 }
 
 void Datapath::RemoveIPv6Neighbor(const std::string& ifname,
                                   const std::string& ipv6_addr) {
-  process_runner_->Run(
-      {kIpPath, "-6", "neigh", "del", "proxy", ipv6_addr, "dev", ifname});
+  process_runner_->ip6("neigh", "del", {"proxy", ipv6_addr, "dev", ifname});
 }
 
 bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
                                  const std::string& ifname2) {
-  if (process_runner_->Run({kIp6TablesPath, "-C", "FORWARD", "-i", ifname1,
-                            "-o", ifname2, "-j", "ACCEPT", "-w"},
-                           false) != 0 &&
-      process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname1,
-                            "-o", ifname2, "-j", "ACCEPT", "-w"}) != 0) {
+  if (process_runner_->ip6tables(
+          "filter",
+          {"-C", "FORWARD", "-i", ifname1, "-o", ifname2, "-j", "ACCEPT", "-w"},
+          false /*log_failures*/) != 0 &&
+      process_runner_->ip6tables(
+          "filter", {"-A", "FORWARD", "-i", ifname1, "-o", ifname2, "-j",
+                     "ACCEPT", "-w"}) != 0) {
     return false;
   }
 
-  if (process_runner_->Run({kIp6TablesPath, "-C", "FORWARD", "-i", ifname2,
-                            "-o", ifname1, "-j", "ACCEPT", "-w"},
-                           false) != 0 &&
-      process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname2,
-                            "-o", ifname1, "-j", "ACCEPT", "-w"}) != 0) {
+  if (process_runner_->ip6tables(
+          "filter",
+          {"-C", "FORWARD", "-i", ifname2, "-o", ifname1, "-j", "ACCEPT", "-w"},
+          false /*log_failures*/) != 0 &&
+      process_runner_->ip6tables(
+          "filter", {"-A", "FORWARD", "-i", ifname2, "-o", ifname1, "-j",
+                     "ACCEPT", "-w"}) != 0) {
     RemoveIPv6Forwarding(ifname1, ifname2);
     return false;
   }
@@ -476,11 +477,11 @@ bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
 
 void Datapath::RemoveIPv6Forwarding(const std::string& ifname1,
                                     const std::string& ifname2) {
-  process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i", ifname1, "-o",
-                        ifname2, "-j", "ACCEPT", "-w"});
+  process_runner_->ip6tables("filter", {"-D", "FORWARD", "-i", ifname1, "-o",
+                                        ifname2, "-j", "ACCEPT", "-w"});
 
-  process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i", ifname2, "-o",
-                        ifname1, "-j", "ACCEPT", "-w"});
+  process_runner_->ip6tables("filter", {"-D", "FORWARD", "-i", ifname2, "-o",
+                                        ifname1, "-j", "ACCEPT", "-w"});
 }
 
 }  // namespace arc_networkd

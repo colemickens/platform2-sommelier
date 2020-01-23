@@ -117,7 +117,7 @@ void OneTimeSetup(const Datapath& datapath) {
   // Load networking modules needed by Android that are not compiled in the
   // kernel. Android does not allow auto-loading of kernel modules.
   // These must succeed.
-  if (runner.ModprobeAll({
+  if (runner.modprobe_all({
           // The netfilter modules needed by netd for iptables commands.
           "ip6table_filter",
           "ip6t_ipv6header",
@@ -135,7 +135,7 @@ void OneTimeSetup(const Datapath& datapath) {
                << " Some Android functionality may be broken.";
   }
   // Optional modules.
-  if (runner.ModprobeAll({
+  if (runner.modprobe_all({
           // This module is not available in kernels < 3.18
           "nf_reject_ipv6",
           // These modules are needed for supporting Chrome traffic on Android
@@ -151,7 +151,7 @@ void OneTimeSetup(const Datapath& datapath) {
   }
 
   // This is only needed for CTS (b/27932574).
-  if (runner.Chown("655360", "655360", "/sys/class/xt_idletimer") != 0) {
+  if (runner.chown("655360", "655360", "/sys/class/xt_idletimer") != 0) {
     LOG(ERROR) << "Failed to change ownership of xt_idletimer.";
   }
 

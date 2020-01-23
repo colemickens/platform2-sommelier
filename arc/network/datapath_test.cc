@@ -14,10 +14,15 @@
 
 #include <base/bind.h>
 #include <base/strings/string_util.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "arc/network/fake_process_runner.h"
 #include "arc/network/net_util.h"
+
+using testing::_;
+using testing::ElementsAre;
+using testing::Return;
+using testing::StrEq;
 
 namespace arc_networkd {
 namespace {
@@ -32,8 +37,60 @@ int ioctl_req_cap(int fd, ioctl_req_t req, ...) {
 
 }  // namespace
 
+class MockProcessRunner : public MinijailedProcessRunner {
+ public:
+  MockProcessRunner() = default;
+  ~MockProcessRunner() = default;
+
+  MOCK_METHOD6(AddInterfaceToContainer,
+               int(const std::string& host_ifname,
+                   const std::string& con_ifname,
+                   const std::string& con_ipv4,
+                   const std::string& con_nmask,
+                   bool enable_multicast,
+                   const std::string& con_pid));
+  MOCK_METHOD1(WriteSentinelToContainer, int(const std::string& con_pid));
+  MOCK_METHOD3(brctl,
+               int(const std::string& cmd,
+                   const std::vector<std::string>& argv,
+                   bool log_failures));
+  MOCK_METHOD4(chown,
+               int(const std::string& uid,
+                   const std::string& gid,
+                   const std::string& file,
+                   bool log_failures));
+  MOCK_METHOD3(ifconfig,
+               int(const std::string& ifname,
+                   const std::vector<std::string>& args,
+                   bool log_failures));
+  MOCK_METHOD4(ip,
+               int(const std::string& obj,
+                   const std::string& cmd,
+                   const std::vector<std::string>& args,
+                   bool log_failures));
+  MOCK_METHOD4(ip6,
+               int(const std::string& obj,
+                   const std::string& cmd,
+                   const std::vector<std::string>& args,
+                   bool log_failures));
+  MOCK_METHOD3(iptables,
+               int(const std::string& table,
+                   const std::vector<std::string>& argv,
+                   bool log_failures));
+  MOCK_METHOD3(ip6tables,
+               int(const std::string& table,
+                   const std::vector<std::string>& argv,
+                   bool log_failures));
+  MOCK_METHOD2(modprobe_all,
+               int(const std::vector<std::string>& modules, bool log_failures));
+  MOCK_METHOD3(sysctl_w,
+               int(const std::string& key,
+                   const std::string& value,
+                   bool log_failures));
+};
+
 TEST(DatapathTest, AddTAP) {
-  FakeProcessRunner runner;
+  MockProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   // TODO(crbug.com/909719): replace with base::DoNothing;
@@ -49,7 +106,7 @@ TEST(DatapathTest, AddTAP) {
 }
 
 TEST(DatapathTest, AddTAPWithOwner) {
-  FakeProcessRunner runner;
+  MockProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   // TODO(crbug.com/909719): replace with base::DoNothing;
@@ -65,7 +122,7 @@ TEST(DatapathTest, AddTAPWithOwner) {
 }
 
 TEST(DatapathTest, AddTAPNoAddrs) {
-  FakeProcessRunner runner;
+  MockProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
   auto ifname = datapath.AddTAP("foo0", nullptr, nullptr, "");
   EXPECT_EQ(ifname, "foo0");
@@ -76,165 +133,216 @@ TEST(DatapathTest, AddTAPNoAddrs) {
 }
 
 TEST(DatapathTest, RemoveTAP) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, ip(StrEq("tuntap"), StrEq("del"),
+                         ElementsAre("foo0", "mode", "tap"), true));
   Datapath datapath(&runner);
   datapath.RemoveTAP("foo0");
-  runner.VerifyRuns({"/bin/ip tuntap del foo0 mode tap"});
 }
 
 TEST(DatapathTest, AddBridge) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
   Datapath datapath(&runner);
+  EXPECT_CALL(runner, brctl(StrEq("addbr"), ElementsAre("br"), true));
+  EXPECT_CALL(runner, ifconfig(StrEq("br"),
+                               ElementsAre("1.2.3.4", "netmask",
+                                           "255.255.255.252", "up"),
+                               true));
+  EXPECT_CALL(runner, iptables(StrEq("mangle"),
+                               ElementsAre("-A", "PREROUTING", "-i", "br", "-j",
+                                           "MARK", "--set-mark", "1", "-w"),
+                               true));
   datapath.AddBridge("br", "1.2.3.4");
-  runner.VerifyRuns(
-      {"/sbin/brctl addbr br",
-       "/bin/ifconfig br 1.2.3.4 netmask 255.255.255.252 up",
-       "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w"});
 }
 
 TEST(DatapathTest, AddVirtualBridgedInterface) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  // RemoveInterface is run first
+  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("delete"),
+                         ElementsAre("veth_foo"), false));
+  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("add"),
+                         ElementsAre("veth_foo", "type", "veth", "peer", "name",
+                                     "peer_foo"),
+                         true));
+  EXPECT_CALL(runner, ifconfig(StrEq("veth_foo"), ElementsAre("up"), true));
+  EXPECT_CALL(
+      runner,
+      ip(StrEq("link"), StrEq("set"),
+         ElementsAre("dev", "peer_foo", "addr", "00:11:22", "down"), true));
+  EXPECT_CALL(runner,
+              brctl(StrEq("addif"), ElementsAre("brfoo", "veth_foo"), true));
   Datapath datapath(&runner);
-  std::string peer =
-      datapath.AddVirtualBridgedInterface("foo", "00:11:22", "brfoo");
-  EXPECT_EQ(peer, "peer_foo");
-  runner.VerifyRuns(
-      {"/bin/ip link delete veth_foo",  // RemoveInterface is run first
-       "/bin/ip link add veth_foo type veth peer name peer_foo",
-       "/bin/ifconfig veth_foo up",
-       "/bin/ip link set dev peer_foo addr 00:11:22 down",
-       "/sbin/brctl addif brfoo veth_foo"});
+  EXPECT_EQ(datapath.AddVirtualBridgedInterface("foo", "00:11:22", "brfoo"),
+            "peer_foo");
 }
 
 TEST(DatapathTest, RemoveInterface) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner,
+              ip(StrEq("link"), StrEq("delete"), ElementsAre("foo"), false));
   Datapath datapath(&runner);
   datapath.RemoveInterface("foo");
-  runner.VerifyRuns({"/bin/ip link delete foo"});
 }
 
 TEST(DatapathTest, RemoveBridge) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("mangle"),
+                               ElementsAre("-D", "PREROUTING", "-i", "br", "-j",
+                                           "MARK", "--set-mark", "1", "-w"),
+                               true));
+  EXPECT_CALL(runner, ifconfig(StrEq("br"), ElementsAre("down"), true));
+  EXPECT_CALL(runner, brctl(StrEq("delbr"), ElementsAre("br"), true));
   Datapath datapath(&runner);
   datapath.RemoveBridge("br");
-  runner.VerifyRuns(
-      {"/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 -w",
-       "/bin/ifconfig br down", "/sbin/brctl delbr br"});
 }
 
 TEST(DatapathTest, AddInterfaceToContainer) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
+                         ElementsAre("src", "netns", "123"), true));
+  EXPECT_CALL(runner, AddInterfaceToContainer(
+                          StrEq("src"), StrEq("dst"), StrEq("1.2.3.4"),
+                          StrEq("255.255.255.252"), true, StrEq("123")));
   Datapath datapath(&runner);
   datapath.AddInterfaceToContainer(123, "src", "dst", "1.2.3.4", true);
-  runner.VerifyRuns({"/bin/ip link set src netns 123"});
-  runner.VerifyAddInterface("src", "dst", "1.2.3.4", "255.255.255.252", true,
-                            "123");
 }
 
 TEST(DatapathTest, AddLegacyIPv4DNAT) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-N", "dnat_arc", "-w"), true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-A", "dnat_arc", "-j", "DNAT",
+                                           "--to-destination", "1.2.3.4", "-w"),
+                               true));
+  EXPECT_CALL(runner,
+              iptables(StrEq("nat"), ElementsAre("-N", "try_arc", "-w"), true));
+  EXPECT_CALL(runner,
+              iptables(StrEq("nat"),
+                       ElementsAre("-A", "PREROUTING", "-m", "socket",
+                                   "--nowildcard", "-j", "ACCEPT", "-w"),
+                       true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-A", "PREROUTING", "-p", "tcp",
+                                           "-j", "try_arc", "-w"),
+                               true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-A", "PREROUTING", "-p", "udp",
+                                           "-j", "try_arc", "-w"),
+                               true));
   Datapath datapath(&runner);
   datapath.AddLegacyIPv4DNAT("1.2.3.4");
-  runner.VerifyRuns(
-      {"/sbin/iptables -t nat -N dnat_arc -w",
-       "/sbin/iptables -t nat -A dnat_arc -j DNAT --to-destination "
-       "1.2.3.4 -w",
-       "/sbin/iptables -t nat -N try_arc -w",
-       "/sbin/iptables -t nat -A PREROUTING -m socket --nowildcard -j ACCEPT "
-       "-w",
-       "/sbin/iptables -t nat -A PREROUTING -p tcp -j try_arc -w",
-       "/sbin/iptables -t nat -A PREROUTING -p udp -j try_arc -w"});
 }
 
 TEST(DatapathTest, RemoveLegacyIPv4DNAT) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-D", "PREROUTING", "-p", "udp",
+                                           "-j", "try_arc", "-w"),
+                               true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-D", "PREROUTING", "-p", "tcp",
+                                           "-j", "try_arc", "-w"),
+                               true));
+  EXPECT_CALL(runner,
+              iptables(StrEq("nat"),
+                       ElementsAre("-D", "PREROUTING", "-m", "socket",
+                                   "--nowildcard", "-j", "ACCEPT", "-w"),
+                       true));
+  EXPECT_CALL(runner,
+              iptables(StrEq("nat"), ElementsAre("-F", "try_arc", "-w"), true));
+  EXPECT_CALL(runner,
+              iptables(StrEq("nat"), ElementsAre("-X", "try_arc", "-w"), true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-F", "dnat_arc", "-w"), true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-X", "dnat_arc", "-w"), true));
   Datapath datapath(&runner);
   datapath.RemoveLegacyIPv4DNAT();
-  runner.VerifyRuns(
-      {"/sbin/iptables -t nat -D PREROUTING -p udp -j try_arc -w",
-       "/sbin/iptables -t nat -D PREROUTING -p tcp -j try_arc -w",
-       "/sbin/iptables -t nat -D PREROUTING -m socket --nowildcard -j "
-       "ACCEPT -w",
-       "/sbin/iptables -t nat -F try_arc -w",
-       "/sbin/iptables -t nat -X try_arc -w",
-       "/sbin/iptables -t nat -F dnat_arc -w",
-       "/sbin/iptables -t nat -X dnat_arc -w"});
 }
 
 TEST(DatapathTest, AddLegacyIPv4InboundDNAT) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-A", "try_arc", "-i", "wlan0", "-j",
+                                           "dnat_arc", "-w"),
+                               true));
   Datapath datapath(&runner);
   datapath.AddLegacyIPv4InboundDNAT("wlan0");
-  runner.VerifyRuns(
-      {"/sbin/iptables -t nat -A try_arc -i wlan0 -j dnat_arc -w"});
 }
 
 TEST(DatapathTest, RemoveLegacyIPv4InboundDNAT) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner,
+              iptables(StrEq("nat"), ElementsAre("-F", "try_arc", "-w"), true));
   Datapath datapath(&runner);
   datapath.RemoveLegacyIPv4InboundDNAT();
-  runner.VerifyRuns({"/sbin/iptables -t nat -F try_arc -w"});
 }
 
 TEST(DatapathTest, AddInboundIPv4DNAT) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-A", "PREROUTING", "-i", "eth0",
+                                           "-m", "socket", "--nowildcard", "-j",
+                                           "ACCEPT", "-w"),
+                               true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-A", "PREROUTING", "-i", "eth0",
+                                           "-p", "tcp", "-j", "DNAT",
+                                           "--to-destination", "1.2.3.4", "-w"),
+                               true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-A", "PREROUTING", "-i", "eth0",
+                                           "-p", "udp", "-j", "DNAT",
+                                           "--to-destination", "1.2.3.4", "-w"),
+                               true));
   Datapath datapath(&runner);
   datapath.AddInboundIPv4DNAT("eth0", "1.2.3.4");
-  runner.VerifyRuns(
-      {"/sbin/iptables -t nat -A PREROUTING -i eth0 -m socket --nowildcard -j "
-       "ACCEPT "
-       "-w",
-       "/sbin/iptables -t nat -A PREROUTING -i eth0 -p tcp -j DNAT "
-       "--to-destination 1.2.3.4 -w",
-       "/sbin/iptables -t nat -A PREROUTING -i eth0 -p udp -j DNAT "
-       "--to-destination 1.2.3.4 -w"});
 }
 
 TEST(DatapathTest, RemoveInboundIPv4DNAT) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-D", "PREROUTING", "-i", "eth0",
+                                           "-m", "socket", "--nowildcard", "-j",
+                                           "ACCEPT", "-w"),
+                               true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-D", "PREROUTING", "-i", "eth0",
+                                           "-p", "tcp", "-j", "DNAT",
+                                           "--to-destination", "1.2.3.4", "-w"),
+                               true));
+  EXPECT_CALL(runner, iptables(StrEq("nat"),
+                               ElementsAre("-D", "PREROUTING", "-i", "eth0",
+                                           "-p", "udp", "-j", "DNAT",
+                                           "--to-destination", "1.2.3.4", "-w"),
+                               true));
   Datapath datapath(&runner);
   datapath.RemoveInboundIPv4DNAT("eth0", "1.2.3.4");
-  runner.VerifyRuns(
-      {"/sbin/iptables -t nat -D PREROUTING -i eth0 -p udp -j DNAT "
-       "--to-destination 1.2.3.4 -w",
-       "/sbin/iptables -t nat -D PREROUTING -i eth0 -p tcp -j DNAT "
-       "--to-destination 1.2.3.4 -w",
-       "/sbin/iptables -t nat -D PREROUTING -i eth0 -m socket --nowildcard "
-       "-j ACCEPT -w"});
 }
 
 TEST(DatapathTest, AddOutboundIPv4) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("filter"),
+                               ElementsAre("-A", "FORWARD", "-o", "eth0", "-j",
+                                           "ACCEPT", "-w"),
+                               true));
   Datapath datapath(&runner);
   datapath.AddOutboundIPv4("eth0");
-  runner.VerifyRuns(
-      {"/sbin/iptables -t filter -A FORWARD -o eth0 -j ACCEPT -w"});
 }
 
 TEST(DatapathTest, RemoveInboundIPv4) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, iptables(StrEq("filter"),
+                               ElementsAre("-D", "FORWARD", "-o", "eth0", "-j",
+                                           "ACCEPT", "-w"),
+                               true));
   Datapath datapath(&runner);
   datapath.RemoveOutboundIPv4("eth0");
-  runner.VerifyRuns(
-      {"/sbin/iptables -t filter -D FORWARD -o eth0 -j ACCEPT -w"});
 }
 
 TEST(DatapathTest, MaskInterfaceFlags) {
-  FakeProcessRunner runner;
+  MockProcessRunner runner;
   Datapath datapath(&runner, ioctl_req_cap);
   bool result = datapath.MaskInterfaceFlags("foo0", IFF_DEBUG);
   EXPECT_TRUE(result);
@@ -244,49 +352,65 @@ TEST(DatapathTest, MaskInterfaceFlags) {
 }
 
 TEST(DatapathTest, AddIPv6Forwarding) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
-  Datapath datapath(&runner);
+  MockProcessRunner runner;
   // Return 1 on iptables -C to simulate rule not existing case
-  auto fake_iptables_run = [](const std::vector<std::string>& argv) {
-    return std::find(argv.begin(), argv.end(), "-C") == argv.end() ? 0 : 1;
-  };
-  runner.SetRunOverride(base::Bind(fake_iptables_run));
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
+                                            "arc_eth0", "-j", "ACCEPT", "-w"),
+                                false))
+      .WillOnce(Return(1));
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-A", "FORWARD", "-i", "eth0", "-o",
+                                            "arc_eth0", "-j", "ACCEPT", "-w"),
+                                true));
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-C", "FORWARD", "-i", "arc_eth0",
+                                            "-o", "eth0", "-j", "ACCEPT", "-w"),
+                                false))
+      .WillOnce(Return(1));
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-A", "FORWARD", "-i", "arc_eth0",
+                                            "-o", "eth0", "-j", "ACCEPT", "-w"),
+                                true));
+  Datapath datapath(&runner);
   datapath.AddIPv6Forwarding("eth0", "arc_eth0");
-  runner.VerifyRuns(
-      {"/sbin/ip6tables -C FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
-       "/sbin/ip6tables -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
-       "/sbin/ip6tables -C FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w",
-       "/sbin/ip6tables -A FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
 }
 
 TEST(DatapathTest, AddIPv6ForwardingRuleExists) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
+                                            "arc_eth0", "-j", "ACCEPT", "-w"),
+                                false));
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-C", "FORWARD", "-i", "arc_eth0",
+                                            "-o", "eth0", "-j", "ACCEPT", "-w"),
+                                false));
   Datapath datapath(&runner);
   datapath.AddIPv6Forwarding("eth0", "arc_eth0");
-  runner.VerifyRuns(
-      {"/sbin/ip6tables -C FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
-       "/sbin/ip6tables -C FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
 }
 
 TEST(DatapathTest, RemoveIPv6Forwarding) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-D", "FORWARD", "-i", "eth0", "-o",
+                                            "arc_eth0", "-j", "ACCEPT", "-w"),
+                                true));
+  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
+                                ElementsAre("-D", "FORWARD", "-i", "arc_eth0",
+                                            "-o", "eth0", "-j", "ACCEPT", "-w"),
+                                true));
   Datapath datapath(&runner);
   datapath.RemoveIPv6Forwarding("eth0", "arc_eth0");
-  runner.VerifyRuns(
-      {"/sbin/ip6tables -D FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w",
-       "/sbin/ip6tables -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w"});
 }
 
 TEST(DatapathTest, AddIPv6HostRoute) {
-  FakeProcessRunner runner;
-  runner.Capture(true);
+  MockProcessRunner runner;
+  EXPECT_CALL(runner,
+              ip6(StrEq("route"), StrEq("replace"),
+                  ElementsAre("2001:da8:e00::1234/128", "dev", "eth0"), true));
   Datapath datapath(&runner);
   datapath.AddIPv6HostRoute("eth0", "2001:da8:e00::1234", 128);
-  runner.VerifyRuns(
-      {"/bin/ip -6 route replace 2001:da8:e00::1234/128 dev eth0"});
 }
 
 }  // namespace arc_networkd

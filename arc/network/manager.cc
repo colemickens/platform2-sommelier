@@ -180,19 +180,19 @@ void Manager::InitialSetup() {
   // Limit local port range: Android owns 47104-61000.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (runner.SysctlWrite("net.ipv4.ip_local_port_range", "32768 47103") != 0) {
+  if (runner.sysctl_w("net.ipv4.ip_local_port_range", "32768 47103") != 0) {
     LOG(ERROR) << "Failed to limit local port range. Some Android features or"
                << " apps may not work correctly.";
   }
   // Enable IPv6 packet forarding
-  if (runner.SysctlWrite("net.ipv6.conf.all.forwarding", "1") != 0) {
+  if (runner.sysctl_w("net.ipv6.conf.all.forwarding", "1") != 0) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
                << " IPv6 functionality may be broken.";
   }
   bool arc_legacy_ipv6 = !ShouldEnableNDProxyForArc();
   // Kernel proxy_ndp is only needed for legacy IPv6 configuration
   if (arc_legacy_ipv6 &&
-      runner.SysctlWrite("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
+      runner.sysctl_w("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.proxy_ndp."
                << " IPv6 functionality may be broken.";
   }
@@ -220,8 +220,8 @@ void Manager::OnShutdown(int* exit_code) {
   // Restore original local port range.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (datapath_->runner().SysctlWrite("net.ipv4.ip_local_port_range",
-                                      "32768 61000") != 0) {
+  if (datapath_->runner().sysctl_w("net.ipv4.ip_local_port_range",
+                                   "32768 61000") != 0) {
     LOG(ERROR) << "Failed to restore local port range";
   }
 }

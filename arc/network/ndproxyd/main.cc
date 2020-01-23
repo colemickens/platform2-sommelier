@@ -38,14 +38,14 @@ int main(int argc, char* argv[]) {
   brillo::Daemon daemon;
 
   arc_networkd::MinijailedProcessRunner runner;
-  char accept_ra_sysctl_cmd[40];
-  snprintf(accept_ra_sysctl_cmd, 40, "net.ipv6.conf.%s.accept_ra",
-           args[0].c_str());
-  if (runner.SysctlWrite(accept_ra_sysctl_cmd, "2") != 0) {
+  char accept_ra_sysctl_cmd[40] = {0};
+  snprintf(accept_ra_sysctl_cmd, sizeof(accept_ra_sysctl_cmd),
+           "net.ipv6.conf.%s.accept_ra", args[0].c_str());
+  if (runner.sysctl_w(accept_ra_sysctl_cmd, "2") != 0) {
     LOG(ERROR) << "Failed to enable " << accept_ra_sysctl_cmd << ".";
     return EXIT_FAILURE;
   }
-  if (runner.SysctlWrite("net.ipv6.conf.all.forwarding", "1") != 0) {
+  if (runner.sysctl_w("net.ipv6.conf.all.forwarding", "1") != 0) {
     LOG(ERROR) << "Failed to enable net.ipv6.conf.all.forwarding.";
     return EXIT_FAILURE;
   }

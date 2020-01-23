@@ -87,16 +87,6 @@ class FakeProcessRunner : public MinijailedProcessRunner {
     EXPECT_EQ(con_pid, wr_con_pid_);
   }
 
-  int ModprobeAll(const std::vector<std::string>&) override { return 0; }
-
-  int SysctlWrite(const std::string&, const std::string&) override { return 0; }
-
-  int Chown(const std::string&,
-            const std::string&,
-            const std::string&) override {
-    return 0;
-  }
-
   void SetRunOverride(
       base::Callback<int(const std::vector<std::string>&)> callback) {
     run_override_ = callback;

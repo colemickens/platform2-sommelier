@@ -12,13 +12,6 @@
 
 namespace arc_networkd {
 
-// These match what is used in iptables.cc in firewalld.
-const char kBrctlPath[] = "/sbin/brctl";
-const char kIfConfigPath[] = "/bin/ifconfig";
-const char kIpPath[] = "/bin/ip";
-const char kIpTablesPath[] = "/sbin/iptables";
-const char kIp6TablesPath[] = "/sbin/ip6tables";
-
 // Runs the current process with minimal privileges. This function is expected
 // to be used by child processes that need only CAP_NET_RAW and to run as the
 // arc-networkd user.
@@ -31,12 +24,6 @@ class MinijailedProcessRunner {
   // If |mj| is null, the default instance will be used.
   explicit MinijailedProcessRunner(brillo::Minijail* mj = nullptr);
   virtual ~MinijailedProcessRunner() = default;
-
-  // Runs a process (argv[0]) with optional arguments (argv[1]...)
-  // in a minijail as an unprivileged user with CAP_NET_ADMIN and
-  // CAP_NET_RAW capabilities.
-  virtual int Run(const std::vector<std::string>& argv,
-                  bool log_failures = true);
 
   // Moves interface |host_ifname| into the container designated by |con_pid|
   // as interface |con_ifname| and assigns it's |con_ipv4_addr|. This method
@@ -52,16 +39,56 @@ class MinijailedProcessRunner {
   // the host networking is ready.
   virtual int WriteSentinelToContainer(const std::string& con_pid);
 
-  // Installs all |modules| via modprobe.
-  virtual int ModprobeAll(const std::vector<std::string>& modules);
-
-  // Updates kernel parameter |key| to |value| using sysctl.
-  virtual int SysctlWrite(const std::string& key, const std::string& value);
+  // Runs brctl.
+  virtual int brctl(const std::string& cmd,
+                    const std::vector<std::string>& argv,
+                    bool log_failures = true);
 
   // Runs chown to update file ownership.
-  virtual int Chown(const std::string& uid,
+  virtual int chown(const std::string& uid,
                     const std::string& gid,
-                    const std::string& file);
+                    const std::string& file,
+                    bool log_failures = true);
+
+  // Runs ifconfig.
+  virtual int ifconfig(const std::string& ifname,
+                       const std::vector<std::string>& args,
+                       bool log_failures = true);
+
+  // Runs ip.
+  virtual int ip(const std::string& obj,
+                 const std::string& cmd,
+                 const std::vector<std::string>& args,
+                 bool log_failures = true);
+  virtual int ip6(const std::string& obj,
+                  const std::string& cmd,
+                  const std::vector<std::string>& args,
+                  bool log_failures = true);
+
+  // Runs iptables.
+  virtual int iptables(const std::string& table,
+                       const std::vector<std::string>& argv,
+                       bool log_failures = true);
+
+  virtual int ip6tables(const std::string& table,
+                        const std::vector<std::string>& argv,
+                        bool log_failures = true);
+
+  // Installs all |modules| via modprobe.
+  virtual int modprobe_all(const std::vector<std::string>& modules,
+                           bool log_failures = true);
+
+  // Updates kernel parameter |key| to |value| using sysctl.
+  virtual int sysctl_w(const std::string& key,
+                       const std::string& value,
+                       bool log_failures = true);
+
+ protected:
+  // Runs a process (argv[0]) with optional arguments (argv[1]...)
+  // in a minijail as an unprivileged user with CAP_NET_ADMIN and
+  // CAP_NET_RAW capabilities.
+  virtual int Run(const std::vector<std::string>& argv,
+                  bool log_failures = true);
 
  private:
   brillo::Minijail* mj_;

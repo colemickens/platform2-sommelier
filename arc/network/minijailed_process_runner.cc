@@ -17,11 +17,18 @@ namespace {
 constexpr char kUnprivilegedUser[] = "nobody";
 constexpr char kNetworkUnprivilegedUser[] = "arc-networkd";
 constexpr char kChownCapMask = CAP_TO_MASK(CAP_CHOWN);
-constexpr uint64_t kIpTablesCapMask =
-    CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
 constexpr uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
-constexpr uint64_t kRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
+constexpr uint64_t kNetRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
+constexpr uint64_t kNetRawAdminCapMask =
+    CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+
+// These match what is used in iptables.cc in firewalld.
+constexpr char kBrctlPath[] = "/sbin/brctl";
 constexpr char kChownPath[] = "/bin/chown";
+constexpr char kIfConfigPath[] = "/bin/ifconfig";
+constexpr char kIpPath[] = "/bin/ip";
+constexpr char kIptablesPath[] = "/sbin/iptables";
+constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
 constexpr char kModprobePath[] = "/sbin/modprobe";
 constexpr char kNsEnterPath[] = "/usr/bin/nsenter";
 constexpr char kTouchPath[] = "/system/bin/touch";
@@ -73,7 +80,7 @@ void EnterChildProcessJail() {
   // does not exist.
   CHECK(m->DropRoot(jail, kNetworkUnprivilegedUser, kNetworkUnprivilegedUser))
       << "Could not drop root privileges";
-  m->UseCapabilities(jail, kRawCapMask);
+  m->UseCapabilities(jail, kNetRawCapMask);
   m->Enter(jail);
   m->Destroy(jail);
 }
@@ -86,7 +93,7 @@ int MinijailedProcessRunner::Run(const std::vector<std::string>& argv,
                                  bool log_failures) {
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
-  mj_->UseCapabilities(jail, kIpTablesCapMask);
+  mj_->UseCapabilities(jail, kNetRawAdminCapMask);
   return RunSyncDestroy(argv, mj_, jail, log_failures);
 }
 
@@ -119,31 +126,82 @@ int MinijailedProcessRunner::WriteSentinelToContainer(
                  mj_, true);
 }
 
-int MinijailedProcessRunner::ModprobeAll(
-    const std::vector<std::string>& modules) {
+int MinijailedProcessRunner::brctl(const std::string& cmd,
+                                   const std::vector<std::string>& argv,
+                                   bool log_failures) {
+  std::vector<std::string> args = {kBrctlPath, cmd};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return Run(args, log_failures);
+}
+
+int MinijailedProcessRunner::chown(const std::string& uid,
+                                   const std::string& gid,
+                                   const std::string& file,
+                                   bool log_failures) {
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
+  mj_->UseCapabilities(jail, kChownCapMask);
+  std::vector<std::string> args = {kChownPath, uid + ":" + gid, file};
+  return RunSyncDestroy(args, mj_, jail, log_failures);
+}
+
+int MinijailedProcessRunner::ifconfig(const std::string& ifname,
+                                      const std::vector<std::string>& argv,
+                                      bool log_failures) {
+  std::vector<std::string> args = {kIfConfigPath, ifname};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return Run(args, log_failures);
+}
+
+int MinijailedProcessRunner::ip(const std::string& obj,
+                                const std::string& cmd,
+                                const std::vector<std::string>& argv,
+                                bool log_failures) {
+  std::vector<std::string> args = {kIpPath, obj, cmd};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return Run(args, log_failures);
+}
+
+int MinijailedProcessRunner::ip6(const std::string& obj,
+                                 const std::string& cmd,
+                                 const std::vector<std::string>& argv,
+                                 bool log_failures) {
+  std::vector<std::string> args = {kIpPath, "-6", obj, cmd};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return Run(args, log_failures);
+}
+
+int MinijailedProcessRunner::iptables(const std::string& table,
+                                      const std::vector<std::string>& argv,
+                                      bool log_failures) {
+  std::vector<std::string> args = {kIptablesPath, "-t", table};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return RunSync(args, mj_, log_failures);
+}
+
+int MinijailedProcessRunner::ip6tables(const std::string& table,
+                                       const std::vector<std::string>& argv,
+                                       bool log_failures) {
+  std::vector<std::string> args = {kIp6tablesPath, "-t", table};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return RunSync(args, mj_, log_failures);
+}
+
+int MinijailedProcessRunner::modprobe_all(
+    const std::vector<std::string>& modules, bool log_failures) {
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
   mj_->UseCapabilities(jail, kModprobeCapMask);
   std::vector<std::string> args = {kModprobePath, "-a"};
   args.insert(args.end(), modules.begin(), modules.end());
-  return RunSyncDestroy(args, mj_, jail, true);
+  return RunSyncDestroy(args, mj_, jail, log_failures);
 }
 
-int MinijailedProcessRunner::SysctlWrite(const std::string& key,
-                                         const std::string& value) {
-  minijail* jail = mj_->New();
+int MinijailedProcessRunner::sysctl_w(const std::string& key,
+                                      const std::string& value,
+                                      bool log_failures) {
   std::vector<std::string> args = {kSysctlPath, "-w", key + "=" + value};
-  return RunSyncDestroy(args, mj_, jail, true);
-}
-
-int MinijailedProcessRunner::Chown(const std::string& uid,
-                                   const std::string& gid,
-                                   const std::string& file) {
-  minijail* jail = mj_->New();
-  CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
-  mj_->UseCapabilities(jail, kChownCapMask);
-  std::vector<std::string> args = {kChownPath, uid + ":" + gid, file};
-  return RunSyncDestroy(args, mj_, jail, true);
+  return RunSync(args, mj_, log_failures);
 }
 
 }  // namespace arc_networkd

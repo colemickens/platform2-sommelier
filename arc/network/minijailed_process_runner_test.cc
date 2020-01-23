@@ -48,17 +48,6 @@ MATCHER_P2(IsProcessArgs, program, args, "") {
   return arg[index] == nullptr;
 }
 
-TEST_F(MinijailProcessRunnerTest, Run) {
-  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  const std::vector<std::string> args = {"arg1", "arg2"};
-
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunSyncAndDestroy(_, IsProcessArgs("cmd", args), _));
-  runner_.Run({"cmd", "arg1", "arg2"});
-}
-
 TEST_F(MinijailProcessRunnerTest, AddInterfaceToContainer) {
   const std::vector<std::string> args_ip = {
       "-t", "12345", "-n", "--", "/bin/ip", "link", "set", "foo", "name", "bar",
@@ -112,7 +101,7 @@ TEST_F(MinijailProcessRunnerTest, WriteSentinelToContainer) {
   runner_.WriteSentinelToContainer("12345");
 }
 
-TEST_F(MinijailProcessRunnerTest, ModprobeAll) {
+TEST_F(MinijailProcessRunnerTest, modprobe_all) {
   uint64_t caps = CAP_TO_MASK(CAP_SYS_MODULE);
 
   const std::vector<std::string> args = {"-a", "module1", "module2"};
@@ -121,18 +110,18 @@ TEST_F(MinijailProcessRunnerTest, ModprobeAll) {
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(mj_,
               RunSyncAndDestroy(_, IsProcessArgs("/sbin/modprobe", args), _));
-  runner_.ModprobeAll({"module1", "module2"});
+  runner_.modprobe_all({"module1", "module2"});
 }
 
-TEST_F(MinijailProcessRunnerTest, SysctlWrite) {
+TEST_F(MinijailProcessRunnerTest, sysctl_w) {
   const std::vector<std::string> args = {"-w", "a.b.c=1"};
   EXPECT_CALL(mj_, New());
   EXPECT_CALL(mj_,
               RunSyncAndDestroy(_, IsProcessArgs("/usr/sbin/sysctl", args), _));
-  runner_.SysctlWrite("a.b.c", "1");
+  runner_.sysctl_w("a.b.c", "1");
 }
 
-TEST_F(MinijailProcessRunnerTest, Chown) {
+TEST_F(MinijailProcessRunnerTest, chown) {
   uint64_t caps = CAP_TO_MASK(CAP_CHOWN);
 
   const std::vector<std::string> args = {"12345:23456", "foo"};
@@ -140,7 +129,70 @@ TEST_F(MinijailProcessRunnerTest, Chown) {
   EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(mj_, RunSyncAndDestroy(_, IsProcessArgs("/bin/chown", args), _));
-  runner_.Chown("12345", "23456", "foo");
+  runner_.chown("12345", "23456", "foo");
+}
+
+TEST_F(MinijailProcessRunnerTest, brctl) {
+  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  const std::vector<std::string> args = {"cmd", "arg", "arg"};
+
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
+  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(_, IsProcessArgs("/sbin/brctl", args), _));
+  runner_.brctl("cmd", {"arg", "arg"});
+}
+
+TEST_F(MinijailProcessRunnerTest, ifconfig) {
+  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  const std::vector<std::string> args = {"ifname", "arg", "arg"};
+
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
+  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj_,
+              RunSyncAndDestroy(_, IsProcessArgs("/bin/ifconfig", args), _));
+  runner_.ifconfig("ifname", {"arg", "arg"});
+}
+
+TEST_F(MinijailProcessRunnerTest, ip) {
+  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  const std::vector<std::string> args = {"obj", "cmd", "arg", "arg"};
+
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
+  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(_, IsProcessArgs("/bin/ip", args), _));
+  runner_.ip("obj", "cmd", {"arg", "arg"});
+}
+
+TEST_F(MinijailProcessRunnerTest, ip6) {
+  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  const std::vector<std::string> args = {"-6", "obj", "cmd", "arg", "arg"};
+
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
+  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(_, IsProcessArgs("/bin/ip", args), _));
+  runner_.ip6("obj", "cmd", {"arg", "arg"});
+}
+
+TEST_F(MinijailProcessRunnerTest, iptables) {
+  const std::vector<std::string> args = {"-t", "table", "arg", "arg"};
+
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_,
+              RunSyncAndDestroy(_, IsProcessArgs("/sbin/iptables", args), _));
+  runner_.iptables("table", {"arg", "arg"});
+}
+
+TEST_F(MinijailProcessRunnerTest, ip6tables) {
+  const std::vector<std::string> args = {"-t", "table", "arg", "arg"};
+
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_,
+              RunSyncAndDestroy(_, IsProcessArgs("/sbin/ip6tables", args), _));
+  runner_.ip6tables("table", {"arg", "arg"});
 }
 
 }  // namespace arc_networkd
