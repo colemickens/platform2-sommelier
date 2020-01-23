@@ -188,10 +188,8 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
   }
   virtual ~PackageKitTransaction() {
     if (transaction_path_.IsValid()) {
-      bus_->RemoveObjectProxy(
-          kPackageKitServiceName, transaction_path_,
-          // TODO(crbug.com/909719): replace with base::DoNothing;
-          base::Bind([]() {}));
+      bus_->RemoveObjectProxy(kPackageKitServiceName, transaction_path_,
+                              base::DoNothing());
     }
     packagekit_proxy_->RemovePackageKitDeathObserver(this);
   }
