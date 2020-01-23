@@ -67,8 +67,7 @@ void SuspendConfigurator::PrepareForSuspend(
   // Do this at the end so that system spends close to |suspend_duration| in
   // suspend.
   if (suspend_duration != base::TimeDelta()) {
-    // TODO(crbug.com/909719): use base::DoNothing after libchrome uprev.
-    alarm_.Start(FROM_HERE, suspend_duration, base::Bind([]() {}));
+    alarm_.Start(FROM_HERE, suspend_duration, base::DoNothing());
   }
 }
 
