@@ -27,6 +27,7 @@ using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
+using ::testing::ReturnNull;
 using ::testing::SetArgPointee;
 using ::vm_tools::cicerone::ContainerListenerImpl;
 using ::vm_tools::cicerone::CrashListenerImpl;
@@ -49,26 +50,19 @@ struct SetupOnce {
   base::AtExitManager at_exit_;
 };
 
-dbus::Response* ReturnDbusResponse() {
-  // Will be owned by the caller; see comments in MockObjectProxy.
-  return dbus::Response::CreateEmpty().release();
-}
-
 void SetUpMockObjectProxy(
     const vm_tools::container::ContainerListenerFuzzerSingleAction& action,
     dbus::MockObjectProxy* mock_object_proxy) {
   if (action.return_dbus_response()) {
-    EXPECT_CALL(*mock_object_proxy, MockCallMethodAndBlock(_, _))
-        .WillRepeatedly(InvokeWithoutArgs(&ReturnDbusResponse));
-    EXPECT_CALL(*mock_object_proxy,
-                MockCallMethodAndBlockWithErrorDetails(_, _, _))
-        .WillRepeatedly(InvokeWithoutArgs(&ReturnDbusResponse));
+    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlock(_, _))
+        .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
+    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(_, _, _))
+        .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
   } else {
-    EXPECT_CALL(*mock_object_proxy, MockCallMethodAndBlock(_, _))
-        .WillRepeatedly(Return(nullptr));
-    EXPECT_CALL(*mock_object_proxy,
-                MockCallMethodAndBlockWithErrorDetails(_, _, _))
-        .WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlock(_, _))
+        .WillRepeatedly(ReturnNull());
+    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(_, _, _))
+        .WillRepeatedly(ReturnNull());
   }
 }
 
