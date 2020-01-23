@@ -175,7 +175,7 @@ if (use.fuzzer) {
       ":target_defaults",
     ]
     sources = [
-      "boot_slot_fuzzer.cc",
+      "boot/boot_slot_fuzzer.cc",
     ]
     deps = [
       ":libdlcservice",
