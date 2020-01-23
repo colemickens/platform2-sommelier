@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/location.h>
 #include <base/test/simple_test_clock.h>
 #include <gtest/gtest.h>
@@ -65,9 +66,8 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskAdvancesTheTime) {
   Time start = Time::FromInternalValue(1000000);
   clock_.SetNow(start);
   loop_.reset(new FakeMessageLoop(&clock_));
-  // TODO(crbug.com/909719): Replace by base::DoNothing.
-  loop_->PostDelayedTask(BindOnce([]() {}), TimeDelta::FromSeconds(1));
-  loop_->PostDelayedTask(BindOnce([]() {}), TimeDelta::FromSeconds(2));
+  loop_->PostDelayedTask(base::DoNothing(), TimeDelta::FromSeconds(1));
+  loop_->PostDelayedTask(base::DoNothing(), TimeDelta::FromSeconds(2));
   EXPECT_FALSE(loop_->RunOnce(false));
   // If the callback didn't run, the time shouldn't change.
   EXPECT_EQ(start, clock_.Now());
@@ -86,8 +86,7 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskAdvancesTheTime) {
 }
 
 TEST_F(FakeMessageLoopTest, PendingTasksTest) {
-  // TODO(crbug.com/909719): Replace by base::DoNothing.
-  loop_->PostDelayedTask(BindOnce([]() {}), TimeDelta::FromSeconds(1));
+  loop_->PostDelayedTask(base::DoNothing(), TimeDelta::FromSeconds(1));
   EXPECT_TRUE(loop_->PendingTasks());
   loop_->Run();
 }

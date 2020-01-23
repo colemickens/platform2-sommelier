@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
@@ -41,8 +42,7 @@ DBusInterface::DBusInterface(DBusObject* dbus_object,
                              const std::string& interface_name)
     : dbus_object_(dbus_object),
       interface_name_(interface_name),
-      // TODO(crbug.com/909719): Use base::DoNothing()
-      release_interface_cb_(base::Bind([]() {})) {}
+      release_interface_cb_(base::DoNothing()) {}
 
 void DBusInterface::AddProperty(const std::string& property_name,
                                 ExportedPropertyBase* prop_base) {

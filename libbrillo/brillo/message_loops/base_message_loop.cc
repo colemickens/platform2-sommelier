@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/run_loop.h>
@@ -149,8 +150,7 @@ void BaseMessageLoop::BreakLoop() {
 
 base::RepeatingClosure BaseMessageLoop::QuitClosure() const {
   if (base_run_loop_ == nullptr)
-    // TODO(crbug.com/909719): Replace by base::DoNothing.
-    return base::BindRepeating([]() {});
+    return base::DoNothing();
   return base_run_loop_->QuitClosure();
 }
 
