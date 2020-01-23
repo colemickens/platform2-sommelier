@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <gtest/gtest.h>
 
 namespace mist {
@@ -43,22 +44,20 @@ TEST_F(EventDispatcherTest, StartAndStopWatchingFileDescriptor) {
   // watched, should fail.
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
 
-  // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev
-  // to r576297.
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
       file_descriptor, EventDispatcher::Mode::READ,
-      base::BindRepeating([]() {})));
+      base::DoNothing()));
 
   // StartWatchingFileDescriptor on the same file descriptor should be ok.
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
       file_descriptor, EventDispatcher::Mode::READ,
-      base::BindRepeating([]() {})));
+      base::DoNothing()));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
       file_descriptor, EventDispatcher::Mode::WRITE,
-      base::BindRepeating([]() {})));
+      base::DoNothing()));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
       file_descriptor, EventDispatcher::Mode::READ_WRITE,
-      base::BindRepeating([]() {})));
+      base::DoNothing()));
   EXPECT_TRUE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
 }
@@ -69,10 +68,10 @@ TEST_F(EventDispatcherTest, StopWatchingAllFileDescriptors) {
 
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
       file_descriptor1, EventDispatcher::Mode::READ,
-      base::BindRepeating([]() {})));
+      base::DoNothing()));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
       file_descriptor2, EventDispatcher::Mode::READ,
-      base::BindRepeating([]() {})));
+      base::DoNothing()));
   dispatcher_.StopWatchingAllFileDescriptors();
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor1));
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor2));
