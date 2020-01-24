@@ -437,8 +437,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("oobe_skip_postlogin"))
     builder->AddArg("--oobe-skip-postlogin");
 
-  if (builder->UseFlagIsSet("background_blur"))
-    builder->AddFeatureEnableOverride("EnableBackgroundBlur");
+  if (builder->UseFlagIsSet("disable_background_blur"))
+    builder->AddFeatureDisableOverride("EnableBackgroundBlur");
 
   if (builder->UseFlagIsSet("shelf-hotseat"))
     builder->AddFeatureEnableOverride("ShelfHotseat");
