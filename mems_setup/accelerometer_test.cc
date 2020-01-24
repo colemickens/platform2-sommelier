@@ -181,7 +181,7 @@ TEST_F(AccelerometerTest, TriggerPermissions) {
   SetSingleSensor(kLidSensorLocation);
   EXPECT_TRUE(GetConfiguration()->Configure());
 
-  base::FilePath trigger_now = mock_trigger0_->GetPath().Append("trigger_now");
+  base::FilePath trigger_now = mock_trigger1_->GetPath().Append("trigger_now");
   EXPECT_NE(0, mock_delegate_->GetPermissions(trigger_now) &
                    base::FILE_PERMISSION_WRITE_BY_GROUP);
   gid_t gid = 0;
@@ -248,10 +248,10 @@ TEST_F(AccelerometerTest, SharedSensorKbWakeAnglePermissions) {
   EXPECT_EQ(kPowerGroupId, gid);
 }
 
-TEST_F(AccelerometerTest, OkWithTrigger0Defined) {
+TEST_F(AccelerometerTest, OkWithSysfstrigDefined) {
   SetSingleSensor(kLidSensorLocation);
 
-  mock_context_->AddTrigger(mock_trigger0_.get());
+  mock_context_->AddTrigger(mock_trigger1_.get());
 
   EXPECT_TRUE(GetConfiguration()->Configure());
 }

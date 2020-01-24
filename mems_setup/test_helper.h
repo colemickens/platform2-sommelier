@@ -28,16 +28,16 @@ namespace testing {
 class FakeSysfsTrigger : public libmems::fakes::FakeIioDevice {
  public:
   FakeSysfsTrigger(libmems::fakes::FakeIioContext* ctx,
-                   libmems::fakes::FakeIioDevice* trigger0)
+                   libmems::fakes::FakeIioDevice* trigger)
       : FakeIioDevice(ctx, "iio_sysfs_trigger", -1),
         mock_context_(ctx),
-        mock_trigger0_(trigger0) {}
+        mock_trigger_(trigger) {}
 
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
 
  private:
   libmems::fakes::FakeIioContext* mock_context_;
-  libmems::fakes::FakeIioDevice* mock_trigger0_;
+  libmems::fakes::FakeIioDevice* mock_trigger_;
 };
 
 class SensorTestBase : public ::testing::Test {
@@ -49,7 +49,7 @@ class SensorTestBase : public ::testing::Test {
   std::unique_ptr<mems_setup::fakes::FakeDelegate> mock_delegate_;
   std::unique_ptr<libmems::fakes::FakeIioDevice> mock_device_;
 
-  std::unique_ptr<libmems::fakes::FakeIioDevice> mock_trigger0_;
+  std::unique_ptr<libmems::fakes::FakeIioDevice> mock_trigger1_;
   std::unique_ptr<FakeSysfsTrigger> mock_sysfs_trigger_;
 
   std::unique_ptr<Configuration> config_;

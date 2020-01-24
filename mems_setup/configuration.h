@@ -36,7 +36,7 @@ class Configuration {
 
   bool CopyLightCalibrationFromVpd();
 
-  bool AddSysfsTrigger(int trigger_id);
+  bool AddSysfsTrigger(int sysfs_trigger_id);
 
   bool EnableAccelScanElements();
 

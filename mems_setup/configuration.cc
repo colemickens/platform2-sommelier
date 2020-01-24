@@ -43,6 +43,7 @@ struct LightColorCalibrationEntry {
 
 constexpr char kCalibrationBias[] = "bias";
 constexpr char kCalibrationScale[] = "scale";
+constexpr char kSysfsTriggerPrefix[] = "sysfstrig";
 
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
 constexpr int kAccelMaxVpdCalibration = 103;   // .100g
@@ -230,40 +231,50 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
   return true;
 }
 
-bool Configuration::AddSysfsTrigger(int trigger_id) {
-  // iio_sysfs_trigger
-  auto iio_trig = context_->GetTriggerById(kSysfsTriggerId);
-  if (iio_trig == nullptr) {
-    LOG(ERROR) << "cannot find iio_trig_sysfs kernel module";
-    return false;
-  }
-
+bool Configuration::AddSysfsTrigger(int sysfs_trigger_id) {
   // There is a potential cross-process race here, where multiple instances
   // of this tool may be trying to access the trigger at once. To solve this,
   // first see if the trigger is already there. If not, try to create it, and
   // then try to access it again. Only if the latter access fails then
   // error out.
-  auto trigger = sensor_->GetContext()->GetTriggerById(trigger_id);
-  if (trigger == nullptr) {
-    LOG(INFO) << "trigger" << trigger_id << " not found; adding";
-    if (!iio_trig->WriteNumberAttribute("add_trigger", trigger_id)) {
-      LOG(WARNING) << "cannot instantiate trigger trigger" << trigger_id;
+  auto trigger_name = base::StringPrintf("%s%d",
+      kSysfsTriggerPrefix, sysfs_trigger_id);
+  auto triggers = context_->GetTriggersByName(trigger_name);
+
+  if (triggers.size() > 1) {
+    LOG(ERROR) << "Several triggers with the same name " << trigger_name
+               << " is not expected.";
+    return false;
+  }
+  if (triggers.size() == 0) {
+    LOG(INFO) << "trigger " << trigger_name << " not found; adding";
+
+    auto iio_sysfs_trigger = context_->GetTriggerById(kSysfsTriggerId);
+    if (iio_sysfs_trigger == nullptr) {
+      LOG(ERROR) << "cannot find iio_trig_sysfs kernel module";
+      return false;
+    }
+
+    if (!iio_sysfs_trigger->WriteNumberAttribute("add_trigger",
+                                                 sysfs_trigger_id)) {
+      // It may happen if another instance of mems_setup is running in parallel.
+      LOG(WARNING) << "cannot instantiate trigger " << trigger_name;
     }
 
     context_->Reload();
-    trigger = context_->GetTriggerById(trigger_id);
-    if (trigger == nullptr) {
-      LOG(ERROR) << "cannot find trigger trigger" << trigger_id;
+    triggers = context_->GetTriggersByName(trigger_name);
+    if (triggers.size() != 1) {
+      LOG(ERROR) << "Trigger " << trigger_name << " not been created properly";
       return false;
     }
   }
 
-  if (!sensor_->SetTrigger(trigger)) {
-    LOG(ERROR) << "cannot set sensor's trigger to trigger" << trigger_id;
+  if (!sensor_->SetTrigger(triggers[0])) {
+    LOG(ERROR) << "cannot set sensor's trigger to " << trigger_name;
     return false;
   }
 
-  base::FilePath trigger_now = trigger->GetPath().Append("trigger_now");
+  base::FilePath trigger_now = triggers[0]->GetPath().Append("trigger_now");
 
   base::Optional<gid_t> chronos_gid = delegate_->FindGroupId("chronos");
   if (!chronos_gid) {
