@@ -572,6 +572,13 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     response->set_mount_result(StartTerminaResponse::SUCCESS);
   }
 
+  // Register our crash reporter.
+  if (!init_->Spawn({"/sbin/crash_reporter", "--init"}, {} /*env*/,
+                    false /*respawn*/, true /*use_console*/,
+                    true /*wait_for_exit*/, &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to register crash_reporter");
+  }
+
   // Resize the stateful filesystem to fill the block device in case
   // the size was increased while the VM wasn't booted.
   if (!init_->Spawn({"btrfs", "filesystem", "resize", "max", "/mnt/stateful"},
