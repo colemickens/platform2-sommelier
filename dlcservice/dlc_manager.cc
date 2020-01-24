@@ -134,6 +134,8 @@ class DlcManager::DlcManagerImpl {
           err_code, err_msg);
       scoped_cleanups.Insert(cleanup);
     }
+    scoped_cleanups.Insert(
+        base::Bind(&DlcManagerImpl::ClearInstalling, base::Unretained(this)));
 
     for (auto& dlc : installing_) {
       const string &id = dlc.first, root = dlc.second;
@@ -152,7 +154,7 @@ class DlcManager::DlcManagerImpl {
       installed_[id] = installed->operator[](id) = root;
     }
 
-    installing_.clear();
+    ClearInstalling();
     return true;
   }
 
@@ -171,7 +173,7 @@ class DlcManager::DlcManagerImpl {
         ret = false;
       }
     }
-    installing_.clear();
+    ClearInstalling();
     return ret;
   }
 
@@ -223,6 +225,8 @@ class DlcManager::DlcManagerImpl {
   string GetDlcPackage(const string& id) {
     return *(ScanDirectory(JoinPaths(manifest_dir_, id)).begin());
   }
+
+  void ClearInstalling() { installing_.clear(); }
 
   // Returns true if the DLC module has a boolean true for 'preload-allowed'
   // attribute in the manifest for the given |id| and |package|.

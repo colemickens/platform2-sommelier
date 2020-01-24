@@ -517,6 +517,42 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledAndDuplicatesFail) {
   EXPECT_FALSE(base::PathExists(JoinPaths(metadata_path_, kSecondDlc)));
 }
 
+TEST_F(DlcServiceTest, InstallUpdateEngineDownThenBackUpTest) {
+  const string omaha_url_default = "";
+  DlcModuleList dlc_module_list =
+      CreateDlcModuleList({kSecondDlc}, omaha_url_default);
+
+  SetMountPath(mount_path_.value());
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
+      .WillOnce(Return(true));
+
+  EXPECT_FALSE(dlc_service_->Install(dlc_module_list, nullptr));
+  EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+}
+
+TEST_F(DlcServiceTest, InstallUpdateEngineBusyThenFreeTest) {
+  const string omaha_url_default = "";
+  DlcModuleList dlc_module_list =
+      CreateDlcModuleList({kSecondDlc}, omaha_url_default);
+
+  SetMountPath(mount_path_.value());
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::UPDATED_NEED_REBOOT);
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(status_result), Return(true)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
+      .WillOnce(Return(true));
+
+  EXPECT_FALSE(dlc_service_->Install(dlc_module_list, nullptr));
+  EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+}
+
 TEST_F(DlcServiceTest, InstallFailureCleansUp) {
   const string omaha_url_default = "";
   DlcModuleList dlc_module_list =
@@ -805,6 +841,31 @@ TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalDownloadProgressTest) {
   dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
   EXPECT_EQ(dlc_service_test_observer_->GetInstallStatus().status(),
             Status::COMPLETED);
+}
+
+TEST_F(
+    DlcServiceTest,
+    OnStatusUpdateAdvancedSignalSubsequentialBadOrNonInstalledDlcsNonBlocking) {
+  const vector<string>& dlc_ids = {kSecondDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillRepeatedly(Return(true));
+
+  for (int i = 0; i < 5; i++) {
+    EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+        .WillOnce(Return(true));
+    EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+
+    EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+        .WillOnce(Return(true));
+    StatusResult status_result;
+    status_result.set_is_install(true);
+    status_result.set_current_operation(Operation::IDLE);
+    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  }
 }
 
 TEST_F(DlcServiceTest, PeriodCheckUpdateEngineInstallSignalRaceChecker) {

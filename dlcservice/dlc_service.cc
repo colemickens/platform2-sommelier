@@ -116,22 +116,30 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
     return true;
   }
 
+  const auto CancelInstall = [this] {
+    string throwaway_err_code, throwaway_err_msg;
+    if (!dlc_manager_->CancelInstall(&throwaway_err_code, &throwaway_err_msg))
+      LOG(ERROR) << throwaway_err_code << ":" << throwaway_err_msg;
+  };
   Operation update_engine_operation;
   if (!GetUpdateEngineStatus(&update_engine_operation)) {
     LogAndSetError(err, kErrorInternal,
                    "Failed to get the status of Update Engine.");
+    CancelInstall();
     return false;
   }
   switch (update_engine_operation) {
     case update_engine::UPDATED_NEED_REBOOT:
       LogAndSetError(err, kErrorNeedReboot,
                      "Update Engine applied update, device needs a reboot.");
+      CancelInstall();
       return false;
     case update_engine::IDLE:
       break;
     default:
       LogAndSetError(err, kErrorBusy,
                      "Update Engine is performing operations.");
+      CancelInstall();
       return false;
   }
 
@@ -148,9 +156,7 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
     // correctly then).
     LogAndSetError(err, kErrorBusy,
                    "Update Engine failed to schedule install operations.");
-
-    if (!dlc_manager_->CancelInstall(&err_code, &err_msg))
-      LogAndSetError(err, err_code, err_msg);
+    CancelInstall();
     return false;
   }
 
