@@ -155,7 +155,7 @@ bool ArchiveManager::CanMount(const std::string& source_path) const {
   return false;
 }
 
-std::unique_ptr<MountPoint> ArchiveManager::DoMountNew(
+std::unique_ptr<MountPoint> ArchiveManager::DoMount(
     const std::string& source_path,
     const std::string& source_format,
     const std::vector<std::string>& options,

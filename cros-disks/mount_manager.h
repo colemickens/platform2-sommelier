@@ -198,26 +198,16 @@ class MountManager {
   // Implemented by a derived class to mount |source_path| to |mount_path|
   // as |filesystem_type| with |options|. An implementation may change the
   // options to mount command, and should store all options to
-  // |applied_options|.
-  // DEPRECATED.
-  virtual MountErrorType DoMount(const std::string& source_path,
-                                 const std::string& filesystem_type,
-                                 const std::vector<std::string>& options,
-                                 const std::string& mount_path,
-                                 MountOptions* applied_options);
-
-  // A new version of DoMount() that returns a MountPoint on success.
-  // Subclasses must override one of DoMount() or DoMountNew().
-  // On success, an implementation MUST set |error| to MOUNT_ERROR_NONE and
-  // return a non-null MountPoint. On failure, |error| must be set to an
-  // appropriate error code and nullptr is returned.
-  virtual std::unique_ptr<MountPoint> DoMountNew(
+  // |applied_options|. On success, an implementation MUST set |error| to
+  // MOUNT_ERROR_NONE and return a non-null MountPoint. On failure, |error| must
+  // be set to an appropriate error code and nullptr is returned.
+  virtual std::unique_ptr<MountPoint> DoMount(
       const std::string& source_path,
       const std::string& filesystem_type,
       const std::vector<std::string>& options,
       const base::FilePath& mount_path,
       MountOptions* applied_options,
-      MountErrorType* error);
+      MountErrorType* error) = 0;
 
   // Implemented by a derived class to unmount |path|.
   virtual MountErrorType DoUnmount(const std::string& path) = 0;
@@ -266,9 +256,6 @@ class MountManager {
   brillo::ProcessReaper* process_reaper() const { return process_reaper_; }
 
  private:
-  // MountPoint subclass that forwards Unmount() calls to DoUnmount().
-  class LegacyMountPoint;
-
   // The root directory under which mount directories are created.
   const base::FilePath mount_root_;
 

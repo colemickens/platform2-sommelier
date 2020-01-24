@@ -58,7 +58,7 @@ bool FUSEMountManager::Initialize() {
   return true;
 }
 
-std::unique_ptr<MountPoint> FUSEMountManager::DoMountNew(
+std::unique_ptr<MountPoint> FUSEMountManager::DoMount(
     const std::string& source,
     const std::string& fuse_type,
     const std::vector<std::string>& options,

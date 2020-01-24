@@ -67,13 +67,12 @@ class DiskManager : public MountManager {
 
  protected:
   // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
-  std::unique_ptr<MountPoint> DoMountNew(
-      const std::string& source_path,
-      const std::string& filesystem_type,
-      const std::vector<std::string>& options,
-      const base::FilePath& mount_path,
-      MountOptions* applied_options,
-      MountErrorType* error) override;
+  std::unique_ptr<MountPoint> DoMount(const std::string& source_path,
+                                      const std::string& filesystem_type,
+                                      const std::vector<std::string>& options,
+                                      const base::FilePath& mount_path,
+                                      MountOptions* applied_options,
+                                      MountErrorType* error) override;
 
   // Unmounts |path|.
   MountErrorType DoUnmount(const std::string& path) override;

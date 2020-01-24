@@ -195,7 +195,7 @@ TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
 
   manager_.avfs_started_ = true;
   MountErrorType mount_error = MOUNT_ERROR_UNKNOWN;
-  std::unique_ptr<MountPoint> mount_point = manager_.DoMountNew(
+  std::unique_ptr<MountPoint> mount_point = manager_.DoMount(
       source_path, filesystem_type, options, base::FilePath(mount_path),
       &applied_options, &mount_error);
   EXPECT_FALSE(mount_point);

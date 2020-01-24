@@ -277,7 +277,7 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
   std::string mount_path = "/tmp/cros-disks-test";
   MountOptions applied_options;
   MountErrorType mount_error = MOUNT_ERROR_UNKNOWN;
-  std::unique_ptr<MountPoint> mount_point = manager_.DoMountNew(
+  std::unique_ptr<MountPoint> mount_point = manager_.DoMount(
       source_path, filesystem_type, {} /* options */,
       base::FilePath(mount_path), &applied_options, &mount_error);
   EXPECT_FALSE(mount_point);

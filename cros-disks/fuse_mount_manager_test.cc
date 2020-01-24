@@ -134,7 +134,7 @@ class FUSEMountManagerTest : public ::testing::Test {
                                       const std::string& src,
                                       MountErrorType* error) {
     MountOptions mount_options;
-    std::unique_ptr<MountPoint> mount_point = manager_.DoMountNew(
+    std::unique_ptr<MountPoint> mount_point = manager_.DoMount(
         src, type, {}, base::FilePath(kSomeMountpoint), &mount_options, error);
     if (*error == MOUNT_ERROR_NONE) {
       EXPECT_TRUE(mount_point);

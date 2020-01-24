@@ -246,7 +246,7 @@ bool DiskManager::CanMount(const std::string& source_path) const {
          base::StartsWith(source_path, "/dev/", base::CompareCase::SENSITIVE);
 }
 
-std::unique_ptr<MountPoint> DiskManager::DoMountNew(
+std::unique_ptr<MountPoint> DiskManager::DoMount(
     const std::string& source_path,
     const std::string& filesystem_type,
     const std::vector<std::string>& options,
