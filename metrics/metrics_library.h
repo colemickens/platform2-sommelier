@@ -114,9 +114,9 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // an asynchronous non-blocking RPC to UMA_HISTOGRAM_ENUMERATION
   // inside Chrome (see base/histogram.h).
   //
-  // |sample| is the sample value to be recorded (1 <= |sample| < |max|).
+  // |sample| is the sample value to be recorded (0 <= |sample| < |max|).
   // |max| is the maximum value of the histogram samples.
-  // 0 is the implicit underflow bucket.
+  // (-infinity, 0) is the implicit underflow bucket.
   // [|max|,infinity) is the implicit overflow bucket.
   //
   // An enumeration histogram requires |max| + 1 number of
