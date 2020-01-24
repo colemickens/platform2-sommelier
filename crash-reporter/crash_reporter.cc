@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <fcntl.h>  // for open
+#include <sys/mount.h>  // for MS_SLAVE
 
 #include <string>
 #include <utility>
@@ -333,6 +334,9 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   minijail_namespace_uts(j);
   minijail_namespace_net(j);
   minijail_namespace_vfs(j);
+  // Remount mounts as MS_SLAVE to prevent crash_reporter from holding on to
+  // mounts that might be unmounted in the root mount namespace.
+  minijail_remount_mode(j, MS_SLAVE);
   minijail_mount_tmp(j);
   minijail_mount_dev(j);
   if (!log_to_stderr)
@@ -340,7 +344,7 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   minijail_no_new_privs(j);
   minijail_new_session_keyring(j);
 
-  // If we're initializing the system, we're need to write to /proc/sys/.
+  // If we're initializing the system, we need to write to /proc/sys/.
   if (!write_proc) {
     minijail_remount_proc_readonly(j);
   }
