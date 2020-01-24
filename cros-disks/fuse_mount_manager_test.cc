@@ -195,25 +195,6 @@ TEST_F(FUSEMountManagerTest, SuggestMountPath) {
   EXPECT_EQ("/mntroot/suffix", manager_.SuggestMountPath(kSomeSource.value()));
 }
 
-// Verify that DoUnmount delegates unmount directly to platform.
-TEST_F(FUSEMountManagerTest, DoUnmount) {
-  EXPECT_CALL(platform_, Unmount(kSomeSource.value(), 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_CALL(platform_, Unmount("foobar", 0))
-      .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(kSomeSource.value()));
-  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, manager_.DoUnmount("foobar"));
-}
-
-// Verify that DoUnmount forces unmount when the filesystem is busy.
-TEST_F(FUSEMountManagerTest, DoUnmount_Busy) {
-  EXPECT_CALL(platform_, Unmount("foobar", 0))
-      .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
-  EXPECT_CALL(platform_, Unmount("foobar", MNT_FORCE | MNT_DETACH))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount("foobar"));
-}
-
 // Verify that DoMount fails when there are not helpers.
 TEST_F(FUSEMountManagerTest, DoMount_NoHandlers) {
   MountErrorType mount_error;

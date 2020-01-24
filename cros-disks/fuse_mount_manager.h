@@ -58,17 +58,12 @@ class FUSEMountManager : public MountManager {
                                       MountOptions* applied_options,
                                       MountErrorType* error) override;
 
-  // Unmounts |path|. Returns true if |path| is unmounted successfully.
-  MountErrorType DoUnmount(const std::string& path) override;
-
   // Returns a suggested mount path for a source.
   std::string SuggestMountPath(const std::string& source) const override;
 
   void RegisterHelper(std::unique_ptr<FUSEHelper> helper);
 
  private:
-  FRIEND_TEST(FUSEMountManagerTest, DoUnmount);
-  FRIEND_TEST(FUSEMountManagerTest, DoUnmount_Busy);
   FRIEND_TEST(FUSEMountManagerTest, SuggestMountPath);
   friend class FUSEMountManagerTest;
 

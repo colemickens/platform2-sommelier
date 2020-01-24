@@ -61,8 +61,8 @@ MountManager::MountManager(const std::string& mount_root,
 
 MountManager::~MountManager() {
   // UnmountAll() should be called from a derived class instead of this base
-  // class as UnmountAll() eventually calls DoUnmount(), which is a pure
-  // virtual function and may crash when being invoked here.
+  // class as UnmountAll() calls MountPoint::Unmount() which may call back into
+  // a derived class.
 }
 
 bool MountManager::Initialize() {

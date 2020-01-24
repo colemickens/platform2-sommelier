@@ -37,9 +37,9 @@ class Platform;
 
 // A base class for managing mounted filesystems of certain kinds.
 // It provides template methods for mounting and unmounting filesystems.
-// A derived class implements pure virtual methods CanMount, DoMount,
-// DoUnmount and SuggestMountPath to provide specific operations for
-// supporting certain kinds of filesystem.
+// A derived class implements pure virtual methods CanMount, DoMount, and
+// SuggestMountPath to provide specific operations for supporting certain kinds
+// of filesystem.
 class MountManager {
  public:
   // Represents status of a mounted volume.
@@ -208,9 +208,6 @@ class MountManager {
       const base::FilePath& mount_path,
       MountOptions* applied_options,
       MountErrorType* error) = 0;
-
-  // Implemented by a derived class to unmount |path|.
-  virtual MountErrorType DoUnmount(const std::string& path) = 0;
 
   // Returns a suggested mount path for |source_path|.
   virtual std::string SuggestMountPath(

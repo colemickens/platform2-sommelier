@@ -325,11 +325,6 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   return MaybeWrapMountPointForEject(std::move(mount_point), disk);
 }
 
-MountErrorType DiskManager::DoUnmount(const std::string& path) {
-  NOTREACHED();
-  return MOUNT_ERROR_UNKNOWN;
-}
-
 std::string DiskManager::SuggestMountPath(
     const std::string& source_path) const {
   Disk disk;

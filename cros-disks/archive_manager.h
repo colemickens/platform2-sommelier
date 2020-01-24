@@ -67,9 +67,6 @@ class ArchiveManager : public MountManager {
                                       MountOptions* applied_options,
                                       MountErrorType* error) override;
 
-  // Unmounts |path|. Returns true if |path| is unmounted successfully.
-  MountErrorType DoUnmount(const std::string& path) override;
-
   // Returns a suggested mount path for a source path.
   std::string SuggestMountPath(const std::string& source_path) const override;
 

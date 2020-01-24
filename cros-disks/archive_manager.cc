@@ -208,11 +208,6 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
   return mount_point;
 }
 
-MountErrorType ArchiveManager::DoUnmount(const std::string& path) {
-  NOTREACHED();
-  return MOUNT_ERROR_UNKNOWN;
-}
-
 std::string ArchiveManager::SuggestMountPath(
     const std::string& source_path) const {
   // Use the archive name to name the mount directory.
