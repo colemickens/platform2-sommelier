@@ -290,16 +290,25 @@ if (use.test) {
       "object_policy_private_key.cc",
       "object_policy_public_key.cc",
       "object_policy_secret_key.cc",
+      "object_pool_impl.cc",
+      "object_store_impl.cc",
+      "opencryptoki_importer.cc",
       "session_impl.cc",
       "session_test.cc",
     ]
     configs += [
       "//common-mk:test",
+      ":chapsd_config",
       ":target_defaults",
     ]
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+    ]
+    libs = [
+      "dl",
+      "leveldb",
+      "memenv",
     ]
   }
 
