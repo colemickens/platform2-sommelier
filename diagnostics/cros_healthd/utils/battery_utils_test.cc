@@ -9,6 +9,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
+#include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
@@ -34,6 +35,11 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 namespace {
+
+// The path used to check a device's master configuration hardware properties.
+constexpr char kHardwarePropertiesPath[] = "/hardware-properties";
+// The master configuration property that specifies a device's PSU type.
+constexpr char kPsuTypeProperty[] = "psu-type";
 
 // Arbitrary test values for the various battery metrics.
 constexpr char kBatteryVendor[] = "TEST_MFR";
@@ -66,8 +72,10 @@ class BatteryUtilsTest : public ::testing::Test {
     mock_power_manager_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), power_manager::kPowerManagerServiceName,
         dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+    fake_cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
     battery_fetcher_ = std::make_unique<BatteryFetcher>(
-        &mock_debugd_proxy_, mock_power_manager_proxy_.get());
+        &mock_debugd_proxy_, mock_power_manager_proxy_.get(),
+        fake_cros_config_.get());
   }
 
   BatteryFetcher* battery_fetcher() { return battery_fetcher_.get(); }
@@ -80,11 +88,17 @@ class BatteryUtilsTest : public ::testing::Test {
     return mock_power_manager_proxy_.get();
   }
 
+  void SetPsuType(const std::string& type) {
+    fake_cros_config_->SetString(kHardwarePropertiesPath, kPsuTypeProperty,
+                                 type);
+  }
+
  private:
   dbus::Bus::Options options_;
   scoped_refptr<dbus::MockBus> mock_bus_;
   StrictMock<org::chromium::debugdProxyMock> mock_debugd_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_power_manager_proxy_;
+  std::unique_ptr<brillo::FakeCrosConfig> fake_cros_config_;
   std::unique_ptr<BatteryFetcher> battery_fetcher_;
 };
 
@@ -249,6 +263,13 @@ TEST_F(BatteryUtilsTest, SmartMetricRetrievalFailure) {
 
   EXPECT_EQ(0, battery->manufacture_date_smart);
   EXPECT_EQ(0, battery->temperature_smart);
+}
+
+// Test that no battery info is returned when a device does not have a battery.
+TEST_F(BatteryUtilsTest, NoBattery) {
+  SetPsuType("AC_only");
+  auto info = battery_fetcher()->FetchBatteryInfo();
+  EXPECT_EQ(info.size(), 0);
 }
 
 }  // namespace diagnostics

@@ -88,9 +88,10 @@ class CrosHealthdMojoServiceTest : public testing::Test {
     mock_power_manager_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), power_manager::kPowerManagerServiceName,
         dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-    battery_fetcher_ = std::make_unique<BatteryFetcher>(
-        mock_debugd_proxy_.get(), mock_power_manager_proxy_.get());
     fake_cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+    battery_fetcher_ = std::make_unique<BatteryFetcher>(
+        mock_debugd_proxy_.get(), mock_power_manager_proxy_.get(),
+        fake_cros_config_.get());
     cached_vpd_fetcher_ =
         std::make_unique<CachedVpdFetcher>(fake_cros_config_.get());
     service_ = std::make_unique<CrosHealthdMojoService>(
@@ -108,8 +109,8 @@ class CrosHealthdMojoServiceTest : public testing::Test {
   dbus::Bus::Options options_;
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_power_manager_proxy_;
-  std::unique_ptr<BatteryFetcher> battery_fetcher_;
   std::unique_ptr<brillo::FakeCrosConfig> fake_cros_config_;
+  std::unique_ptr<BatteryFetcher> battery_fetcher_;
   std::unique_ptr<CachedVpdFetcher> cached_vpd_fetcher_;
   std::unique_ptr<CrosHealthdMojoService> service_;
 };

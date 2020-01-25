@@ -82,11 +82,12 @@ class CrosHealthd final
   // power_manager. Example: cros_healthd calls out to power_manager when it
   // needs to collect battery metrics like cycle count.
   dbus::ObjectProxy* power_manager_proxy_;
-  // |battery_fetcher_| is responsible for collecting all battery metrics (smart
-  // and regular) by using the available D-Bus proxies.
-  std::unique_ptr<BatteryFetcher> battery_fetcher_;
   // Use |cros_config_| to determine which metrics a device supports.
   std::unique_ptr<brillo::CrosConfig> cros_config_;
+  // |battery_fetcher_| is responsible for collecting all battery metrics (smart
+  // and regular) by using the available D-Bus proxies. It also uses
+  // |cros_config_| to determine which of those metrics a device supports.
+  std::unique_ptr<BatteryFetcher> battery_fetcher_;
   // |cached_vpd_fetcher_| is responsible for collecting cached VPD metrics and
   // uses |cros_config_| to determine which of those metrics a device supports.
   std::unique_ptr<CachedVpdFetcher> cached_vpd_fetcher_;

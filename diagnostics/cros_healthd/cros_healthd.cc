@@ -39,12 +39,12 @@ CrosHealthd::CrosHealthd()
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  battery_fetcher_ = std::make_unique<BatteryFetcher>(debugd_proxy_.get(),
-                                                      power_manager_proxy_);
-
   cros_config_ = std::make_unique<brillo::CrosConfig>();
   // Init should always succeed on unibuild boards.
   CHECK(cros_config_->Init());
+
+  battery_fetcher_ = std::make_unique<BatteryFetcher>(
+      debugd_proxy_.get(), power_manager_proxy_, cros_config_.get());
 
   cached_vpd_fetcher_ = std::make_unique<CachedVpdFetcher>(cros_config_.get());
 

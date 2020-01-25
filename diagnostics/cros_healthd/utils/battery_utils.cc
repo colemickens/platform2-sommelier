@@ -27,20 +27,31 @@
 
 namespace diagnostics {
 
+namespace {
+
+// The path used to check a device's master configuration hardware properties.
+constexpr char kHardwarePropertiesPath[] = "/hardware-properties";
+// The master configuration property that specifies a device's PSU type.
+constexpr char kPsuTypeProperty[] = "psu-type";
+
+constexpr char kManufactureDateSmart[] = "manufacture_date_smart";
+constexpr char kTemperatureSmart[] = "temperature_smart";
+
+}  // namespace
+
 BatteryFetcher::BatteryFetcher(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    dbus::ObjectProxy* power_manager_proxy)
-    : debugd_proxy_(debugd_proxy), power_manager_proxy_(power_manager_proxy) {
+    dbus::ObjectProxy* power_manager_proxy,
+    brillo::CrosConfigInterface* cros_config)
+    : debugd_proxy_(debugd_proxy),
+      power_manager_proxy_(power_manager_proxy),
+      cros_config_(cros_config) {
   DCHECK(debugd_proxy_);
   DCHECK(power_manager_proxy_);
+  DCHECK(cros_config_);
 }
 
 BatteryFetcher::~BatteryFetcher() = default;
-
-namespace {
-constexpr char kManufactureDateSmart[] = "manufacture_date_smart";
-constexpr char kTemperatureSmart[] = "temperature_smart";
-}  // namespace
 
 template <typename T>
 bool BatteryFetcher::FetchSmartBatteryMetric(
@@ -154,9 +165,13 @@ std::vector<BatteryFetcher::BatteryInfoPtr> BatteryFetcher::FetchBatteryInfo() {
   // contain more batteries, they can easily be supported by the vector.
   std::vector<BatteryInfoPtr> batteries{};
 
-  BatteryInfoPtr info;
-  if (FetchBatteryMetrics(&info)) {
-    batteries.push_back(std::move(info));
+  std::string psu_type;
+  cros_config_->GetString(kHardwarePropertiesPath, kPsuTypeProperty, &psu_type);
+  if (psu_type != "AC_only") {
+    BatteryInfoPtr info;
+    if (FetchBatteryMetrics(&info)) {
+      batteries.push_back(std::move(info));
+    }
   }
 
   return batteries;

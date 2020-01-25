@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <chromeos/chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/object_proxy.h>
 
 #include "debugd/dbus-proxies.h"
@@ -26,7 +27,8 @@ class BatteryFetcher {
   using BatteryInfo = ::chromeos::cros_healthd::mojom::BatteryInfo;
 
   BatteryFetcher(org::chromium::debugdProxyInterface* debugd_proxy,
-                 dbus::ObjectProxy* power_manager_proxy);
+                 dbus::ObjectProxy* power_manager_proxy,
+                 brillo::CrosConfigInterface* cros_config);
   ~BatteryFetcher();
 
   // Retrieves the metrics from the main battery over D-Bus.
@@ -55,6 +57,9 @@ class BatteryFetcher {
 
   // Unowned pointer that outlives this BatteryFetcher instance.
   dbus::ObjectProxy* power_manager_proxy_;
+
+  // Unowned pointer that outlives this BatteryFetcher instance.
+  brillo::CrosConfigInterface* cros_config_;
 
   // Extract the battery metrics from the PowerSupplyProperties protobuf. Return
   // true if the metrics could be successfully extracted from |response| and put
