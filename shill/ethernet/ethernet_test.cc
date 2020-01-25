@@ -40,6 +40,7 @@
 #include "shill/mock_eap_listener.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
+#include "shill/supplicant/supplicant_manager.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #endif  // DISABLE_WIRED_8021X
 
@@ -116,7 +117,7 @@ class EthernetTest : public testing::Test {
         .WillRepeatedly(Return(&ethernet_eap_provider_));
     ethernet_eap_provider_.set_service(mock_eap_service_);
     // Transfers ownership.
-    ethernet_->supplicant_process_proxy_.reset(supplicant_process_proxy_);
+    manager_.supplicant_manager()->set_proxy(supplicant_process_proxy_);
 #endif  // DISABLE_WIRED_8021X
 
     EXPECT_CALL(manager_, ethernet_provider())

@@ -94,6 +94,7 @@
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
+#include "shill/supplicant/supplicant_manager.h"
 
 namespace shill {
 
@@ -358,6 +359,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return scan_interval_seconds_;
   }
 
+  SupplicantProcessProxyInterface* supplicant_process_proxy() const;
+
   // RPC accessor for |link_statistics_|.
   KeyValueStore GetLinkStatistics(Error* error);
 
@@ -517,8 +520,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // to "Associating", otherwise it is stopped.
   void SetPendingService(const WiFiServiceRefPtr& service);
 
-  void OnSupplicantAppear();
-  void OnSupplicantVanish();
+  void OnSupplicantPresence(bool present);
   // Called by ScopeLogger when WiFi debug scope is enabled/disabled.
   void OnWiFiDebugScopeChanged(bool enabled);
   // Enable or disable debugging for the current connection attempt.
@@ -613,7 +615,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool supplicant_present_;
 
-  std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
   // wpa_supplicant's RPC path for this device/interface.
@@ -715,6 +716,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Netlink broadcast handler, for scan results.
   NetlinkManager::NetlinkMessageHandler netlink_handler_;
+
+  // Managed supplicant listener, for watching service (re)start.
+  std::unique_ptr<SupplicantManager::ScopedSupplicantListener>
+      scoped_supplicant_listener_;
 
   // For weak pointers that will be invalidated in Stop().
   base::WeakPtrFactory<WiFi> weak_ptr_factory_while_started_;

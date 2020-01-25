@@ -63,6 +63,10 @@
 #include "shill/ethernet/ethernet_eap_service.h"
 #endif  // DISABLE_WIRED_8021X
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/supplicant/supplicant_manager.h"
+#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
+
 using base::Bind;
 using base::Callback;
 using base::StringPrintf;
@@ -163,6 +167,9 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_WIFI)
       wifi_provider_(new WiFiProvider(this)),
 #endif  // DISABLE_WIFI
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+      supplicant_manager_(new SupplicantManager(this)),
+#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
       throttler_(new Throttler(dispatcher, this)),
       resolver_(Resolver::GetInstance()),
       running_(false),
@@ -285,6 +292,10 @@ void Manager::Start() {
 
   ComputeUserTrafficUids();
   ApplyPolicies();
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  supplicant_manager_->Start();
+#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
 
   power_manager_.reset(new PowerManager(control_interface_));
   power_manager_->Start(

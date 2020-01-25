@@ -479,6 +479,7 @@ static_library("libshill") {
       "eap_credentials.cc",
       "eap_listener.cc",
       "supplicant/supplicant_eap_state_handler.cc",
+      "supplicant/supplicant_manager.cc",
       "supplicant/wpa_supplicant.cc",
     ]
     deps += [ ":generate_supplicant_proxies" ]
@@ -922,6 +923,7 @@ if (use.test) {
         "supplicant/mock_supplicant_network_proxy.cc",
         "supplicant/mock_supplicant_process_proxy.cc",
         "supplicant/supplicant_eap_state_handler_test.cc",
+        "supplicant/supplicant_manager_test.cc",
         "supplicant/wpa_supplicant_test.cc",
       ]
     }

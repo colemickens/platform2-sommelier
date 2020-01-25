@@ -129,6 +129,8 @@ class Ethernet
 
   // Callback task run as a result of TryEapAuthentication().
   void TryEapAuthenticationTask();
+
+  SupplicantProcessProxyInterface* supplicant_process_proxy() const;
 #endif  // DISABLE_WIRED_8021X
 
   // Accessors for the PPoE property.
@@ -193,7 +195,6 @@ class Ethernet
   SupplicantEAPStateHandler eap_state_handler_;
 
   // Proxy instances used to talk to wpa_supplicant.
-  std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
   RpcIdentifier supplicant_interface_path_;

@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
@@ -33,6 +34,7 @@
 #endif  // DISABLE_WIFI
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_network_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
@@ -77,10 +79,8 @@ class MockControl : public ControlInterface {
                const base::Closure&),
               (override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MOCK_METHOD(std::unique_ptr<SupplicantProcessProxyInterface>,
-              CreateSupplicantProcessProxy,
-              (const base::Closure&, const base::Closure&),
-              (override));
+  std::unique_ptr<SupplicantProcessProxyInterface> CreateSupplicantProcessProxy(
+      const base::Closure&, const base::Closure&) override;
   MOCK_METHOD(std::unique_ptr<SupplicantInterfaceProxyInterface>,
               CreateSupplicantInterfaceProxy,
               (SupplicantEventDelegateInterface*, const RpcIdentifier&),
@@ -89,6 +89,8 @@ class MockControl : public ControlInterface {
               CreateSupplicantNetworkProxy,
               (const RpcIdentifier&),
               (override));
+  const base::Closure& supplicant_appear() const;
+  const base::Closure& supplicant_vanish() const;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
   MOCK_METHOD(std::unique_ptr<SupplicantBSSProxyInterface>,
@@ -151,6 +153,11 @@ class MockControl : public ControlInterface {
 
  private:
   RpcIdentifier null_identifier_;
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  base::Closure supplicant_appear_;
+  base::Closure supplicant_vanish_;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   DISALLOW_COPY_AND_ASSIGN(MockControl);
 };

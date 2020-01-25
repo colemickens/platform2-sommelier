@@ -46,6 +46,7 @@
 #include "shill/scope_logger.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant/supplicant_manager.h"
 #include "shill/supplicant/supplicant_network_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -156,9 +157,10 @@ WiFi::WiFi(Manager* manager,
       wake_on_wifi_(std::move(wake_on_wifi)),
       weak_ptr_factory_while_started_(this),
       weak_ptr_factory_(this) {
-  supplicant_process_proxy_ = control_interface()->CreateSupplicantProcessProxy(
-      Bind(&WiFi::OnSupplicantAppear, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::OnSupplicantVanish, weak_ptr_factory_.GetWeakPtr()));
+  scoped_supplicant_listener_.reset(
+      new SupplicantManager::ScopedSupplicantListener(
+          manager->supplicant_manager(),
+          Bind(&WiFi::OnSupplicantPresence, weak_ptr_factory_.GetWeakPtr())));
   mac80211_monitor_.reset(
       new Mac80211Monitor(dispatcher(), link, kStuckQueueLengthThreshold,
                           base::Bind(&WiFi::RestartFastScanAttempts,
@@ -256,7 +258,7 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   rpcid_by_service_.clear();
   // Remove interface from supplicant.
   if (supplicant_present_ && supplicant_interface_proxy_) {
-    supplicant_process_proxy_->RemoveInterface(supplicant_interface_path_);
+    supplicant_process_proxy()->RemoveInterface(supplicant_interface_path_);
   }
   supplicant_interface_path_ = RpcIdentifier("");
   SetSupplicantInterfaceProxy(nullptr);
@@ -276,9 +278,6 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
     error->Reset();  // indicate immediate completion
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
 
-  SLOG(this, 3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
-                << (supplicant_process_proxy_.get() ? "is set."
-                                                    : "is not set.");
   SLOG(this, 3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
                 << (supplicant_interface_proxy_.get() ? "is set."
                                                       : "is not set.");
@@ -2046,7 +2045,7 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
   LOG(INFO) << __func__ << ": "
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
   StopScanTimer();
-  supplicant_process_proxy_->ExpectDisconnect();
+  supplicant_process_proxy()->ExpectDisconnect();
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
@@ -2427,22 +2426,23 @@ void WiFi::ReconnectTimeoutHandler() {
   DisconnectFrom(current_service_.get());
 }
 
-void WiFi::OnSupplicantAppear() {
-  LOG(INFO) << "WPA supplicant appeared.";
-  if (supplicant_present_) {
-    // Restart the WiFi device if it's started already. This will reset the
-    // state and connect the device to the new WPA supplicant instance.
-    if (enabled()) {
-      Restart();
+void WiFi::OnSupplicantPresence(bool present) {
+  LOG(INFO) << "WPA supplicant presence changed: " << present;
+
+  if (present) {
+    if (supplicant_present_) {
+      // Restart the WiFi device if it's started already. This will reset the
+      // state and connect the device to the new WPA supplicant instance.
+      if (enabled()) {
+        Restart();
+      }
+      return;
     }
+    supplicant_present_ = true;
+    ConnectToSupplicant();
     return;
   }
-  supplicant_present_ = true;
-  ConnectToSupplicant();
-}
 
-void WiFi::OnSupplicantVanish() {
-  LOG(INFO) << "WPA supplicant vanished.";
   if (!supplicant_present_) {
     return;
   }
@@ -2461,7 +2461,7 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
     return;
   }
   string current_level;
-  if (!supplicant_process_proxy_->GetDebugLevel(&current_level)) {
+  if (!supplicant_process_proxy()->GetDebugLevel(&current_level)) {
     LOG(ERROR) << __func__ << ": Failed to get wpa_supplicant debug level.";
     return;
   }
@@ -2481,7 +2481,7 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
     return;
   }
 
-  if (!supplicant_process_proxy_->SetDebugLevel(new_level)) {
+  if (!supplicant_process_proxy()->SetDebugLevel(new_level)) {
     LOG(ERROR) << __func__ << ": Failed to set wpa_supplicant debug level.";
   }
 }
@@ -2528,11 +2528,11 @@ void WiFi::ConnectToSupplicant() {
   create_interface_args.SetString(WPASupplicant::kInterfacePropertyConfigFile,
                                   WPASupplicant::kSupplicantConfPath);
   supplicant_connect_attempts_++;
-  if (!supplicant_process_proxy_->CreateInterface(
+  if (!supplicant_process_proxy()->CreateInterface(
           create_interface_args, &supplicant_interface_path_)) {
     // Interface might've already been created, attempt to retrieve it.
-    if (!supplicant_process_proxy_->GetInterface(link_name(),
-                                                 &supplicant_interface_path_)) {
+    if (!supplicant_process_proxy()->GetInterface(
+            link_name(), &supplicant_interface_path_)) {
       LOG(ERROR) << __func__
                  << ": Failed to create interface with supplicant, attempt "
                  << supplicant_connect_attempts_;
@@ -2695,6 +2695,10 @@ void WiFi::OnTriggerPassiveScanResponse(const Nl80211Message& netlink_message) {
                << netlink_message.command() << " here:";
   netlink_message.Print(0, 0);
   return;
+}
+
+SupplicantProcessProxyInterface* WiFi::supplicant_process_proxy() const {
+  return manager()->supplicant_manager()->proxy();
 }
 
 KeyValueStore WiFi::GetLinkStatistics(Error* /*error*/) {

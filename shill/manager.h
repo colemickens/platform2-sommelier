@@ -59,6 +59,10 @@ class WiFiProvider;
 class EthernetEapProvider;
 #endif  // DISABLE_WIRED_8021X
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+class SupplicantManager;
+#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
+
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
   struct Properties {
@@ -517,6 +521,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }
   Metrics* metrics() const { return metrics_; }
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  SupplicantManager* supplicant_manager() const {
+    return supplicant_manager_.get();
+  }
+#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
 
  private:
   friend class ArcVpnDriverTest;
@@ -750,6 +759,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #if !defined(DISABLE_WIFI)
   std::unique_ptr<WiFiProvider> wifi_provider_;
 #endif  // DISABLE_WIFI
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  std::unique_ptr<SupplicantManager> supplicant_manager_;
+#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
 
   // Entity that calls kernel commands ('tc') to throttle network bandwidth.
   std::unique_ptr<Throttler> throttler_;

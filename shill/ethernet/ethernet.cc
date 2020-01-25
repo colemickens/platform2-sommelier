@@ -47,6 +47,7 @@
 #include "shill/eap_listener.h"
 #include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant/supplicant_manager.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #endif  // DISABLE_WIRED_8021X
@@ -93,9 +94,6 @@ Ethernet::Ethernet(Manager* manager,
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(new EapListener(interface_index)),
-      supplicant_process_proxy_(
-          control_interface()->CreateSupplicantProcessProxy(base::Closure(),
-                                                            base::Closure())),
 #endif  // DISABLE_WIRED_8021X
       sockets_(new Sockets()),
       permanent_mac_address_(GetPermanentMacAddressFromKernel()),
@@ -340,11 +338,11 @@ bool Ethernet::StartSupplicant() {
                                   WPASupplicant::kDriverWired);
   create_interface_args.SetString(WPASupplicant::kInterfacePropertyConfigFile,
                                   WPASupplicant::kSupplicantConfPath);
-  if (!supplicant_process_proxy_->CreateInterface(create_interface_args,
-                                                  &interface_path)) {
+  if (!supplicant_process_proxy()->CreateInterface(create_interface_args,
+                                                   &interface_path)) {
     // Interface might've already been created, try to retrieve it.
-    if (!supplicant_process_proxy_->GetInterface(link_name(),
-                                                 &interface_path)) {
+    if (!supplicant_process_proxy()->GetInterface(link_name(),
+                                                  &interface_path)) {
       LOG(ERROR) << __func__ << ": Failed to create interface with supplicant.";
       StopSupplicant();
       return false;
@@ -393,7 +391,7 @@ void Ethernet::StopSupplicant() {
   }
   supplicant_interface_proxy_.reset();
   if (!supplicant_interface_path_.empty()) {
-    if (!supplicant_process_proxy_->RemoveInterface(
+    if (!supplicant_process_proxy()->RemoveInterface(
             supplicant_interface_path_)) {
       LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";
     }
@@ -463,6 +461,10 @@ void Ethernet::TryEapAuthenticationTask() {
     return;
   }
   StartEapAuthentication();
+}
+
+SupplicantProcessProxyInterface* Ethernet::supplicant_process_proxy() const {
+  return manager()->supplicant_manager()->proxy();
 }
 #endif  // DISABLE_WIRED_8021X
 

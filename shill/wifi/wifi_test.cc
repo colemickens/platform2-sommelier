@@ -59,6 +59,7 @@
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_network_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
+#include "shill/supplicant/supplicant_manager.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
@@ -566,7 +567,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_network_proxy_(new NiceMock<MockSupplicantNetworkProxy>()) {
     wifi_->mac80211_monitor_.reset(mac80211_monitor_);
-    wifi_->supplicant_process_proxy_.reset(supplicant_process_proxy_);
+    manager_.supplicant_manager()->set_proxy(supplicant_process_proxy_);
     ON_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
         .WillByDefault(DoAll(SetArgPointee<1>(RpcIdentifier("/default/path")),
                              Return(true)));
@@ -879,9 +880,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // note: the tests need the proxies referenced by WiFi (not the
   // proxies instantiated by WiFiObjectTest), to ensure that WiFi
   // sets up its proxies correctly.
-  SupplicantProcessProxyInterface* GetSupplicantProcessProxy() {
-    return wifi_->supplicant_process_proxy_.get();
-  }
   MockSupplicantInterfaceProxy* GetSupplicantInterfaceProxyFromWiFi() {
     return static_cast<MockSupplicantInterfaceProxy*>(
         wifi_->supplicant_interface_proxy_.get());
@@ -998,7 +996,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->SetEnabled(true);  // Start(nullptr, ResultCallback());
     if (supplicant_present)
       // Mimic the callback from |supplicant_process_proxy_|.
-      wifi_->OnSupplicantAppear();
+      wifi_->OnSupplicantPresence(true);
   }
   void StartWiFi() { StartWiFi(true); }
   void OnAfterResume() {
@@ -1025,11 +1023,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->TriggerPassiveScan(freqs);
   }
   void OnSupplicantAppear() {
-    wifi_->OnSupplicantAppear();
+    wifi_->OnSupplicantPresence(true);
     EXPECT_TRUE(wifi_->supplicant_present_);
   }
   void OnSupplicantVanish() {
-    wifi_->OnSupplicantVanish();
+    wifi_->OnSupplicantPresence(false);
     EXPECT_FALSE(wifi_->supplicant_present_);
   }
   bool GetSupplicantPresent() { return wifi_->supplicant_present_; }
