@@ -67,12 +67,18 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
 
       ScopedDrmModeFBPtr fb(
           drmModeGetFB(file.GetPlatformFile(), crtc->buffer_id));
-      if (!fb)
+
+      ScopedDrmModeFB2Ptr fb2(
+          drmModeGetFB2(file.GetPlatformFile(), crtc->buffer_id));
+
+      if (!fb && !fb2) {
+        LOG(ERROR) << "getfb failed";
         continue;
+      }
 
       crtcs.emplace_back(std::make_unique<Crtc>(
           file.Duplicate(), std::move(connector), std::move(encoder),
-          std::move(crtc), std::move(fb)));
+          std::move(crtc), std::move(fb), std::move(fb2)));
     }
   }
 
@@ -83,10 +89,10 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
 
 Crtc::Crtc(base::File file, ScopedDrmModeConnectorPtr connector,
            ScopedDrmModeEncoderPtr encoder, ScopedDrmModeCrtcPtr crtc,
-           ScopedDrmModeFBPtr fb)
+           ScopedDrmModeFBPtr fb, ScopedDrmModeFB2Ptr fb2)
     : file_(std::move(file)), connector_(std::move(connector)),
       encoder_(std::move(encoder)), crtc_(std::move(crtc)),
-      fb_(std::move(fb)) {}
+      fb_(std::move(fb)), fb2_(std::move(fb2)) {}
 
 bool Crtc::IsInternalDisplay() const {
   switch (connector_->connector_type) {

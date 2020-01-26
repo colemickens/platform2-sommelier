@@ -12,6 +12,7 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "screenshot/capture.h"
+#include "screenshot/egl_capture.h"
 #include "screenshot/crtc.h"
 #include "screenshot/png.h"
 
@@ -101,8 +102,17 @@ int Main() {
     return 1;
   }
 
-  const uint32_t crtc_width = crtc->fb()->width;
-  const uint32_t crtc_height = crtc->fb()->height;
+  uint32_t crtc_width;
+  uint32_t crtc_height;
+
+  if (crtc->fb2()) {
+    crtc_width = crtc->fb2()->width;
+    crtc_height = crtc->fb2()->height;
+  } else {
+    crtc_width = crtc->fb()->width;
+    crtc_height = crtc->fb()->height;
+  }
+
   if (!crop_set) {
     x = 0;
     y = 0;
@@ -114,10 +124,15 @@ int Main() {
   CHECK_LE(x + width, crtc_width);
   CHECK_LE(y + height, crtc_height);
 
-  auto map = screenshot::Capture(*crtc, x, y, width, height);
-
-  screenshot::SaveAsPng(cmdline->GetArgs()[0].c_str(), map->buffer(),
-                        map->width(), map->height(), map->stride());
+  if (crtc->fb2()) {
+    auto map = screenshot::EglCapture(*crtc, x, y, width, height);
+    screenshot::SaveAsPng(cmdline->GetArgs()[0].c_str(), map->buffer().data(),
+                          map->width(), map->height(), map->stride());
+  } else {
+    auto map = screenshot::Capture(*crtc, x, y, width, height);
+    screenshot::SaveAsPng(cmdline->GetArgs()[0].c_str(), map->buffer(),
+                          map->width(), map->height(), map->stride());
+  }
   return 0;
 }
 

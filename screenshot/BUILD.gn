@@ -16,6 +16,8 @@ pkg_config("target_defaults") {
     "libdrm",
     "libpng",
     "gbm",
+    "egl",
+    "glesv2",
   ]
 }
 
@@ -23,6 +25,7 @@ executable("screenshot") {
   configs += [ ":target_defaults" ]
   sources = [
     "capture.cc",
+    "egl_capture.cc",
     "crtc.cc",
     "main.cc",
     "png.cc",
