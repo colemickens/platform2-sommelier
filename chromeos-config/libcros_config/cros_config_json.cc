@@ -23,6 +23,9 @@
 
 namespace brillo {
 
+constexpr char CrosConfigJson::kRootName[];
+constexpr char CrosConfigJson::kConfigListName[];
+
 CrosConfigJson::CrosConfigJson() : config_dict_(nullptr) {}
 
 CrosConfigJson::~CrosConfigJson() {}
@@ -34,11 +37,11 @@ bool CrosConfigJson::SelectConfigByIdentityInternal(
     return false;
 
   const base::DictionaryValue* chromeos;
-  if (!root_dict->GetDictionary("chromeos", &chromeos))
+  if (!root_dict->GetDictionary(kRootName, &chromeos))
     return false;
 
   const base::ListValue* configs_list;
-  if (!chromeos->GetList("configs", &configs_list))
+  if (!chromeos->GetList(kConfigListName, &configs_list))
     return false;
 
   const std::string& find_whitelabel_name = identity.GetVpdId();

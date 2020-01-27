@@ -25,6 +25,9 @@ namespace brillo {
 // JSON implementation of master configuration
 class CrosConfigJson : public CrosConfigImpl {
  public:
+  static constexpr char kRootName[] = "chromeos";
+  static constexpr char kConfigListName[] = "configs";
+
   CrosConfigJson();
   ~CrosConfigJson() override;
 
