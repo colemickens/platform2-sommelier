@@ -43,13 +43,15 @@ const char* TypeToString(RTNLMessage::Type type) {
   }
 }
 
-std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, size_t len) {
+std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
   RTNLAttrMap attrs;
   ByteString attr_bytes(reinterpret_cast<const char*>(data), len);
 
   while (data && RTA_OK(data, len)) {
     attrs[data->rta_type] = ByteString(
         reinterpret_cast<unsigned char*>(RTA_DATA(data)), RTA_PAYLOAD(data));
+    // Note: RTA_NEXT() performs subtraction on 'len'. It's important that
+    // 'len' is a signed integer, so underflow works properly.
     data = RTA_NEXT(data, len);
   }
 
