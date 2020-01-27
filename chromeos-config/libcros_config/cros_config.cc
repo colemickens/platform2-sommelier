@@ -7,6 +7,7 @@
 #include "chromeos-config/libcros_config/cros_config.h"
 
 #include <string>
+#include <sys/mount.h>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -159,6 +160,40 @@ bool CrosConfig::MountConfigFS(const base::FilePath& image_path,
           .Append(CrosConfigJson::kConfigListName)
           .Append(std::to_string(device_index));
   return Bind(device_config_dir, v1_dir);
+}
+
+bool CrosConfig::MountFallbackConfigFS(const base::FilePath& mount_path) {
+  base::FilePath private_dir;
+  base::FilePath v1_dir;
+
+  if (!SetupMountPath(mount_path, &private_dir, &v1_dir)) {
+    return false;
+  }
+
+  if (!Mount(base::FilePath("tmpfs"), private_dir, "tmpfs", 0)) {
+    return false;
+  }
+
+  const auto fallback_dir = private_dir.Append("fallback");
+  if (!base::CreateDirectory(fallback_dir)) {
+    CROS_CONFIG_LOG(ERROR) << "Failed to create directory "
+                           << fallback_dir.value();
+    return false;
+  }
+
+  CrosConfigFallback cros_config;
+  if (!cros_config.WriteConfigFS(fallback_dir)) {
+    CROS_CONFIG_LOG(ERROR) << "Creating fallback ConfigFS failed!";
+    return false;
+  }
+
+  if (!Remount(private_dir, MS_RDONLY)) {
+    CROS_CONFIG_LOG(ERROR) << "Unable to make fallback ConfigFS read-only "
+                           << "after writing out files.";
+    return false;
+  }
+
+  return Bind(fallback_dir, v1_dir);
 }
 
 bool CrosConfig::InitInternal(const int sku_id,

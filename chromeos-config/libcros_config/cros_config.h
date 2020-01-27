@@ -62,6 +62,13 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool MountConfigFS(const base::FilePath& image_path,
                      const base::FilePath& mount_path);
 
+  // Mount a ConfigFS image using the legacy (non-unibuild)
+  // interface. This method can be called before (but not instead of)
+  // Init, as no runtime probing is needed on non-unibuild boards.
+  // @mount_path: The directory to mount ConfigFS at.
+  // @return true on success, false on error.
+  bool MountFallbackConfigFS(const base::FilePath& mount_path);
+
   // CrosConfigInterface:
   bool GetString(const std::string& path,
                  const std::string& property,
