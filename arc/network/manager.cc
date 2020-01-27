@@ -34,8 +34,6 @@ bool ShouldEnableNDProxyForArc() {
   static const char kLsbReleasePath[] = "/etc/lsb-release";
   static int kMinAndroidSdkVersion = 28;  // P
   static int kMinChromeMilestone = 80;
-  static std::array<std::string, 3> kSupportedBoards = {"atlas", "eve",
-                                                        "eve-arcvm"};
 
   brillo::KeyValueStore store;
   if (!store.Load(base::FilePath(kLsbReleasePath))) {
@@ -72,15 +70,6 @@ bool ShouldEnableNDProxyForArc() {
     return false;
   }
 
-  if (!store.GetString("CHROMEOS_RELEASE_BOARD", &value)) {
-    LOG(ERROR) << "NDProxy disabled for ARC - cannot determine board";
-    return false;
-  }
-  if (std::find(kSupportedBoards.begin(), kSupportedBoards.end(), value) ==
-      kSupportedBoards.end()) {
-    LOG(INFO) << "NDProxy disabled for ARC on board " << value;
-    return false;
-  }
   LOG(INFO) << "NDProxy enabled for ARC";
   return true;
 }
