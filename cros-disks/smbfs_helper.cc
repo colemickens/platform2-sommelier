@@ -98,7 +98,6 @@ std::unique_ptr<FUSEMounter> SmbfsHelper::CreateMounter(
       {kDbusSocketPath, true},
   };
 
-  // TODO(crbug.com/939235): Create a seccomp policy for smbfs.
   return std::make_unique<SmbfsMounter>(
       "", target_path.value(), type(), mount_options, platform(),
       process_reaper(), program_path().value(), user(), kSeccompPolicyFile,
