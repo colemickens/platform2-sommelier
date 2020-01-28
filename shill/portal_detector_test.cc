@@ -152,9 +152,6 @@ class PortalDetectorTest : public Test {
         .WillOnce(Return(HttpRequest::kResultInProgress));
     EXPECT_CALL(*https_request(), Start(_, _, _, _))
         .WillOnce(Return(HttpRequest::kResultInProgress));
-    EXPECT_CALL(
-        dispatcher(),
-        PostDelayedTask(_, _, PortalDetector::kRequestTimeoutSeconds * 1000));
     portal_detector()->StartTrialTask();
   }
 

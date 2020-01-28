@@ -171,9 +171,6 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, InvalidURL);
   FRIEND_TEST(PortalDetectorTest, IsActive);
 
-  // Time to wait for request to complete.
-  static const int kRequestTimeoutSeconds;
-
   // Picks the HTTP probe URL based on |attempt_count_|. Returns kDefaultHttpUrl
   // if this is the first attempt. Otherwise, randomly returns an element of
   // kDefaultFallbackHttpUrls.
@@ -227,10 +224,6 @@ class PortalDetector {
   // HttpRequest.
   void CleanupTrial();
 
-  // Callback used to cancel the underlying HttpRequest in the event of a
-  // timeout.
-  void TimeoutTrialTask();
-
   // Method to return if the connection is being actively tested.
   virtual bool IsActive();
 
@@ -242,7 +235,6 @@ class PortalDetector {
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
   base::Callback<void(const Result&, const Result&)> portal_result_callback_;
   Time* time_;
-  int trial_timeout_seconds_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
   std::unique_ptr<Result> http_result_;
@@ -251,7 +243,6 @@ class PortalDetector {
   std::string http_url_string_;
   std::string https_url_string_;
   base::CancelableClosure trial_;
-  base::CancelableClosure trial_timeout_;
   bool is_active_;
 
   DISALLOW_COPY_AND_ASSIGN(PortalDetector);

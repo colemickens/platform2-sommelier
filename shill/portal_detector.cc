@@ -48,8 +48,6 @@ const int PortalDetector::kInitialCheckIntervalSeconds = 3;
 const int PortalDetector::kMaxPortalCheckIntervalSeconds = 5 * 60;
 const char PortalDetector::kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
 
-const int PortalDetector::kRequestTimeoutSeconds = 10;
-
 const char PortalDetector::kDefaultHttpUrl[] =
     "http://www.gstatic.com/generate_204";
 const char PortalDetector::kDefaultHttpsUrl[] =
@@ -188,11 +186,6 @@ void PortalDetector::StartTrialTask() {
                       attempt_count_);
   }
   is_active_ = true;
-
-  trial_timeout_.Reset(
-      Bind(&PortalDetector::TimeoutTrialTask, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE, trial_timeout_.callback(),
-                               kRequestTimeoutSeconds * 1000);
 }
 
 bool PortalDetector::IsActive() {
@@ -211,8 +204,6 @@ void PortalDetector::CompleteTrial(Result http_result, Result https_result) {
 }
 
 void PortalDetector::CleanupTrial() {
-  trial_timeout_.Cancel();
-
   http_result_.reset();
   https_result_.reset();
   if (http_request_)
@@ -221,13 +212,6 @@ void PortalDetector::CleanupTrial() {
     https_request_->Stop();
 
   is_active_ = false;
-}
-
-void PortalDetector::TimeoutTrialTask() {
-  LOG(ERROR) << connection_->interface_name()
-             << " Trial request timed out, attempt count==" << attempt_count_;
-  CompleteTrial(Result(Phase::kUnknown, Status::kTimeout),
-                Result(Phase::kUnknown, Status::kTimeout));
 }
 
 void PortalDetector::Stop() {
