@@ -74,13 +74,12 @@ void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
     return;
   }
 
-  // TODO(crbug.com/993857): Switch to BindOnce when libchrome is updated.
   client_->ConnectToKerberosFilesChangedSignal(
-      base::Bind(&KerberosArtifactSynchronizer::OnKerberosFilesChanged,
-                 base::Unretained(this)),
-      base::Bind(
+      base::BindRepeating(&KerberosArtifactSynchronizer::OnKerberosFilesChanged,
+                          base::Unretained(this)),
+      base::BindOnce(
           &KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected,
-          base::Unretained(this), base::Passed(&callback)));
+          base::Unretained(this), std::move(callback)));
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChanged(

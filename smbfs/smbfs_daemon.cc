@@ -264,7 +264,7 @@ bool SmbFsDaemon::InitMojo() {
   bootstrap_binding_.Bind(mojom::SmbFsBootstrapRequest(
       invitation.ExtractMessagePipe("smbfs-bootstrap")));
   bootstrap_binding_.set_connection_error_handler(
-      base::Bind(&SmbFsDaemon::OnConnectionError, base::Unretained(this)));
+      base::BindOnce(&SmbFsDaemon::OnConnectionError, base::Unretained(this)));
 
   return true;
 }

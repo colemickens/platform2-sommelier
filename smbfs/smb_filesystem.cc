@@ -376,7 +376,7 @@ void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
       return;
     }
 
-    file_closer.ReplaceClosure(base::Bind(
+    file_closer.ReplaceClosure(base::BindOnce(
         [](SMBCCTX* context, SMBCFILE* file) {
           if (smbc_getFunctionClose(context)(context, file) < 0) {
             PLOG(ERROR) << "smbc_close failed on temporary setattr file";
