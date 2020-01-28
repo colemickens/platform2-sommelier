@@ -26,25 +26,31 @@ constexpr char kBinary[] = "/usr/libexec/diagnostics/cros_healthd_helper";
 constexpr char kRunAs[] = "healthd_ec";
 constexpr char kCrosHealthdSeccompPolicy[] = "ectool_i2cread-seccomp.policy";
 // The ectool command below follows the format:
-// ectool i2cread <num_bits> <port> <addr8> <offset>
-// Note that <num_bits> can either be 8 or 16.
-
-typedef std::map<std::string, std::vector<std::string>> MetricToEctoolArgs;
-typedef std::map<std::string, MetricToEctoolArgs> ModelNameToMetric;
-const ModelNameToMetric kModelToEctoolArgs = {
-    {"sona",
-     {{"temperature_smart",
-       {"/usr/sbin/ectool", "i2cread", "16", "2", "0x16", "0x08"}},
-      {"manufacture_date_smart",
-       {"/usr/sbin/ectool", "i2cread", "16", "2", "0x16", "0x1b"}}}},
-    {"careena",
-     {{"temperature_smart",
-       {"/usr/sbin/ectool", "i2cread", "16", "0", "0x16", "0x08"}},
-      {"manufacture_date_smart",
-       {"/usr/sbin/ectool", "i2cread", "16", "0", "0x16", "0x1b"}}}}};
+// ectool i2cread [NUM_BITS] [PORT] [BATTERY_I2C_ADDRESS (addr8)] [OFFSET]
+// Note that [NUM_BITS] can either be 8 or 16.
+constexpr char kEctoolCommand[] = "/usr/sbin/ectool";
+constexpr char kI2cReadKey[] = "i2cread";
+// The specification for smart battery can be found at:
+// http://sbs-forum.org/specs/sbdat110.pdf. This states
+// that both the temperature and manufacture_date commands
+// use the "Read Word" SMBus Protocol, which is 16 bits.
+constexpr char kNumBits[] = "16";
+// The i2c address is well defined at:
+// src/platform/ec/include/battery_smart.h
+constexpr char kBatteryI2cAddress[] = "0x16";
+// The only ectool argument different across models is the port.
+const std::map<std::string, std::string> kModelToPort = {
+  {"sona", "2"},
+  {"careena", "0"},
+  {"dratini", "5"}};
+const std::map<std::string, std::string> kMetricNameToOffset = {
+  {"temperature_smart", "0x08"},
+  {"manufacture_date_smart", "0x1b"}};
 
 }  // namespace
 
+// Note that this is a short-term solution to retrieving battery metrics.
+// A long term solution is being discussed at: crbug.com/1047277.
 bool CrosHealthdTool::CollectSmartBatteryMetric(brillo::ErrorPtr* error,
                                                 const std::string& metric_name,
                                                 std::string* output) {
@@ -65,27 +71,21 @@ bool CrosHealthdTool::CollectSmartBatteryMetric(brillo::ErrorPtr* error,
                                         model_name.c_str()));
     return false;
   }
-  if (model_name != "sona" && model_name != "careena") {
-    DEBUGD_ADD_ERROR(
-        error, kErrorPath,
-        base::StringPrintf("Failed to access smart battery properties for %s",
-                           model_name.c_str()));
-    return false;
-  }
 
   std::string ectool_command;
-  auto it = kModelToEctoolArgs.find(model_name);
-  if (it != kModelToEctoolArgs.end()) {
-    const MetricToEctoolArgs& metric_to_ectool_args = it->second;
-    auto inner_it = metric_to_ectool_args.find(metric_name);
-    if (inner_it != metric_to_ectool_args.end()) {
-      const std::vector<std::string>& ectool_args = inner_it->second;
-      ectool_command = base::JoinString(ectool_args, " ");
+  auto it = kModelToPort.find(model_name);
+  if (it != kModelToPort.end()) {
+    const std::string port_number = it->second;
+    auto metric_name_it = kMetricNameToOffset.find(metric_name);
+    if (metric_name_it != kMetricNameToOffset.end()) {
+      const std::string offset = metric_name_it->second;
+      ectool_command = base::JoinString({kEctoolCommand, kI2cReadKey, kNumBits,
+        port_number, kBatteryI2cAddress, offset}, " ");
     } else {
       DEBUGD_ADD_ERROR(
           error, kErrorPath,
           base::StringPrintf(
-              "Failed to find ectool command for model: %s and metric: %s",
+              "Failed to find offset for model: %s and metric: %s",
               model_name.c_str(), metric_name.c_str()));
       return false;
     }
@@ -93,8 +93,8 @@ bool CrosHealthdTool::CollectSmartBatteryMetric(brillo::ErrorPtr* error,
     DEBUGD_ADD_ERROR(
         error, kErrorPath,
         base::StringPrintf(
-            "Failed to find information about metric: %s for model: %s",
-            metric_name.c_str(), model_name.c_str()));
+            "Failed to find port for model: %s and metric: %s",
+            model_name.c_str(), metric_name.c_str()));
     return false;
   }
 
