@@ -59,8 +59,8 @@
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"

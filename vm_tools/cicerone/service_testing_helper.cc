@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
@@ -18,7 +19,6 @@
 #include "vm_tools/cicerone/dbus_message_testing_helper.h"
 #include "vm_tools/cicerone/mock_tremplin_stub.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
-#include "vm_tools/common/constants.h"
 
 namespace vm_tools {
 namespace cicerone {

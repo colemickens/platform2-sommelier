@@ -18,8 +18,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
-
-#include "vm_tools/common/constants.h"
+#include <chromeos/constants/vm_tools.h>
 
 using std::string;
 

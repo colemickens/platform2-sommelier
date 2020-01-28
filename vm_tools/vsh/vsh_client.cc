@@ -35,8 +35,8 @@
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/syslog_logging.h>
 #include <vm_protos/proto_bindings/vsh.pb.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/vsh/scoped_termios.h"
 #include "vm_tools/vsh/utils.h"
 

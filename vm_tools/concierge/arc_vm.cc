@@ -26,8 +26,8 @@
 #include <base/strings/string_split.h>
 #include <base/sys_info.h>
 #include <base/time/time.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 

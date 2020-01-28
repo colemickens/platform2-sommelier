@@ -32,8 +32,8 @@
 #include <google/protobuf/text_format.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/maitred/init.h"
 #include "vm_tools/maitred/service_impl.h"
 

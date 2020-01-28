@@ -27,8 +27,8 @@
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/mime_types_parser.h"

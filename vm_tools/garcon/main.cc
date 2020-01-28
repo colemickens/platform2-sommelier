@@ -39,8 +39,8 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
 #include "vm_tools/garcon/service_impl.h"

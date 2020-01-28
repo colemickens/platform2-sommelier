@@ -28,8 +28,8 @@
 #include <dbus/object_proxy.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/vsh/scoped_termios.h"
 #include "vm_tools/vsh/utils.h"
 #include "vm_tools/vsh/vsh_client.h"

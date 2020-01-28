@@ -25,8 +25,8 @@
 #include <base/time/time.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
+#include <chromeos/constants/vm_tools.h>
 
-#include "vm_tools/common/constants.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 
