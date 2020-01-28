@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/message.h>
@@ -88,9 +89,7 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
   DCHECK_EQ(signal->GetInterface(), authpolicy::kAuthPolicyInterface);
   DCHECK_EQ(signal->GetMember(), authpolicy::kUserKerberosFilesChangedSignal);
 
-  // TODO(crbug.com/993857): Switch to base::DoNothing() when libchrome is
-  // updated.
-  GetFiles(base::BindOnce([](bool success) {}));
+  GetFiles(base::DoNothing());
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(
