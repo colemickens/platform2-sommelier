@@ -316,9 +316,9 @@ void RoutineService::ForwardGetAvailableRoutinesResponse(
         mojo_routines) {
   auto it = get_available_routines_callbacks_.find(callback_key);
   if (it == get_available_routines_callbacks_.end()) {
-    LOG(ERROR)
-        << "Bad callback_key for received mojo GetAvailableRoutines response: "
-        << callback_key;
+    LOG(ERROR) << "Unknown callback_key for received mojo GetAvailableRoutines "
+                  "response: "
+               << callback_key;
     return;
   }
 
@@ -338,9 +338,9 @@ void RoutineService::ForwardRunRoutineResponse(
     chromeos::cros_healthd::mojom::RunRoutineResponsePtr response) {
   auto it = run_routine_callbacks_.find(callback_key);
   if (it == run_routine_callbacks_.end()) {
-    LOG(ERROR)
-        << "Bad callback_key for received mojo GetAvailableRoutines response: "
-        << callback_key;
+    LOG(ERROR) << "Unknown callback_key for received mojo GetAvailableRoutines "
+                  "response: "
+               << callback_key;
     return;
   }
 
@@ -362,9 +362,9 @@ void RoutineService::ForwardGetRoutineUpdateResponse(
     chromeos::cros_healthd::mojom::RoutineUpdatePtr response) {
   auto it = get_routine_update_callbacks_.find(callback_key);
   if (it == get_routine_update_callbacks_.end()) {
-    LOG(ERROR)
-        << "Bad callback_key for received mojo GetAvailableRoutines response: "
-        << callback_key;
+    LOG(ERROR) << "Unknown callback_key for received mojo GetAvailableRoutines "
+                  "response: "
+               << callback_key;
     return;
   }
 
