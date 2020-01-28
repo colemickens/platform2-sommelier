@@ -21,9 +21,9 @@
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
+#include "smbfs/authpolicy_client.h"
 #include "smbfs/dbus-proxies.h"
 #include "smbfs/fuse_session.h"
-#include "smbfs/kerberos_artifact_client.h"
 #include "smbfs/kerberos_artifact_synchronizer.h"
 #include "smbfs/smb_credential.h"
 #include "smbfs/smb_filesystem.h"
@@ -316,7 +316,7 @@ void SmbFsDaemon::SetupKerberos(
       kerberos_sync_ = std::make_unique<KerberosArtifactSynchronizer>(
           KerberosConfFilePath(kKrb5ConfFile),
           KerberosConfFilePath(kCCacheFile), kerberos_config->identity,
-          std::make_unique<KerberosArtifactClient>(bus_));
+          std::make_unique<AuthPolicyClient>(bus_));
       break;
   }
 

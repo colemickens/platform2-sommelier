@@ -34,10 +34,10 @@ class KerberosArtifactSynchronizer {
   KerberosArtifactSynchronizer(
       const base::FilePath& krb5_conf_path,
       const base::FilePath& krb5_ccache_path,
-      const std::string& object_guid,
+      const std::string& account_identifier,
       std::unique_ptr<KerberosArtifactClientInterface> client);
 
-  // Sets up Kerberos for user with |object_guid_|. User must be ChromAD.
+  // Sets up Kerberos for user with |account_identifier_|. User must be ChromAD.
   // |callback| is run with the result. May only be called once per instance.
   void SetupKerberos(SetupKerberosCallback callback);
 
@@ -47,13 +47,14 @@ class KerberosArtifactSynchronizer {
 
   // Response handler for GetUserKerberosFiles.
   void OnGetFilesResponse(SetupKerberosCallback callback,
-                          authpolicy::ErrorType error,
-                          const authpolicy::KerberosFiles& kerberos_files);
+                          bool success,
+                          const std::string& krb5_ccache_data,
+                          const std::string& krb5_conf_data);
 
-  // Writes |kerberos_files| to |krb5_conf_path_| and |krb5_ccache_path_|
-  // respectively. If Kerberos is not yet fully setup, calls
-  // ConnectToKerberosFilesChangedSignal.
-  void WriteFiles(const authpolicy::KerberosFiles& kerberos_files,
+  // Writes |krb5_ccache_data| and |krb5_conf_data| to |krb5_ccache_path_| and
+  // |krb5_conf_path_| respectively and runs |callback|.
+  void WriteFiles(const std::string& krb5_ccache_data,
+                  const std::string& krb5_conf_data,
                   SetupKerberosCallback callback);
 
   // Writes |kerberos_file| to |path|. First writes into a temporary file
@@ -78,7 +79,7 @@ class KerberosArtifactSynchronizer {
 
   const base::FilePath krb5_conf_path_;
   const base::FilePath krb5_ccache_path_;
-  const std::string object_guid_;
+  const std::string account_identifier_;
 
   const std::unique_ptr<KerberosArtifactClientInterface> client_;
   bool setup_called_ = false;

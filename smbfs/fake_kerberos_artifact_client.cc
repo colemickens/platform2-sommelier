@@ -16,13 +16,12 @@ void FakeKerberosArtifactClient::GetUserKerberosFiles(
 
   if (!kerberos_files_map_.count(object_guid)) {
     LOG(ERROR) << "FakeKerberosArtifactClient: No Kerberos Files found";
-    std::move(callback).Run(authpolicy::ERROR_NO_CREDENTIALS_CACHE_FOUND,
-                            authpolicy::KerberosFiles());
+    std::move(callback).Run(false /* success */, "", "");
     return;
   }
 
   const authpolicy::KerberosFiles& files = kerberos_files_map_[object_guid];
-  std::move(callback).Run(authpolicy::ERROR_NONE, files);
+  std::move(callback).Run(true /* success */, files.krb5cc(), files.krb5conf());
 }
 
 void FakeKerberosArtifactClient::ConnectToKerberosFilesChangedSignal(

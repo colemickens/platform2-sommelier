@@ -9,7 +9,6 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/files/file_util.h>
-#include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/message.h>
 
 namespace smbfs {
@@ -17,11 +16,11 @@ namespace smbfs {
 KerberosArtifactSynchronizer::KerberosArtifactSynchronizer(
     const base::FilePath& krb5_conf_path,
     const base::FilePath& krb5_ccache_path,
-    const std::string& object_guid,
+    const std::string& account_identifier,
     std::unique_ptr<KerberosArtifactClientInterface> client)
     : krb5_conf_path_(krb5_conf_path),
       krb5_ccache_path_(krb5_ccache_path),
-      object_guid_(object_guid),
+      account_identifier_(account_identifier),
       client_(std::move(client)) {}
 
 void KerberosArtifactSynchronizer::SetupKerberos(
@@ -37,31 +36,32 @@ void KerberosArtifactSynchronizer::SetupKerberos(
 void KerberosArtifactSynchronizer::GetFiles(SetupKerberosCallback callback) {
   DCHECK(callback);
   client_->GetUserKerberosFiles(
-      object_guid_,
+      account_identifier_,
       base::BindOnce(&KerberosArtifactSynchronizer::OnGetFilesResponse,
                      base::Unretained(this), std::move(callback)));
 }
 
 void KerberosArtifactSynchronizer::OnGetFilesResponse(
     SetupKerberosCallback callback,
-    authpolicy::ErrorType error,
-    const authpolicy::KerberosFiles& kerberos_files) {
-  if (error != authpolicy::ERROR_NONE) {
-    LOG(ERROR) << "KerberosArtifactSynchronizer failed to get Kerberos files";
+    bool success,
+    const std::string& krb5_ccache_data,
+    const std::string& krb5_conf_data) {
+  if (!success) {
     std::move(callback).Run(false /* setup_success */);
     return;
   }
 
-  WriteFiles(kerberos_files, std::move(callback));
+  WriteFiles(krb5_ccache_data, krb5_conf_data, std::move(callback));
 }
 
 void KerberosArtifactSynchronizer::WriteFiles(
-    const authpolicy::KerberosFiles& kerberos_files,
+    const std::string& krb5_ccache_data,
+    const std::string& krb5_conf_data,
     SetupKerberosCallback callback) {
   DCHECK(callback);
-  bool success = kerberos_files.has_krb5cc() && kerberos_files.has_krb5conf() &&
-                 WriteFile(krb5_conf_path_, kerberos_files.krb5conf()) &&
-                 WriteFile(krb5_ccache_path_, kerberos_files.krb5cc());
+  bool success = !krb5_ccache_data.empty() && !krb5_conf_data.empty() &&
+                 WriteFile(krb5_conf_path_, krb5_conf_data) &&
+                 WriteFile(krb5_ccache_path_, krb5_ccache_data);
 
   LOG_IF(ERROR, !success)
       << "KerberosArtifactSynchronizer: failed to write Kerberos Files";
@@ -86,8 +86,6 @@ void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
 void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
     dbus::Signal* signal) {
   DCHECK(signal);
-  DCHECK_EQ(signal->GetInterface(), authpolicy::kAuthPolicyInterface);
-  DCHECK_EQ(signal->GetMember(), authpolicy::kUserKerberosFilesChangedSignal);
 
   GetFiles(base::DoNothing());
 }
@@ -97,8 +95,6 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(
     const std::string& interface_name,
     const std::string& signal_name,
     bool success) {
-  DCHECK_EQ(interface_name, authpolicy::kAuthPolicyInterface);
-  DCHECK_EQ(signal_name, authpolicy::kUserKerberosFilesChangedSignal);
   DCHECK(success);
 
   std::move(callback).Run(true /* setup_success */);

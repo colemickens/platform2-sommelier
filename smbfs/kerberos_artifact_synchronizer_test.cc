@@ -11,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include "smbfs/fake_kerberos_artifact_client.h"
-#include "smbfs/kerberos_artifact_client.h"
 #include "smbfs/kerberos_artifact_synchronizer.h"
 
 namespace smbfs {

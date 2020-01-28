@@ -37,17 +37,19 @@ pkg_config("target_defaults") {
 
 static_library("libsmbfs") {
   sources = [
+    "authpolicy_client.cc",
+    "authpolicy_client.h",
     "filesystem.cc",
     "filesystem.h",
     "fuse_session.cc",
     "fuse_session.h",
     "inode_map.cc",
     "inode_map.h",
-    "kerberos_artifact_client.cc",
-    "kerberos_artifact_client.h",
     "kerberos_artifact_client_interface.h",
     "kerberos_artifact_synchronizer.cc",
     "kerberos_artifact_synchronizer.h",
+    "kerberos_client.cc",
+    "kerberos_client.h",
     "request.cc",
     "request.h",
     "smb_filesystem.cc",

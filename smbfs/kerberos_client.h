@@ -1,9 +1,9 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2020 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SMBFS_KERBEROS_ARTIFACT_CLIENT_H_
-#define SMBFS_KERBEROS_ARTIFACT_CLIENT_H_
+#ifndef SMBFS_KERBEROS_CLIENT_H_
+#define SMBFS_KERBEROS_CLIENT_H_
 
 #include <memory>
 #include <string>
@@ -17,14 +17,14 @@
 
 namespace smbfs {
 
-// KerberosArtifactClient is used to communicate with the
-// org.chromium.AuthPolicy service.
-class KerberosArtifactClient : public KerberosArtifactClientInterface {
+// KerberosClient is used to communicate with the
+// org.chromium.Kerberos service.
+class KerberosClient : public KerberosArtifactClientInterface {
  public:
-  explicit KerberosArtifactClient(scoped_refptr<dbus::Bus> bus);
+  explicit KerberosClient(scoped_refptr<dbus::Bus> bus);
 
   // KerberosArtifactClientInterface overrides.
-  void GetUserKerberosFiles(const std::string& object_guid,
+  void GetUserKerberosFiles(const std::string& principal_name,
                             GetUserKerberosFilesCallback callback) override;
   void ConnectToKerberosFilesChangedSignal(
       dbus::ObjectProxy::SignalCallback signal_callback,
@@ -34,12 +34,12 @@ class KerberosArtifactClient : public KerberosArtifactClientInterface {
   void HandleGetUserKeberosFiles(GetUserKerberosFilesCallback callback,
                                  dbus::Response* response);
 
-  dbus::ObjectProxy* auth_policy_object_proxy_ = nullptr;
-  base::WeakPtrFactory<KerberosArtifactClient> weak_ptr_factory_{this};
+  dbus::ObjectProxy* const kerberos_object_proxy_;
+  base::WeakPtrFactory<KerberosClient> weak_ptr_factory_{this};
 
-  DISALLOW_COPY_AND_ASSIGN(KerberosArtifactClient);
+  DISALLOW_COPY_AND_ASSIGN(KerberosClient);
 };
 
 }  // namespace smbfs
 
-#endif  // SMBFS_KERBEROS_ARTIFACT_CLIENT_H_
+#endif  // SMBFS_KERBEROS_CLIENT_H_
