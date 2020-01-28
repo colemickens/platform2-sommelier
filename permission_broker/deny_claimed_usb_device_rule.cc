@@ -84,15 +84,19 @@ bool DenyClaimedUsbDeviceRule::IsInterfaceAdb(udev_device* device) {
 }
 
 bool IsDeviceAllowedSerial(udev_device* device) {
-  const uint32_t kArduinoVendorId = 0x2341;
+  // These vendor IDs are derived from https://raw.githubusercontent.com
+  // /arduino/ArduinoCore-avr/master/boards.txt
+  // /arduino/ArduinoCore-sam/master/boards.txt
+  // /arduino/ArduinoCore-samd/master/boards.txt
+  // using
+  // grep -o -E  "vid\..*=(0x.*)" *boards.txt | sed "s/vid\..=//g" | sort -f | \
+  // uniq -i
+  const uint32_t kArduinoVendorIds[] = {0x2341, 0x1b4f, 0x239a, 0x2a03, 0x10c4};
   const uint32_t kGoogleVendorId = 0x18d1;
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
-
-  if (vendor_id == kArduinoVendorId)
-    return true;
 
   if (vendor_id == kGoogleVendorId) {
     switch (product_id) {
@@ -112,6 +116,11 @@ bool IsDeviceAllowedSerial(udev_device* device) {
     }
   }
 
+  for (const auto& arduino_vendor_id : kArduinoVendorIds) {
+    if (vendor_id == arduino_vendor_id) {
+      return true;
+    }
+  }
   return false;
 }
 
