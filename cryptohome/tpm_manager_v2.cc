@@ -6,6 +6,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
@@ -41,7 +42,8 @@ void SendAndWait(const MethodType& method,
 }
 
 int TakeOwnership(bool finalize) {
-  base::MessageLoop loop(base::MessageLoop::TYPE_IO);
+  base::MessageLoopForIO loop;
+  base::FileDescriptorWatcher watcher(&loop);
   base::Time start_time = base::Time::Now();
   ::tpm_manager::TpmOwnershipDBusProxy proxy;
   if (!proxy.Initialize()) {
@@ -69,8 +71,9 @@ int TakeOwnership(bool finalize) {
 }
 
 int VerifyEK(bool is_cros_core) {
-  base::MessageLoop loop(base::MessageLoop::TYPE_IO);
   attestation::DBusProxy proxy;
+  base::MessageLoopForIO loop;
+  base::FileDescriptorWatcher watcher(&loop);
   if (!proxy.Initialize()) {
     LOG(ERROR) << "Failed to start attestation proxy";
     return -1;
@@ -114,8 +117,9 @@ int GetRandom(unsigned int random_bytes_count) {
 }
 
 bool GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
-  base::MessageLoop loop(base::MessageLoop::TYPE_IO);
   ::tpm_manager::TpmOwnershipDBusProxy proxy;
+  base::MessageLoopForIO loop;
+  base::FileDescriptorWatcher watcher(&loop);
   if (!proxy.Initialize()) {
     LOG(ERROR) << "Failed to start tpm ownership proxy";
     return false;
