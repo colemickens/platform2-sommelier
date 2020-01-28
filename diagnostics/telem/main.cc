@@ -56,11 +56,18 @@ void DisplayBatteryInfo(
       "vendor(manufacturer),voltage_now,voltage_min_design,"
       "manufacture_date_smart,temperature_smart,model_name,charge_now\n");
 
-  printf("%f,%f,%ld,%s,%s,%f,%f,%ld,%ld,%s,%f\n", battery->charge_full,
+  bool has_smart_info = !battery->smart_battery_info.is_null();
+  std::string manufacture_date_smart =
+      has_smart_info ? battery->smart_battery_info->manufacture_date : "NA";
+  std::string temperature_smart =
+      has_smart_info ? std::to_string(battery->smart_battery_info->temperature)
+                     : "NA";
+
+  printf("%f,%f,%ld,%s,%s,%f,%f,%s,%s,%s,%f\n", battery->charge_full,
          battery->charge_full_design, battery->cycle_count,
          battery->serial_number.c_str(), battery->vendor.c_str(),
          battery->voltage_now, battery->voltage_min_design,
-         battery->manufacture_date_smart, battery->temperature_smart,
+         manufacture_date_smart.c_str(), temperature_smart.c_str(),
          battery->model_name.c_str(), battery->charge_now);
 }
 

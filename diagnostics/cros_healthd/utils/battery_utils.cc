@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/process/launch.h>
 #include <base/files/file_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -29,13 +30,34 @@ namespace diagnostics {
 
 namespace {
 
+using ::chromeos::cros_healthd::mojom::SmartBatteryInfo;
+
 // The path used to check a device's master configuration hardware properties.
 constexpr char kHardwarePropertiesPath[] = "/hardware-properties";
 // The master configuration property that specifies a device's PSU type.
 constexpr char kPsuTypeProperty[] = "psu-type";
 
+// The path used to check a device's master configuration cros_healthd battery
+// properties.
+constexpr char kBatteryPropertiesPath[] = "/cros-healthd/battery";
+// The master configuration property that indicates whether a device has Smart
+// Battery info.
+constexpr char kHasSmartBatteryInfoProperty[] = "has-smart-battery-info";
+
 constexpr char kManufactureDateSmart[] = "manufacture_date_smart";
 constexpr char kTemperatureSmart[] = "temperature_smart";
+
+// Converts a Smart Battery manufacture date from the ((year - 1980) * 512 +
+// month * 32 + day) format to yyyy-mm-dd format.
+std::string ConvertSmartBatteryManufactureDate(int64_t manufacture_date) {
+  int remainder = manufacture_date;
+  int day = remainder % 32;
+  remainder /= 32;
+  int month = remainder % 16;
+  remainder /= 16;
+  int year = remainder + 1980;
+  return base::StringPrintf("%04d-%02d-%02d", year, month, day);
+}
 
 }  // namespace
 
@@ -89,6 +111,7 @@ bool BatteryFetcher::ExtractBatteryMetrics(dbus::Response* response,
     LOG(ERROR) << "Could not successfully read power supply protobuf";
     return false;
   }
+
   info.cycle_count = power_supply_proto.has_battery_cycle_count()
                          ? power_supply_proto.battery_cycle_count()
                          : 0;
@@ -118,29 +141,39 @@ bool BatteryFetcher::ExtractBatteryMetrics(dbus::Response* response,
   info.charge_now = power_supply_proto.has_battery_charge()
                         ? power_supply_proto.battery_charge()
                         : 0;
-  int64_t manufacture_date_smart;
-  base::OnceCallback<bool(const base::StringPiece& input, int64_t* output)>
-      convert_string_to_int =
-          base::BindOnce([](const base::StringPiece& input, int64_t* output) {
-            return base::StringToInt64(input, output);
-          });
-  info.manufacture_date_smart =
-      FetchSmartBatteryMetric<int64_t>(kManufactureDateSmart,
-                                       &manufacture_date_smart,
-                                       std::move(convert_string_to_int))
-          ? manufacture_date_smart
-          : 0;
-  uint64_t temperature_smart;
-  base::OnceCallback<bool(const base::StringPiece& input, uint64_t* output)>
-      convert_string_to_uint =
-          base::BindOnce([](const base::StringPiece& input, uint64_t* output) {
-            return base::StringToUint64(input, output);
-          });
-  info.temperature_smart =
-      FetchSmartBatteryMetric<uint64_t>(kTemperatureSmart, &temperature_smart,
-                                        std::move(convert_string_to_uint))
-          ? temperature_smart
-          : 0;
+
+  // Only obtain Smart Battery metrics for devices that support them (i.e.
+  // devices with a Smart Battery).
+  std::string has_smart_battery_info;
+  cros_config_->GetString(kBatteryPropertiesPath, kHasSmartBatteryInfoProperty,
+                          &has_smart_battery_info);
+  if (has_smart_battery_info == "true") {
+    SmartBatteryInfo smart_info;
+    int64_t manufacture_date;
+    base::OnceCallback<bool(const base::StringPiece& input, int64_t* output)>
+        convert_string_to_int =
+            base::BindOnce([](const base::StringPiece& input, int64_t* output) {
+              return base::StringToInt64(input, output);
+            });
+    smart_info.manufacture_date =
+        FetchSmartBatteryMetric<int64_t>(kManufactureDateSmart,
+                                         &manufacture_date,
+                                         std::move(convert_string_to_int))
+            ? ConvertSmartBatteryManufactureDate(manufacture_date)
+            : "0000-00-00";
+    uint64_t temperature;
+    base::OnceCallback<bool(const base::StringPiece& input, uint64_t* output)>
+        convert_string_to_uint = base::BindOnce(
+            [](const base::StringPiece& input, uint64_t* output) {
+              return base::StringToUint64(input, output);
+            });
+    smart_info.temperature =
+        FetchSmartBatteryMetric<uint64_t>(kTemperatureSmart, &temperature,
+                                          std::move(convert_string_to_uint))
+            ? temperature
+            : 0;
+    info.smart_battery_info = smart_info.Clone();
+  }
 
   *output_info = info.Clone();
 

@@ -41,6 +41,13 @@ constexpr char kHardwarePropertiesPath[] = "/hardware-properties";
 // The master configuration property that specifies a device's PSU type.
 constexpr char kPsuTypeProperty[] = "psu-type";
 
+// The path used to check a device's master configuration cros_healthd battery
+// properties.
+constexpr char kBatteryPropertiesPath[] = "/cros-healthd/battery";
+// The master configuration property that indicates whether a device has Smart
+// Battery info.
+constexpr char kHasSmartBatteryInfoProperty[] = "has-smart-battery-info";
+
 // Arbitrary test values for the various battery metrics.
 constexpr char kBatteryVendor[] = "TEST_MFR";
 constexpr double kBatteryVoltage = 127.45;
@@ -51,8 +58,8 @@ constexpr double kBatteryChargeFull = 4.3;
 constexpr double kBatteryChargeFullDesign = 3.92;
 constexpr char kBatteryModelName[] = "TEST_MODEL_NAME";
 constexpr double kBatteryChargeNow = 5.17;
-constexpr char kBatteryManufactureDateSmartChars[] = "87615";
-constexpr int kBatteryManufactureDateSmart = 87615;
+constexpr char kSmartBatteryManufactureDate[] = "87615";
+constexpr char kConvertedSmartBatteryManufactureDate[] = "2151-01-31";
 constexpr char kBatteryTemperatureSmartChars[] = "981329";
 constexpr int kBatteryTemperatureSmart = 981329;
 
@@ -78,6 +85,8 @@ class BatteryUtilsTest : public ::testing::Test {
         fake_cros_config_.get());
   }
 
+  void SetUp() override { SetHasSmartBatteryInfo("true"); }
+
   BatteryFetcher* battery_fetcher() { return battery_fetcher_.get(); }
 
   org::chromium::debugdProxyMock* mock_debugd_proxy() {
@@ -91,6 +100,12 @@ class BatteryUtilsTest : public ::testing::Test {
   void SetPsuType(const std::string& type) {
     fake_cros_config_->SetString(kHardwarePropertiesPath, kPsuTypeProperty,
                                  type);
+  }
+
+  void SetHasSmartBatteryInfo(const std::string& has_smart_battery_info) {
+    fake_cros_config_->SetString(kBatteryPropertiesPath,
+                                 kHasSmartBatteryInfoProperty,
+                                 has_smart_battery_info);
   }
 
  private:
@@ -133,7 +148,7 @@ TEST_F(BatteryUtilsTest, FetchBatteryInfo) {
       *mock_debugd_proxy(),
       CollectSmartBatteryMetric("manufacture_date_smart", _, _, kDebugdTimeOut))
       .WillOnce(DoAll(WithArg<1>(Invoke([](std::string* result) {
-                        *result = kBatteryManufactureDateSmartChars;
+                        *result = kSmartBatteryManufactureDate;
                       })),
                       Return(true)));
   EXPECT_CALL(
@@ -158,8 +173,9 @@ TEST_F(BatteryUtilsTest, FetchBatteryInfo) {
   EXPECT_EQ(kBatteryVoltageMinDesign, battery->voltage_min_design);
   EXPECT_EQ(kBatteryModelName, battery->model_name);
   EXPECT_EQ(kBatteryChargeNow, battery->charge_now);
-  EXPECT_EQ(kBatteryManufactureDateSmart, battery->manufacture_date_smart);
-  EXPECT_EQ(kBatteryTemperatureSmart, battery->temperature_smart);
+  EXPECT_EQ(kConvertedSmartBatteryManufactureDate,
+            battery->smart_battery_info->manufacture_date);
+  EXPECT_EQ(kBatteryTemperatureSmart, battery->smart_battery_info->temperature);
 }
 
 // Test that we handle a malformed power_manager D-Bus response.
@@ -195,7 +211,7 @@ TEST_F(BatteryUtilsTest, EmptyProtoPowerManagerDbusResponse) {
       *mock_debugd_proxy(),
       CollectSmartBatteryMetric("manufacture_date_smart", _, _, kDebugdTimeOut))
       .WillOnce(DoAll(WithArg<1>(Invoke([](std::string* result) {
-                        *result = kBatteryManufactureDateSmartChars;
+                        *result = kSmartBatteryManufactureDate;
                       })),
                       Return(true)));
   EXPECT_CALL(
@@ -220,8 +236,9 @@ TEST_F(BatteryUtilsTest, EmptyProtoPowerManagerDbusResponse) {
   EXPECT_EQ(0.0, battery->voltage_min_design);
   EXPECT_EQ("", battery->model_name);
   EXPECT_EQ(0, battery->charge_now);
-  EXPECT_EQ(kBatteryManufactureDateSmart, battery->manufacture_date_smart);
-  EXPECT_EQ(kBatteryTemperatureSmart, battery->temperature_smart);
+  EXPECT_EQ(kConvertedSmartBatteryManufactureDate,
+            battery->smart_battery_info->manufacture_date);
+  EXPECT_EQ(kBatteryTemperatureSmart, battery->smart_battery_info->temperature);
 }
 
 // Test that we handle debugd failing to collect smart metrics.
@@ -261,8 +278,34 @@ TEST_F(BatteryUtilsTest, SmartMetricRetrievalFailure) {
   const auto& battery = info[0];
   ASSERT_TRUE(battery);
 
-  EXPECT_EQ(0, battery->manufacture_date_smart);
-  EXPECT_EQ(0, battery->temperature_smart);
+  EXPECT_EQ("0000-00-00", battery->smart_battery_info->manufacture_date);
+  EXPECT_EQ(0, battery->smart_battery_info->temperature);
+}
+
+// Test that Smart Battery metrics are not fetched when a device does not have a
+// Smart Battery.
+TEST_F(BatteryUtilsTest, NoSmartBattery) {
+  SetHasSmartBatteryInfo("false");
+
+  // Set the mock power manager response.
+  power_manager::PowerSupplyProperties power_supply_proto;
+  EXPECT_CALL(*mock_power_manager_proxy(),
+              MIGRATE_MockCallMethodAndBlock(
+                  _, kPowerManagerDBusTimeout.InMilliseconds()))
+      .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
+        std::unique_ptr<dbus::Response> power_manager_response =
+            dbus::Response::CreateEmpty();
+        dbus::MessageWriter power_manager_writer(power_manager_response.get());
+        power_manager_writer.AppendProtoAsArrayOfBytes(power_supply_proto);
+        return power_manager_response;
+      });
+
+  auto info = battery_fetcher()->FetchBatteryInfo();
+  ASSERT_EQ(info.size(), 1);
+  const auto& battery = info[0];
+  ASSERT_TRUE(battery);
+
+  EXPECT_TRUE(battery->smart_battery_info.is_null());
 }
 
 // Test that no battery info is returned when a device does not have a battery.
