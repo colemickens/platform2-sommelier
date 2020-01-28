@@ -24,17 +24,17 @@ void OnSignalConnected(const std::string& interface,
 SessionManagerProxy::SessionManagerProxy(scoped_refptr<dbus::Bus> bus)
     : proxy_(bus), weak_ptr_factory_(this) {
   proxy_.RegisterScreenIsLockedSignalHandler(
-      base::Bind(&SessionManagerProxy::OnScreenIsLocked,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&OnSignalConnected));
+      base::BindRepeating(&SessionManagerProxy::OnScreenIsLocked,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&OnSignalConnected));
   proxy_.RegisterScreenIsUnlockedSignalHandler(
-      base::Bind(&SessionManagerProxy::OnScreenIsUnlocked,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&OnSignalConnected));
+      base::BindRepeating(&SessionManagerProxy::OnScreenIsUnlocked,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&OnSignalConnected));
   proxy_.RegisterSessionStateChangedSignalHandler(
-      base::Bind(&SessionManagerProxy::OnSessionStateChanged,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&OnSignalConnected));
+      base::BindRepeating(&SessionManagerProxy::OnSessionStateChanged,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&OnSignalConnected));
 }
 
 void SessionManagerProxy::AddObserver(

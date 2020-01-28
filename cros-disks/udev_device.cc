@@ -219,8 +219,7 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   return DEVICE_MEDIA_UNKNOWN;
 }
 
-bool UdevDevice::EnumerateParentDevices(
-    const EnumerateCallback& callback) const {
+bool UdevDevice::EnumerateParentDevices(EnumerateCallback callback) const {
   if (callback.Run(*dev_)) {
     return true;
   }

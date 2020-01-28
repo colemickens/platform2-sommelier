@@ -129,7 +129,7 @@ class UdevDevice {
   // Walks up the device parents, starting at the current device, invoking
   // |callback| until |callback| returns true. Returns true if |callback|
   // returned true, and false if finished walking up the device tree.
-  bool EnumerateParentDevices(const EnumerateCallback& callback) const;
+  bool EnumerateParentDevices(EnumerateCallback callback) const;
 
   // Checks if a string contains a "1" (as Boolean true).
   static bool IsValueBooleanTrue(const char* value);

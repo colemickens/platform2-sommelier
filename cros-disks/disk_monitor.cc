@@ -129,8 +129,8 @@ bool DiskMonitor::Initialize() {
   // Since there are no udev add events for the devices that already exist
   // when the disk manager starts, emulate udev add events for these devices
   // to correctly populate |disks_detected_|.
-  EnumerateBlockDevices(base::Bind(&DiskMonitor::EmulateAddBlockDeviceEvent,
-                                   base::Unretained(this)));
+  EnumerateBlockDevices(base::BindRepeating(
+      &DiskMonitor::EmulateAddBlockDeviceEvent, base::Unretained(this)));
   return true;
 }
 
@@ -146,12 +146,12 @@ bool DiskMonitor::EmulateAddBlockDeviceEvent(
 std::vector<Disk> DiskMonitor::EnumerateDisks() const {
   std::vector<Disk> disks;
   EnumerateBlockDevices(
-      base::Bind(&AppendDiskIfNotIgnored, base::Unretained(&disks)));
+      base::BindRepeating(&AppendDiskIfNotIgnored, base::Unretained(&disks)));
   return disks;
 }
 
 void DiskMonitor::EnumerateBlockDevices(
-    const base::Callback<bool(std::unique_ptr<brillo::UdevDevice> dev)>&
+    base::RepeatingCallback<bool(std::unique_ptr<brillo::UdevDevice> dev)>
         callback) const {
   std::unique_ptr<brillo::UdevEnumerate> enumerate = udev_->CreateEnumerate();
   enumerate->AddMatchSubsystem(kBlockSubsystem);
@@ -309,9 +309,9 @@ bool DiskMonitor::GetDiskByDevicePath(const base::FilePath& device_path,
     return false;
 
   bool disk_found = false;
-  EnumerateBlockDevices(base::Bind(&MatchDiskByPath, device_path.value(),
-                                   base::Unretained(&disk_found),
-                                   base::Unretained(disk)));
+  EnumerateBlockDevices(base::BindRepeating(
+      &MatchDiskByPath, device_path.value(), base::Unretained(&disk_found),
+      base::Unretained(disk)));
   return disk_found;
 }
 

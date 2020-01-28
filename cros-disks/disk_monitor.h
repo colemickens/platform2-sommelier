@@ -72,7 +72,7 @@ class DiskMonitor : public DeviceEventSourceInterface {
   // device found during the enumeration. The enumeration stops if |callback|
   // returns false.
   void EnumerateBlockDevices(
-      const base::Callback<bool(std::unique_ptr<brillo::UdevDevice> dev)>&
+      base::RepeatingCallback<bool(std::unique_ptr<brillo::UdevDevice> dev)>
           callback) const;
 
   // Determines one or more device/disk events from a udev block device change.

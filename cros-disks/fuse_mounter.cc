@@ -343,8 +343,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
 
   // The |fuse_failure_unmounter| closure runner is used to unmount the FUSE
   // filesystem if any part of starting the FUSE helper process fails.
-  // TODO(crbug.com/993857): Use base::BindOnce().
-  base::ScopedClosureRunner fuse_cleanup_runner(base::Bind(
+  base::ScopedClosureRunner fuse_cleanup_runner(base::BindOnce(
       [](const Platform* platform, const std::string& target_path) {
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
         LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
