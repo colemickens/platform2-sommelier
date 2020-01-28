@@ -401,8 +401,7 @@ In the tables below,
 ### battery
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| has-manufacture-date-smart | boolean |  | False |  | False |  |
-| has-temperature-smart | boolean |  | False |  | False |  |
+| has-smart-battery-info | boolean |  | False |  | False |  |
 
 ### cached-vpd
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
