@@ -47,6 +47,11 @@ class UserCollectorBase : public CrashCollector {
                             gid_t* gid,
                             std::string* exec_name);
 
+  bool ShouldDump(base::Optional<pid_t> pid,
+                  bool has_owner_consent,
+                  bool is_developer,
+                  std::string* reason) const;
+
   bool ShouldDump(bool has_owner_consent,
                   bool is_developer,
                   std::string* reason) const;

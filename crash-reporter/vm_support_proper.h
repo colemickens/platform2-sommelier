@@ -7,11 +7,15 @@
 
 #include "crash-reporter/vm_support.h"
 
+#include <string>
+
 class VmSupportProper : public VmSupport {
  public:
   void AddMetadata(UserCollector* collector) override;
 
   void FinishCrash(const base::FilePath& crash_meta_path) override;
+
+  bool ShouldDump(pid_t pid, std::string* out_reason) override;
 };
 
 #endif  // CRASH_REPORTER_VM_SUPPORT_PROPER_H_

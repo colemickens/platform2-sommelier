@@ -6,8 +6,10 @@
 #define CRASH_REPORTER_VM_SUPPORT_H_
 
 #include <base/files/file_util.h>
+#include <string>
 
 class UserCollector;
+class UserCollectorBase;
 
 // Various methods and utilities for working with crashes that occur in a VM (as
 // opposed to the host).
@@ -27,6 +29,11 @@ class VmSupport {
   // informing cicerone. |crash_meta_path| is a path to the .meta file, which we
   // use to identify the necessary crash files.
   virtual void FinishCrash(const base::FilePath& crash_meta_path) = 0;
+
+  // Perform extra checks to exclude |collector|'s crash for software CrOS
+  // doesn't care about (i.e. non first-party apps e.g. gedit). Returns |true|
+  // if we care about this crash, and if we don't explains why in |out_reason|.
+  virtual bool ShouldDump(pid_t pid, std::string* out_reason) = 0;
 };
 
 #endif  // CRASH_REPORTER_VM_SUPPORT_H_

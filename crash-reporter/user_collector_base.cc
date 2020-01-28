@@ -5,6 +5,7 @@
 #include "crash-reporter/user_collector_base.h"
 
 #include <pcrecpp.h>
+#include "crash-reporter/vm_support.h"
 
 #if USE_DIRENCRYPTION
 #include <keyutils.h>
@@ -169,7 +170,8 @@ bool UserCollectorBase::ParseCrashAttributes(
   return re.FullMatch(crash_attributes, pid, signal, uid, gid, exec_name);
 }
 
-bool UserCollectorBase::ShouldDump(bool has_owner_consent,
+bool UserCollectorBase::ShouldDump(base::Optional<pid_t> pid,
+                                   bool has_owner_consent,
                                    bool is_developer,
                                    std::string* reason) const {
   // For developer builds, we always want to keep the crash reports unless
@@ -185,8 +187,26 @@ bool UserCollectorBase::ShouldDump(bool has_owner_consent,
     return false;
   }
 
+  VmSupport* vm_support = VmSupport::Get();
+  if (vm_support) {
+    if (!pid.has_value()) {
+      *reason = "ignoring - unknown PID inside VM";
+      return false;
+    }
+
+    if (!vm_support->ShouldDump(*pid, reason)) {
+      return false;
+    }
+  }
+
   *reason = "handling";
   return true;
+}
+
+bool UserCollectorBase::ShouldDump(bool has_owner_consent,
+                                   bool is_developer,
+                                   std::string* reason) const {
+  return ShouldDump(base::nullopt, has_owner_consent, is_developer, reason);
 }
 
 bool UserCollectorBase::GetFirstLineWithPrefix(

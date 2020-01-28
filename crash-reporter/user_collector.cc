@@ -360,7 +360,8 @@ bool UserCollector::ShouldDump(pid_t pid,
     return false;
   }
 
-  return UserCollectorBase::ShouldDump(has_owner_consent, is_developer, reason);
+  return UserCollectorBase::ShouldDump(pid, has_owner_consent, is_developer,
+                                       reason);
 }
 
 bool UserCollector::ShouldDump(pid_t pid,
