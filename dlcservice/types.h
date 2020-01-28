@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_DLC_SERVICE_TYPES_H_
-#define DLCSERVICE_DLC_SERVICE_TYPES_H_
+#ifndef DLCSERVICE_TYPES_H_
+#define DLCSERVICE_TYPES_H_
 
 #include <map>
 #include <string>
@@ -19,4 +19,4 @@ using DlcRootMap = std::map<DlcId, DlcRoot>;
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_DLC_SERVICE_TYPES_H_
+#endif  // DLCSERVICE_TYPES_H_
