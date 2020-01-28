@@ -31,13 +31,15 @@ int BootLockboxService::OnInit() {
       boot_lockbox_->GetState() == NVSpaceState::kNVSpaceUndefined ) {
     LOG(INFO) << "NVSpace is not defined, define it now";
     if (!boot_lockbox_->DefineSpace()) {
-      LOG(ERROR) << "Failed to create nvspace";
       // TPM define nvspace failed but continue to run the service so
       // bootlockbox client can still communicated with bootlockbox. The client
       // need this to differentiate boot lockbox service errors and tpm errors.
-      return EX_OK;
+      LOG(ERROR) << "Failed to create nvspace";
     }
   }
+
+  // Publish the service to dbus. Note that if nvspace is not defined,
+  // calls to the interface would receive failure messages.
   const int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK) {
     LOG(ERROR) << "Failed to start bootlockbox service";
