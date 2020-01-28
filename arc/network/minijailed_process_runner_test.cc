@@ -10,6 +10,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "arc/network/net_util.h"
+
 using testing::_;
 using testing::DoAll;
 using testing::Eq;
@@ -49,39 +51,55 @@ MATCHER_P2(IsProcessArgs, program, args, "") {
 }
 
 TEST_F(MinijailProcessRunnerTest, AddInterfaceToContainer) {
-  const std::vector<std::string> args_ip = {
+  const std::vector<std::string> args_ip1 = {
       "-t", "12345", "-n", "--", "/bin/ip", "link", "set", "foo", "name", "bar",
   };
-  const std::vector<std::string> args_ifconfig = {
-      "-t",  "12345",   "-n",      "--",           "/bin/ifconfig",
-      "bar", "1.1.1.1", "netmask", "255.255.255.0"};
-  EXPECT_CALL(mj_, New()).Times(2);
+  const std::vector<std::string> args_ip2 = {
+      "-t",   "12345", "-n",         "--",  "/bin/ip",
+      "addr", "add",   "1.1.1.1/30", "dev", "bar",
+  };
+  const std::vector<std::string> args_ip3 = {
+      "-t", "12345", "-n", "--", "/bin/ip", "link", "set", "bar", "up",
+  };
+  const std::vector<std::string> args_ip4 = {
+      "-t",  "12345", "-n",  "--",        "/bin/ip", "link",
+      "set", "dev",   "bar", "multicast", "on",
+  };
+  EXPECT_CALL(mj_, New()).Times(4);
   EXPECT_CALL(mj_, DropRoot(_, _, _)).Times(0);
-  EXPECT_CALL(
-      mj_, RunSyncAndDestroy(_, IsProcessArgs("/usr/bin/nsenter", args_ip), _));
   EXPECT_CALL(mj_, RunSyncAndDestroy(
-                       _, IsProcessArgs("/usr/bin/nsenter", args_ifconfig), _));
-  runner_.AddInterfaceToContainer("foo", "bar", "1.1.1.1", "255.255.255.0",
-                                  true, "12345");
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ip1), _));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ip2), _));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ip3), _));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ip4), _));
+  runner_.AddInterfaceToContainer("foo", "bar", Ipv4Addr(1, 1, 1, 1), 30, true,
+                                  "12345");
 }
 
 TEST_F(MinijailProcessRunnerTest, AddInterfaceToContainerNoMulticast) {
-  const std::vector<std::string> args_ip = {
+  const std::vector<std::string> args_ip1 = {
       "-t", "12345", "-n", "--", "/bin/ip", "link", "set", "foo", "name", "bar",
   };
-  const std::vector<std::string> args_ifconfig = {
-      "-t",        "12345",         "-n",
-      "--",        "/bin/ifconfig", "bar",
-      "1.1.1.1",   "netmask",       "255.255.255.0",
-      "-multicast"};
-  EXPECT_CALL(mj_, New()).Times(2);
+  const std::vector<std::string> args_ip2 = {
+      "-t",   "12345", "-n",         "--",  "/bin/ip",
+      "addr", "add",   "1.1.1.1/30", "dev", "bar",
+  };
+  const std::vector<std::string> args_ip3 = {
+      "-t", "12345", "-n", "--", "/bin/ip", "link", "set", "bar", "up",
+  };
+  EXPECT_CALL(mj_, New()).Times(3);
   EXPECT_CALL(mj_, DropRoot(_, _, _)).Times(0);
-  EXPECT_CALL(
-      mj_, RunSyncAndDestroy(_, IsProcessArgs("/usr/bin/nsenter", args_ip), _));
   EXPECT_CALL(mj_, RunSyncAndDestroy(
-                       _, IsProcessArgs("/usr/bin/nsenter", args_ifconfig), _));
-  runner_.AddInterfaceToContainer("foo", "bar", "1.1.1.1", "255.255.255.0",
-                                  false, "12345");
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ip1), _));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ip2), _));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ip3), _));
+  runner_.AddInterfaceToContainer("foo", "bar", Ipv4Addr(1, 1, 1, 1), 30, false,
+                                  "12345");
 }
 
 TEST_F(MinijailProcessRunnerTest, WriteSentinelToContainer) {
@@ -141,18 +159,6 @@ TEST_F(MinijailProcessRunnerTest, brctl) {
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(mj_, RunSyncAndDestroy(_, IsProcessArgs("/sbin/brctl", args), _));
   runner_.brctl("cmd", {"arg", "arg"});
-}
-
-TEST_F(MinijailProcessRunnerTest, ifconfig) {
-  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  const std::vector<std::string> args = {"ifname", "arg", "arg"};
-
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_,
-              RunSyncAndDestroy(_, IsProcessArgs("/bin/ifconfig", args), _));
-  runner_.ifconfig("ifname", {"arg", "arg"});
 }
 
 TEST_F(MinijailProcessRunnerTest, ip) {

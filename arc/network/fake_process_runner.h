@@ -33,14 +33,14 @@ class FakeProcessRunner : public MinijailedProcessRunner {
 
   int AddInterfaceToContainer(const std::string& host_ifname,
                               const std::string& con_ifname,
-                              const std::string& con_ipv4,
-                              const std::string& con_nmask,
+                              uint32_t con_ipv4,
+                              uint32_t con_prefix_len,
                               bool enable_multicast,
                               const std::string& con_pid) override {
     add_host_ifname_ = host_ifname;
     add_con_ifname_ = con_ifname;
     add_con_ipv4_ = con_ipv4;
-    add_con_nmask_ = con_nmask;
+    add_con_prefix_len_ = con_prefix_len;
     add_enable_multicast_ = enable_multicast;
     add_con_pid_ = con_pid;
     return 0;
@@ -71,14 +71,14 @@ class FakeProcessRunner : public MinijailedProcessRunner {
 
   void VerifyAddInterface(const std::string& host_ifname,
                           const std::string& con_ifname,
-                          const std::string& con_ipv4,
-                          const std::string& con_nmask,
+                          uint32_t con_ipv4,
+                          uint32_t con_prefix_len,
                           bool enable_multicast,
                           const std::string& con_pid) {
     EXPECT_EQ(host_ifname, add_host_ifname_);
     EXPECT_EQ(con_ifname, add_con_ifname_);
     EXPECT_EQ(con_ipv4, add_con_ipv4_);
-    EXPECT_EQ(con_nmask, add_con_nmask_);
+    EXPECT_EQ(con_prefix_len, add_con_prefix_len_);
     EXPECT_EQ(enable_multicast, add_enable_multicast_);
     EXPECT_EQ(con_pid, add_con_pid_);
   }
@@ -99,8 +99,8 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   std::vector<std::string> runs_vec_;
   std::string add_host_ifname_;
   std::string add_con_ifname_;
-  std::string add_con_ipv4_;
-  std::string add_con_nmask_;
+  uint32_t add_con_ipv4_;
+  uint32_t add_con_prefix_len_;
   bool add_enable_multicast_;
   std::string add_con_pid_;
   std::string wr_con_pid_;

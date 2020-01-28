@@ -39,7 +39,8 @@ class Datapath {
   virtual ~Datapath() = default;
 
   virtual bool AddBridge(const std::string& ifname,
-                         const std::string& ipv4_addr);
+                         uint32_t ipv4_addr,
+                         uint32_t ipv4_prefix_len);
   virtual void RemoveBridge(const std::string& ifname);
 
   virtual bool AddToBridge(const std::string& br_ifname,
@@ -76,7 +77,8 @@ class Datapath {
   virtual bool AddInterfaceToContainer(int ns,
                                        const std::string& src_ifname,
                                        const std::string& dst_ifname,
-                                       const std::string& dst_ipv4,
+                                       uint32_t dst_ipv4_addr,
+                                       uint32_t dst_ipv4_prefix_len,
                                        bool fwd_multicast);
   // Create (or flush and delete) pre-routing rules supporting legacy (ARC N)
   // single networking DNAT configuration.

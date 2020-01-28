@@ -35,8 +35,8 @@ class RandomProcessRunner : public MinijailedProcessRunner {
 
   int AddInterfaceToContainer(const std::string& host_ifname,
                               const std::string& con_ifname,
-                              const std::string& con_ipv4,
-                              const std::string& con_nmask,
+                              uint32_t con_ipv4_addr,
+                              uint32_t con_prefix_len,
                               bool enable_multicast,
                               const std::string& con_pid) override {
     return data_provider_->ConsumeBool();

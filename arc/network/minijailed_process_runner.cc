@@ -10,6 +10,8 @@
 #include <base/strings/string_util.h>
 #include <brillo/process.h>
 
+#include "arc/network/net_util.h"
+
 namespace arc_networkd {
 
 namespace {
@@ -25,7 +27,6 @@ constexpr uint64_t kNetRawAdminCapMask =
 // These match what is used in iptables.cc in firewalld.
 constexpr char kBrctlPath[] = "/sbin/brctl";
 constexpr char kChownPath[] = "/bin/chown";
-constexpr char kIfConfigPath[] = "/bin/ifconfig";
 constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
 constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
@@ -100,8 +101,8 @@ int MinijailedProcessRunner::Run(const std::vector<std::string>& argv,
 int MinijailedProcessRunner::AddInterfaceToContainer(
     const std::string& host_ifname,
     const std::string& con_ifname,
-    const std::string& con_ipv4,
-    const std::string& con_nmask,
+    uint32_t con_ipv4_addr,
+    uint32_t con_ipv4_prefix_len,
     bool enable_multicast,
     const std::string& con_pid) {
   int rc = RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIpPath, "link",
@@ -110,13 +111,26 @@ int MinijailedProcessRunner::AddInterfaceToContainer(
   if (rc != 0)
     return rc;
 
-  std::vector<std::string> args = {
-      kNsEnterPath,  "-t",       con_pid,  "-n",      "--",
-      kIfConfigPath, con_ifname, con_ipv4, "netmask", con_nmask};
-  if (!enable_multicast)
-    args.emplace_back("-multicast");
+  rc = RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIpPath, "addr", "add",
+                IPv4AddressToCidrString(con_ipv4_addr, con_ipv4_prefix_len),
+                "dev", con_ifname},
+               mj_, true);
 
-  return RunSync(args, mj_, true);
+  if (rc != 0)
+    return rc;
+
+  rc = RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIpPath, "link", "set",
+                con_ifname, "up"},
+               mj_, true);
+  if (rc != 0)
+    return rc;
+
+  if (enable_multicast)
+    rc = RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIpPath, "link",
+                  "set", "dev", con_ifname, "multicast", "on"},
+                 mj_, true);
+
+  return rc;
 }
 
 int MinijailedProcessRunner::WriteSentinelToContainer(
@@ -143,14 +157,6 @@ int MinijailedProcessRunner::chown(const std::string& uid,
   mj_->UseCapabilities(jail, kChownCapMask);
   std::vector<std::string> args = {kChownPath, uid + ":" + gid, file};
   return RunSyncDestroy(args, mj_, jail, log_failures);
-}
-
-int MinijailedProcessRunner::ifconfig(const std::string& ifname,
-                                      const std::vector<std::string>& argv,
-                                      bool log_failures) {
-  std::vector<std::string> args = {kIfConfigPath, ifname};
-  args.insert(args.end(), argv.begin(), argv.end());
-  return Run(args, log_failures);
 }
 
 int MinijailedProcessRunner::ip(const std::string& obj,

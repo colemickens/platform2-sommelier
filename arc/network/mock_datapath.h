@@ -20,8 +20,10 @@ class MockDatapath : public Datapath {
   explicit MockDatapath(MinijailedProcessRunner* runner) : Datapath(runner) {}
   ~MockDatapath() = default;
 
-  MOCK_METHOD2(AddBridge,
-               bool(const std::string& ifname, const std::string& ipv4_addr));
+  MOCK_METHOD3(AddBridge,
+               bool(const std::string& ifname,
+                    uint32_t ipv4_addr,
+                    uint32_t prefix_len));
   MOCK_METHOD1(RemoveBridge, void(const std::string& ifname));
   MOCK_METHOD2(AddToBridge,
                bool(const std::string& br_ifname, const std::string& ifname));
@@ -35,11 +37,12 @@ class MockDatapath : public Datapath {
                            const std::string& mac_addr,
                            const std::string& br_ifname));
   MOCK_METHOD1(RemoveInterface, void(const std::string& ifname));
-  MOCK_METHOD5(AddInterfaceToContainer,
+  MOCK_METHOD6(AddInterfaceToContainer,
                bool(int ns,
                     const std::string& src_ifname,
                     const std::string& dst_ifname,
-                    const std::string& dst_ipv4,
+                    const uint32_t dst_ipv4_addr,
+                    const uint32_t dst_prefix_len,
                     bool fwd_multicast));
   MOCK_METHOD1(AddLegacyIPv4DNAT, bool(const std::string& ipv4_addr));
   MOCK_METHOD0(RemoveLegacyIPv4DNAT, void());

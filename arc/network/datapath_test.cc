@@ -45,8 +45,8 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MOCK_METHOD6(AddInterfaceToContainer,
                int(const std::string& host_ifname,
                    const std::string& con_ifname,
-                   const std::string& con_ipv4,
-                   const std::string& con_nmask,
+                   uint32_t con_ipv4_addr,
+                   uint32_t con_ipv4_prefix_len,
                    bool enable_multicast,
                    const std::string& con_pid));
   MOCK_METHOD1(WriteSentinelToContainer, int(const std::string& con_pid));
@@ -58,10 +58,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
                int(const std::string& uid,
                    const std::string& gid,
                    const std::string& file,
-                   bool log_failures));
-  MOCK_METHOD3(ifconfig,
-               int(const std::string& ifname,
-                   const std::vector<std::string>& args,
                    bool log_failures));
   MOCK_METHOD4(ip,
                int(const std::string& obj,
@@ -144,15 +140,15 @@ TEST(DatapathTest, AddBridge) {
   MockProcessRunner runner;
   Datapath datapath(&runner);
   EXPECT_CALL(runner, brctl(StrEq("addbr"), ElementsAre("br"), true));
-  EXPECT_CALL(runner, ifconfig(StrEq("br"),
-                               ElementsAre("1.2.3.4", "netmask",
-                                           "255.255.255.252", "up"),
-                               true));
+  EXPECT_CALL(runner, ip(StrEq("addr"), StrEq("add"),
+                         ElementsAre("1.1.1.1/30", "dev", "br"), true));
+  EXPECT_CALL(runner,
+              ip(StrEq("link"), StrEq("set"), ElementsAre("br", "up"), true));
   EXPECT_CALL(runner, iptables(StrEq("mangle"),
                                ElementsAre("-A", "PREROUTING", "-i", "br", "-j",
                                            "MARK", "--set-mark", "1", "-w"),
                                true));
-  datapath.AddBridge("br", "1.2.3.4");
+  datapath.AddBridge("br", Ipv4Addr(1, 1, 1, 1), 30);
 }
 
 TEST(DatapathTest, AddVirtualBridgedInterface) {
@@ -164,7 +160,8 @@ TEST(DatapathTest, AddVirtualBridgedInterface) {
                          ElementsAre("veth_foo", "type", "veth", "peer", "name",
                                      "peer_foo"),
                          true));
-  EXPECT_CALL(runner, ifconfig(StrEq("veth_foo"), ElementsAre("up"), true));
+  EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
+                         ElementsAre("veth_foo", "up"), true));
   EXPECT_CALL(
       runner,
       ip(StrEq("link"), StrEq("set"),
@@ -190,7 +187,8 @@ TEST(DatapathTest, RemoveBridge) {
                                ElementsAre("-D", "PREROUTING", "-i", "br", "-j",
                                            "MARK", "--set-mark", "1", "-w"),
                                true));
-  EXPECT_CALL(runner, ifconfig(StrEq("br"), ElementsAre("down"), true));
+  EXPECT_CALL(runner,
+              ip(StrEq("link"), StrEq("set"), ElementsAre("br", "down"), true));
   EXPECT_CALL(runner, brctl(StrEq("delbr"), ElementsAre("br"), true));
   Datapath datapath(&runner);
   datapath.RemoveBridge("br");
@@ -200,11 +198,12 @@ TEST(DatapathTest, AddInterfaceToContainer) {
   MockProcessRunner runner;
   EXPECT_CALL(runner, ip(StrEq("link"), StrEq("set"),
                          ElementsAre("src", "netns", "123"), true));
-  EXPECT_CALL(runner, AddInterfaceToContainer(
-                          StrEq("src"), StrEq("dst"), StrEq("1.2.3.4"),
-                          StrEq("255.255.255.252"), true, StrEq("123")));
+  EXPECT_CALL(runner, AddInterfaceToContainer(StrEq("src"), StrEq("dst"),
+                                              Ipv4Addr(1, 1, 1, 1), 30, true,
+                                              StrEq("123")));
   Datapath datapath(&runner);
-  datapath.AddInterfaceToContainer(123, "src", "dst", "1.2.3.4", true);
+  datapath.AddInterfaceToContainer(123, "src", "dst", Ipv4Addr(1, 1, 1, 1), 30,
+                                   true);
 }
 
 TEST(DatapathTest, AddLegacyIPv4DNAT) {

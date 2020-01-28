@@ -301,8 +301,8 @@ void ArcService::OnDeviceAdded(Device* device) {
             << " guest_iface: " << config.guest_ifname();
 
   // Create the bridge.
-  if (!datapath_->AddBridge(config.host_ifname(),
-                            IPv4AddressToString(config.host_ipv4_addr()))) {
+  if (!datapath_->AddBridge(config.host_ifname(), config.host_ipv4_addr(),
+                            30)) {
     // Per crbug/1008686 this device cannot be deleted and then re-added.
     // It could be that arc-networkd was restarted after a crash and this device
     // is being re-added.
@@ -609,9 +609,8 @@ bool ArcService::ContainerImpl::OnStartDevice(Device* device) {
   }
 
   if (!datapath_->AddInterfaceToContainer(
-          pid_, veth_ifname, config.guest_ifname(),
-          IPv4AddressToString(config.guest_ipv4_addr()),
-          device->options().fwd_multicast)) {
+          pid_, veth_ifname, config.guest_ifname(), config.guest_ipv4_addr(),
+          30, device->options().fwd_multicast)) {
     LOG(ERROR) << "Failed to create container interface.";
     datapath_->RemoveInterface(veth_ifname);
     return false;

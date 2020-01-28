@@ -30,8 +30,8 @@ class MinijailedProcessRunner {
   // does NOT bring up the interface.
   virtual int AddInterfaceToContainer(const std::string& host_ifname,
                                       const std::string& con_ifname,
-                                      const std::string& con_ipv4,
-                                      const std::string& con_nmask,
+                                      uint32_t con_ipv4_addr,
+                                      uint32_t con_ipv4_prefix_len,
                                       bool enable_multicast,
                                       const std::string& con_pid);
 
@@ -49,11 +49,6 @@ class MinijailedProcessRunner {
                     const std::string& gid,
                     const std::string& file,
                     bool log_failures = true);
-
-  // Runs ifconfig.
-  virtual int ifconfig(const std::string& ifname,
-                       const std::vector<std::string>& args,
-                       bool log_failures = true);
 
   // Runs ip.
   virtual int ip(const std::string& obj,

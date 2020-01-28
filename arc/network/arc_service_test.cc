@@ -15,6 +15,7 @@
 #include "arc/network/device_manager.h"
 #include "arc/network/fake_process_runner.h"
 #include "arc/network/mock_datapath.h"
+#include "arc/network/net_util.h"
 
 using testing::_;
 using testing::Return;
@@ -26,6 +27,8 @@ namespace {
 constexpr pid_t kTestPID = -2;
 constexpr char kTestPIDStr[] = "-2";
 constexpr uint32_t kTestCID = 2;
+constexpr uint32_t kArcHostIP = Ipv4Addr(100, 115, 92, 1);
+constexpr uint32_t kArcGuestIP = Ipv4Addr(100, 115, 92, 2);
 
 static AddressManager addr_mgr({
     AddressManager::Guest::ARC,
@@ -118,7 +121,7 @@ class ArcServiceTest : public testing::Test {
 };
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid) {
-  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), StrEq("100.115.92.1")))
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddLegacyIPv4DNAT(StrEq("100.115.92.2")))
       .WillOnce(Return(true));
@@ -132,7 +135,7 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid) {
 
 TEST_F(ArcServiceTest,
        VerifyOnDeviceAddedDoesNothingLegacyAndroidOtherInterface) {
-  EXPECT_CALL(*datapath_, AddBridge(_, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).Times(0);
   EXPECT_CALL(*datapath_, AddLegacyIPv4DNAT(_)).Times(0);
   EXPECT_CALL(*datapath_, AddOutboundIPv4(_)).Times(0);
 
@@ -143,7 +146,7 @@ TEST_F(ArcServiceTest,
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDoesNothingNonArcDevice) {
-  EXPECT_CALL(*datapath_, AddBridge(_, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddBridge(_, _, _)).Times(0);
   EXPECT_CALL(*datapath_, AddLegacyIPv4DNAT(_)).Times(0);
   EXPECT_CALL(*datapath_, AddOutboundIPv4(_)).Times(0);
 
@@ -162,7 +165,7 @@ TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForLegacyAndroid) {
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid) {
-  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), StrEq("100.115.92.1")))
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
       .WillOnce(Return(true));
 
   auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
@@ -179,7 +182,8 @@ TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForAndroid) {
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapath) {
-  EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), StrEq("100.115.92.9")))
+  EXPECT_CALL(*datapath_,
+              AddBridge(StrEq("arc_eth0"), Ipv4Addr(100, 115, 92, 9), 30))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(StrEq("eth0"), StrEq("100.115.92.10")))
@@ -238,7 +242,7 @@ TEST_F(ContainerImplTest, OnStartDevice_LegacyAndroid) {
       .WillOnce(Return("peer_android"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_android"), StrEq("arc0"),
-                                      StrEq("100.115.92.2"), _))
+                                      kArcGuestIP, 30, _))
       .WillOnce(Return(true));
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
@@ -250,7 +254,7 @@ TEST_F(ContainerImplTest, OnStartDevice_FailsToCreateInterface_LegacyAndroid) {
   EXPECT_CALL(*datapath_,
               AddVirtualBridgedInterface(StrEq("android"), _, StrEq("arcbr0")))
       .WillOnce(Return(""));
-  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _, _)).Times(0);
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
@@ -263,7 +267,7 @@ TEST_F(ContainerImplTest,
       .WillOnce(Return("peer_android"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_android"), StrEq("arc0"),
-                                      StrEq("100.115.92.2"), _))
+                                      kArcGuestIP, 30, _))
       .WillOnce(Return(false));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("peer_android")));
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
@@ -279,7 +283,7 @@ TEST_F(ContainerImplTest, OnStartDevice_Android) {
       .WillOnce(Return("peer_arc0"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_arc0"), StrEq("arc0"),
-                                      StrEq("100.115.92.2"), _))
+                                      kArcGuestIP, 30, _))
       .WillOnce(Return(true));
   auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
@@ -291,7 +295,7 @@ TEST_F(ContainerImplTest, OnStartDevice_FailsToCreateInterface_Android) {
   EXPECT_CALL(*datapath_,
               AddVirtualBridgedInterface(StrEq("arc0"), _, StrEq("arcbr0")))
       .WillOnce(Return(""));
-  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _, _)).Times(0);
   auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
@@ -304,7 +308,7 @@ TEST_F(ContainerImplTest,
       .WillOnce(Return("peer_arc0"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_arc0"), StrEq("arc0"),
-                                      StrEq("100.115.92.2"), _))
+                                      kArcGuestIP, 30, _))
       .WillOnce(Return(false));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("peer_arc0")));
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
@@ -320,7 +324,7 @@ TEST_F(ContainerImplTest, OnStartDevice_Other) {
       .WillOnce(Return("peer_eth0"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_eth0"), StrEq("eth0"),
-                                      StrEq("100.115.92.10"), _))
+                                      Ipv4Addr(100, 115, 92, 10), 30, _))
       .WillOnce(Return(true));
   auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
   ASSERT_TRUE(dev);
@@ -331,7 +335,7 @@ TEST_F(ContainerImplTest, OnStartDevice_FailsToCreateInterface_Other) {
   EXPECT_CALL(*datapath_,
               AddVirtualBridgedInterface(StrEq("eth0"), _, StrEq("arc_eth0")))
       .WillOnce(Return(""));
-  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddInterfaceToContainer(_, _, _, _, _, _)).Times(0);
   auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
   ASSERT_TRUE(dev);
   EXPECT_FALSE(Impl(true)->OnStartDevice(dev.get()));
@@ -343,7 +347,7 @@ TEST_F(ContainerImplTest, OnStartDevice_FailsToAddInterfaceToContainer_Other) {
       .WillOnce(Return("peer_eth0"));
   EXPECT_CALL(*datapath_,
               AddInterfaceToContainer(_, StrEq("peer_eth0"), StrEq("eth0"),
-                                      StrEq("100.115.92.10"), _))
+                                      Ipv4Addr(100, 115, 92, 10), 30, _))
       .WillOnce(Return(false));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("peer_eth0")));
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);

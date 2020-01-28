@@ -24,7 +24,6 @@
 namespace arc_networkd {
 
 namespace {
-constexpr char kDefaultNetmask[] = "255.255.255.252";
 constexpr char kDefaultIfname[] = "vmtap%d";
 constexpr char kTunDev[] = "/dev/net/tun";
 }  // namespace
@@ -50,14 +49,21 @@ MinijailedProcessRunner& Datapath::runner() const {
 }
 
 bool Datapath::AddBridge(const std::string& ifname,
-                         const std::string& ipv4_addr) {
+                         uint32_t ipv4_addr,
+                         uint32_t ipv4_prefix_len) {
   // Configure the persistent Chrome OS bridge interface with static IP.
   if (process_runner_->brctl("addbr", {ifname}) != 0) {
     return false;
   }
 
-  if (process_runner_->ifconfig(
-          ifname, {ipv4_addr, "netmask", kDefaultNetmask, "up"}) != 0) {
+  if (process_runner_->ip("addr", "add",
+                          {IPv4AddressToCidrString(ipv4_addr, ipv4_prefix_len),
+                           "dev", ifname}) != 0) {
+    RemoveBridge(ifname);
+    return false;
+  }
+
+  if (process_runner_->ip("link", "set", {ifname, "up"}) != 0) {
     RemoveBridge(ifname);
     return false;
   }
@@ -76,7 +82,7 @@ bool Datapath::AddBridge(const std::string& ifname,
 void Datapath::RemoveBridge(const std::string& ifname) {
   process_runner_->iptables("mangle", {"-D", "PREROUTING", "-i", ifname, "-j",
                                        "MARK", "--set-mark", "1", "-w"});
-  process_runner_->ifconfig(ifname, {"down"});
+  process_runner_->ip("link", "set", {ifname, "down"});
   process_runner_->brctl("delbr", {ifname});
 }
 
@@ -206,7 +212,7 @@ std::string Datapath::AddVirtualBridgedInterface(const std::string& ifname,
     return "";
   }
 
-  if (process_runner_->ifconfig(veth, {"up"}) != 0) {
+  if (process_runner_->ip("link", "set", {veth, "up"}) != 0) {
     RemoveInterface(veth);
     RemoveInterface(peer);
     return "";
@@ -235,14 +241,15 @@ void Datapath::RemoveInterface(const std::string& ifname) {
 bool Datapath::AddInterfaceToContainer(int ns,
                                        const std::string& src_ifname,
                                        const std::string& dst_ifname,
-                                       const std::string& dst_ipv4,
+                                       uint32_t dst_ipv4_addr,
+                                       uint32_t dst_ipv4_prefix_len,
                                        bool fwd_multicast) {
   const std::string pid = base::IntToString(ns);
   return (process_runner_->ip("link", "set", {src_ifname, "netns", pid}) ==
           0) &&
-         (process_runner_->AddInterfaceToContainer(src_ifname, dst_ifname,
-                                                   dst_ipv4, kDefaultNetmask,
-                                                   fwd_multicast, pid) == 0);
+         (process_runner_->AddInterfaceToContainer(
+              src_ifname, dst_ifname, dst_ipv4_addr, dst_ipv4_prefix_len,
+              fwd_multicast, pid) == 0);
 }
 
 bool Datapath::AddLegacyIPv4DNAT(const std::string& ipv4_addr) {
