@@ -174,7 +174,7 @@ class SessionManagerImpl
 
   // Starts a 'Powerwash' of the device by touching a flag file, then
   // rebooting to allow early-boot code to wipe parts of stateful we
-  // need wiped. Have a look at /src/platform/init/chromeos_startup
+  // need wiped. Have a look at /src/platform2/init/chromeos_startup
   // for the gory details.
   void InitiateDeviceWipe(const std::string& reason) override;
 
