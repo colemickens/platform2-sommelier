@@ -444,7 +444,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("ShelfHotseat");
 
   if (builder->UseFlagIsSet("webui-tab-strip"))
-    builder->AddArg("--webui-tab-strip");
+    builder->AddFeatureEnableOverride("WebUITabStrip");
 
   SetUpAutoDimFlag(builder, cros_config);
 
