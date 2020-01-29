@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <string>
 #include <vector>
 
 #include <base/at_exit.h>
@@ -38,7 +39,8 @@ const struct {
     {"battery_capacity", mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity},
     {"battery_health", mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth},
     {"urandom", mojo_ipc::DiagnosticRoutineEnum::kUrandom},
-    {"smartctl_check", mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck}};
+    {"smartctl_check", mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck},
+    {"ac_power", mojo_ipc::DiagnosticRoutineEnum::kAcPower}};
 
 const struct {
   const char* readable_status;
@@ -54,6 +56,15 @@ const struct {
     {"Failed to start", mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart},
     {"Removed", mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved},
     {"Cancelling", mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling}};
+
+const struct {
+  const char* readable_user_message;
+  mojo_ipc::DiagnosticRoutineUserMessageEnum user_message_enum;
+} kDiagnosticRoutineReadableUserMessages[] = {
+    {"Unplug the AC adapter.",
+     mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnplugACPower},
+    {"Plug in the AC adapter.",
+     mojo_ipc::DiagnosticRoutineUserMessageEnum::kPlugInACPower}};
 
 std::string GetSwitchFromRoutine(mojo_ipc::DiagnosticRoutineEnum routine) {
   static base::NoDestructor<
@@ -100,6 +111,36 @@ bool RunRoutineAndProcessResult(int32_t id,
     return false;
   }
 
+  // Interactive updates require us to print out instructions to the user on the
+  // console. Once the user responds by pressing the ENTER key, we need to send
+  // a continue command to the routine and restart waiting for results.
+  if (response->routine_update_union->is_interactive_update()) {
+    bool user_message_found = false;
+    mojo_ipc::DiagnosticRoutineUserMessageEnum user_message =
+        response->routine_update_union->get_interactive_update()->user_message;
+    for (const auto& item : kDiagnosticRoutineReadableUserMessages) {
+      if (item.user_message_enum == user_message) {
+        user_message_found = true;
+        std::cout << item.readable_user_message << std::endl
+                  << "Press ENTER to continue." << std::endl;
+        break;
+      }
+    }
+    LOG_IF(FATAL, !user_message_found)
+        << "No readable message found for DiagnosticRoutineUserMessageEnum: "
+        << user_message;
+
+    std::string dummy;
+    std::getline(std::cin, dummy);
+
+    response = adapter->GetRoutineUpdate(
+        id, mojo_ipc::DiagnosticRoutineCommandEnum::kContinue,
+        false /* include_output */);
+    return RunRoutineAndProcessResult(id, adapter);
+  }
+
+  // Noninteractive routines without a status of kRunning must have terminated
+  // in some form. Print the update to the console to let the user know.
   if (response->output.is_valid()) {
     auto shared_memory = diagnostics::GetReadOnlySharedMemoryFromMojoHandle(
         std::move(response->output));
@@ -116,43 +157,36 @@ bool RunRoutineAndProcessResult(int32_t id,
   }
 
   std::cout << "Progress: " << response->progress_percent << std::endl;
-  if (response->routine_update_union->is_noninteractive_update()) {
-    bool status_found = false;
-    mojo_ipc::DiagnosticRoutineStatusEnum status =
-        response->routine_update_union->get_noninteractive_update()->status;
-    for (const auto& item : kDiagnosticRoutineReadableStatuses) {
-      if (item.status == status) {
-        status_found = true;
-        std::cout << "Status: " << item.readable_status << std::endl;
-        break;
-      }
+  bool status_found = false;
+  mojo_ipc::DiagnosticRoutineStatusEnum status =
+      response->routine_update_union->get_noninteractive_update()->status;
+  for (const auto& item : kDiagnosticRoutineReadableStatuses) {
+    if (item.status == status) {
+      status_found = true;
+      std::cout << "Status: " << item.readable_status << std::endl;
+      break;
     }
-    LOG_IF(FATAL, !status_found)
-        << "Invalid readable status lookup with status: " << status;
+  }
+  LOG_IF(FATAL, !status_found)
+      << "Invalid readable status lookup with status: " << status;
 
-    std::cout << "Status message: "
-              << response->routine_update_union->get_noninteractive_update()
-                     ->status_message
-              << std::endl;
+  std::cout << "Status message: "
+            << response->routine_update_union->get_noninteractive_update()
+                   ->status_message
+            << std::endl;
 
-    if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart) {
-      response = adapter->GetRoutineUpdate(
-          id, mojo_ipc::DiagnosticRoutineCommandEnum::kRemove,
-          false /* include_output */);
+  if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart) {
+    response = adapter->GetRoutineUpdate(
+        id, mojo_ipc::DiagnosticRoutineCommandEnum::kRemove,
+        false /* include_output */);
 
-      if (response.is_null() ||
-          !response->routine_update_union->is_noninteractive_update() ||
-          response->routine_update_union->get_noninteractive_update()->status !=
-              mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved) {
-        std::cout << "Failed to remove routine." << std::endl;
-        return false;
-      }
+    if (response.is_null() ||
+        !response->routine_update_union->is_noninteractive_update() ||
+        response->routine_update_union->get_noninteractive_update()->status !=
+            mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved) {
+      std::cout << "Failed to remove routine." << std::endl;
+      return false;
     }
-  } else {
-    // TODO(pmoy): Add support for interactive routines here. Right now, we
-    // assume all responses are noninteractive. This should display the user
-    // message, prompt the user for input, wait for that input, then maybe
-    // recursively call this method again?
   }
 
   return true;
@@ -199,6 +233,21 @@ bool ActionRunSmartctlCheckRoutine() {
   return RunRoutineAndProcessResult(response->id, &adapter);
 }
 
+bool ActionRunAcPowerRoutine(bool is_connected, const std::string& power_type) {
+  diagnostics::CrosHealthdMojoAdapter adapter;
+  chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status =
+      is_connected
+          ? chromeos::cros_healthd::mojom::AcPowerStatusEnum::kConnected
+          : chromeos::cros_healthd::mojom::AcPowerStatusEnum::kDisconnected;
+  const base::Optional<std::string> optional_power_type =
+      (power_type == "") ? base::nullopt
+                         : base::Optional<std::string>{power_type};
+  auto response =
+      adapter.RunAcPowerRoutine(expected_status, optional_power_type);
+  CHECK(response) << "No RunRoutineResponse received.";
+  return RunRoutineAndProcessResult(response->id, &adapter);
+}
+
 }  // namespace
 
 // 'diag' command-line tool:
@@ -222,6 +271,12 @@ int main(int argc, char** argv) {
                "routine to pass.");
   DEFINE_int32(length_seconds, 10,
                "Number of seconds to run the urandom routine for.");
+  DEFINE_bool(ac_power_is_connected, true,
+              "Whether or not the AC power routine expects the power supply to "
+              "be connected.");
+  DEFINE_string(
+      expected_power_type, "",
+      "Optional type of power supply expected for the AC power routine.");
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
   logging::InitLogging(logging::LoggingSettings());
@@ -265,6 +320,10 @@ int main(int argc, char** argv) {
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
         routine_result = ActionRunSmartctlCheckRoutine();
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kAcPower:
+        routine_result = ActionRunAcPowerRoutine(FLAGS_ac_power_is_connected,
+                                                 FLAGS_expected_power_type);
         break;
       default:
         std::cout << "Unsupported routine: " << FLAGS_routine << std::endl;

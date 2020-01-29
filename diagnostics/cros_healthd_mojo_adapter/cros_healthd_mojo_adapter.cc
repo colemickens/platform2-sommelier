@@ -174,6 +174,25 @@ CrosHealthdMojoAdapter::RunSmartctlCheckRoutine() {
   return response;
 }
 
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapter::RunAcPowerRoutine(
+    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    const base::Optional<std::string>& expected_power_type) {
+  if (!cros_healthd_service_factory_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunAcPowerRoutine(
+      expected_status, expected_power_type,
+      base::Bind(&OnMojoResponseReceived<
+                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                 &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
 std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
 CrosHealthdMojoAdapter::GetAvailableRoutines() {
   if (!cros_healthd_service_factory_.is_bound())
