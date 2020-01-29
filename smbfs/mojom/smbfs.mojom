@@ -68,6 +68,9 @@ struct KerberosConfig {
   enum Source {
     // Obtain credentials for Active Directory from authpolicyd.
     kActiveDirectory = 0,
+
+    // Obtain credentials from kerberosd.
+    kKerberos = 1,
   };
   // Source of kerberos credentials.
   Source source;

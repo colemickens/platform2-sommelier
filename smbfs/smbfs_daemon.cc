@@ -25,6 +25,7 @@
 #include "smbfs/dbus-proxies.h"
 #include "smbfs/fuse_session.h"
 #include "smbfs/kerberos_artifact_synchronizer.h"
+#include "smbfs/kerberos_client.h"
 #include "smbfs/smb_credential.h"
 #include "smbfs/smb_filesystem.h"
 #include "smbfs/smbfs.h"
@@ -311,15 +312,20 @@ void SmbFsDaemon::SetupKerberos(
   DCHECK(!kerberos_sync_);
   DCHECK(kerberos_config);
 
+  std::unique_ptr<KerberosArtifactClientInterface> client;
   switch (kerberos_config->source) {
     case mojom::KerberosConfig::Source::kActiveDirectory:
-      kerberos_sync_ = std::make_unique<KerberosArtifactSynchronizer>(
-          KerberosConfFilePath(kKrb5ConfFile),
-          KerberosConfFilePath(kCCacheFile), kerberos_config->identity,
-          std::make_unique<AuthPolicyClient>(bus_));
+      client = std::make_unique<AuthPolicyClient>(bus_);
+      break;
+    case mojom::KerberosConfig::Source::kKerberos:
+      client = std::make_unique<KerberosClient>(bus_);
       break;
   }
 
+  DCHECK(client);
+  kerberos_sync_ = std::make_unique<KerberosArtifactSynchronizer>(
+      KerberosConfFilePath(kKrb5ConfFile), KerberosConfFilePath(kCCacheFile),
+      kerberos_config->identity, std::move(client));
   kerberos_sync_->SetupKerberos(std::move(callback));
 }
 
