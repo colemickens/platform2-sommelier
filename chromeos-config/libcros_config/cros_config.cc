@@ -77,11 +77,6 @@ bool CrosConfig::Init(const int sku_id) {
                       product_sku_file, vpd_file);
 }
 
-// TODO(jrosenth): delete this alias once nobody is calling InitModel
-bool CrosConfig::InitModel() {
-  return Init();
-}
-
 bool CrosConfig::InitForTest(const int sku_id,
                              const base::FilePath& json_path,
                              const SystemArchitecture arch,

@@ -28,7 +28,7 @@ const char kManifestName[] = "firmware_manifest.prototxt";
 // specified.
 std::string GetModemFirmwareVariant() {
   brillo::CrosConfig config;
-  if (!config.InitModel()) {
+  if (!config.Init()) {
     LOG(WARNING) << "Failed to load Chrome OS configuration";
     return std::string();
   }

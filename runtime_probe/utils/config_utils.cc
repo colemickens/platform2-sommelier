@@ -27,7 +27,7 @@ const char kRuntimeProbeConfigName[] = "probe_config.json";
 void GetModelName(std::string* model_name) {
   auto cros_config = std::make_unique<brillo::CrosConfig>();
 
-  if (cros_config->InitModel() &&
+  if (cros_config->Init() &&
       cros_config->GetString(kCrosConfigModelNamePath, kCrosConfigModelNameKey,
                              model_name))
     return;

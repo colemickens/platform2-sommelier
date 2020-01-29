@@ -37,13 +37,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return true if OK, false on error.
   bool Init(const int sku_id = kDefaultSkuId);
 
-  // Alias for other clients in platform2 that call InitModel()
-  // instead of Init().
-  // TODO(jrosenth): remove this alias once nothing is left that calls
-  // InitModel().
-  // @return true if OK, false on error.
-  bool InitModel();
-
   // Prepare the configuration system for testing.
   // This reads in the given configuration file and selects the config
   // based on the supplied identifiers.

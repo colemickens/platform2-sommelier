@@ -20,8 +20,7 @@ class CrosConfigInterface {
 
   // Obtain a config property.
   // This returns a property for the current board model. This can only be
-  // called if Init*() was called, and either InitModel was called was called
-  // with a valid model name.
+  // called if Init() was called.
   // @path: Path to property ("/" for a property at the top of the model
   // hierarchy). The path specifies the node that contains the property to be
   // accessed.

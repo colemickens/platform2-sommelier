@@ -18,7 +18,7 @@ namespace power_manager {
 // preferences.
 class CrosConfigPrefsSource : public PrefsSourceInterface {
  public:
-  // |config| must already be initialized with e.g. CrosConfig::InitModel().
+  // |config| must already be initialized with CrosConfig::Init().
   explicit CrosConfigPrefsSource(
       std::unique_ptr<brillo::CrosConfigInterface> config);
   ~CrosConfigPrefsSource() override;

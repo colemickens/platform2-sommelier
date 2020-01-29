@@ -84,7 +84,7 @@ PrefsSourceInterfaceVector Prefs::GetDefaultSources() {
   const base::FilePath read_only_path(kReadOnlyPrefsDir);
 
   auto config = std::make_unique<brillo::CrosConfig>();
-  if (config->InitModel()) {
+  if (config->Init()) {
     // Prior to the introduction of CrosConfigPrefsSource, power prefs were
     // stored in a model-specific subdirectory named by a CrosConfig prop; we
     // need to preserve that behavior until we migrate these existing props.
