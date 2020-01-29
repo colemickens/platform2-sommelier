@@ -24,7 +24,7 @@ BootSlot::BootSlot(unique_ptr<BootDeviceInterface> boot_device)
 BootSlot::~BootSlot() {}
 
 bool BootSlot::GetCurrentSlot(string* boot_disk_name_out,
-                              Slot* current_slot_out) {
+                              Slot* current_slot_out) const {
   CHECK(boot_disk_name_out);
   CHECK(current_slot_out);
 
@@ -70,7 +70,7 @@ bool BootSlot::GetCurrentSlot(string* boot_disk_name_out,
 
 bool BootSlot::SplitPartitionName(string partition_name,
                                   string* disk_name_out,
-                                  int* partition_num_out) {
+                                  int* partition_num_out) const {
   CHECK(disk_name_out);
   CHECK(partition_num_out);
   if (!base::StartsWith(partition_name, "/dev/",

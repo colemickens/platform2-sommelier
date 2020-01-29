@@ -13,6 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 
+#include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
 
 using base::Callback;
@@ -29,21 +30,17 @@ const char kDlcMetadataActiveValue[] = "1";
 
 class DlcManager::DlcManagerImpl {
  public:
-  DlcManagerImpl(
-      std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-          image_loader_proxy,
-      std::unique_ptr<BootSlot> boot_slot,
-      const FilePath& manifest_dir,
-      const FilePath& preloaded_content_dir,
-      const FilePath& content_dir,
-      const FilePath& metadata_dir)
-      : image_loader_proxy_(std::move(image_loader_proxy)),
-        manifest_dir_(manifest_dir),
-        preloaded_content_dir_(preloaded_content_dir),
-        content_dir_(content_dir),
-        metadata_dir_(metadata_dir) {
+  DlcManagerImpl() {
+    const auto system_state = SystemState::Get();
+    image_loader_proxy_ = system_state->image_loader();
+    manifest_dir_ = system_state->manifest_dir();
+    preloaded_content_dir_ = system_state->preloaded_content_dir();
+    content_dir_ = system_state->content_dir();
+    metadata_dir_ = system_state->metadata_dir();
+
     string boot_disk_name;
-    if (!boot_slot->GetCurrentSlot(&boot_disk_name, &current_boot_slot_))
+    if (!system_state->boot_slot().GetCurrentSlot(&boot_disk_name,
+                                                  &current_boot_slot_))
       LOG(FATAL) << "Can not get current boot slot.";
 
     // Initialize supported DLC modules.
@@ -597,8 +594,7 @@ class DlcManager::DlcManagerImpl {
     }
   }
 
-  std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-      image_loader_proxy_;
+  org::chromium::ImageLoaderInterfaceProxyInterface* image_loader_proxy_;
 
   FilePath manifest_dir_;
   FilePath preloaded_content_dir_;
@@ -613,17 +609,8 @@ class DlcManager::DlcManagerImpl {
   std::set<DlcId> supported_;
 };
 
-DlcManager::DlcManager(
-    unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-        image_loader_proxy,
-    unique_ptr<BootSlot> boot_slot,
-    const FilePath& manifest_dir,
-    const FilePath& preloaded_content_dir,
-    const FilePath& content_dir,
-    const FilePath& metadata_dir) {
-  impl_ = std::make_unique<DlcManagerImpl>(
-      std::move(image_loader_proxy), std::move(boot_slot), manifest_dir,
-      preloaded_content_dir, content_dir, metadata_dir);
+DlcManager::DlcManager() {
+  impl_ = std::make_unique<DlcManagerImpl>();
 }
 
 DlcManager::~DlcManager() = default;

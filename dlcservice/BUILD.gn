@@ -80,6 +80,7 @@ static_library("libdlcservice") {
     "dbus_adaptors/dbus_adaptor.cc",
     "dlc_manager.cc",
     "dlc_service.cc",
+    "system_state.cc",
   ]
   deps = [
     ":dlcservice_adaptors",

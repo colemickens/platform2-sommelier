@@ -48,22 +48,11 @@ void LogAndSetError(brillo::ErrorPtr* err,
 
 }  // namespace
 
-DlcService::DlcService(
-    unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-        image_loader_proxy,
-    unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
-        update_engine_proxy,
-    unique_ptr<BootSlot> boot_slot,
-    const FilePath& manifest_dir,
-    const FilePath& preloaded_content_dir,
-    const FilePath& content_dir,
-    const FilePath& metadata_dir)
-    : update_engine_proxy_(std::move(update_engine_proxy)),
-      scheduled_period_ue_check_id_(MessageLoop::kTaskIdNull),
+DlcService::DlcService()
+    : scheduled_period_ue_check_id_(MessageLoop::kTaskIdNull),
       weak_ptr_factory_(this) {
-  dlc_manager_ = std::make_unique<DlcManager>(
-      std::move(image_loader_proxy), std::move(boot_slot), manifest_dir,
-      preloaded_content_dir, content_dir, metadata_dir);
+  update_engine_proxy_ = SystemState::Get()->update_engine();
+  dlc_manager_ = std::make_unique<DlcManager>();
 
   // Register D-Bus signal callbacks.
   update_engine_proxy_->RegisterStatusUpdateAdvancedSignalHandler(

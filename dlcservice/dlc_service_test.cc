@@ -195,10 +195,12 @@ class DlcServiceTest : public testing::Test {
   }
 
   void ConstructDlcService() {
-    dlc_service_ = std::make_unique<DlcService>(
+    SystemState::Initialize(
         move(mock_image_loader_proxy_), move(mock_update_engine_proxy_),
         std::make_unique<BootSlot>(move(mock_boot_device_)), manifest_path_,
-        preloaded_content_path_, content_path_, metadata_path_);
+        preloaded_content_path_, content_path_, metadata_path_,
+        /*for_test=*/true);
+    dlc_service_ = std::make_unique<DlcService>();
 
     dlc_service_test_observer_ = std::make_unique<DlcServiceTestObserver>();
     dlc_service_->AddObserver(dlc_service_test_observer_.get());

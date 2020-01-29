@@ -31,7 +31,7 @@ class BootSlot {
   // booted from. For example, "/dev/sda". |current_slot_out| returns the slot
   // the system is currently booted from.
   bool GetCurrentSlot(std::string* boot_disk_name_out,
-                      BootSlot::Slot* current_slot_out);
+                      BootSlot::Slot* current_slot_out) const;
 
  private:
   FRIEND_TEST(BootSlotTest, SplitPartitionNameTest);
@@ -46,7 +46,7 @@ class BootSlot {
   // checks are performed (i.e. it doesn't check if the device actually exists).
   bool SplitPartitionName(std::string partition_name,
                           std::string* disk_name_out,
-                          int* partition_num_out);
+                          int* partition_num_out) const;
 
   std::unique_ptr<BootDeviceInterface> boot_device_;
 

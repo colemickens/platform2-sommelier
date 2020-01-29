@@ -14,6 +14,7 @@
 #include "dlcservice/boot/boot_device.h"
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_service.h"
+#include "dlcservice/system_state.h"
 
 namespace dlcservice {
 
@@ -45,7 +46,10 @@ void Daemon::RegisterDBusObjectsAsync(
 
   bus_for_proxies_ = dbus_connection_for_proxies_.Connect();
   CHECK(bus_for_proxies_);
-  dlc_service_ = std::make_unique<dlcservice::DlcService>(
+  // |SystemState| must be:
+  //  - Initialized after |bus_for_proxies_|.
+  //  - Initialized before |DlcService|.
+  SystemState::Initialize(
       std::make_unique<org::chromium::ImageLoaderInterfaceProxy>(
           bus_for_proxies_),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
@@ -55,6 +59,8 @@ void Daemon::RegisterDBusObjectsAsync(
       base::FilePath(kDlcPreloadedImageRootpath),
       base::FilePath(imageloader::kDlcImageRootpath),
       base::FilePath(imageloader::kDlcMetadataRootpath));
+  CHECK(SystemState::Get());
+  dlc_service_ = std::make_unique<DlcService>();
 
   auto dbus_service = std::make_unique<DBusService>(dlc_service_.get());
   dbus_adaptor_ = std::make_unique<DBusAdaptor>(std::move(dbus_service));

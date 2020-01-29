@@ -27,13 +27,7 @@ extern const char kDlcMetadataActiveValue[];
 
 class DlcManager {
  public:
-  DlcManager(std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-                 image_loader_proxy,
-             std::unique_ptr<BootSlot> boot_slot,
-             const base::FilePath& manifest_dir,
-             const base::FilePath& preloaded_content_dir,
-             const base::FilePath& content_dir,
-             const base::FilePath& metadata_dir);
+  DlcManager();
   ~DlcManager();
 
   // Returns true when an install is currently running.

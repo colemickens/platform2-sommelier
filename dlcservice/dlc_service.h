@@ -18,8 +18,8 @@
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
-#include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_manager.h"
+#include "dlcservice/system_state.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {
@@ -39,15 +39,7 @@ class DlcService {
     virtual void SendInstallStatus(const InstallStatus& status) = 0;
   };
 
-  DlcService(std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-                 image_loader_proxy,
-             std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
-                 update_engine_proxy,
-             std::unique_ptr<BootSlot> boot_slot,
-             const base::FilePath& manifest_dir,
-             const base::FilePath& preloaded_content_dir,
-             const base::FilePath& content_dir,
-             const base::FilePath& metadata_dir);
+  DlcService();
   ~DlcService();
 
   // Loads installed DLC module images.
@@ -91,8 +83,7 @@ class DlcService {
                                              const std::string& signal_name,
                                              bool success);
 
-  std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
-      update_engine_proxy_;
+  org::chromium::UpdateEngineInterfaceProxyInterface* update_engine_proxy_;
   std::unique_ptr<DlcManager> dlc_manager_;
 
   // Holds the ML task id of the delayed |PeriodicInstallCheck()| if an install
