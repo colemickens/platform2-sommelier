@@ -967,6 +967,11 @@ void ArcSetup::ExpandPropertyFile(const base::FilePath& input,
 }
 
 void ArcSetup::MaybeStartUreadaheadInTracingMode() {
+  if (config_.GetBoolOrDie("DISABLE_UREADAHEAD")) {
+    LOG(INFO) << "arc-ureadahead-trace is disabled.";
+    return;
+  }
+
   const base::FilePath readahead_pack_file(
       "/var/lib/ureadahead/opt.google.containers.android.rootfs.root.pack");
   if (!base::PathExists(readahead_pack_file)) {

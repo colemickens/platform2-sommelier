@@ -1204,7 +1204,9 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("ARC_CUSTOM_TABS_EXPERIMENT=%d",
                          request.arc_custom_tabs_experiment()),
       base::StringPrintf("ARC_PRINT_SPOOLER_EXPERIMENT=%d",
-                         request.arc_print_spooler_experiment())};
+                         request.arc_print_spooler_experiment()),
+      base::StringPrintf("DISABLE_UREADAHEAD=%d",
+                         request.disable_ureadahead())};
   if (request.lcd_density() > 0) {
     env_vars.push_back(
         base::StringPrintf("ARC_LCD_DENSITY=%d", request.lcd_density()));
@@ -1714,7 +1716,9 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       // Never allow for managed account until the policy is properly defined.
       base::StringPrintf("ENABLE_ADB_SIDELOAD=%d",
                          !request.is_account_managed() &&
-                             arc_sideload_status_->IsAdbSideloadAllowed())};
+                             arc_sideload_status_->IsAdbSideloadAllowed()),
+      base::StringPrintf("DISABLE_UREADAHEAD=%d",
+                         request.disable_ureadahead())};
 
   switch (request.packages_cache_mode()) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
