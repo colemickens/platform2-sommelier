@@ -1419,7 +1419,11 @@ void ArcSetup::CleanUpStaleMountPoints() {
       arc_paths_->media_removable_read_directory));
   EXIT_IF(!arc_mounter_->UmountIfExists(
       arc_paths_->media_removable_write_directory));
-  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->android_mutable_source));
+  // If the android_mutable_source path cannot be unmounted below continue
+  // anyway. This allows the mini-container to start and allows tests to
+  // exercise the mini-container (b/148185982).
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->android_mutable_source));
 }
 
 void ArcSetup::SetUpSharedMountPoints() {
