@@ -7,6 +7,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
+
+#include <base/optional.h>
 
 #include "diagnostics/routines/diag_routine.h"
 #include "mojo/cros_healthd.mojom.h"
@@ -33,6 +36,11 @@ class CrosHealthdRoutineFactory {
   // Constructs a new instance of the smartctl check routine. See
   // diagnostics/routines/smartctl_check for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine() = 0;
+  // Constructs a new instance of the AC power routine. See
+  // diagnostics/routines/battery_sysfs for details on the routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
+      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      const base::Optional<std::string>& expected_power_type) = 0;
 };
 
 }  // namespace diagnostics

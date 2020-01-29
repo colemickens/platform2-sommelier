@@ -52,6 +52,10 @@ class FakeDiagnosticsService final
       const RunBatteryHealthRoutineCallback& callback) override;
   void RunSmartctlCheckRoutine(
       const RunSmartctlCheckRoutineCallback& callback) override;
+  void RunAcPowerRoutine(
+      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      const base::Optional<std::string>& expected_power_type,
+      const RunAcPowerRoutineCallback& callback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

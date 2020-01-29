@@ -5,7 +5,10 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_SERVICE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_SERVICE_H_
 
+#include <string>
 #include <vector>
+
+#include <base/optional.h>
 
 #include "mojo/cros_healthd.mojom.h"
 
@@ -21,6 +24,8 @@ class CrosHealthdRoutineService {
       chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum;
   using MojomCrosHealthdDiagnosticRoutineStatusEnum =
       chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum;
+  using MojomCrosHealthdAcPowerStatusEnum =
+      chromeos::cros_healthd::mojom::AcPowerStatusEnum;
 
   virtual ~CrosHealthdRoutineService() = default;
 
@@ -48,6 +53,11 @@ class CrosHealthdRoutineService {
       MojomCrosHealthdDiagnosticRoutineStatusEnum* status) = 0;
   virtual void RunSmartctlCheckRoutine(
       int32_t* id, MojomCrosHealthdDiagnosticRoutineStatusEnum* status) = 0;
+  virtual void RunAcPowerRoutine(
+      MojomCrosHealthdAcPowerStatusEnum expected_status,
+      const base::Optional<std::string>& expected_power_type,
+      int32_t* id,
+      MojomCrosHealthdDiagnosticRoutineStatusEnum* status) = 0;
   virtual void GetRoutineUpdate(
       int32_t id,
       MojomCrosHealthdDiagnosticRoutineCommandEnum command,

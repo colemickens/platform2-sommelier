@@ -7,9 +7,11 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
+#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
@@ -45,6 +47,11 @@ class CrosHealthdRoutineServiceImpl final : public CrosHealthdRoutineService {
   void RunSmartctlCheckRoutine(
       int32_t* id,
       MojomCrosHealthdDiagnosticRoutineStatusEnum* status) override;
+  void RunAcPowerRoutine(
+      MojomCrosHealthdAcPowerStatusEnum expected_status,
+      const base::Optional<std::string>& expected_power_type,
+      int32_t* id,
+      MojomCrosHealthdDiagnosticRoutineStatusEnum* status) override;
   void GetRoutineUpdate(
       int32_t id,
       MojomCrosHealthdDiagnosticRoutineCommandEnum command,
@@ -71,7 +78,8 @@ class CrosHealthdRoutineServiceImpl final : public CrosHealthdRoutineService {
           chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::
               kBatteryCapacity,
           chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryHealth,
-          chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck};
+          chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck,
+          chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kAcPower};
 
   // Responsible for making the routines. Unowned pointer that should outlive
   // this instance.

@@ -71,6 +71,16 @@ void CrosHealthdRoutineServiceImpl::RunSmartctlCheckRoutine(
   RunRoutine(routine_factory_->MakeSmartctlCheckRoutine(), id, status);
 }
 
+void CrosHealthdRoutineServiceImpl::RunAcPowerRoutine(
+    mojo_ipc::AcPowerStatusEnum expected_status,
+    const base::Optional<std::string>& expected_power_type,
+    int32_t* id,
+    mojo_ipc::DiagnosticRoutineStatusEnum* status) {
+  RunRoutine(routine_factory_->MakeAcPowerRoutine(expected_status,
+                                                  expected_power_type),
+             id, status);
+}
+
 void CrosHealthdRoutineServiceImpl::GetRoutineUpdate(
     int32_t uuid,
     mojo_ipc::DiagnosticRoutineCommandEnum command,

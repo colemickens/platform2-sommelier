@@ -78,9 +78,11 @@ bool GetUserMessageFromMojoEnum(
         kUnplugACPower:
       *grpc_message_out = grpc_api::ROUTINE_USER_MESSAGE_UNPLUG_AC_POWER;
       return true;
+    default:
+      LOG(ERROR) << "Unknown mojo user message: "
+                 << static_cast<int>(mojo_message);
+      return false;
   }
-  LOG(ERROR) << "Unknown mojo user message: " << static_cast<int>(mojo_message);
-  return false;
 }
 
 // Converts from mojo's DiagnosticRoutineEnum to gRPC's DiagnosticRoutine.
@@ -101,9 +103,10 @@ bool GetGrpcRoutineEnumFromMojoRoutineEnum(
     case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck:
       *grpc_enum_out = grpc_api::ROUTINE_SMARTCTL_CHECK;
       return true;
+    default:
+      LOG(ERROR) << "Unknown mojo routine: " << static_cast<int>(mojo_enum);
+      return false;
   }
-  LOG(ERROR) << "Unknown mojo routine: " << static_cast<int>(mojo_enum);
-  return false;
 }
 
 // Converts from mojo's RoutineUpdate to gRPC's GetRoutineUpdateResponse.

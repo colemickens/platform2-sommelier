@@ -90,6 +90,16 @@ void CrosHealthdMojoService::RunSmartctlCheckRoutine(
   callback.Run(response.Clone());
 }
 
+void CrosHealthdMojoService::RunAcPowerRoutine(
+    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    const base::Optional<std::string>& expected_power_type,
+    const RunAcPowerRoutineCallback& callback) {
+  RunRoutineResponse response;
+  routine_service_->RunAcPowerRoutine(expected_status, expected_power_type,
+                                      &response.id, &response.status);
+  callback.Run(response.Clone());
+}
+
 void CrosHealthdMojoService::ProbeTelemetryInfo(
     const std::vector<ProbeCategoryEnum>& categories,
     const ProbeTelemetryInfoCallback& callback) {

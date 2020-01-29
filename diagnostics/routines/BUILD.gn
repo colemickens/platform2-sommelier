@@ -51,6 +51,7 @@ source_set("libdiag_routine") {
   ]
   all_dependent_configs = [ ":libdiag_routine_pkg_deps" ]
   sources = [
+    "ac_power/ac_power.cc",
     "battery/battery.cc",
     "battery_sysfs/battery_sysfs.cc",
     "diag_process_adapter_impl.cc",
@@ -102,6 +103,7 @@ if (use.test) {
       "//diagnostics/common:libcommon_test_utils",
     ]
     sources = [
+      "ac_power/ac_power_test.cc",
       "battery/battery_test.cc",
       "battery_sysfs/battery_sysfs_test.cc",
       "smartctl_check/smartctl_check_utils.cc",

@@ -6,10 +6,12 @@
 #define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_MOJO_SERVICE_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <mojo/public/cpp/bindings/binding_set.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
@@ -58,6 +60,10 @@ class CrosHealthdMojoService final
       const RunBatteryHealthRoutineCallback& callback) override;
   void RunSmartctlCheckRoutine(
       const RunSmartctlCheckRoutineCallback& callback) override;
+  void RunAcPowerRoutine(
+      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      const base::Optional<std::string>& expected_power_type,
+      const RunAcPowerRoutineCallback& callback) override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,

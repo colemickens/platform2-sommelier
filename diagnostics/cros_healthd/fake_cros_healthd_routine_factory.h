@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/routines/diag_routine.h"
@@ -53,6 +54,9 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
       uint32_t maximum_cycle_count,
       uint32_t percent_battery_wear_allowed) override;
   std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine() override;
+  std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
+      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      const base::Optional<std::string>& expected_power_type) override;
 
  private:
   // The routine that will be returned by any calls to MakeSomeRoutine.

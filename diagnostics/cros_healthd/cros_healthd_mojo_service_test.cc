@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
+#include <base/optional.h>
 #include <base/run_loop.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <dbus/mock_bus.h>
@@ -67,6 +68,11 @@ class MockCrosHealthdRoutineService : public CrosHealthdRoutineService {
                     mojo_ipc::DiagnosticRoutineStatusEnum* status));
   MOCK_METHOD2(RunSmartctlCheckRoutine,
                void(int32_t* id,
+                    mojo_ipc::DiagnosticRoutineStatusEnum* status));
+  MOCK_METHOD4(RunAcPowerRoutine,
+               void(mojo_ipc::AcPowerStatusEnum expected_status,
+                    const base::Optional<std::string>& expected_power_type,
+                    int32_t* id,
                     mojo_ipc::DiagnosticRoutineStatusEnum* status));
   MOCK_METHOD4(GetRoutineUpdate,
                void(int32_t uuid,
@@ -198,6 +204,30 @@ TEST_F(CrosHealthdMojoServiceTest, RequestSmartctlCheckRoutine) {
   mojo_ipc::RunRoutineResponsePtr response;
   service()->RunSmartctlCheckRoutine(base::Bind(
       &SaveMojoResponse<mojo_ipc::RunRoutineResponsePtr>, &response));
+
+  ASSERT_TRUE(!response.is_null());
+  EXPECT_EQ(response->id, kExpectedId);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that we can request the AC power routine.
+TEST_F(CrosHealthdMojoServiceTest, RequestAcPowerRoutine) {
+  constexpr mojo_ipc::AcPowerStatusEnum kConnected =
+      mojo_ipc::AcPowerStatusEnum::kConnected;
+  const base::Optional<std::string> kPowerType{"USB_PD"};
+  EXPECT_CALL(*routine_service(),
+              RunAcPowerRoutine(kConnected, kPowerType, _, _))
+      .WillOnce(WithArgs<2, 3>(Invoke(
+          [](int32_t* id, mojo_ipc::DiagnosticRoutineStatusEnum* status) {
+            *id = kExpectedId;
+            *status = kExpectedStatus;
+          })));
+
+  mojo_ipc::RunRoutineResponsePtr response;
+  service()->RunAcPowerRoutine(
+      kConnected, kPowerType,
+      base::Bind(&SaveMojoResponse<mojo_ipc::RunRoutineResponsePtr>,
+                 &response));
 
   ASSERT_TRUE(!response.is_null());
   EXPECT_EQ(response->id, kExpectedId);

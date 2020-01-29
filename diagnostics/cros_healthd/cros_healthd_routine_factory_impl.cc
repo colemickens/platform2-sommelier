@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
 
+#include "diagnostics/routines/ac_power/ac_power.h"
 #include "diagnostics/routines/battery/battery.h"
 #include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
 #include "diagnostics/routines/smartctl_check/smartctl_check.h"
@@ -35,6 +36,13 @@ CrosHealthdRoutineFactoryImpl::MakeBatteryHealthRoutine(
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine() {
   return CreateSmartctlCheckRoutine();
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
+    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    const base::Optional<std::string>& expected_power_type) {
+  return std::make_unique<AcPowerRoutine>(expected_status, expected_power_type);
 }
 
 }  // namespace diagnostics

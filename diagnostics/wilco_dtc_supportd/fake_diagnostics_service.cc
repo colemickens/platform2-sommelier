@@ -72,6 +72,13 @@ void FakeDiagnosticsService::RunSmartctlCheckRoutine(
   callback.Run(run_routine_response_.Clone());
 }
 
+void FakeDiagnosticsService::RunAcPowerRoutine(
+    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    const base::Optional<std::string>& expected_power_type,
+    const RunAcPowerRoutineCallback& callback) {
+  callback.Run(run_routine_response_.Clone());
+}
+
 void FakeDiagnosticsService::SetMojoServiceIsAvailable(bool is_available) {
   is_available_ = is_available;
 }

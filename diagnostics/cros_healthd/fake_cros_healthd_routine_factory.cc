@@ -216,4 +216,11 @@ FakeCrosHealthdRoutineFactory::MakeSmartctlCheckRoutine() {
   return std::move(next_routine_);
 }
 
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeAcPowerRoutine(
+    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    const base::Optional<std::string>& expected_power_type) {
+  return std::move(next_routine_);
+}
+
 }  // namespace diagnostics
