@@ -1129,7 +1129,8 @@ bool MetricsDaemon::ReadFileToUint64(const base::FilePath& path,
   // Remove final newline.
   base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
   if (!base::StringToUint64(content, value)) {
-    LOG(WARNING) << "invalid integer: " << content;
+    LOG(WARNING) << "invalid integer " << content << " in file "
+                 << path.value();
     return false;
   }
   return true;
