@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/optional.h>
 #include <base/time/time.h>
@@ -23,6 +24,8 @@ class SubprocessInterface {
   virtual ~SubprocessInterface() {}
 
   virtual void UseNewMountNamespace() = 0;
+  virtual void EnterExistingMountNamespace(
+      const base::FilePath& ns_mnt_path) = 0;
 
   // fork(), export |environment_variables|, and exec(argv, env_vars).
   // Returns false if fork() fails, true otherwise.
@@ -49,6 +52,7 @@ class Subprocess : public SubprocessInterface {
 
   // SubprocessInterface:
   void UseNewMountNamespace() override;
+  void EnterExistingMountNamespace(const base::FilePath& ns_mnt_path) override;
   bool ForkAndExec(const std::vector<std::string>& args,
                    const std::vector<std::string>& env_vars) override;
   void Kill(int signal) override;
@@ -65,6 +69,10 @@ class Subprocess : public SubprocessInterface {
   const uid_t desired_uid_;
   // Whether to enter a new mount namespace before execve(2)-ing the subprocess.
   bool new_mount_namespace_ = false;
+  // If present, enter an existing mount namespace before execve(2)-ing the
+  // subprocess.
+  // Mutually exclusive with |new_mount_namespace_|.
+  base::Optional<base::FilePath> ns_mnt_path_;
 
   SystemUtils* const system_;  // weak; owned by embedder.
   DISALLOW_COPY_AND_ASSIGN(Subprocess);

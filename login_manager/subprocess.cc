@@ -4,16 +4,16 @@
 
 #include "login_manager/subprocess.h"
 
-#include <algorithm>
-#include <memory>
-#include <vector>
-
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <memory>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/posix/file_descriptor_shuffle.h>
@@ -38,6 +38,13 @@ Subprocess::~Subprocess() {}
 
 void Subprocess::UseNewMountNamespace() {
   new_mount_namespace_ = true;
+  ns_mnt_path_.reset();
+}
+
+void Subprocess::EnterExistingMountNamespace(
+    const base::FilePath& ns_mnt_path) {
+  ns_mnt_path_ = ns_mnt_path;
+  new_mount_namespace_ = false;
 }
 
 bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
@@ -67,6 +74,10 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
 
   if (new_mount_namespace_) {
     minijail_namespace_vfs(j.get());
+  } else if (ns_mnt_path_.has_value()) {
+    minijail_namespace_enter_vfs(j.get(), ns_mnt_path_.value().value().c_str());
+  }
+  if (ns_mnt_path_.has_value() || new_mount_namespace_) {
     // Remount all shared mount points as slave to allow shared mount points
     // from outside this namespace to propagate in. This is necessary for users
     // to be able to access USB drives/SD cards. cros-disks runs in its own
