@@ -8,7 +8,7 @@
 
 #include <memory>
 
-#include <base/memory/shared_memory.h>
+#include <base/memory/read_only_shared_memory_region.h>
 #include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
@@ -50,14 +50,16 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   void StartStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
   void StopStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
   bool ValidateStream(camera3_stream_t* stream);
-  void OnFrameCaptured(mojo::ScopedHandle shm_handle,
+  void OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
                        int32_t id,
                        uint32_t size) override;
   void OnConnectionError();
-  void CopyFromShmToOutputBuffer(base::SharedMemory* shm,
-                                 buffer_handle_t* buffer);
+  void CopyFromMappingToOutputBuffer(base::ReadOnlySharedMemoryMapping* mapping,
+                                     buffer_handle_t* buffer);
   void StartJpegProcessor();
-  void DecodeJpeg(mojo::ScopedHandle shm_handle, int32_t id, uint32_t size);
+  void DecodeJpeg(base::ReadOnlySharedMemoryRegion shm,
+                  int32_t id,
+                  uint32_t size);
   void ReturnBufferOnIpcThread(int32_t id);
 
   std::atomic<bool> open_;

@@ -16,9 +16,8 @@ struct IpCameraStream {
   double fps;
 };
 
-// TODO(pceballos): Investigate using handle<shared_buffer> instead of handle.
 interface IpCameraFrameListener {
-  OnFrameCaptured(handle shm_handle, int32 id, uint32 size);
+  OnFrameCaptured(handle<shared_buffer> shm_handle, int32 id, uint32 size);
 };
 
 interface IpCameraDevice {

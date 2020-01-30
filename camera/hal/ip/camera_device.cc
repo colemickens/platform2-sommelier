@@ -128,7 +128,7 @@ int CameraDevice::Init(mojom::IpCameraDevicePtr ip_device,
                        int32_t height,
                        double fps) {
   ipc_task_runner_ = mojo::core::GetIOTaskRunner();
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   ip_device_ = std::move(ip_device);
   width_ = width;
@@ -180,7 +180,7 @@ void CameraDevice::Open(const hw_module_t* module, hw_device_t** hw_device) {
 }
 
 CameraDevice::~CameraDevice() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (jpeg_thread_.IsRunning()) {
     jpeg_thread_.Stop();
@@ -215,7 +215,7 @@ void CameraDevice::Close() {
   // because the connection was lost or the device was reported as disconnected,
   // so no need to tell it to stop streaming (the pointer probably isn't valid
   // anyway).
-  if (!ipc_task_runner_->BelongsToCurrentThread()) {
+  if (!ipc_task_runner_->RunsTasksInCurrentSequence()) {
     auto return_val = Future<void>::Create(nullptr);
     ipc_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&CameraDevice::StopStreamingOnIpcThread,
@@ -226,7 +226,7 @@ void CameraDevice::Close() {
 
 void CameraDevice::StopStreamingOnIpcThread(
     scoped_refptr<Future<void>> return_val) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   ip_device_->StopStreaming();
   return_val->Set();
 }
@@ -267,7 +267,7 @@ bool CameraDevice::ValidateStream(camera3_stream_t* stream) {
 
 int CameraDevice::ConfigureStreams(
     camera3_stream_configuration_t* stream_list) {
-  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(!ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (callback_ops_ == nullptr) {
     LOGFID(ERROR, id_) << "Device is not initialized";
@@ -311,7 +311,7 @@ int CameraDevice::ConfigureStreams(
 
 void CameraDevice::StartStreamingOnIpcThread(
     scoped_refptr<Future<void>> return_val) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   ip_device_->StartStreaming();
   return_val->Set();
 }
@@ -358,8 +358,8 @@ int CameraDevice::Flush() {
   return 0;
 }
 
-void CameraDevice::CopyFromShmToOutputBuffer(base::SharedMemory* shm,
-                                             buffer_handle_t* buffer) {
+void CameraDevice::CopyFromMappingToOutputBuffer(
+    base::ReadOnlySharedMemoryMapping* mapping, buffer_handle_t* buffer) {
   buffer_manager_->Register(*buffer);
   struct android_ycbcr ycbcr;
 
@@ -372,10 +372,11 @@ void CameraDevice::CopyFromShmToOutputBuffer(base::SharedMemory* shm,
 
   // Convert from I420 to NV12 while copying the buffer since the buffer manager
   // allocates an NV12 buffer
-  uint8_t* in_y = reinterpret_cast<uint8_t*>(shm->memory());
-  uint8_t* in_u = reinterpret_cast<uint8_t*>(shm->memory()) + width_ * height_;
-  uint8_t* in_v =
-      reinterpret_cast<uint8_t*>(shm->memory()) + width_ * height_ * 5 / 4;
+  const uint8_t* in_y = reinterpret_cast<const uint8_t*>(mapping->memory());
+  const uint8_t* in_u =
+      reinterpret_cast<const uint8_t*>(mapping->memory()) + width_ * height_;
+  const uint8_t* in_v = reinterpret_cast<const uint8_t*>(mapping->memory()) +
+                        width_ * height_ * 5 / 4;
   uint8_t* out_y = reinterpret_cast<uint8_t*>(ycbcr.y);
   uint8_t* out_uv = reinterpret_cast<uint8_t*>(ycbcr.cb);
 
@@ -394,13 +395,11 @@ void CameraDevice::ReturnBufferOnIpcThread(int32_t id) {
   ip_device_->ReturnBuffer(id);
 }
 
-void CameraDevice::DecodeJpeg(mojo::ScopedHandle shm_handle,
+void CameraDevice::DecodeJpeg(base::ReadOnlySharedMemoryRegion shm,
                               int32_t id,
                               uint32_t size) {
-  int fd = mojo::UnwrapPlatformHandle(std::move(shm_handle)).ReleaseFD();
   std::unique_ptr<CaptureRequest> request = request_queue_.Pop();
   if (!request) {
-    close(fd);
     ipc_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&CameraDevice::ReturnBufferOnIpcThread,
                                   base::Unretained(this), id));
@@ -408,17 +407,20 @@ void CameraDevice::DecodeJpeg(mojo::ScopedHandle shm_handle,
   }
   buffer_handle_t* buffer = request->GetOutputBuffer()->buffer;
 
-  JpegDecodeAccelerator::Error err = jda_->DecodeSync(fd, size, 0, *buffer);
+  base::subtle::ScopedFDPair fd =
+      base::ReadOnlySharedMemoryRegion::TakeHandleForSerialization(
+          std::move(shm))
+          .PassPlatformHandle();
+  JpegDecodeAccelerator::Error err =
+      jda_->DecodeSync(fd.get().fd, size, 0, *buffer);
   if (err != JpegDecodeAccelerator::Error::NO_ERRORS) {
     LOGFID(ERROR, id_) << "Jpeg decoder returned error";
-    close(fd);
     request_queue_.NotifyError(std::move(request));
     ipc_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&CameraDevice::ReturnBufferOnIpcThread,
                                   base::Unretained(this), id));
     return;
   }
-  close(fd);
   ipc_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraDevice::ReturnBufferOnIpcThread,
                                 base::Unretained(this), id));
@@ -434,10 +436,18 @@ void CameraDevice::DecodeJpeg(mojo::ScopedHandle shm_handle,
   request_queue_.NotifyCapture(std::move(request));
 }
 
-void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
+void CameraDevice::OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
                                    int32_t id,
                                    uint32_t size) {
   if (request_queue_.IsEmpty()) {
+    ip_device_->ReturnBuffer(id);
+    return;
+  }
+
+  base::ReadOnlySharedMemoryRegion shm =
+      mojo::UnwrapReadOnlySharedMemoryRegion(std::move(shm_handle));
+  if (!shm.IsValid()) {
+    LOGFID(ERROR, id_) << "Error receiving shared memory region";
     ip_device_->ReturnBuffer(id);
     return;
   }
@@ -446,13 +456,12 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
     jpeg_thread_.task_runner()->PostTask(
         FROM_HERE,
         base::BindOnce(&CameraDevice::DecodeJpeg, base::Unretained(this),
-                       std::move(shm_handle), id, size));
+                       std::move(shm), id, size));
     return;
   }
 
-  int fd = mojo::UnwrapPlatformHandle(std::move(shm_handle)).ReleaseFD();
-  base::SharedMemory shm(base::SharedMemoryHandle(fd, true), true);
-  if (!shm.Map(size)) {
+  base::ReadOnlySharedMemoryMapping mapping = shm.Map();
+  if (!mapping.IsValid()) {
     LOGFID(ERROR, id_) << "Error mapping shm, unable to handle captured frame";
     ip_device_->ReturnBuffer(id);
     return;
@@ -464,7 +473,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
     return;
   }
 
-  CopyFromShmToOutputBuffer(&shm, request->GetOutputBuffer()->buffer);
+  CopyFromMappingToOutputBuffer(&mapping, request->GetOutputBuffer()->buffer);
 
   ip_device_->ReturnBuffer(id);
   request_queue_.NotifyCapture(std::move(request));
