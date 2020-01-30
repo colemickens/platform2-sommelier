@@ -181,6 +181,8 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     service_->OnVisibilityChanged();
 #if !defined(DISABLE_WIRED_8021X)
     is_eap_detected_ = false;
+    adaptor()->EmitBoolChanged(kEapAuthenticatorDetectedProperty,
+                               is_eap_detected_);
     GetEapProvider()->ClearCredentialChangeCallback(this);
     SetIsEapAuthenticated(false);
     StopSupplicant();
@@ -316,6 +318,8 @@ ServiceConstRefPtr Ethernet::GetEapService() {
 
 void Ethernet::OnEapDetected() {
   is_eap_detected_ = true;
+  adaptor()->EmitBoolChanged(kEapAuthenticatorDetectedProperty,
+                             is_eap_detected_);
   eap_listener_->Stop();
   GetEapProvider()->SetCredentialChangeCallback(
       this, base::Bind(&Ethernet::TryEapAuthentication,
