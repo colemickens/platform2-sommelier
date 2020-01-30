@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -418,6 +419,7 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
 
   base::MessageLoopForIO message_loop;
+  base::FileDescriptorWatcher watcher(&message_loop);
 
   // In certain cases, /dev/log may not be available: log to stderr instead.
   if (FLAGS_log_to_stderr) {
@@ -456,6 +458,7 @@ int main(int argc, char* argv[]) {
         base::Time::FromTimeT(static_cast<time_t>(FLAGS_crash_loop_before));
     if (base::Time::Now() <= crash_loop_before) {
       crash_sending_mode = CrashCollector::kCrashLoopSendingMode;
+      LOG(INFO) << "Using crash loop sending mode";
     }
   }
 
