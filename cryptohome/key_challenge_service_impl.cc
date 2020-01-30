@@ -59,6 +59,9 @@ void OnDBusChallengeKeySuccess(
   KeyChallengeService::ResponseCallback original_callback =
       callback_holder->get();
   if (challenge_response.empty()) {
+    // TODO(crbug.com/1046860): Remove the logging after stabilizing the
+    // feature.
+    LOG(INFO) << "Signature key challenge failed: empty response";
     std::move(original_callback).Run(nullptr /* response */);
     return;
   }
@@ -69,13 +72,27 @@ void OnDBusChallengeKeySuccess(
     std::move(original_callback).Run(nullptr /* response */);
     return;
   }
+  // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
+  if (response_proto->has_signature_response_data()) {
+    LOG(INFO) << "Signature key challenge succeeded: signature size "
+              << response_proto->signature_response_data().signature().size();
+  } else {
+    LOG(INFO) << "Key challenge completed with no signature";
+  }
   std::move(original_callback).Run(std::move(response_proto));
 }
 
 void OnDBusChallengeKeyFailure(
     std::shared_ptr<OnceCallbackHolder<KeyChallengeService::ResponseCallback>>
         callback_holder,
-    brillo::Error* /* error */) {
+    brillo::Error* error) {
+  // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
+  if (error) {
+    LOG(INFO) << "Signature key challenge failed: dbus error code "
+              << error->GetCode() << ", message " << error->GetMessage();
+  } else {
+    LOG(INFO) << "Key challenge failed: unknown dbus error";
+  }
   KeyChallengeService::ResponseCallback original_callback =
       callback_holder->get();
   std::move(original_callback).Run(nullptr /* response */);
@@ -109,6 +126,18 @@ void KeyChallengeServiceImpl::ChallengeKey(
   }
   std::shared_ptr<OnceCallbackHolder<ResponseCallback>> callback_holder(
       new OnceCallbackHolder<ResponseCallback>(std::move(response_callback)));
+  // TODO(crbug.com/1046860): Remove the logging after stabilizing the feature.
+  if (key_challenge_request.has_signature_request_data()) {
+    LOG(INFO)
+        << "Starting signature key challenge request, size "
+        << key_challenge_request.signature_request_data().data_to_sign().size()
+        << ", spki size "
+        << key_challenge_request.signature_request_data()
+               .public_key_spki_der()
+               .size()
+        << ", algorithm "
+        << key_challenge_request.signature_request_data().signature_algorithm();
+  }
   dbus_proxy_.ChallengeKeyAsync(
       SerializeProto(account_id), SerializeProto(key_challenge_request),
       base::Bind(&OnDBusChallengeKeySuccess, callback_holder),
