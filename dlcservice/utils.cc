@@ -19,6 +19,18 @@ using std::string;
 
 namespace dlcservice {
 
+namespace {
+
+bool SetFilePermissions(const base::FilePath& path, int perms) {
+  if (!base::SetPosixFilePermissions(path, perms)) {
+    PLOG(ERROR) << "Failed to set permissions for: " << path.value();
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
+
 char kDlcDirAName[] = "dlc_a";
 char kDlcDirBName[] = "dlc_b";
 char kDlcPreloadAllowedName[] = "preload_allowed";
@@ -28,27 +40,22 @@ char kManifestName[] = "imageloader.json";
 
 char kRootDirectoryInsideDlcModule[] = "root";
 
-const mode_t kDlcModuleDirectoryPerms = 0755;
+const int kDlcFilePerms = 0644;
+const int kDlcDirectoryPerms = 0755;
 
-bool CreateDirWithDlcPermissions(const base::FilePath& path) {
+bool CreateDir(const base::FilePath& path) {
   base::File::Error file_err;
   if (!base::CreateDirectoryAndGetError(path, &file_err)) {
     LOG(ERROR) << "Failed to create directory '" << path.value()
                << "': " << base::File::ErrorToString(file_err);
     return false;
   }
-  if (!base::SetPosixFilePermissions(path, kDlcModuleDirectoryPerms)) {
-    LOG(ERROR) << "Failed to set directory permissions for '" << path.value()
-               << "'";
-    return false;
-  }
-  return true;
+  return SetFilePermissions(path, kDlcDirectoryPerms);
 }
 
 bool CreateFile(const base::FilePath& path, int64_t size) {
-  if (!CreateDirWithDlcPermissions(path.DirName())) {
+  if (!CreateDir(path.DirName()))
     return false;
-  }
   base::File file(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to create file at " << path.value() << " reason: "
@@ -59,7 +66,7 @@ bool CreateFile(const base::FilePath& path, int64_t size) {
     LOG(ERROR) << "Failed to set legnth (" << size << ") for " << path.value();
     return false;
   }
-  return true;
+  return SetFilePermissions(path, kDlcFilePerms);
 }
 
 bool ResizeFile(const base::FilePath& path, int64_t size) {
@@ -84,8 +91,7 @@ bool CopyAndResizeFile(const base::FilePath& from,
                 << to.value() << ").";
     return false;
   }
-  ResizeFile(to, size);
-  return true;
+  return ResizeFile(to, size) && SetFilePermissions(to, kDlcFilePerms);
 }
 
 FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,

@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 namespace dlcservice {
@@ -16,7 +17,67 @@ constexpr char kDlcId[] = "id";
 constexpr char kDlcPackage[] = "package";
 }  // namespace
 
-class UtilsTest : public testing::Test {};
+class FixtureUtilsTest : public testing::Test {
+ protected:
+  void SetUp() override { CHECK(scoped_temp_dir_.CreateUniqueTempDir()); }
+
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+TEST_F(FixtureUtilsTest, CreateDir) {
+  int perm = 0;
+  auto path = JoinPaths(scoped_temp_dir_.GetPath(), "dir");
+  EXPECT_FALSE(base::DirectoryExists(path));
+  EXPECT_TRUE(CreateDir(path));
+  EXPECT_TRUE(base::DirectoryExists(path));
+  EXPECT_TRUE(base::GetPosixFilePermissions(path, &perm));
+  EXPECT_EQ(perm, kDlcDirectoryPerms);
+}
+
+TEST_F(FixtureUtilsTest, CreateFile) {
+  int perm = 0;
+  auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
+  EXPECT_FALSE(base::PathExists(path));
+  EXPECT_TRUE(CreateFile(path, 0));
+  EXPECT_TRUE(base::PathExists(path));
+  EXPECT_TRUE(base::GetPosixFilePermissions(path, &perm));
+  EXPECT_EQ(perm, kDlcFilePerms);
+}
+
+TEST_F(FixtureUtilsTest, ResizeFile) {
+  int64_t size = -1;
+  auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
+  EXPECT_TRUE(CreateFile(path, 0));
+  EXPECT_TRUE(base::GetFileSize(path, &size));
+  EXPECT_EQ(0, size);
+
+  EXPECT_TRUE(ResizeFile(path, 1));
+
+  EXPECT_TRUE(base::GetFileSize(path, &size));
+  EXPECT_EQ(1, size);
+}
+
+TEST_F(FixtureUtilsTest, CopyAndResizeFile) {
+  int perm = 0;
+  int64_t src_size = -1, dst_size = -1;
+  auto src_path = JoinPaths(scoped_temp_dir_.GetPath(), "src_file");
+  auto dst_path = JoinPaths(scoped_temp_dir_.GetPath(), "dst_file");
+
+  EXPECT_FALSE(base::PathExists(src_path));
+  EXPECT_FALSE(base::PathExists(dst_path));
+  EXPECT_TRUE(CreateFile(src_path, 0));
+  EXPECT_TRUE(base::GetFileSize(src_path, &src_size));
+  EXPECT_EQ(0, src_size);
+
+  EXPECT_TRUE(CopyAndResizeFile(src_path, dst_path, 1));
+
+  EXPECT_TRUE(base::PathExists(dst_path));
+  EXPECT_TRUE(base::GetFileSize(dst_path, &dst_size));
+  EXPECT_EQ(1, dst_size);
+
+  EXPECT_TRUE(base::GetPosixFilePermissions(dst_path, &perm));
+  EXPECT_EQ(perm, kDlcFilePerms);
+}
 
 TEST(UtilsTest, JoinPathsTest) {
   EXPECT_EQ(JoinPaths(base::FilePath(kDlcRootPath), kDlcId).value(),

@@ -31,8 +31,9 @@ extern char kManifestName[];
 // The directory inside a DLC module that contains all the DLC files.
 extern char kRootDirectoryInsideDlcModule[];
 
-// Permissions for DLC module directories.
-extern const mode_t kDlcModuleDirectoryPerms;
+// Permissions for DLC files and directories.
+extern const int kDlcFilePerms;
+extern const int kDlcDirectoryPerms;
 
 template <typename BindedCallback>
 class ScopedCleanups {
@@ -63,7 +64,7 @@ base::FilePath JoinPaths(Arg&& path, Args&&... paths) {
 }
 
 // Creates a directory with permissions required for DLC modules.
-bool CreateDirWithDlcPermissions(const base::FilePath& path);
+bool CreateDir(const base::FilePath& path);
 
 // Creates a directory with an empty file and resizes it.
 bool CreateFile(const base::FilePath& path, int64_t size);

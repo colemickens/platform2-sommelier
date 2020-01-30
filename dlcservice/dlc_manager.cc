@@ -244,7 +244,7 @@ class DlcManager::DlcManagerImpl {
     // doesn't exist.
     FilePath metadata_path_local = JoinPaths(metadata_dir_, id);
     if (!base::PathExists(metadata_path_local)) {
-      if (!CreateDirWithDlcPermissions(metadata_path_local)) {
+      if (!CreateDir(metadata_path_local)) {
         *err_code = kErrorInternal;
         *err_msg = "Failed to create the DLC metadata directory for DLC:" + id;
         return false;
@@ -286,13 +286,13 @@ class DlcManager::DlcManagerImpl {
     FilePath content_package_path = JoinPaths(content_dir_, id, package);
 
     // Create the DLC ID directory with correct permissions.
-    if (!CreateDirWithDlcPermissions(content_path_local)) {
+    if (!CreateDir(content_path_local)) {
       *err_code = kErrorInternal;
       *err_msg = "Failed to create DLC(" + id + ") directory";
       return false;
     }
     // Create the DLC package directory with correct permissions.
-    if (!CreateDirWithDlcPermissions(content_package_path)) {
+    if (!CreateDir(content_package_path)) {
       *err_code = kErrorInternal;
       *err_msg = "Failed to create DLC(" + id + ") package directory";
       return false;
