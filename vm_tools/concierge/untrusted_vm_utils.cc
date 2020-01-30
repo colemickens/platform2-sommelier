@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/untrusted_vm_utils.h"
 
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,6 +16,7 @@
 #include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
+#include <dbus/scoped_dbus_error.h>
 
 namespace vm_tools {
 namespace concierge {
@@ -24,6 +26,10 @@ namespace {
 // Scheduler configuration to be passed to the debugd API to disable SMT on the
 // device.
 const char kSchedulerConfigurationConservative[] = "conservative";
+
+// Error returned by debugd::SetSchedulerConfigurationV2 API if SMT is not
+// supported by the host.
+const char kInvalidArchitectureErrorMsg[] = "Invalid architecture";
 
 // Returns the L1TF mitigation status of the host it's run on.
 UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
@@ -133,10 +139,18 @@ bool UntrustedVMUtils::DisableSMT() {
   writer.AppendString(kSchedulerConfigurationConservative);
   writer.AppendBool(true /* lock_policy */);
 
-  std::unique_ptr<dbus::Response> response = debugd_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!response)
+  dbus::ScopedDBusError dbus_error;
+  std::unique_ptr<dbus::Response> response =
+      debugd_proxy_->CallMethodAndBlockWithErrorDetails(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error);
+  if (!response) {
+    // Non x86_64 devices don't have SMT. Pretend this operation succeeded.
+    if (dbus_error.is_set() &&
+        !strcmp(dbus_error.message(), kInvalidArchitectureErrorMsg)) {
+      return true;
+    }
     return false;
+  }
 
   bool result;
   dbus::MessageReader reader(response.get());

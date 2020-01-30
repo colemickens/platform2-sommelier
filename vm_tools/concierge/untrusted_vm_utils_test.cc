@@ -17,6 +17,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <dbus/scoped_dbus_error.h>
 
 using ::testing::_;
 using ::testing::Invoke;
@@ -44,9 +45,11 @@ class UntrustedVMUtilsTest : public ::testing::Test {
         new dbus::MockObjectProxy(mock_bus_.get(), debugd::kDebugdServiceName,
                                   dbus::ObjectPath(debugd::kDebugdServicePath));
 
-    // Sets an expectation that the mock proxy's CallMethodAndBlock() will use
-    // CreateMockProxyResponse() to return responses.
-    EXPECT_CALL(*debugd_proxy_.get(), CallMethodAndBlock(_, _))
+    // Sets an expectation that the mock proxy's
+    // CallMethodAndBlockWithErrorDetails() will use CreateMockProxyResponse()
+    // to return responses.
+    EXPECT_CALL(*debugd_proxy_.get(),
+                CallMethodAndBlockWithErrorDetails(_, _, _))
         .WillRepeatedly(
             Invoke(this, &UntrustedVMUtilsTest::CreateMockProxyResponse));
   }
@@ -97,7 +100,9 @@ class UntrustedVMUtilsTest : public ::testing::Test {
 
  private:
   std::unique_ptr<dbus::Response> CreateMockProxyResponse(
-      dbus::MethodCall* method_call, int timeout_ms) {
+      dbus::MethodCall* method_call,
+      int timeout_ms,
+      dbus::ScopedDBusError* error) {
     if (method_call->GetInterface() != debugd::kDebugdInterface) {
       LOG(ERROR) << "Unexpected method call: " << method_call->ToString();
       return std::unique_ptr<dbus::Response>();
