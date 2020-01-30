@@ -854,8 +854,6 @@ void ArcSetup::UnmountSdcard() {
 }
 
 void ArcSetup::CreateContainerFilesAndDirectories() {
-  EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
-                            base::FilePath("/run/arc")));
   EXIT_IF(!InstallDirectory(0755, kShellUid, kLogGid,
                             base::FilePath("/run/arc/bugreport")));
 
@@ -1977,6 +1975,13 @@ void ArcSetup::EnsureContainerDirectories() {
   if (!base::DirectoryExists(arc_paths_->cras_socket_directory))
     EXIT_IF(!InstallDirectory(01770, kHostRootUid, kHostRootGid,
                               arc_paths_->cras_socket_directory));
+
+  // Chrome writes to /run/arc/host_generated even before starting the mini
+  // container.
+  EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
+                            base::FilePath("/run/arc")));
+  EXIT_IF(!InstallDirectory(0775, kHostRootUid, kHostChronosGid,
+                            base::FilePath("/run/arc/host_generated")));
 }
 
 void ArcSetup::SetUpTestharness(bool is_dev_mode) {
