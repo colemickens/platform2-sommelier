@@ -68,6 +68,7 @@ void ModemManager1::Disconnect() {
 void ModemManager1::AddModem1(const RpcIdentifier& path,
                               const InterfaceToProperties& properties) {
   if (ModemExists(path)) {
+    LOG(INFO) << "Modem " << path << " already exists.";
     return;
   }
 
