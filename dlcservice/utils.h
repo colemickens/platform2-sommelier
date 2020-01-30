@@ -63,6 +63,10 @@ base::FilePath JoinPaths(Arg&& path, Args&&... paths) {
   return base::FilePath(path).Append(JoinPaths(paths...));
 }
 
+// Wrapper to |base::WriteFileDescriptor()|, closes file descriptor after
+// writing. Returns true if all |size| of |data| are written.
+bool WriteToFile(const base::FilePath& path, const std::string& data);
+
 // Creates a directory with permissions required for DLC modules.
 bool CreateDir(const base::FilePath& path);
 

@@ -4,11 +4,14 @@
 
 #include "dlcservice/utils.h"
 
+#include <fcntl.h>
+
 #include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/file_utils.h>
 
 #include "dlcservice/dlc_service.h"
 
@@ -42,6 +45,18 @@ char kRootDirectoryInsideDlcModule[] = "root";
 
 const int kDlcFilePerms = 0644;
 const int kDlcDirectoryPerms = 0755;
+
+bool WriteToFile(const FilePath& path, const string& data) {
+  base::ScopedFD fd(
+      brillo::OpenSafely(path, O_CREAT | O_WRONLY, kDlcFilePerms));
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Failed to open file for writting " << path.value();
+    return false;
+  }
+  if (data.empty())
+    return true;
+  return base::WriteFileDescriptor(fd.get(), data.c_str(), data.size());
+}
 
 bool CreateDir(const base::FilePath& path) {
   base::File::Error file_err;

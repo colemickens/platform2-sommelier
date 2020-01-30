@@ -4,6 +4,8 @@
 
 #include "dlcservice/utils.h"
 
+#include <string>
+
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -21,27 +23,62 @@ class FixtureUtilsTest : public testing::Test {
  protected:
   void SetUp() override { CHECK(scoped_temp_dir_.CreateUniqueTempDir()); }
 
+  void CheckPerms(const base::FilePath& path, const int& expected_perms) {
+    int actual_perms = -1;
+    EXPECT_TRUE(base::GetPosixFilePermissions(path, &actual_perms));
+    EXPECT_EQ(actual_perms, expected_perms);
+  }
+
   base::ScopedTempDir scoped_temp_dir_;
 };
 
+TEST_F(FixtureUtilsTest, WriteToFile) {
+  auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
+  std::string expected_data1 = "hello", expected_data2 = "world", actual_data;
+  EXPECT_FALSE(base::PathExists(path));
+
+  // Write "hello".
+  EXPECT_TRUE(WriteToFile(path, expected_data1));
+  EXPECT_TRUE(base::ReadFileToString(path, &actual_data));
+  EXPECT_EQ(actual_data, expected_data1);
+
+  // Write "world".
+  EXPECT_TRUE(WriteToFile(path, expected_data2));
+  EXPECT_TRUE(base::ReadFileToString(path, &actual_data));
+  EXPECT_EQ(actual_data, expected_data2);
+
+  // Write "worldworld".
+  EXPECT_TRUE(WriteToFile(path, expected_data2 + expected_data2));
+  EXPECT_TRUE(base::ReadFileToString(path, &actual_data));
+  EXPECT_EQ(actual_data, expected_data2 + expected_data2);
+
+  // Write "hello", but file had "worldworld" -> "helloworld".
+  EXPECT_TRUE(WriteToFile(path, expected_data1));
+  EXPECT_TRUE(base::ReadFileToString(path, &actual_data));
+  EXPECT_EQ(actual_data, expected_data1 + expected_data2);
+}
+
+TEST_F(FixtureUtilsTest, WriteToFilePermissionsCheck) {
+  auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
+  EXPECT_FALSE(base::PathExists(path));
+  EXPECT_TRUE(WriteToFile(path, ""));
+  CheckPerms(path, kDlcFilePerms);
+}
+
 TEST_F(FixtureUtilsTest, CreateDir) {
-  int perm = 0;
   auto path = JoinPaths(scoped_temp_dir_.GetPath(), "dir");
   EXPECT_FALSE(base::DirectoryExists(path));
   EXPECT_TRUE(CreateDir(path));
   EXPECT_TRUE(base::DirectoryExists(path));
-  EXPECT_TRUE(base::GetPosixFilePermissions(path, &perm));
-  EXPECT_EQ(perm, kDlcDirectoryPerms);
+  CheckPerms(path, kDlcDirectoryPerms);
 }
 
 TEST_F(FixtureUtilsTest, CreateFile) {
-  int perm = 0;
   auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
   EXPECT_FALSE(base::PathExists(path));
   EXPECT_TRUE(CreateFile(path, 0));
   EXPECT_TRUE(base::PathExists(path));
-  EXPECT_TRUE(base::GetPosixFilePermissions(path, &perm));
-  EXPECT_EQ(perm, kDlcFilePerms);
+  CheckPerms(path, kDlcFilePerms);
 }
 
 TEST_F(FixtureUtilsTest, ResizeFile) {
@@ -58,7 +95,6 @@ TEST_F(FixtureUtilsTest, ResizeFile) {
 }
 
 TEST_F(FixtureUtilsTest, CopyAndResizeFile) {
-  int perm = 0;
   int64_t src_size = -1, dst_size = -1;
   auto src_path = JoinPaths(scoped_temp_dir_.GetPath(), "src_file");
   auto dst_path = JoinPaths(scoped_temp_dir_.GetPath(), "dst_file");
@@ -75,8 +111,7 @@ TEST_F(FixtureUtilsTest, CopyAndResizeFile) {
   EXPECT_TRUE(base::GetFileSize(dst_path, &dst_size));
   EXPECT_EQ(1, dst_size);
 
-  EXPECT_TRUE(base::GetPosixFilePermissions(dst_path, &perm));
-  EXPECT_EQ(perm, kDlcFilePerms);
+  CheckPerms(dst_path, kDlcFilePerms);
 }
 
 TEST(UtilsTest, JoinPathsTest) {

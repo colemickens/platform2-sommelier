@@ -259,19 +259,12 @@ class DlcManager::DlcManagerImpl {
       LOG(ERROR) << err_msg;
       return false;
     }
-    FilePath active_metadata =
-        JoinPaths(metadata_dir_, id, dlcservice::kDlcMetadataFilePingActive);
-    base::ScopedFILE active_metadata_fp(base::OpenFile(active_metadata, "w"));
-    if (active_metadata_fp == nullptr) {
+    auto active_metadata_path =
+        JoinPaths(metadata_dir_, id, kDlcMetadataFilePingActive);
+    if (!WriteToFile(active_metadata_path, kDlcMetadataActiveValue)) {
       *err_code = kErrorInternal;
-      *err_msg = "Failed to open 'active' metadata file for DLC:" + id;
-      return false;
-    }
-    // Set 'active' value to true.
-    if (!base::WriteFileDescriptor(fileno(active_metadata_fp.get()),
-                                   dlcservice::kDlcMetadataActiveValue, 1)) {
-      *err_code = kErrorInternal;
-      *err_msg = "Failed to write into active metadata file for DLC:" + id;
+      *err_msg = "Failed to write into active metadata file: " +
+                 active_metadata_path.value();
       return false;
     }
     return true;
