@@ -7,7 +7,9 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/optional.h>
 
 #include "login_manager/owner_key_loss_mitigator.h"
 
@@ -24,9 +26,14 @@ class RegenMitigator : public OwnerKeyLossMitigator {
   ~RegenMitigator() override;
 
   // Deal with loss of the owner's private key.
+  // Optionally, the key will only exist in the mount namespace identified by
+  // |ns_path|.
+  //
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  bool Mitigate(const std::string& ownername) override;
+  bool Mitigate(const std::string& ownername,
+                const base::Optional<base::FilePath>& ns_path) override;
+
   bool Mitigating() override;
 
  private:

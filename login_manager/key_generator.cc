@@ -9,7 +9,6 @@
 
 #include <utility>
 
-#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>
 
@@ -34,7 +33,8 @@ KeyGenerator::KeyGenerator(uid_t uid, SystemUtils* utils)
 
 KeyGenerator::~KeyGenerator() {}
 
-bool KeyGenerator::Start(const string& username) {
+bool KeyGenerator::Start(const string& username,
+                         const base::Optional<base::FilePath>& ns_path) {
   DCHECK(!generating_) << "Must call Reset() between calls to Start()!";
   base::FilePath user_path(brillo::cryptohome::home::GetUserPath(username));
   base::FilePath temporary_key_path(
@@ -45,8 +45,8 @@ bool KeyGenerator::Start(const string& username) {
   }
   key_owner_username_ = username;
   temporary_key_filename_ = temporary_key_path.value();
-  keygen_job_ =
-      factory_->Create(temporary_key_filename_, user_path, uid_, utils_);
+  keygen_job_ = factory_->Create(temporary_key_filename_, user_path, ns_path,
+                                 uid_, utils_);
   if (!keygen_job_->RunInBackground())
     return false;
   pid_t pid = keygen_job_->CurrentPid();

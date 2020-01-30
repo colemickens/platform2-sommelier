@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
+#include <base/optional.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
@@ -84,7 +85,7 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
   keygen.InjectJobFactory(std::unique_ptr<GeneratorJobFactoryInterface>(
       new FakeGeneratorJob::Factory(kDummyPid, "gen", fake_key_contents)));
 
-  ASSERT_TRUE(keygen.Start(fake_ownername));
+  ASSERT_TRUE(keygen.Start(fake_ownername, base::nullopt));
   keygen.HandleExit(fake_info);
 
   EXPECT_EQ(fake_ownername, handler.key_username());

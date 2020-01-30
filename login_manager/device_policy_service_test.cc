@@ -362,13 +362,13 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
                                                  &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
@@ -381,14 +381,14 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      "regular_user@somewhere", nss.GetSlot(), &is_owner, &error));
+      "regular_user@somewhere", nss.GetDescriptor(), &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
@@ -400,13 +400,13 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(0);
 
   brillo::ErrorPtr error;
   bool is_owner = true;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
                                                  &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
@@ -419,7 +419,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _))
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
@@ -427,7 +427,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
                                                  &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
@@ -441,7 +441,7 @@ TEST_F(DevicePolicyServiceTest,
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _))
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
@@ -449,7 +449,7 @@ TEST_F(DevicePolicyServiceTest,
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
                                                  &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
@@ -463,14 +463,14 @@ TEST_F(DevicePolicyServiceTest,
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(false);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      "other@somwhere", nss.GetSlot(), &is_owner, &error));
+      "other@somwhere", nss.GetDescriptor(), &is_owner, &error));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
@@ -482,7 +482,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_))
+  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _))
       .InSequence(s)
       .WillOnce(Return(false));
   ExpectKeyPopulated(true);
@@ -490,7 +490,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 
   brillo::ErrorPtr error;
   bool is_owner = false;
-  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetSlot(),
+  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(),
                                                   &is_owner, &error));
   EXPECT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kPubkeySetIllegal, error->GetCode());
@@ -578,7 +578,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
   ExpectInstallNewOwnerPolicy(s, &nss);
 
   SetDefaultSettings();
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 
   ExpectPersistKeyAndPolicy(true);
 }
@@ -599,7 +599,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
   ExpectInstallNewOwnerPolicy(s, &nss);
   SetDefaultSettings();
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 
   ExpectPersistKeyAndPolicy(true);
 }
@@ -618,7 +618,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
       .WillOnce(Return(true));
   ExpectFailedInstallNewOwnerPolicy(s, &nss);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 
   ExpectNoPersistKeyAndPolicy();
 }
@@ -642,7 +642,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
   ExpectInstallNewOwnerPolicy(s, &nss);
   SetDefaultSettings();
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 
   ExpectPersistKeyAndPolicy(true);
 }
@@ -841,7 +841,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {
   KeyFailUtil nss;
   InitService(&nss, true);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
@@ -856,7 +856,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
       .InSequence(s)
       .WillOnce(Return(false));
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
@@ -872,7 +872,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
       .InSequence(s)
       .WillOnce(Return(false));
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {

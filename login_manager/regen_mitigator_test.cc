@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/memory/ref_counted.h>
+#include <base/optional.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
@@ -20,6 +21,7 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/system_utils_impl.h"
 
+using ::testing::Eq;
 using ::testing::Return;
 using ::testing::StrEq;
 
@@ -40,9 +42,10 @@ class RegenMitigatorTest : public ::testing::Test {
 TEST_F(RegenMitigatorTest, Mitigate) {
   MockKeyGenerator gen;
   std::string fake_ownername("user");
-  EXPECT_CALL(gen, Start(StrEq(fake_ownername))).WillOnce(Return(true));
+  EXPECT_CALL(gen, Start(StrEq(fake_ownername), Eq(base::nullopt)))
+      .WillOnce(Return(true));
   RegenMitigator mitigator(&gen);
-  EXPECT_TRUE(mitigator.Mitigate(fake_ownername));
+  EXPECT_TRUE(mitigator.Mitigate(fake_ownername, base::nullopt));
 }
 
 }  // namespace login_manager

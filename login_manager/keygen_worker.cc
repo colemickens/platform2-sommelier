@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
 
@@ -40,13 +41,15 @@ int GenerateKey(const base::FilePath& file_path,
                                         std::set<gid_t>())) {
     PLOG(FATAL) << nssdb.value() << " cannot be used by the user!";
   }
-  crypto::ScopedPK11Slot slot(nss->OpenUserDB(user_homedir));
-  PLOG_IF(FATAL, !slot) << "Could not open/create user NSS DB at "
+  // This program will be executed in the correct mount namespace so
+  // |ns_mnt_path| can be nullopt.
+  ScopedPK11SlotDescriptor desc(nss->OpenUserDB(user_homedir, base::nullopt));
+  PLOG_IF(FATAL, !desc) << "Could not open/create user NSS DB at "
                         << nssdb.value();
   LOG(INFO) << "Generating Owner key.";
 
   std::unique_ptr<crypto::RSAPrivateKey> pair(
-      nss->GenerateKeyPairForUser(slot.get()));
+      nss->GenerateKeyPairForUser(desc.get()));
   if (pair.get()) {
     if (!key.PopulateFromKeypair(pair.get()))
       LOG(FATAL) << "Could not use generated keypair.";

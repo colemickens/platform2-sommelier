@@ -15,8 +15,9 @@ RegenMitigator::RegenMitigator(KeyGenerator* generator)
 
 RegenMitigator::~RegenMitigator() {}
 
-bool RegenMitigator::Mitigate(const std::string& ownername) {
-  return mitigating_ = generator_->Start(ownername);
+bool RegenMitigator::Mitigate(const std::string& ownername,
+                              const base::Optional<base::FilePath>& ns_path) {
+  return mitigating_ = generator_->Start(ownername, ns_path);
 }
 
 bool RegenMitigator::Mitigating() {

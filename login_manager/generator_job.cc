@@ -35,18 +35,21 @@ GeneratorJob::Factory::~Factory() {}
 std::unique_ptr<GeneratorJobInterface> GeneratorJob::Factory::Create(
     const std::string& filename,
     const base::FilePath& user_path,
+    const base::Optional<base::FilePath> ns_path,
     uid_t desired_uid,
     SystemUtils* utils) {
   return std::unique_ptr<GeneratorJobInterface>(
-      new GeneratorJob(filename, user_path, desired_uid, utils));
+      new GeneratorJob(filename, user_path, ns_path, desired_uid, utils));
 }
 
 GeneratorJob::GeneratorJob(const std::string& filename,
                            const base::FilePath& user_path,
+                           const base::Optional<base::FilePath> ns_path,
                            uid_t desired_uid,
                            SystemUtils* utils)
     : filename_(filename),
-      user_path_(user_path.value()),
+      user_path_(user_path),
+      ns_path_(ns_path),
       system_(utils),
       subprocess_(desired_uid, system_) {}
 
@@ -56,7 +59,11 @@ bool GeneratorJob::RunInBackground() {
   std::vector<std::string> argv;
   argv.push_back(kKeygenExecutable);
   argv.push_back(filename_);
-  argv.push_back(user_path_);
+  argv.push_back(user_path_.value());
+
+  if (ns_path_) {
+    subprocess_.EnterExistingMountNamespace(ns_path_.value());
+  }
 
   return subprocess_.ForkAndExec(argv, std::vector<std::string>());
 }

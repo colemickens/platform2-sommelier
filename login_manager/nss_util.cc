@@ -22,11 +22,14 @@
 #include <crypto/scoped_nss_types.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
+#include <brillo/scoped_mount_namespace.h>
 #include <keyhi.h>
 #include <pk11pub.h>
 #include <prerror.h>
 #include <secmod.h>
 #include <secmodt.h>
+
+using brillo::ScopedMountNamespace;
 
 using crypto::RSAPrivateKey;
 using crypto::ScopedPK11Slot;
@@ -66,14 +69,16 @@ class NssUtilImpl : public NssUtil {
   NssUtilImpl();
   ~NssUtilImpl() override;
 
-  ScopedPK11Slot OpenUserDB(const base::FilePath& user_homedir) override;
+  ScopedPK11SlotDescriptor OpenUserDB(
+      const base::FilePath& user_homedir,
+      const OptionalFilePath& ns_mnt_path) override;
 
   std::unique_ptr<RSAPrivateKey> GetPrivateKeyForUser(
       const std::vector<uint8_t>& public_key_der,
-      PK11SlotInfo* user_slot) override;
+      PK11SlotDescriptor* user_slot) override;
 
   std::unique_ptr<RSAPrivateKey> GenerateKeyPairForUser(
-      PK11SlotInfo* user_slot) override;
+      PK11SlotDescriptor* user_slot) override;
 
   base::FilePath GetOwnerKeyFilePath() override;
 
@@ -116,31 +121,47 @@ NssUtilImpl::NssUtilImpl() {
 
 NssUtilImpl::~NssUtilImpl() = default;
 
-ScopedPK11Slot NssUtilImpl::OpenUserDB(const base::FilePath& user_homedir) {
+ScopedPK11SlotDescriptor NssUtilImpl::OpenUserDB(
+    const base::FilePath& user_homedir, const OptionalFilePath& ns_mnt_path) {
   // TODO(cmasone): If we ever try to keep the session_manager alive across
   // user sessions, we'll need to close these persistent DBs.
   base::FilePath db_path(user_homedir.AppendASCII(kNssdbSubpath));
   const std::string modspec =
       base::StringPrintf("configDir='sql:%s' tokenDescription='%s'",
                          db_path.value().c_str(), user_homedir.value().c_str());
+
+  // If necessary, enter the mount namespace where the user mounts exist.
+  std::unique_ptr<ScopedMountNamespace> ns_mnt;
+  if (ns_mnt_path) {
+    ns_mnt = ScopedMountNamespace::CreateFromPath(ns_mnt_path.value());
+  }
+
+  ScopedPK11SlotDescriptor res = std::make_unique<PK11SlotDescriptor>();
+  res->ns_mnt_path = ns_mnt_path;
+
   ScopedPK11Slot db_slot(SECMOD_OpenUserDB(modspec.c_str()));
   if (!db_slot.get()) {
     LOG(ERROR) << "Error opening persistent database (" << modspec
                << "): " << PR_GetError();
-    return ScopedPK11Slot();
+    res->slot = ScopedPK11Slot();
+    return res;
   }
+
   if (PK11_NeedUserInit(db_slot.get()))
     PK11_InitPin(db_slot.get(), nullptr, nullptr);
 
   // If we opened successfully, we will have a non-default private key slot.
-  if (PK11_IsInternalKeySlot(db_slot.get()))
-    return ScopedPK11Slot();
+  if (PK11_IsInternalKeySlot(db_slot.get())) {
+    res->slot = ScopedPK11Slot();
+    return res;
+  }
 
-  return db_slot;
+  res->slot = std::move(db_slot);
+  return res;
 }
 
 std::unique_ptr<RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
-    const std::vector<uint8_t>& public_key_der, PK11SlotInfo* user_slot) {
+    const std::vector<uint8_t>& public_key_der, PK11SlotDescriptor* desc) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
     return nullptr;
@@ -178,8 +199,13 @@ std::unique_ptr<RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
   }
 
   // Search in just the user slot for the key with the given ID.
+  // If necessary, enter the mount namespace where the user mounts exist.
+  std::unique_ptr<ScopedMountNamespace> ns_mnt;
+  if (desc->ns_mnt_path) {
+    ns_mnt = ScopedMountNamespace::CreateFromPath(desc->ns_mnt_path.value());
+  }
   ScopedSECKEYPrivateKey key(
-      PK11_FindKeyByKeyID(user_slot, ck_id.get(), nullptr));
+      PK11_FindKeyByKeyID(desc->slot.get(), ck_id.get(), nullptr));
   if (!key) {
     // We didn't find the key.
     return nullptr;
@@ -189,13 +215,20 @@ std::unique_ptr<RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
 }
 
 std::unique_ptr<RSAPrivateKey> NssUtilImpl::GenerateKeyPairForUser(
-    PK11SlotInfo* user_slot) {
+    PK11SlotDescriptor* desc) {
   PK11RSAGenParams param;
   param.keySizeInBits = kKeySizeInBits;
   param.pe = 65537L;
   SECKEYPublicKey* public_key_ptr = nullptr;
+
+  // If necessary, enter the mount namespace where the user mounts exist.
+  std::unique_ptr<ScopedMountNamespace> ns_mnt;
+  if (desc->ns_mnt_path) {
+    ns_mnt = ScopedMountNamespace::CreateFromPath(desc->ns_mnt_path.value());
+  }
+
   ScopedSECKEYPrivateKey key(PK11_GenerateKeyPair(
-      user_slot, CKM_RSA_PKCS_KEY_PAIR_GEN, &param, &public_key_ptr,
+      desc->slot.get(), CKM_RSA_PKCS_KEY_PAIR_GEN, &param, &public_key_ptr,
       PR_TRUE /* permanent */, PR_TRUE /* sensitive */, nullptr));
   ScopedSECKEYPublicKey public_key(public_key_ptr);
   if (!key)

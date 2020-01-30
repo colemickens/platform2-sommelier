@@ -19,7 +19,10 @@ class MockKeyGenerator : public KeyGenerator {
  public:
   MockKeyGenerator();
   ~MockKeyGenerator() override;
-  MOCK_METHOD(bool, Start, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              Start,
+              (const std::string&, const base::Optional<base::FilePath>&),
+              (override));
 };
 }  // namespace login_manager
 

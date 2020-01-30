@@ -18,6 +18,7 @@
 #include <crypto/scoped_nss_types.h>
 
 #include "login_manager/crossystem.h"
+#include "login_manager/nss_util.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/vpd_process.h"
@@ -36,8 +37,6 @@ class KeyGenerator;
 class LoginMetrics;
 class NssUtil;
 class OwnerKeyLossMitigator;
-// Forward declaration.
-typedef struct PK11SlotInfoStr PK11SlotInfo;
 
 enum class InstallAttributesFileData {
   CONSUMER_OWNED = 0,
@@ -70,7 +69,7 @@ class DevicePolicyService : public PolicyService {
   //   to have the owner key, run key mitigation.
   // Returns true on success. Fills in |error| upon encountering an error.
   virtual bool CheckAndHandleOwnerLogin(const std::string& current_user,
-                                        PK11SlotInfo* module,
+                                        PK11SlotDescriptor* module,
                                         bool* is_owner,
                                         brillo::ErrorPtr* error);
 
@@ -80,7 +79,7 @@ class DevicePolicyService : public PolicyService {
   // device owner key. Returns true if successful, false otherwise
   virtual bool ValidateAndStoreOwnerKey(const std::string& current_user,
                                         const std::vector<uint8_t>& pub_key,
-                                        PK11SlotInfo* module);
+                                        PK11SlotDescriptor* module);
 
   // Checks whether the key is missing.
   virtual bool KeyMissing();
@@ -196,7 +195,7 @@ class DevicePolicyService : public PolicyService {
   // |error| can be nullptr, if caller doesn't need it.
   std::unique_ptr<crypto::RSAPrivateKey> GetOwnerKeyForGivenUser(
       const std::vector<uint8_t>& key,
-      PK11SlotInfo* module,
+      PK11SlotDescriptor* module,
       brillo::ErrorPtr* error);
 
   // Helper to return the policy store for the Chrome domain.

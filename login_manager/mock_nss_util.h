@@ -36,15 +36,16 @@ class MockNssUtil : public NssUtil {
 
   std::unique_ptr<crypto::RSAPrivateKey> CreateShortKey();
 
-  crypto::ScopedPK11Slot OpenUserDB(
-      const base::FilePath& user_homedir) override;
+  ScopedPK11SlotDescriptor OpenUserDB(
+      const base::FilePath& user_homedir,
+      const OptionalFilePath& ns_mnt_path) override;
   MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
               GetPrivateKeyForUser,
-              (const std::vector<uint8_t>&, PK11SlotInfo*),
+              (const std::vector<uint8_t>&, PK11SlotDescriptor*),
               (override));
   MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
               GenerateKeyPairForUser,
-              (PK11SlotInfo*),
+              (PK11SlotDescriptor*),
               (override));
   MOCK_METHOD(base::FilePath, GetNssdbSubpath, (), (override));
   MOCK_METHOD(bool,
@@ -65,6 +66,7 @@ class MockNssUtil : public NssUtil {
               (override));
   base::FilePath GetOwnerKeyFilePath() override;
 
+  PK11SlotDescriptor* GetDescriptor();
   PK11SlotInfo* GetSlot();
 
   // After this is called, OpenUserDB() will return empty ScopedPK11Slots.
@@ -77,6 +79,7 @@ class MockNssUtil : public NssUtil {
   bool return_bad_db_ = false;
   crypto::ScopedTestNSSDB test_nssdb_;
   base::ScopedTempDir temp_dir_;
+  ScopedPK11SlotDescriptor desc_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNssUtil);

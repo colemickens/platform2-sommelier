@@ -20,7 +20,10 @@ class MockMitigator : public OwnerKeyLossMitigator {
   MockMitigator();
   ~MockMitigator() override;
 
-  MOCK_METHOD(bool, Mitigate, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              Mitigate,
+              (const std::string&, const base::Optional<base::FilePath>&),
+              (override));
   MOCK_METHOD(bool, Mitigating, (), (override));
 
  private:

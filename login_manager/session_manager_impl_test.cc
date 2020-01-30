@@ -232,6 +232,12 @@ MATCHER(IsComponentNamespace, "") {
   return arg.first != POLICY_DOMAIN_CHROME && !arg.second.empty();
 }
 
+// Checks whether the PK11SlotDescriptor object includes a given PK11SlotInfo
+// object.
+MATCHER_P(IncludesSlot, slot, "") {
+  return arg->slot.get() == slot;
+}
+
 constexpr pid_t kAndroidPid = 10;
 
 constexpr char kSaneEmail[] = "user@somewhere.com";
@@ -557,15 +563,18 @@ class SessionManagerImplTest : public ::testing::Test,
   }
 
   void ExpectStartSession(const string& account_id_string) {
-    ExpectSessionBoilerplate(account_id_string, false, false);
+    ExpectSessionBoilerplate(account_id_string, false /* guest */,
+                             false /* for_owner */);
   }
 
   void ExpectGuestSession() {
-    ExpectSessionBoilerplate(kGuestUserName, true, false);
+    ExpectSessionBoilerplate(kGuestUserName, true /* guest */,
+                             false /* for_owner */);
   }
 
   void ExpectStartOwnerSession(const string& account_id_string) {
-    ExpectSessionBoilerplate(account_id_string, false, true);
+    ExpectSessionBoilerplate(account_id_string, false /* guest */,
+                             true /* for_owner */);
   }
 
   void ExpectStartSessionUnowned(const string& account_id_string) {
@@ -849,9 +858,9 @@ class SessionManagerImplTest : public ::testing::Test,
     EXPECT_CALL(*device_policy_service_, Mitigating())
         .WillRepeatedly(Return(mitigating));
     if (key_gen)
-      EXPECT_CALL(key_gen_, Start(StrEq(account_id_string))).Times(1);
+      EXPECT_CALL(key_gen_, Start(StrEq(account_id_string), _)).Times(1);
     else
-      EXPECT_CALL(key_gen_, Start(_)).Times(0);
+      EXPECT_CALL(key_gen_, Start(_, _)).Times(0);
 
     EXPECT_CALL(metrics_, SendLoginUserType(false, false, false)).Times(1);
     EXPECT_CALL(*init_controller_,
@@ -2013,7 +2022,7 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
 
   EXPECT_CALL(*device_policy_service_,
               ValidateAndStoreOwnerKey(StrEq(kSaneEmail), StringToBlob(key),
-                                       nss_.GetSlot()))
+                                       IncludesSlot(nss_.GetSlot())))
       .WillOnce(Return(true));
 
   impl_->OnKeyGenerated(kSaneEmail, key_file_path);

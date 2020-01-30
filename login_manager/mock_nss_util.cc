@@ -8,6 +8,8 @@
 #include <secmodt.h>
 #include <unistd.h>
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <crypto/nss_key_util.h>
@@ -25,6 +27,10 @@ using ::testing::Return;
 using crypto::ScopedPK11Slot;
 
 MockNssUtil::MockNssUtil() {
+  desc_ = std::make_unique<PK11SlotDescriptor>();
+  desc_->slot = ScopedPK11Slot(PK11_ReferenceSlot(GetSlot()));
+  desc_->ns_mnt_path = base::nullopt;
+
   ON_CALL(*this, GetNssdbSubpath()).WillByDefault(Return(base::FilePath()));
 }
 
@@ -43,17 +49,26 @@ std::unique_ptr<crypto::RSAPrivateKey> MockNssUtil::CreateShortKey() {
   return ret;
 }
 
-crypto::ScopedPK11Slot MockNssUtil::OpenUserDB(
-    const base::FilePath& user_homedir) {
-  if (return_bad_db_)
-    return crypto::ScopedPK11Slot();
-  return crypto::ScopedPK11Slot(PK11_ReferenceSlot(GetSlot()));
+ScopedPK11SlotDescriptor MockNssUtil::OpenUserDB(
+    const base::FilePath& user_homedir, const OptionalFilePath& ns_mnt_path) {
+  ScopedPK11SlotDescriptor res = std::make_unique<PK11SlotDescriptor>();
+  res->ns_mnt_path = base::nullopt;
+  if (return_bad_db_) {
+    res->slot = ScopedPK11Slot();
+    return res;
+  }
+  res->slot = ScopedPK11Slot(PK11_ReferenceSlot(GetSlot()));
+  return res;
 }
 
 base::FilePath MockNssUtil::GetOwnerKeyFilePath() {
   if (!EnsureTempDir())
     return base::FilePath();
   return temp_dir_.GetPath().AppendASCII("dummy");
+}
+
+PK11SlotDescriptor* MockNssUtil::GetDescriptor() {
+  return desc_.get();
 }
 
 PK11SlotInfo* MockNssUtil::GetSlot() {

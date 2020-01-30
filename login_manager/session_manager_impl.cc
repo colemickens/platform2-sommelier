@@ -32,6 +32,7 @@
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/scoped_mount_namespace.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
@@ -334,19 +335,19 @@ struct SessionManagerImpl::UserSession {
   UserSession(const std::string& username,
               const std::string& userhash,
               bool is_incognito,
-              crypto::ScopedPK11Slot slot,
+              ScopedPK11SlotDescriptor desc,
               std::unique_ptr<PolicyService> policy_service)
       : username(username),
         userhash(userhash),
         is_incognito(is_incognito),
-        slot(std::move(slot)),
+        descriptor(std::move(desc)),
         policy_service(std::move(policy_service)) {}
   ~UserSession() {}
 
   const std::string username;
   const std::string userhash;
   const bool is_incognito;
-  crypto::ScopedPK11Slot slot;
+  ScopedPK11SlotDescriptor descriptor;
   std::unique_ptr<PolicyService> policy_service;
 };
 
@@ -635,7 +636,8 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
   // Create a UserSession object for this user.
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
-  auto user_session = CreateUserSession(actual_account_id, is_incognito, error);
+  auto user_session =
+      CreateUserSession(actual_account_id, base::nullopt, is_incognito, error);
   if (!user_session) {
     DCHECK(*error);
     return false;
@@ -645,7 +647,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   // whitelisted and have an owner key.
   bool user_is_owner = false;
   if (!device_policy_->CheckAndHandleOwnerLogin(user_session->username,
-                                                user_session->slot.get(),
+                                                user_session->descriptor.get(),
                                                 &user_is_owner, error)) {
     DCHECK(*error);
     return false;
@@ -692,7 +694,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   if (device_policy_->KeyMissing() && !is_active_directory &&
       !device_policy_->Mitigating() && is_first_real_user) {
     // This is the first sign-in on this unmanaged device.  Take ownership.
-    key_gen_->Start(actual_account_id);
+    key_gen_->Start(actual_account_id, base::nullopt);
   }
 
   // Record that a login has successfully completed on this boot.
@@ -1467,11 +1469,21 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
     const std::string& username, const base::FilePath& temp_key_file) {
   DLOG(INFO) << "Processing generated key at " << temp_key_file.value();
   std::string key;
+
+  // The temp key file will only exist in the user's mount namespace.
+  OptionalFilePath ns_mnt_path =
+      user_sessions_[username]->descriptor->ns_mnt_path;
+  std::unique_ptr<brillo::ScopedMountNamespace> ns_mnt;
+  if (ns_mnt_path) {
+    ns_mnt = brillo::ScopedMountNamespace::CreateFromPath(ns_mnt_path.value());
+  }
   base::ReadFileToString(temp_key_file, &key);
   PLOG_IF(WARNING, !base::DeleteFile(temp_key_file, false))
       << "Can't delete " << temp_key_file.value();
+  ns_mnt.reset();
+
   device_policy_->ValidateAndStoreOwnerKey(
-      username, StringToBlob(key), user_sessions_[username]->slot.get());
+      username, StringToBlob(key), user_sessions_[username]->descriptor.get());
 }
 
 void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
@@ -1522,6 +1534,7 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
 
 std::unique_ptr<SessionManagerImpl::UserSession>
 SessionManagerImpl::CreateUserSession(const std::string& username,
+                                      const OptionalFilePath& ns_mnt_path,
                                       bool is_incognito,
                                       brillo::ErrorPtr* error) {
   std::unique_ptr<PolicyService> user_policy =
@@ -1532,15 +1545,17 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
     return nullptr;
   }
 
-  crypto::ScopedPK11Slot slot(nss_->OpenUserDB(GetUserPath(username)));
-  if (!slot) {
+  ScopedPK11SlotDescriptor desc(
+      nss_->OpenUserDB(GetUserPath(username), ns_mnt_path));
+
+  if (!desc->slot) {
     LOG(ERROR) << "Could not open the current user's NSS database.";
     *error = CreateError(dbus_error::kNoUserNssDb, "Can't create session.");
     return nullptr;
   }
 
   return std::make_unique<UserSession>(username, SanitizeUserName(username),
-                                       is_incognito, std::move(slot),
+                                       is_incognito, std::move(desc),
                                        std::move(user_policy));
 }
 

@@ -28,6 +28,7 @@ class FakeGeneratorJob : public GeneratorJobInterface {
     std::unique_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
+        const base::Optional<base::FilePath> ns_path,
         uid_t desired_uid,
         SystemUtils* utils) override;
 

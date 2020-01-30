@@ -28,7 +28,6 @@
 #include "login_manager/dbus_util.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
-#include "login_manager/nss_util.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
@@ -118,7 +117,7 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
     const std::string& current_user,
-    PK11SlotInfo* slot,
+    PK11SlotDescriptor* desc,
     bool* is_owner,
     brillo::ErrorPtr* error) {
   // Record metrics around consumer usage of user whitelisting.
@@ -130,14 +129,14 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
   // in the settings blob, then do so.
   brillo::ErrorPtr key_error;
   std::unique_ptr<RSAPrivateKey> signing_key =
-      GetOwnerKeyForGivenUser(key()->public_key_der(), slot, &key_error);
+      GetOwnerKeyForGivenUser(key()->public_key_der(), desc, &key_error);
 
-  // Now, the flip side...if we believe the current user to be the owner based
+  // Now, the flip side... if we believe the current user to be the owner based
   // on the user field in policy, and they DON'T have the private half of the
   // public key, we must mitigate.
   *is_owner = GivenUserIsOwner(policy, current_user);
   if (*is_owner && !signing_key.get()) {
-    if (!mitigator_->Mitigate(current_user)) {
+    if (!mitigator_->Mitigate(current_user, desc->ns_mnt_path)) {
       *error = std::move(key_error);
       DCHECK(*error);
       return false;
@@ -149,9 +148,9 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
 bool DevicePolicyService::ValidateAndStoreOwnerKey(
     const std::string& current_user,
     const std::vector<uint8_t>& pub_key,
-    PK11SlotInfo* slot) {
+    PK11SlotDescriptor* desc) {
   std::unique_ptr<RSAPrivateKey> signing_key =
-      GetOwnerKeyForGivenUser(pub_key, slot, nullptr);
+      GetOwnerKeyForGivenUser(pub_key, desc, nullptr);
   if (!signing_key.get())
     return false;
 
@@ -438,9 +437,9 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
 
 std::unique_ptr<RSAPrivateKey> DevicePolicyService::GetOwnerKeyForGivenUser(
     const std::vector<uint8_t>& key,
-    PK11SlotInfo* slot,
+    PK11SlotDescriptor* desc,
     brillo::ErrorPtr* error) {
-  std::unique_ptr<RSAPrivateKey> result(nss_->GetPrivateKeyForUser(key, slot));
+  std::unique_ptr<RSAPrivateKey> result(nss_->GetPrivateKeyForUser(key, desc));
   if (!result) {
     constexpr char kMessage[] =
         "Could not verify that owner key belongs to this user.";

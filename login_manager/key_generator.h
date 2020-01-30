@@ -13,6 +13,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "login_manager/child_exit_handler.h"
@@ -37,11 +38,14 @@ class KeyGenerator : public ChildExitHandler {
   void set_delegate(Delegate* delegate) { delegate_ = delegate; }
 
   // Start the generation of a new Owner keypair for |username| as |uid|.
+  // |username|'s data directory will optionally exist in the mount namespace
+  // identified by |ns_path|.
   // Upon success, hands off ownership of the key generation job to |manager_|
   // and returns true.
   // The username of the key owner and temporary storage location of the
   // generated public key are stored internally until Reset() is called.
-  virtual bool Start(const std::string& username);
+  virtual bool Start(const std::string& username,
+                     const base::Optional<base::FilePath>& ns_path);
 
   // Ask the managed job to exit. |reason| is a human-readable string that may
   // be logged to describe the reason for the request.

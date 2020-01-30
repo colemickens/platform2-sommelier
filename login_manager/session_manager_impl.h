@@ -341,9 +341,11 @@ class SessionManagerImpl
 
   bool AllSessionsAreIncognito();
 
-  std::unique_ptr<UserSession> CreateUserSession(const std::string& username,
-                                                 bool is_incognito,
-                                                 brillo::ErrorPtr* error);
+  std::unique_ptr<UserSession> CreateUserSession(
+      const std::string& username,
+      const OptionalFilePath& ns_mnt_path,
+      bool is_incognito,
+      brillo::ErrorPtr* error);
 
   // Verifies whether unsigned policies are permitted to be stored.
   // Returns nullptr on success. Otherwise, an error that should be used in a
