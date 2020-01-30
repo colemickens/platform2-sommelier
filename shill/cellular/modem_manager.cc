@@ -71,8 +71,8 @@ void ModemManager::RemoveModem(const RpcIdentifier& path) {
 }
 
 void ModemManager::OnDeviceInfoAvailable(const string& link_name) {
-  for (const auto& link_name_modem_pair : modems_) {
-    link_name_modem_pair.second->OnDeviceInfoAvailable(link_name);
+  for (const auto& modem_entry : modems_) {
+    modem_entry.second->OnDeviceInfoAvailable(link_name);
   }
 }
 
