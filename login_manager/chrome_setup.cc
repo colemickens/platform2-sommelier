@@ -532,6 +532,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // TODO(https://crbug.com/1011221): Remove after bug in launcher zero-state
   // search results has been fixed.
   builder->AddVmodulePattern("*/search_result_ranker/*=1");
+
+  // TODO(https://crbug.com/1046860): Remove after the smart card login feature
+  // is stabilized.
+  builder->AddVmodulePattern("certificate_provider*=1");
 }
 
 }  // namespace
