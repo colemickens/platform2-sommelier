@@ -26,6 +26,7 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 inotify_init1: 1
+ioctl: arg1 == TCGETS
 kill: 1
 listen: 1
 madvise: 1
