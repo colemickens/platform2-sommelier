@@ -55,6 +55,13 @@ def TestConfigs(*args):
 class ConfigFSTests(cros_test_lib.TestCase):
   """Tests for ConfigFS."""
 
+  def testSerialize(self):
+    self.assertEqual(configfs.Serialize(True), b'true')
+    self.assertEqual(configfs.Serialize(False), b'false')
+    self.assertEqual(configfs.Serialize(10), b'10')
+    self.assertEqual(configfs.Serialize('hello💩'), b'hello\xf0\x9f\x92\xa9')
+    self.assertEqual(configfs.Serialize(b'\xff\xff\xff'), b'\xff\xff\xff')
+
   @TestConfigs('test.json', 'test_arm.json')
   def testConfigV1FileStructure(self, config, output_dir):
     def _CheckConfigRec(config, path):
@@ -64,7 +71,8 @@ class ConfigFSTests(cros_test_lib.TestCase):
         iterator = enumerate(config)
       else:
         self.assertTrue(os.path.isfile(path))
-        self.assertEqual(osutils.ReadFile(path), str(config))
+        self.assertEqual(osutils.ReadFile(path, mode='rb'),
+                         configfs.Serialize(config))
         return
       self.assertTrue(os.path.isdir(path))
       for name, entry in iterator:

@@ -13,6 +13,22 @@ import subprocess
 import tempfile
 
 
+def Serialize(obj):
+  """Convert a string, integer, bytes, or bool to its file representation.
+
+  Args:
+    obj: The string, integer, bytes, or bool to serialize.
+
+  Returns:
+    The bytes representation of the object suitable for dumping into a file.
+  """
+  if isinstance(obj, bytes):
+    return obj
+  if isinstance(obj, bool):
+    return b'true' if obj else b'false'
+  return str(obj).encode('utf-8')
+
+
 def WriteConfigFSFiles(config, base_path):
   """Recursive function to write ConfigFS data out to files and directories.
 
@@ -33,8 +49,8 @@ def WriteConfigFSFiles(config, base_path):
       path = os.path.join(base_path, str(name))
       WriteConfigFSFiles(entry, path)
   else:
-    with open(os.open(base_path, os.O_CREAT | os.O_WRONLY, 0o644), 'w') as f:
-      f.write(str(config))
+    with open(os.open(base_path, os.O_CREAT | os.O_WRONLY, 0o644), 'wb') as f:
+      f.write(Serialize(config))
 
 
 def WriteIdentityInfo(config, output_file):
