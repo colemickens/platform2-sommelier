@@ -15,6 +15,7 @@
 #include <base/macros.h>
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread_checker.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <hardware/camera_common.h>
 
 #include "cros-camera/future.h"
@@ -81,6 +82,12 @@ class CameraHal : public UdevWatcher::Observer {
 
   // Used to watch (un)plug events of external cameras.
   UdevWatcher udev_watcher_;
+
+  // Used to access to the master configuration for Chrome OS.
+  brillo::CrosConfig cros_config_;
+
+  // The unique model name from CrosConfig.
+  std::string model_name_;
 
   // Map from device path to camera id.
   std::map<std::string, int> path_to_id_;

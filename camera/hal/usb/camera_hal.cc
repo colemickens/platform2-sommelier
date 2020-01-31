@@ -138,6 +138,15 @@ int CameraHal::OpenDevice(int id,
     LOGF(ERROR) << "Camera " << id << " is already opened";
     return -EBUSY;
   }
+  if (!cameras_.empty() && model_name_ == "treeya360") {
+    // It cannot open multiple cameras at the same time due to USB bandwidth
+    // limitation (b/147333530).
+    // TODO(shik): Use |conflicting_devices| to implement this logic after we
+    // hook that in the ARC++ camera HAL shim.
+    LOGF(WARNING) << "Can't open Camera " << id << " because Camera "
+                  << cameras_.begin()->first << " is already opened.";
+    return -EUSERS;
+  }
   cameras_[id].reset(
       new CameraClient(id, device_infos_[id], *static_metadata_[id].get(),
                        *request_template_[id].get(), module, hw_device));
@@ -260,6 +269,16 @@ int CameraHal::Init() {
   }
 
   next_external_camera_id_ = num_builtin_cameras_;
+
+  if (!cros_config_.Init()) {
+    LOGF(ERROR) << "Failed to init CrosConfig";
+    return -ENODEV;
+  }
+
+  if (!cros_config_.GetString("/", "name", &model_name_)) {
+    LOGF(ERROR) << "Failed to query model name from CrosConfig";
+    return -ENODEV;
+  }
 
   return 0;
 }

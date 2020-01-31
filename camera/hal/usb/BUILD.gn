@@ -24,6 +24,7 @@ pkg_config("target_defaults") {
     "libcamera_exif",
     "libcamera_metadata",
     "libcamera_timezone",
+    "libcros_config",
     "libjda",
     "libsync",
     "libyuv",
