@@ -9,9 +9,11 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
 #include "chromeos-config/libcros_config/cros_config.h"
+#include "chromeos-config/libcros_config/cros_config_fallback.h"
 #include "chromeos-config/libcros_config/identity.h"
 
 namespace {
@@ -188,6 +190,21 @@ TEST_F(CrosConfigTest, CheckFallbackDeviceIndex) {
 
   int device_index;
   EXPECT_FALSE(cros_config_.GetDeviceIndex(&device_index));
+}
+
+TEST_F(CrosConfigTest, CheckWriteFallbackFS) {
+  InitConfigInvalid();
+
+  base::FilePath tempdir;
+  ASSERT_TRUE(base::CreateNewTempDirectory("cros_config_test", &tempdir));
+
+  brillo::CrosConfigFallback fallback;
+  EXPECT_TRUE(fallback.WriteConfigFS(tempdir));
+
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(
+      tempdir.Append("firmware").Append("image-name"), &contents));
+  EXPECT_EQ("test_mosys_model_string", contents);
 }
 
 int main(int argc, char** argv) {

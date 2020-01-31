@@ -11,6 +11,9 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/process/launch.h>
 #include <base/strings/string_split.h>
 #include "chromeos-config/libcros_config/cros_config_interface.h"
@@ -41,6 +44,24 @@ namespace brillo {
 CrosConfigFallback::CrosConfigFallback() {}
 CrosConfigFallback::~CrosConfigFallback() {}
 
+static bool GetStringForEntry(const struct CommandMapEntry& entry,
+                              std::string* val_out) {
+  CROS_CONFIG_LOG(INFO) << "Equivalent command is \"" << entry.command << "\"";
+  std::vector<std::string> argv = base::SplitString(
+      entry.command, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  if (!base::GetAppOutput(argv, val_out)) {
+    CROS_CONFIG_LOG(ERROR) << "\"" << entry.command
+                           << "\" has non-zero exit code";
+    return false;
+  }
+
+  // Trim off (one) trailing newline from mosys
+  if (val_out->back() == '\n')
+    val_out->pop_back();
+  return true;
+}
+
 bool CrosConfigFallback::GetString(const std::string& path,
                                    const std::string& property,
                                    std::string* val_out) {
@@ -48,21 +69,7 @@ bool CrosConfigFallback::GetString(const std::string& path,
 
   for (auto entry : kCommandMap) {
     if (path == entry.path && property == entry.property) {
-      CROS_CONFIG_LOG(INFO)
-          << "Equivalent command is \"" << entry.command << "\"";
-      std::vector<std::string> argv = base::SplitString(
-          entry.command, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-
-      if (!base::GetAppOutput(argv, val_out)) {
-        CROS_CONFIG_LOG(ERROR)
-            << "\"" << entry.command << "\" has non-zero exit code";
-        return false;
-      }
-
-      // Trim off (one) trailing newline from mosys
-      if (val_out->back() == '\n')
-        val_out->pop_back();
-      return true;
+      return GetStringForEntry(entry, val_out);
     }
   }
 
@@ -75,6 +82,37 @@ bool CrosConfigFallback::GetDeviceIndex(int* device_index_out) {
   // On non-unibuild devices, there is no concept of a device identity
   // within the build, so we always return false.
   return false;
+}
+
+bool CrosConfigFallback::WriteConfigFS(const base::FilePath& output_dir) {
+  for (auto entry : kCommandMap) {
+    auto path_dir = output_dir;
+    for (const auto& part :
+         base::SplitStringPiece(entry.path, "/", base::KEEP_WHITESPACE,
+                                base::SPLIT_WANT_NONEMPTY)) {
+      path_dir = path_dir.Append(part);
+    }
+
+    base::File::Error error;
+    if (!base::CreateDirectoryAndGetError(path_dir, &error)) {
+      CROS_CONFIG_LOG(ERROR)
+          << "Unable to create directory " << path_dir.value() << ": "
+          << base::File::ErrorToString(error);
+      return false;
+    }
+
+    std::string value;
+    if (!GetStringForEntry(entry, &value)) {
+      return false;
+    }
+    const auto property_file = path_dir.Append(entry.property);
+    if (base::WriteFile(property_file, value.data(), value.length()) < 0) {
+      CROS_CONFIG_LOG(ERROR)
+          << "Unable to create file " << property_file.value();
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace brillo

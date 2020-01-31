@@ -11,14 +11,26 @@
 #include <string>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 #include "chromeos-config/libcros_config/cros_config_interface.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace brillo {
 
-class CrosConfigFallback : public CrosConfigInterface {
+class BRILLO_EXPORT CrosConfigFallback : public CrosConfigInterface {
  public:
   CrosConfigFallback();
   ~CrosConfigFallback() override;
+
+  // Write files corresponding to each defined fallback value into a
+  // directory. Each path will correspond to a series of directories,
+  // leading up to a single file for the property.
+  // @output_dir: Directory to write the files and directories into.
+  // @return true on success, false on error.
+  bool WriteConfigFS(const base::FilePath& output_dir);
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,

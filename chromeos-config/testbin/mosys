@@ -14,11 +14,17 @@ if [[ "$1" != "platform" ]]; then
 fi
 
 case "$2" in
+  name )
+    echo test_mosys_name_string
+    ;;
   model )
     echo test_mosys_model_string
     ;;
   brand )
     echo BRND
+    ;;
+  sku )
+    echo 123
     ;;
   * )
     exit 1
