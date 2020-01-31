@@ -256,12 +256,18 @@ bool GetOciContainerState(const base::FilePath& path,
 // {property} will be looked up in |config| and replaced with their values.
 // Returns true if all {} strings were successfully expanded, or false if any
 // properties were not found.
+//
+// Note: Do not modify this directly.
+// Modify src/components/arc/session/arc_property_util.cc in Chromium first.
 bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
                             std::string* expanded_content);
 
 // Computes the value of ro.oem.key1 based on the build-time ro.product.board
 // value and the device's region of origin.
+//
+// Note: Do not modify this directly.
+// Modify src/components/arc/session/arc_property_util.cc in Chromium first.
 std::string ComputeOEMKey(brillo::CrosConfigInterface* config,
                           const std::string& board);
 
@@ -272,6 +278,9 @@ void SetFingerprintsForPackagesCache(const std::string& content,
 
 // Truncates the value side of an Android key=val property line, including
 // handling the special case of build fingerprint.
+//
+// Note: Do not modify this directly.
+// Modify src/components/arc/session/arc_property_util.cc in Chromium first.
 bool TruncateAndroidProperty(const std::string& line, std::string* truncated);
 
 // Performs deep resource copying. Resource means directory, regular file or

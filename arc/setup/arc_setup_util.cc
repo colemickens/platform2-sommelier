@@ -837,6 +837,8 @@ bool GetOciContainerState(const base::FilePath& path,
   return true;
 }
 
+// Note: Do not modify this directly.
+// Modify src/components/arc/session/arc_property_util.cc in Chromium first.
 bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
                             std::string* expanded_content) {
@@ -907,6 +909,8 @@ bool ExpandPropertyContents(const std::string& content,
   return true;
 }
 
+// Note: Do not modify this directly.
+// Modify src/components/arc/session/arc_property_util.cc in Chromium first.
 std::string ComputeOEMKey(brillo::CrosConfigInterface* config,
                           const std::string& board) {
   std::string regions;
@@ -979,6 +983,8 @@ void SetFingerprintsForPackagesCache(const std::string& content,
   CHECK_EQ(2, update_count) << content;
 }
 
+// Note: Do not modify this directly.
+// Modify src/components/arc/session/arc_property_util.cc in Chromium first.
 bool TruncateAndroidProperty(const std::string& line, std::string* truncated) {
   // If line looks like key=value, cut value down to the max length of an
   // Android property.  Build fingerprint needs special handling to preserve the
