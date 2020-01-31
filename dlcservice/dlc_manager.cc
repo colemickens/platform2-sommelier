@@ -141,7 +141,7 @@ class DlcManager::DlcManagerImpl {
       string mount_point;
       if (!Mount(id, &mount_point, err_code, err_msg))
         return false;
-      dlc.second = mount_point;
+      dlc.second = GetDlcRootInModulePath(FilePath(mount_point)).value();
     }
 
     scoped_cleanups.Cancel();
