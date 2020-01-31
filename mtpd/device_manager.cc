@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <set>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -77,8 +78,8 @@ ScopedMtpFile CreateScopedMtpFile(LIBMTP_mtpdevice_t* mtp_device,
 
 class DeviceManager::MtpPoller : public base::Thread {
  public:
-  using EventCallback = base::Callback<void(int ret_code,
-                                            LIBMTP_event_t event)>;
+  using EventCallback =
+      base::OnceCallback<void(int ret_code, LIBMTP_event_t event)>;
 
   explicit MtpPoller(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
       : Thread("MTP poller"), main_thread_task_runner_(task_runner) {}
@@ -86,11 +87,10 @@ class DeviceManager::MtpPoller : public base::Thread {
     Stop();
   }
 
-  void WaitForEvent(LIBMTP_mtpdevice_t* mtp_device,
-                    const EventCallback& callback) {
+  void WaitForEvent(LIBMTP_mtpdevice_t* mtp_device, EventCallback callback) {
     DCHECK(main_thread_task_runner_->BelongsToCurrentThread());
 
-    auto params = std::make_unique<Params>(this, callback);
+    auto params = std::make_unique<Params>(this, std::move(callback));
     int ret = LIBMTP_Read_Event_Async(mtp_device, &ReadEventFunction,
                                       params.get());
     if (ret) {
@@ -112,15 +112,16 @@ class DeviceManager::MtpPoller : public base::Thread {
       // devices are eventually removed, the extra task will run and finish
       // immediately since |num_pending_| should be 0.
       task_runner()->PostTask(
-          FROM_HERE, base::Bind(&MtpPoller::DoEvents, base::Unretained(this)));
+          FROM_HERE,
+          base::BindOnce(&MtpPoller::DoEvents, base::Unretained(this)));
     }
     num_pending_++;
   }
 
  private:
   struct Params {
-    Params(MtpPoller* poller, const EventCallback& callback)
-        : poller(poller), callback(callback) {}
+    Params(MtpPoller* poller, EventCallback callback)
+        : poller(poller), callback(std::move(callback)) {}
 
     MtpPoller* poller;
     EventCallback callback;
@@ -144,18 +145,19 @@ class DeviceManager::MtpPoller : public base::Thread {
   static void ReadEventFunction(int ret_code, LIBMTP_event_t event,
                                 uint32_t unused_extra, void* user_data) {
     std::unique_ptr<Params> params(static_cast<Params*>(user_data));
-    params->poller->ProcessEvent(ret_code, event, params->callback);
+    params->poller->ProcessEvent(ret_code, event, std::move(params->callback));
   }
 
-  void ProcessEvent(int ret_code, LIBMTP_event_t event,
-                    const EventCallback& callback) {
+  void ProcessEvent(int ret_code,
+                    LIBMTP_event_t event,
+                    EventCallback callback) {
     DCHECK(task_runner()->BelongsToCurrentThread());
     {
       base::AutoLock al(lock_);
       num_pending_--;
     }
-    main_thread_task_runner_->PostTask(FROM_HERE, base::Bind(
-        callback, ret_code, event));
+    main_thread_task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback), ret_code, event));
   }
 
   scoped_refptr<base::SingleThreadTaskRunner> const main_thread_task_runner_;
@@ -636,7 +638,8 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
     // a 1 second wait here to give the device to settle down.
     base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&DeviceManager::AddDevices, weak_ptr_factory_.GetWeakPtr()),
+        base::BindOnce(&DeviceManager::AddDevices,
+                       weak_ptr_factory_.GetWeakPtr()),
         base::TimeDelta::FromSeconds(1));
     return;
   }
@@ -645,8 +648,8 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
     // wait to ensure libmtp does not detect the device.
     base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&DeviceManager::RemoveDevices,
-                   weak_ptr_factory_.GetWeakPtr(), false /* !remove_all */),
+        base::BindOnce(&DeviceManager::RemoveDevices,
+                       weak_ptr_factory_.GetWeakPtr(), false /* !remove_all */),
         base::TimeDelta::FromSeconds(1));
     return;
   }
@@ -778,10 +781,10 @@ void DeviceManager::AddOrUpdateDevices(
       LOG(INFO) << "Ignoring device with 0 storage " << usb_bus_str;
       return;
     }
-    mtp_poller_->WaitForEvent(mtp_device,
-                              base::Bind(&DeviceManager::HandleMtpEvent,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         usb_bus_str));
+    mtp_poller_->WaitForEvent(
+        mtp_device,
+        base::BindOnce(&DeviceManager::HandleMtpEvent,
+                       weak_ptr_factory_.GetWeakPtr(), usb_bus_str));
     bool device_added =
         device_map_
             .insert(std::make_pair(
@@ -813,9 +816,9 @@ void DeviceManager::HandleMtpEvent(const std::string& usb_bus_name,
   }
 
   mtp_poller_->WaitForEvent(
-      it->second.device, base::Bind(&DeviceManager::HandleMtpEvent,
-                                    weak_ptr_factory_.GetWeakPtr(),
-                                    usb_bus_name));
+      it->second.device,
+      base::BindOnce(&DeviceManager::HandleMtpEvent,
+                     weak_ptr_factory_.GetWeakPtr(), usb_bus_name));
 }
 
 void DeviceManager::RemoveDevices(bool remove_all) {
