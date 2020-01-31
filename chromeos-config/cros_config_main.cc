@@ -17,6 +17,8 @@
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(mount, false, "Mount ChromeOS ConfigFS.");
+  DEFINE_bool(mount_fallback, false,
+              "Mount legacy (non-unibuild) ChromeOS ConfigFS.");
   DEFINE_string(test_file, "",
                 "Override path to system config database for testing.");
   DEFINE_string(test_name, "", "Override platform name for testing.");
@@ -28,7 +30,8 @@ int main(int argc, char* argv[]) {
 
   std::string usage = "Chrome OS Model Configuration\n\nUsage:\n  " +
                       std::string(argv[0]) + " [flags] <path> <key>\n  " +
-                      std::string(argv[0]) + " --mount <source> <target>\n\n" +
+                      std::string(argv[0]) + " --mount <source> <target>\n  " +
+                      std::string(argv[0]) + " --mount_fallback <target>\n\n" +
                       "Set CROS_CONFIG_DEBUG=1 in your environment to emit " +
                       "debug logging messages.\n";
   brillo::FlagHelper::Init(argc, argv, usage);
@@ -46,7 +49,7 @@ int main(int argc, char* argv[]) {
 
   brillo::CrosConfig cros_config;
   bool init_for_testing = !FLAGS_test_file.empty();
-  if (!init_for_testing && !FLAGS_mount) {
+  if (!init_for_testing && !FLAGS_mount && !FLAGS_mount_fallback) {
     if (!cros_config.Init(FLAGS_test_sku_id)) {
       return 1;
     }
@@ -62,9 +65,24 @@ int main(int argc, char* argv[]) {
 
   base::CommandLine::StringVector args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() != 2) {
+
+  int expected_arguments = 2;
+  if (FLAGS_mount_fallback) {
+    expected_arguments = 1;
+  }
+
+  if (args.size() != expected_arguments) {
     std::cerr << usage << "\nPass --help for more information." << std::endl;
     return 1;
+  }
+
+  if (FLAGS_mount_fallback) {
+    const base::FilePath target(args[0]);
+    if (!cros_config.MountFallbackConfigFS(target)) {
+      std::cerr << "ConfigFS fallback mount failed!" << std::endl;
+      return 1;
+    }
+    return 0;
   }
 
   if (FLAGS_mount) {
