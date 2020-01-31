@@ -189,6 +189,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ConnectTask8021x);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskDynamicWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskRawPMK);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
@@ -252,6 +253,9 @@ class WiFiService : public Service {
   static void ParseWEPPassphrase(const std::string& passphrase,
                                  int* key_index,
                                  std::vector<uint8_t>* password_bytes,
+                                 Error* error);
+  static void ParseWPAPassphrase(const std::string& passphrase,
+                                 std::vector<uint8_t>* passphrase_bytes,
                                  Error* error);
   static bool CheckWEPIsHex(const std::string& passphrase, Error* error);
   static bool CheckWEPKeyIndex(const std::string& passphrase, Error* error);

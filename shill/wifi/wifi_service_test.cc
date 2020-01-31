@@ -520,6 +520,17 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
               PSKSecurityArgs());
 }
 
+TEST_F(WiFiServiceTest, ConnectTaskRawPMK) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityPsk);
+  EXPECT_CALL(*wifi(), ConnectTo(service.get()));
+  Error error;
+  service->SetPassphrase(string(IEEE_80211::kWPAHexLen, '1'), &error);
+  service->Connect(nullptr, "in test");
+  KeyValueStore params = service->GetSupplicantConfigurationParameters();
+  EXPECT_FALSE(params.ContainsString(WPASupplicant::kPropertyPreSharedKey));
+  EXPECT_TRUE(params.ContainsUint8s(WPASupplicant::kPropertyPreSharedKey));
+}
+
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
   service->mutable_eap()->set_identity("identity");

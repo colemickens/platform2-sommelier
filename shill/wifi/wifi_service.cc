@@ -586,7 +586,16 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
         base::StringPrintf("%s %s", WPASupplicant::kSecurityModeWPA,
                            WPASupplicant::kSecurityModeRSN);
     params.SetString(WPASupplicant::kPropertySecurityProtocol, psk_proto);
-    params.SetString(WPASupplicant::kPropertyPreSharedKey, passphrase_);
+    vector<uint8_t> passphrase_bytes;
+    Error error;
+    ParseWPAPassphrase(passphrase_, &passphrase_bytes, &error);
+    if (!error.IsSuccess()) {
+      LOG(ERROR) << "Invalid passphrase";
+    } else if (!passphrase_bytes.empty()) {
+      params.SetUint8s(WPASupplicant::kPropertyPreSharedKey, passphrase_bytes);
+    } else {
+      params.SetString(WPASupplicant::kPropertyPreSharedKey, passphrase_);
+    }
   } else if (security_ == kSecurityWep) {
     params.SetString(WPASupplicant::kPropertyAuthAlg,
                      WPASupplicant::kSecurityAuthAlg);
@@ -852,21 +861,7 @@ void WiFiService::ValidateWEPPassphrase(const std::string& passphrase,
 // static
 void WiFiService::ValidateWPAPassphrase(const std::string& passphrase,
                                         Error* error) {
-  unsigned int length = passphrase.length();
-  vector<uint8_t> passphrase_bytes;
-
-  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
-    if (length != IEEE_80211::kWPAHexLen &&
-        (length < IEEE_80211::kWPAAsciiMinLen ||
-         length > IEEE_80211::kWPAAsciiMaxLen)) {
-      error->Populate(Error::kInvalidPassphrase);
-    }
-  } else {
-    if (length < IEEE_80211::kWPAAsciiMinLen ||
-        length > IEEE_80211::kWPAAsciiMaxLen) {
-      error->Populate(Error::kInvalidPassphrase);
-    }
-  }
+  ParseWPAPassphrase(passphrase, nullptr, error);
 }
 
 // static
@@ -940,6 +935,28 @@ void WiFiService::ParseWEPPassphrase(const string& passphrase,
                                password_text.end());
     }
   }
+}
+
+// static
+void WiFiService::ParseWPAPassphrase(const std::string& passphrase,
+                                     vector<uint8_t>* passphrase_bytes,
+                                     Error* error) {
+  unsigned int length = passphrase.length();
+  vector<uint8_t> temp_bytes;
+
+  // ASCII passphrase. No conversions needed.
+  if (length >= IEEE_80211::kWPAAsciiMinLen &&
+      length <= IEEE_80211::kWPAAsciiMaxLen)
+    return;
+  if (length == IEEE_80211::kWPAHexLen &&
+      base::HexStringToBytes(passphrase, &temp_bytes)) {
+    if (passphrase_bytes) {
+      base::HexStringToBytes(passphrase, passphrase_bytes);
+    }
+    return;
+  }
+  // None of the above.
+  error->Populate(Error::kInvalidPassphrase);
 }
 
 // static
