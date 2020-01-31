@@ -1801,6 +1801,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   std::vector<string> params(
       std::make_move_iterator(request.mutable_params()->begin()),
       std::make_move_iterator(request.mutable_params()->end()));
+  params.emplace_back(base::StringPrintf("androidboot.seneschal_server_port=%d",
+                                         seneschal_server_port));
 
   // Start the VM and build the response.
   ArcVmFeatures features;
