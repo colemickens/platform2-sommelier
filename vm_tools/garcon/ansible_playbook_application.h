@@ -5,7 +5,12 @@
 #ifndef VM_TOOLS_GARCON_ANSIBLE_PLAYBOOK_APPLICATION_H_
 #define VM_TOOLS_GARCON_ANSIBLE_PLAYBOOK_APPLICATION_H_
 
+#include <memory>
 #include <string>
+
+#include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
+#include <base/memory/weak_ptr.h>
 
 namespace base {
 class FilePath;
@@ -15,20 +20,52 @@ class WaitableEvent;
 namespace vm_tools {
 namespace garcon {
 
-class AnsiblePlaybookApplicationObserver {
+class AnsiblePlaybookApplication {
  public:
-  virtual void OnApplyAnsiblePlaybookCompletion(
-      bool success, const std::string& failure_reason) = 0;
+  class Observer {
+   public:
+    virtual void OnApplyAnsiblePlaybookCompletion(
+        bool success, const std::string& failure_reason) = 0;
+  };
+
+  AnsiblePlaybookApplication();
+
+  // Returns true when ansible-playbook is successfully spawned.
+  bool ExecuteAnsiblePlaybook(const base::FilePath& ansible_playbook_file_path,
+                              std::string* error_msg);
+
+  base::FilePath CreateAnsiblePlaybookFile(const std::string& playbook,
+                                           std::string* error_msg);
+
+  void AddObserver(Observer* observer);
+  void RemoveObserver(Observer* observer);
+
+ private:
+  void SetUpStdIOWatchers(base::WaitableEvent* event, std::string* error_msg);
+  void OnStdoutReadable();
+  void OnStderrReadable();
+  void OnStdIOProcessed(bool is_stderr);
+  // Return true on successful ansible-playbook result and false otherwise.
+  bool GetPlaybookApplicationResult(std::string* failure_reason);
+  void ClearFDs();
+  void ClearReadFDs();
+  void ClearWriteFDs();
+
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  base::ObserverList<Observer> observers_;
+  bool is_stdout_finished_ = false;
+  bool is_stderr_finished_ = false;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> stdout_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> stderr_watcher_;
+  std::stringstream stdout_;
+  std::stringstream stderr_;
+  base::ScopedFD read_stdout_;
+  base::ScopedFD write_stdout_;
+  base::ScopedFD read_stderr_;
+  base::ScopedFD write_stderr_;
+
+  base::WeakPtrFactory<AnsiblePlaybookApplication> weak_ptr_factory_;
 };
-
-// |event| is triggered once ansible-playbook is successfully spawned.
-void ExecuteAnsiblePlaybook(AnsiblePlaybookApplicationObserver* observer,
-                            base::WaitableEvent* event,
-                            const base::FilePath& ansible_playbook_file_path,
-                            std::string* error_msg);
-
-base::FilePath CreateAnsiblePlaybookFile(const std::string& playbook,
-                                         std::string* error_msg);
 
 }  // namespace garcon
 }  // namespace vm_tools

@@ -6,23 +6,21 @@
 #define VM_TOOLS_GARCON_SERVICE_IMPL_H_
 
 #include <base/macros.h>
-#include <base/task_runner.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
-
-#include "vm_tools/garcon/ansible_playbook_application.h"
 
 namespace vm_tools {
 namespace garcon {
 
+class AnsiblePlaybookApplication;
 class PackageKitProxy;
 
 // Actually implements the garcon service.
 class ServiceImpl final : public vm_tools::container::Garcon::Service {
  public:
-  explicit ServiceImpl(PackageKitProxy* package_kit_proxy,
-                       base::TaskRunner* task_runner,
-                       AnsiblePlaybookApplicationObserver* observer);
+  explicit ServiceImpl(
+      PackageKitProxy* package_kit_proxy,
+      AnsiblePlaybookApplication* ansible_playbook_application);
   ~ServiceImpl() override = default;
 
   // Garcon::Service overrides.
@@ -78,8 +76,7 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
 
  private:
   PackageKitProxy* package_kit_proxy_;  // Not owned.
-  base::TaskRunner* task_runner_;
-  AnsiblePlaybookApplicationObserver* ansible_playbook_application_observer_;
+  AnsiblePlaybookApplication* ansible_playbook_application_;  // Not owned.
 
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };

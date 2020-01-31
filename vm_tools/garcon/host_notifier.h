@@ -24,7 +24,7 @@ namespace garcon {
 
 // Handles making calls to cicerone running in the host.
 class HostNotifier : public PackageKitProxy::PackageKitObserver,
-                     public AnsiblePlaybookApplicationObserver {
+                     public AnsiblePlaybookApplication::Observer {
  public:
   // Creates and inits the HostNotifier for running on the current sequence.
   // Returns null if there was any failure.
@@ -58,7 +58,7 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
                              const std::string& failure_reason) override;
   void OnUninstallProgress(uint32_t percent_progress) override;
 
-  // vm_tools::garcon::AnsiblePlaybookApplicationObserver overrides.
+  // vm_tools::garcon::AnsiblePlaybookApplication::Observer overrides.
   void OnApplyAnsiblePlaybookCompletion(
       bool success, const std::string& failure_reason) override;
 

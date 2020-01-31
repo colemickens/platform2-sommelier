@@ -26,6 +26,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "vm_tools/common/spawn_util.h"
+#include "vm_tools/garcon/ansible_playbook_application.h"
 #include "vm_tools/garcon/arc_sideload.h"
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
@@ -47,12 +48,11 @@ constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
 
 }  // namespace
 
-ServiceImpl::ServiceImpl(PackageKitProxy* package_kit_proxy,
-                         base::TaskRunner* task_runner,
-                         AnsiblePlaybookApplicationObserver* observer)
+ServiceImpl::ServiceImpl(
+    PackageKitProxy* package_kit_proxy,
+    AnsiblePlaybookApplication* ansible_playbook_application)
     : package_kit_proxy_(package_kit_proxy),
-      task_runner_(task_runner),
-      ansible_playbook_application_observer_(observer) {
+      ansible_playbook_application_(ansible_playbook_application) {
   CHECK(package_kit_proxy_);
 }
 
@@ -381,7 +381,8 @@ grpc::Status ServiceImpl::ApplyAnsiblePlaybook(
 
   std::string error_msg;
   base::FilePath ansible_playbook_file_path =
-      CreateAnsiblePlaybookFile(request->playbook(), &error_msg);
+      ansible_playbook_application_->CreateAnsiblePlaybookFile(
+          request->playbook(), &error_msg);
 
   if (ansible_playbook_file_path.empty()) {
     LOG(ERROR) << "Failed to create valid file with Ansible playbook, "
@@ -395,27 +396,10 @@ grpc::Status ServiceImpl::ApplyAnsiblePlaybook(
   LOG(INFO) << "Ansible playbook file created at "
             << ansible_playbook_file_path.value();
 
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-
-  bool success = task_runner_->PostTask(
-      FROM_HERE, base::Bind(&ExecuteAnsiblePlaybook,
-                            ansible_playbook_application_observer_, &event,
-                            ansible_playbook_file_path, &error_msg));
+  bool success = ansible_playbook_application_->ExecuteAnsiblePlaybook(
+      ansible_playbook_file_path, &error_msg);
 
   if (!success) {
-    LOG(ERROR) << "Failed to post Ansible playbook application task";
-    response->set_status(
-        vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED);
-    response->set_failure_reason(
-        "Failed to post Ansible playbook application task");
-    return grpc::Status::OK;
-  }
-
-  // Waits until ansible-playbook process is successfully spawned.
-  event.Wait();
-
-  if (!error_msg.empty()) {
     LOG(ERROR) << "Failed to start Ansible playbook application: " << error_msg;
     response->set_status(
         vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED);

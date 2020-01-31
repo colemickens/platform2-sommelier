@@ -12,11 +12,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
 #include <base/posix/safe_strerror.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 #include "vm_tools/common/spawn_util.h"
 
@@ -29,26 +30,6 @@ constexpr char kDefaultCallbackPluginPathEnv[] = "ANSIBLE_CALLBACK_PLUGINS";
 constexpr char kStdoutCallbackName[] = "garcon";
 constexpr char kDefaultCallbackPluginPath[] =
     "/usr/share/ansible/plugins/callback";
-
-// Return true on successful ansible-playbook result and false otherwise.
-bool GetPlaybookApplicationResult(const std::string& stdout,
-                                  const std::string& stderr,
-                                  std::string* failure_reason) {
-  const std::string execution_info =
-      "Ansible playbook application stdout:\n" + stdout + "\n" +
-      "Ansible playbook application stderr:\n" + stderr + "\n";
-
-  if (stdout.find("MESSAGE TO GARCON: TASK_FAILED") != std::string::npos) {
-    LOG(INFO) << "Some tasks failed during container configuration";
-    *failure_reason = execution_info;
-    return false;
-  }
-  if (!stderr.empty()) {
-    *failure_reason = execution_info;
-    return false;
-  }
-  return true;
-}
 
 bool CreatePipe(base::ScopedFD* read_fd,
                 base::ScopedFD* write_fd,
@@ -66,79 +47,23 @@ bool CreatePipe(base::ScopedFD* read_fd,
 
 }  // namespace
 
-void ExecuteAnsiblePlaybook(AnsiblePlaybookApplicationObserver* observer,
-                            base::WaitableEvent* event,
-                            const base::FilePath& ansible_playbook_file_path,
-                            std::string* error_msg) {
-  std::vector<std::string> argv{"ansible-playbook",
-                                "--become",
-                                "--connection=local",
-                                "--inventory",
-                                "127.0.0.1,",
-                                ansible_playbook_file_path.value(),
-                                "-e",
-                                "ansible_python_interpreter=/usr/bin/python3"};
+AnsiblePlaybookApplication::AnsiblePlaybookApplication()
+    : task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      weak_ptr_factory_(this) {}
 
-  std::map<std::string, std::string> env;
-  env[kStdoutCallbackEnv] = kStdoutCallbackName;
-  env[kDefaultCallbackPluginPathEnv] = kDefaultCallbackPluginPath;
-
-  // Set child's process stdout and stderr to write end of pipes.
-  int stdio_fd[] = {-1, -1, -1};
-
-  base::ScopedFD read_stdout;
-  base::ScopedFD write_stdout;
-  if (!CreatePipe(&read_stdout, &write_stdout, error_msg)) {
-    return;
-  }
-
-  base::ScopedFD read_stderr;
-  base::ScopedFD write_stderr;
-  if (!CreatePipe(&read_stderr, &write_stderr, error_msg)) {
-    return;
-  }
-
-  stdio_fd[STDOUT_FILENO] = write_stdout.get();
-  stdio_fd[STDERR_FILENO] = write_stderr.get();
-
-  if (!Spawn(std::move(argv), std::move(env), "", stdio_fd)) {
-    *error_msg = "Failed to spawn ansible-playbook process";
-    return;
-  }
-
-  write_stdout.reset();
-  write_stderr.reset();
-  event->Signal();
-
-  // TODO(okalitova): Add file watchers.
-  char buffer[100];
-  std::stringstream stdout;
-  ssize_t count = read(read_stdout.get(), buffer, sizeof(buffer));
-  while (count > 0) {
-    stdout.write(buffer, count);
-    count = read(read_stdout.get(), buffer, sizeof(buffer));
-  }
-  std::stringstream stderr;
-  count = read(read_stderr.get(), buffer, sizeof(buffer));
-  while (count > 0) {
-    stderr.write(buffer, count);
-    count = read(read_stderr.get(), buffer, sizeof(buffer));
-  }
-
-  std::string failure_reason;
-  bool success =
-      GetPlaybookApplicationResult(stdout.str(), stderr.str(), &failure_reason);
-
-  observer->OnApplyAnsiblePlaybookCompletion(success, failure_reason);
-  return;
+void AnsiblePlaybookApplication::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
 }
 
-base::FilePath CreateAnsiblePlaybookFile(const std::string& playbook,
-                                         std::string* error_msg) {
+void AnsiblePlaybookApplication::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
+}
+
+base::FilePath AnsiblePlaybookApplication::CreateAnsiblePlaybookFile(
+    const std::string& playbook, std::string* error_msg) {
   base::FilePath ansible_dir;
   bool success = base::CreateNewTempDirectory("", &ansible_dir);
   if (!success) {
-    LOG(ERROR) << "Failed to create directory for ansible playbook file";
     *error_msg = "Failed to create directory for ansible playbook file";
     return base::FilePath();
   }
@@ -167,6 +92,167 @@ base::FilePath CreateAnsiblePlaybookFile(const std::string& playbook,
   }
 
   return ansible_playbook_file_path;
+}
+
+bool AnsiblePlaybookApplication::ExecuteAnsiblePlaybook(
+    const base::FilePath& ansible_playbook_file_path, std::string* error_msg) {
+  std::vector<std::string> argv{"ansible-playbook",
+                                "--become",
+                                "--connection=local",
+                                "--inventory",
+                                "127.0.0.1,",
+                                ansible_playbook_file_path.value(),
+                                "-e",
+                                "ansible_python_interpreter=/usr/bin/python3"};
+
+  std::map<std::string, std::string> env;
+  env[kStdoutCallbackEnv] = kStdoutCallbackName;
+  env[kDefaultCallbackPluginPathEnv] = kDefaultCallbackPluginPath;
+
+  // Set child's process stdout and stderr to write end of pipes.
+  int stdio_fd[] = {-1, -1, -1};
+  if (!CreatePipe(&read_stdout_, &write_stdout_, error_msg)) {
+    ClearFDs();
+    return false;
+  }
+  if (!CreatePipe(&read_stderr_, &write_stderr_, error_msg)) {
+    ClearFDs();
+    return false;
+  }
+  stdio_fd[STDOUT_FILENO] = write_stdout_.get();
+  stdio_fd[STDERR_FILENO] = write_stderr_.get();
+
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool success = task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&AnsiblePlaybookApplication::SetUpStdIOWatchers,
+                     weak_ptr_factory_.GetWeakPtr(), &event, error_msg));
+  event.Wait();
+  if (!success) {
+    *error_msg = "Failed to post task to set up ansible stdio watchers";
+    ClearFDs();
+    return false;
+  }
+  if (!error_msg->empty()) {
+    ClearFDs();
+    return false;
+  }
+
+  if (!Spawn(std::move(argv), std::move(env), "", stdio_fd)) {
+    *error_msg = "Failed to spawn ansible-playbook process";
+    ClearFDs();
+    return false;
+  }
+
+  ClearWriteFDs();
+  return true;
+}
+
+void AnsiblePlaybookApplication::SetUpStdIOWatchers(base::WaitableEvent* event,
+                                                    std::string* error_msg) {
+  stdout_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      read_stdout_.get(),
+      base::BindRepeating(&AnsiblePlaybookApplication::OnStdoutReadable,
+                          weak_ptr_factory_.GetWeakPtr()));
+  if (!stdout_watcher_) {
+    *error_msg = "Failed to set watcher for ansible-playbook stdout";
+    event->Signal();
+    return;
+  }
+
+  stderr_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      read_stderr_.get(),
+      base::BindRepeating(&AnsiblePlaybookApplication::OnStderrReadable,
+                          weak_ptr_factory_.GetWeakPtr()));
+  if (!stderr_watcher_) {
+    *error_msg = "Failed to set watcher for ansible-playbook stderr";
+    event->Signal();
+    return;
+  }
+
+  event->Signal();
+  return;
+}
+
+void AnsiblePlaybookApplication::OnStdoutReadable() {
+  char buffer[100];
+  ssize_t count = read(read_stdout_.get(), buffer, sizeof(buffer));
+  if (count <= 0) {
+    stdout_watcher_.reset();
+    OnStdIOProcessed(false /*is_stderr*/);
+    return;
+  }
+  stdout_.write(buffer, count);
+  return;
+}
+
+void AnsiblePlaybookApplication::OnStderrReadable() {
+  char buffer[100];
+  ssize_t count = read(read_stderr_.get(), buffer, sizeof(buffer));
+  if (count <= 0) {
+    stderr_watcher_.reset();
+    OnStdIOProcessed(true /*is_stderr*/);
+    return;
+  }
+  stderr_.write(buffer, count);
+  return;
+}
+
+void AnsiblePlaybookApplication::OnStdIOProcessed(bool is_stderr) {
+  if (is_stderr)
+    is_stderr_finished_ = true;
+  else
+    is_stdout_finished_ = true;
+
+  if (is_stderr_finished_ && is_stdout_finished_) {
+    std::string failure_reason;
+    bool success = GetPlaybookApplicationResult(&failure_reason);
+    for (auto& observer : observers_)
+      observer.OnApplyAnsiblePlaybookCompletion(success, failure_reason);
+    ClearFDs();
+  }
+}
+
+bool AnsiblePlaybookApplication::GetPlaybookApplicationResult(
+    std::string* failure_reason) {
+  const std::string stdout = stdout_.str();
+  const std::string stderr = stderr_.str();
+  const std::string execution_info =
+      "Ansible playbook application stdout:\n" + stdout + "\n" +
+      "Ansible playbook application stderr:\n" + stderr + "\n";
+
+  if (stdout.find("MESSAGE TO GARCON: TASK_FAILED") != std::string::npos) {
+    LOG(INFO) << "Some tasks failed during container configuration";
+    *failure_reason = execution_info;
+    return false;
+  }
+  if (!stderr.empty()) {
+    *failure_reason = execution_info;
+    return false;
+  }
+  return true;
+}
+
+void AnsiblePlaybookApplication::ClearFDs() {
+  ClearWriteFDs();
+  ClearReadFDs();
+}
+
+void AnsiblePlaybookApplication::ClearWriteFDs() {
+  write_stdout_.reset();
+  write_stderr_.reset();
+}
+
+void AnsiblePlaybookApplication::ClearReadFDs() {
+  read_stdout_.reset();
+  read_stderr_.reset();
+  stdout_watcher_.reset();
+  stderr_watcher_.reset();
+  stdout_.str("");
+  stderr_.str("");
+  is_stdout_finished_ = false;
+  is_stderr_finished_ = false;
 }
 
 }  // namespace garcon
