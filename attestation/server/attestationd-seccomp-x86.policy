@@ -80,6 +80,7 @@ fdatasync: 1
 fsync: 1
 rename: 1
 chmod: 1
+fchmodat: 1
 tgkill: 1
 nanosleep: 1
 sched_yield: 1
