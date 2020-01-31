@@ -62,6 +62,15 @@ bool Mount(const base::FilePath& source,
 // @return true on success, false on error.
 bool Bind(const base::FilePath& source, const base::FilePath& target);
 
+// Remount an existing target with new flags and options.
+// @target: Path to an already-mounted target.
+// @mountflags: See mount(2) manual page.
+// @options: List of additional options supported by the filesyste.
+// @return true on success, false on error.
+bool Remount(const base::FilePath& target,
+             unsigned long mountflags,
+             const std::vector<std::string>& options = {});
+
 }  // namespace brillo
 
 #endif  // CHROMEOS_CONFIG_LIBCROS_CONFIG_CONFIGFS_H_

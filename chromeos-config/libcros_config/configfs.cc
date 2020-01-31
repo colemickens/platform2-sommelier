@@ -164,4 +164,11 @@ bool Bind(const base::FilePath& source, const base::FilePath& target) {
   return Mount(source, target, nullptr, MS_BIND);
 }
 
+bool Remount(const base::FilePath& target,
+             unsigned long mountflags,
+             const std::vector<std::string>& options) {
+  return Mount(base::FilePath(), target, nullptr, MS_REMOUNT | mountflags,
+               options);
+}
+
 }  // namespace brillo
