@@ -5,7 +5,10 @@
 #include "dlcservice/utils.h"
 
 #include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -58,6 +61,57 @@ bool WriteToFile(const FilePath& path, const string& data) {
   return base::WriteFileDescriptor(fd.get(), data.c_str(), data.size());
 }
 
+// Resizes the file in |path| to a new |size|. When shrinking, meaning current
+// file size is > |size|, the file will only be resized and not unsparsed as the
+// resized file is already assumed to be unsparse. When increasing, meaning
+// current file size is <  |size|, the file will be resized and unsparsed only
+// to the portions that increased from current file size to |size|. When neither
+// shrinking nor increasing, nothing happens.
+bool ResizeFile(const base::FilePath& path, int64_t size) {
+  int64_t prev_size;
+  base::File f(path, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+  if (!f.IsValid()) {
+    LOG(ERROR) << "Failed to open file to resize '" << path.value()
+               << "': " << base::File::ErrorToString(f.error_details());
+    return false;
+  }
+  prev_size = f.GetLength();
+  if (prev_size < 0) {
+    PLOG(ERROR) << "Failed to get file size for resizing " << path.value();
+    return false;
+  }
+  if (!f.SetLength(size)) {
+    PLOG(ERROR) << "Failed to set length (" << size << ") for "
+                << path.value();
+    return false;
+  }
+  // When shrinking files, there is no need to unsparse as it's not certainly
+  // safe to unsparse potentially used portions of the file.
+  if (size <= prev_size)
+    return true;
+
+  // Otherwise, unsparse the increased portion of the file.
+  if (f.Seek(base::File::Whence::FROM_BEGIN, prev_size) < 0) {
+    PLOG(ERROR) << "Failed to lseek() to offset " << prev_size << " for "
+                << path.value();
+    return false;
+  }
+  size -= prev_size;
+
+  constexpr int64_t kMaxBufSize = 4096;
+  constexpr char buf[kMaxBufSize] = {'\0'};
+  for (; size > 0; size -= kMaxBufSize) {
+    // Set the lesser of either |kMaxBufSize| or |size| bytes.
+    const size_t len = std::min(size, kMaxBufSize);
+    // Write out |len| from |buf| to |fd|.
+    if (f.WriteAtCurrentPos(buf, len) != len) {
+      PLOG(ERROR) << "Failed to write zero to " << path.value();
+      return false;
+    }
+  }
+  return true;
+}
+
 bool CreateDir(const base::FilePath& path) {
   base::File::Error file_err;
   if (!base::CreateDirectoryAndGetError(path, &file_err)) {
@@ -68,34 +122,23 @@ bool CreateDir(const base::FilePath& path) {
   return SetFilePermissions(path, kDlcDirectoryPerms);
 }
 
+// TODO(crbug.com/976074): When creating a file, provide the flexibility to be
+// able to unsparse in |ResizeFile()| up to the actual size necessary and not
+// the preallocated size from the manifest as is the |size| here for DLC to
+// install successfully.
 bool CreateFile(const base::FilePath& path, int64_t size) {
   if (!CreateDir(path.DirName()))
     return false;
-  base::File file(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  if (!file.IsValid()) {
-    LOG(ERROR) << "Failed to create file at " << path.value() << " reason: "
-               << base::File::ErrorToString(file.error_details());
-    return false;
+  // Keep scoped to not explicitly close file.
+  {
+    base::File f(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+    if (!f.IsValid()) {
+      LOG(ERROR) << "Failed to create file at " << path.value()
+                 << " reason: " << base::File::ErrorToString(f.error_details());
+      return false;
+    }
   }
-  if (!file.SetLength(size)) {
-    LOG(ERROR) << "Failed to set legnth (" << size << ") for " << path.value();
-    return false;
-  }
-  return SetFilePermissions(path, kDlcFilePerms);
-}
-
-bool ResizeFile(const base::FilePath& path, int64_t size) {
-  base::File f(path, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-  if (!f.IsValid()) {
-    LOG(ERROR) << "Failed to open file to resize '" << path.value()
-               << "': " << base::File::ErrorToString(f.error_details());
-    return false;
-  }
-  if (!f.SetLength(size)) {
-    PLOG(ERROR) << "Failed to set length (" << size << ") for " << path.value();
-    return false;
-  }
-  return true;
+  return ResizeFile(path, size) && SetFilePermissions(path, kDlcFilePerms);
 }
 
 bool CopyAndResizeFile(const base::FilePath& from,

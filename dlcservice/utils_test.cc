@@ -4,11 +4,17 @@
 
 #include "dlcservice/utils.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <string>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/file_utils.h>
 #include <gtest/gtest.h>
 
 namespace dlcservice {
@@ -27,6 +33,15 @@ class FixtureUtilsTest : public testing::Test {
     int actual_perms = -1;
     EXPECT_TRUE(base::GetPosixFilePermissions(path, &actual_perms));
     EXPECT_EQ(actual_perms, expected_perms);
+  }
+
+  bool IsFileSparse(const base::FilePath& path) {
+    base::ScopedFD fd(brillo::OpenSafely(path, O_RDONLY, 0));
+    EXPECT_TRUE(fd.is_valid());
+
+    struct stat stat;
+    EXPECT_EQ(0, fstat(fd.get(), &stat));
+    return stat.st_blksize * stat.st_blocks < stat.st_size;
   }
 
   base::ScopedTempDir scoped_temp_dir_;
@@ -73,12 +88,25 @@ TEST_F(FixtureUtilsTest, CreateDir) {
   CheckPerms(path, kDlcDirectoryPerms);
 }
 
-TEST_F(FixtureUtilsTest, CreateFile) {
+TEST_F(FixtureUtilsTest, CreateSparseFile) {
   auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
-  EXPECT_FALSE(base::PathExists(path));
-  EXPECT_TRUE(CreateFile(path, 0));
-  EXPECT_TRUE(base::PathExists(path));
-  CheckPerms(path, kDlcFilePerms);
+  base::File file(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  EXPECT_TRUE(file.IsValid());
+  EXPECT_TRUE(file.SetLength(4096 * 1024));
+  EXPECT_TRUE(IsFileSparse(path));
+}
+
+TEST_F(FixtureUtilsTest, CreateFile) {
+  for (auto&& size : {0, 1, 4096, 4096 * 1024}) {
+    auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
+    EXPECT_FALSE(base::PathExists(path));
+    EXPECT_TRUE(CreateFile(path, size));
+    EXPECT_TRUE(base::PathExists(path));
+    CheckPerms(path, kDlcFilePerms);
+    LOG(ERROR) << size;
+    EXPECT_FALSE(IsFileSparse(path));
+    EXPECT_TRUE(base::DeleteFile(path, true));
+  }
 }
 
 TEST_F(FixtureUtilsTest, ResizeFile) {
@@ -87,11 +115,13 @@ TEST_F(FixtureUtilsTest, ResizeFile) {
   EXPECT_TRUE(CreateFile(path, 0));
   EXPECT_TRUE(base::GetFileSize(path, &size));
   EXPECT_EQ(0, size);
+  EXPECT_FALSE(IsFileSparse(path));
 
   EXPECT_TRUE(ResizeFile(path, 1));
 
   EXPECT_TRUE(base::GetFileSize(path, &size));
   EXPECT_EQ(1, size);
+  EXPECT_FALSE(IsFileSparse(path));
 }
 
 TEST_F(FixtureUtilsTest, CopyAndResizeFile) {
