@@ -1775,6 +1775,9 @@ HELP_gesture_prop='
   gesture properties D-Bus service" flag must be enabled for this command to
   work.
 
+  For more details, see:
+  https://chromium.googlesource.com/chromiumos/platform/gestures/+/master/docs/gesture_properties.md
+
   Subcommands:
     devices, devs:
       List the devices managed by the gestures library, with their numeric IDs.
