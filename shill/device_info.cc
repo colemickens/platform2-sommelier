@@ -142,10 +142,11 @@ const char* const kIgnoredDeviceNamePrefixes[] = {
 // annotated in the kernel source tree via MODULE_ALIAS_RTNL_LINK() macros.
 const char* const kIgnoredDeviceKinds[] = {
     "ifb",    // v5.4, drivers/net/ifb.c:289
-    "rmnet",  // v5.4, drivers/net/ethernet/qualcomm/rmnet/rmnet_config.c:369
 };
-
+// v5.4, drivers/net/veth.c:1393
 constexpr char kKindVeth[] = "veth";
+// v5.4, drivers/net/ethernet/qualcomm/rmnet/rmnet_config.c:369
+constexpr char kKindRmnet[] = "rmnet";
 
 // Modem drivers that we support.
 const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
@@ -308,17 +309,15 @@ Technology DeviceInfo::GetDeviceTechnology(const string& iface_name,
                                            const base::Optional<string>& kind) {
   int arp_type = GetDeviceArpType(iface_name);
 
+  if (kind.has_value()) {
+    SLOG(this, 2) << StringPrintf("%s: device is kind '%s'", iface_name.c_str(),
+                                  kind.value().c_str());
+  }
+
   if (IsGuestDevice(iface_name)) {
     SLOG(this, 2) << StringPrintf("%s: device is a guest device",
                                   iface_name.c_str());
     return Technology::kGuestInterface;
-  }
-
-  string contents;
-  if (!GetDeviceInfoContents(iface_name, kInterfaceUevent, &contents)) {
-    LOG(INFO) << StringPrintf("%s: device %s has no uevent file", __func__,
-                              iface_name.c_str());
-    return Technology::kUnknown;
   }
 
   if (kind.has_value()) {
@@ -342,6 +341,26 @@ Technology DeviceInfo::GetDeviceTechnology(const string& iface_name,
     }
   }
 
+  // No point delaying veth devices just because they don't have a device
+  // symlink. Treat it as Ethernet directly.
+  if (kind.has_value() && kind.value() == kKindVeth) {
+    SLOG(this, 2) << __func__ << ": device " << iface_name << " is kind veth";
+    return Technology::kEthernet;
+  }
+
+  // 'rmnet' is Qualcomm's data-path cellular netdevice.
+  if (kind.has_value() && kind.value() == kKindRmnet) {
+    SLOG(this, 2) << __func__ << ": device " << iface_name << " is kind rmnet";
+    return Technology::kCellular;
+  }
+
+  string contents;
+  if (!GetDeviceInfoContents(iface_name, kInterfaceUevent, &contents)) {
+    LOG(INFO) << StringPrintf("%s: device %s has no uevent file", __func__,
+                              iface_name.c_str());
+    return Technology::kUnknown;
+  }
+
   // If the "uevent" file contains the string "DEVTYPE=wlan\n" at the
   // start of the file or after a newline, we can safely assume this
   // is a wifi device.
@@ -362,13 +381,6 @@ Technology DeviceInfo::GetDeviceTechnology(const string& iface_name,
   if (contents.find(kInterfaceUeventBridgeSignature) != string::npos) {
     SLOG(this, 2) << __func__ << ": device " << iface_name
                   << " has bridge signature in uevent file";
-    return Technology::kEthernet;
-  }
-
-  // No point delaying veth devices just because they don't have a device
-  // symlink. Treat it as Ethernet directly.
-  if (kind.has_value() && kind.value() == kKindVeth) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name << " is kind veth";
     return Technology::kEthernet;
   }
 
@@ -400,6 +412,13 @@ Technology DeviceInfo::GetDeviceTechnology(const string& iface_name,
       SLOG(this, 2) << StringPrintf("%s: device %s is a ppp device", __func__,
                                     iface_name.c_str());
       return Technology::kPPP;
+    }
+    // Devices like Qualcomm's IPA (IP Accelerator) should not be managed by
+    // Shill.
+    if (arp_type == ARPHRD_RAWIP) {
+      SLOG(this, 2) << StringPrintf("%s: device %s is a raw IP device",
+                                    __func__, iface_name.c_str());
+      return Technology::kUnknown;
     }
     string tun_flags_str;
     int tun_flags = 0;

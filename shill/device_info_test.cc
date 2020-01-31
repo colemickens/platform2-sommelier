@@ -1383,6 +1383,17 @@ TEST_F(DeviceInfoTechnologyTest, Ifb) {
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology("ifb"));
 }
 
+TEST_F(DeviceInfoTechnologyTest, RmnetData) {
+  test_device_name_ = "rmnet_data0";
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology("rmnet"));
+}
+
+TEST_F(DeviceInfoTechnologyTest, RmnetIPA) {
+  test_device_name_ = "rmnet_ipa0";
+  CreateInfoFile("type", base::NumberToString(ARPHRD_RAWIP));
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+}
+
 TEST_F(DeviceInfoTechnologyTest, Ethernet) {
   CreateInfoSymLink("device/driver", "xxx");
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
