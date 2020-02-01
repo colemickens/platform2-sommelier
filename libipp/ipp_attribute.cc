@@ -865,11 +865,11 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
       if (e.second == name)
         return nullptr;
     }
-    if (unknown_attributes.empty()) {
+    if (unknown_names.empty()) {
       an = static_cast<AttrName>(std::numeric_limits<uint16_t>::max());
     } else {
       an = static_cast<AttrName>(
-          static_cast<uint16_t>(unknown_attributes.begin()->first) - 1);
+          static_cast<uint16_t>(unknown_names.begin()->first) - 1);
     }
     unknown_names[an] = name;
   } else if (GetAttribute(an) != nullptr) {
