@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/guid.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -81,9 +82,7 @@ void Service::SendReadRequest(const std::string& id,
   writer.AppendInt64(size);
   writer.AppendFileDescriptor(fd.get());
   request_handler_proxy_->CallMethod(
-      &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      dbus::ObjectProxy::EmptyResponseCallback());
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, base::DoNothing());
 }
 
 void Service::SendIdReleased(const std::string& id) {
@@ -95,9 +94,7 @@ void Service::SendIdReleased(const std::string& id) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(id);
   request_handler_proxy_->CallMethod(
-      &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      dbus::ObjectProxy::EmptyResponseCallback());
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, base::DoNothing());
 }
 
 void Service::OpenFile(dbus::MethodCall* method_call,
