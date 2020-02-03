@@ -112,8 +112,11 @@ void DisplayTimezoneInfo(
     const chromeos::cros_healthd::mojom::TimezoneInfoPtr& timezone) {
   DCHECK(!timezone.is_null());
 
+  // Replace commas in POSIX timezone before printing CSVs.
+  std::string csv_posix_timezone;
+  base::ReplaceChars(timezone->posix, ",", " ", &csv_posix_timezone);
   printf("posix_timezone,timezone_region\n");
-  printf("%s,%s\n", timezone->posix.c_str(), timezone->region.c_str());
+  printf("%s,%s\n", csv_posix_timezone.c_str(), timezone->region.c_str());
 }
 
 // Displays the retrieved telemetry information to the console.
