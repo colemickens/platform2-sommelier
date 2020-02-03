@@ -225,10 +225,13 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
 
     // Set the hint that we don't support interactivity. I haven't seen a case
     // of this yet, but it seems like a good idea to set it if it does occur.
+    // Set locale with UTF-8 to support unicode in control files.  This is
+    // what 'pkcon get-details-local <file>' does.
     dbus::MethodCall sethints_call(kPackageKitTransactionInterface,
                                    kSetHintsMethod);
     dbus::MessageWriter sethints_writer(&sethints_call);
-    sethints_writer.AppendArrayOfStrings({"interactive=false"});
+    sethints_writer.AppendArrayOfStrings(
+        {"locale=en_US.UTF-8", "interactive=false"});
     dbus_response = transaction_proxy_->CallMethodAndBlockWithErrorDetails(
         &sethints_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     if (!dbus_response) {
