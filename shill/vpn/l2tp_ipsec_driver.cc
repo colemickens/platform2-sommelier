@@ -75,6 +75,8 @@ const char kL2TPIPSecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
 const char kL2TPIPSecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 
+constexpr int kConnectTimeoutSeconds = 60;
+
 Service::ConnectFailure ExitStatusToFailure(int status) {
   switch (status) {
     case vpn_manager::kServiceErrorNoError:
@@ -157,7 +159,7 @@ bool L2TPIPSecDriver::ClaimInterface(const string& link_name,
 }
 
 void L2TPIPSecDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
-  StartConnectTimeout(kDefaultConnectTimeoutSeconds);
+  StartConnectTimeout(kConnectTimeoutSeconds);
   set_service(service);
   service->SetState(Service::kStateConfiguring);
   if (!SpawnL2TPIPSecVPN(error)) {

@@ -71,8 +71,6 @@ class VPNDriver {
     int flags;
   };
 
-  static const int kDefaultConnectTimeoutSeconds;
-
   VPNDriver(Manager* manager,
             ProcessManager* process_manager,
             const Property* properties,

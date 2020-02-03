@@ -192,7 +192,7 @@ class OpenVPNDriverTest
   bool IsConnectTimeoutStarted() { return driver_->IsConnectTimeoutStarted(); }
 
   static int GetDefaultConnectTimeoutSeconds() {
-    return OpenVPNDriver::kDefaultConnectTimeoutSeconds;
+    return OpenVPNDriver::kConnectTimeoutSeconds;
   }
 
   static int GetReconnectOfflineTimeoutSeconds() {

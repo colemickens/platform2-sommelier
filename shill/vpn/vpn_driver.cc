@@ -31,9 +31,6 @@ static string ObjectID(VPNDriver* v) {
 }
 }  // namespace Logging
 
-// static
-const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
-
 VPNDriver::VPNDriver(Manager* manager,
                      ProcessManager* process_manager,
                      const Property* properties,

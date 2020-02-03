@@ -148,6 +148,7 @@ const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
 const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
     RUNDIR "/openvpn_config";
 
+const int OpenVPNDriver::kConnectTimeoutSeconds = 2 * 60;
 const int OpenVPNDriver::kReconnectOfflineTimeoutSeconds = 2 * 60;
 const int OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds = 20;
 
@@ -632,7 +633,7 @@ bool OpenVPNDriver::SplitPortFromHost(const string& host,
 }
 
 void OpenVPNDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
-  StartConnectTimeout(kDefaultConnectTimeoutSeconds);
+  StartConnectTimeout(kConnectTimeoutSeconds);
   set_service(service);
   service->SetState(Service::kStateConfiguring);
   if (!manager()->device_info()->CreateTunnelInterface(&tunnel_interface_)) {
@@ -1018,7 +1019,7 @@ int OpenVPNDriver::GetReconnectTimeoutSeconds(ReconnectReason reason) {
     default:
       break;
   }
-  return kDefaultConnectTimeoutSeconds;
+  return kConnectTimeoutSeconds;
 }
 
 string OpenVPNDriver::GetProviderType() const {

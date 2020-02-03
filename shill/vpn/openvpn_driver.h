@@ -157,6 +157,7 @@ class OpenVPNDriver : public VPNDriver,
 
   static const char kDefaultOpenVPNConfigurationDirectory[];
 
+  static const int kConnectTimeoutSeconds;
   static const int kReconnectOfflineTimeoutSeconds;
   static const int kReconnectTLSErrorTimeoutSeconds;
 
