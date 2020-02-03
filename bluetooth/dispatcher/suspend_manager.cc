@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
@@ -196,8 +197,7 @@ void SuspendManager::OnSuspendImminentHandled(dbus::Response* response) {
 
   VLOG(1) << "Calling HandleSuspendReadiness to powerd";
   power_manager_dbus_proxy_->CallMethod(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      dbus::ObjectProxy::EmptyResponseCallback());
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, base::DoNothing());
 }
 
 void SuspendManager::OnSuspendDoneHandled(dbus::Response* response) {
