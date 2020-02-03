@@ -85,7 +85,7 @@ class TpmInitializerImpl : public TpmInitializer {
                                   AuthDelegate* owner_delegate);
 
   // Creates delegate with the default label and store the result in |delegate|.
-  // Returns |true| iff the operation suceeds.
+  // Returns |true| iff the operation succeeds.
   bool CreateDelegateWithDefaultLabel(AuthDelegate* delegate);
 
   // Creates a TPM owner delegate for future use.
