@@ -11,6 +11,7 @@
 // killed by cryptohome when the Guest session exits.
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -53,9 +54,15 @@ void ForkAndCrash(const std::string& message) {
   } else if (child_pid == 0) {
     // Child process: crash with |message|.
     LOG(FATAL) << message;
+  } else {
+    // |child_pid| > 0
+    // Parent process: reap the child process in a best-effort way and return
+    // normally.
+    // Reaping is not absolutely necessary because the parent process is also
+    // short-lived. As soon as this process exits the child process would get
+    // reparented to init and init would reap it. Still, reap for completeness.
+    waitpid(child_pid, nullptr, 0);
   }
-  // |child_pid| > 0
-  // Parent process: return normally.
 }
 
 void TearDown(cryptohome::MountHelper* mounter) {
