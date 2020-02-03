@@ -173,8 +173,7 @@ bool SshfsHelper::PrepareWorkingDirectory(
           return false;
         }
 
-        base::FilePath dst =
-            base::FilePath(working_dir).Append(written.filename);
+        base::FilePath dst = working_dir.Append(written.filename);
         int size = decoded.size();
         if (platform()->WriteFile(dst.value(), decoded.c_str(), size) != size) {
           PLOG(ERROR) << "Cannot write file " << quote(dst);

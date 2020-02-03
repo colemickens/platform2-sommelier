@@ -163,12 +163,10 @@ std::string FUSEMountManager::SuggestMountPath(
 
   for (const auto& helper : helpers_) {
     if (helper->CanMount(uri))
-      return base::FilePath(mount_root())
-          .Append(helper->GetTargetSuffix(uri))
-          .value();
+      return mount_root().Append(helper->GetTargetSuffix(uri)).value();
   }
   base::FilePath base_name = base::FilePath(source).BaseName();
-  return base::FilePath(mount_root()).Append(base_name).value();
+  return mount_root().Append(base_name).value();
 }
 
 void FUSEMountManager::RegisterHelper(std::unique_ptr<FUSEHelper> helper) {

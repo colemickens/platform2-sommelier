@@ -186,7 +186,7 @@ std::string ArchiveManager::SuggestMountPath(
     const std::string& source_path) const {
   // Use the archive name to name the mount directory.
   base::FilePath base_name = base::FilePath(source_path).BaseName();
-  return base::FilePath(mount_root()).Append(base_name).value();
+  return mount_root().Append(base_name).value();
 }
 
 void ArchiveManager::RegisterDefaultFileExtensions() {

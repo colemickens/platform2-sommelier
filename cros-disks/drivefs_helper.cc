@@ -76,16 +76,14 @@ bool EnsureOwnership(const Platform& platform,
                << files_gid;
     return false;
   }
-  base::FileEnumerator dirs(base::FilePath(path), false,
-                            base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator dirs(path, false, base::FileEnumerator::DIRECTORIES);
   for (auto dir_path = dirs.Next(); !dir_path.empty(); dir_path = dirs.Next()) {
     if (!EnsureOwnership(platform, dir_path, mounter_uid, files_gid,
                          old_mounter_uid, depth + 1)) {
       return false;
     }
   }
-  base::FileEnumerator files(base::FilePath(path), false,
-                             base::FileEnumerator::FILES);
+  base::FileEnumerator files(path, false, base::FileEnumerator::FILES);
   for (auto file_path = files.Next(); !file_path.empty();
        file_path = files.Next()) {
     if (!platform.SetOwnership(file_path.value(), mounter_uid, files_gid)) {
@@ -247,11 +245,11 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
     LOG(ERROR) << "Invalid user configuration.";
     return false;
   }
-  std::string path = dir.value();
 
+  std::string path = dir.value();
   if (platform()->DirectoryExists(path)) {
-    return EnsureOwnership(*platform(), base::FilePath(path), mounter_uid,
-                           files_gid, old_mounter_uid);
+    return EnsureOwnership(*platform(), dir, mounter_uid, files_gid,
+                           old_mounter_uid);
   }
   if (!platform()->CreateDirectory(path)) {
     LOG(ERROR) << "Cannot create datadir " << quote(path);
@@ -277,8 +275,8 @@ bool DrivefsHelper::CheckMyFilesPermissions(const base::FilePath& dir) const {
     LOG(ERROR) << "Invalid user configuration.";
     return false;
   }
-  std::string path = dir.value();
 
+  std::string path = dir.value();
   if (!platform()->DirectoryExists(path)) {
     LOG(ERROR) << "My files directory " << quote(path) << " does not exist";
     return false;
