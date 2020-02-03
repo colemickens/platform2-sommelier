@@ -133,8 +133,7 @@ TEST_F(BatteryUtilsTest, FetchBatteryInfo) {
 
   // Set the mock power manager response.
   EXPECT_CALL(*mock_power_manager_proxy(),
-              MIGRATE_MockCallMethodAndBlock(
-                  _, kPowerManagerDBusTimeout.InMilliseconds()))
+              CallMethodAndBlock(_, kPowerManagerDBusTimeout.InMilliseconds()))
       .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> power_manager_response =
             dbus::Response::CreateEmpty();
@@ -181,8 +180,7 @@ TEST_F(BatteryUtilsTest, FetchBatteryInfo) {
 // Test that we handle a malformed power_manager D-Bus response.
 TEST_F(BatteryUtilsTest, MalformedPowerManagerDbusResponse) {
   EXPECT_CALL(*mock_power_manager_proxy(),
-              MIGRATE_MockCallMethodAndBlock(
-                  _, kPowerManagerDBusTimeout.InMilliseconds()))
+              CallMethodAndBlock(_, kPowerManagerDBusTimeout.InMilliseconds()))
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
 
@@ -196,8 +194,7 @@ TEST_F(BatteryUtilsTest, EmptyProtoPowerManagerDbusResponse) {
 
   // Set the mock power manager response.
   EXPECT_CALL(*mock_power_manager_proxy(),
-              MIGRATE_MockCallMethodAndBlock(
-                  _, kPowerManagerDBusTimeout.InMilliseconds()))
+              CallMethodAndBlock(_, kPowerManagerDBusTimeout.InMilliseconds()))
       .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> power_manager_response =
             dbus::Response::CreateEmpty();
@@ -247,8 +244,7 @@ TEST_F(BatteryUtilsTest, SmartMetricRetrievalFailure) {
 
   // Set the mock power manager response.
   EXPECT_CALL(*mock_power_manager_proxy(),
-              MIGRATE_MockCallMethodAndBlock(
-                  _, kPowerManagerDBusTimeout.InMilliseconds()))
+              CallMethodAndBlock(_, kPowerManagerDBusTimeout.InMilliseconds()))
       .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> power_manager_response =
             dbus::Response::CreateEmpty();
@@ -290,8 +286,7 @@ TEST_F(BatteryUtilsTest, NoSmartBattery) {
   // Set the mock power manager response.
   power_manager::PowerSupplyProperties power_supply_proto;
   EXPECT_CALL(*mock_power_manager_proxy(),
-              MIGRATE_MockCallMethodAndBlock(
-                  _, kPowerManagerDBusTimeout.InMilliseconds()))
+              CallMethodAndBlock(_, kPowerManagerDBusTimeout.InMilliseconds()))
       .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> power_manager_response =
             dbus::Response::CreateEmpty();
