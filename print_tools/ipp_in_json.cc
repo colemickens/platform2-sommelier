@@ -122,12 +122,13 @@ std::unique_ptr<base::DictionaryValue> SaveAsJson(const ipp::Package* pkg) {
   std::vector<const ipp::Group*> groups = pkg->GetAllGroups();
 
   for (auto g : groups) {
+    const size_t size = g->GetSize();
+    if (size == 0)
+      continue;
     if (g->IsASet()) {
       auto arr = std::make_unique<base::ListValue>();
-      const unsigned size = g->GetSize();
-      for (unsigned i = 0; i < size; ++i)
+      for (size_t i = 0; i < size; ++i)
         arr->Append(SaveAsJson(g->GetCollection(i)));
-
       obj->Set(ToString(g->GetName()), std::move(arr));
     } else {
       obj->Set(ToString(g->GetName()), SaveAsJson(g->GetCollection()));
