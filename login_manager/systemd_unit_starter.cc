@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind_helpers.h>
 #include <base/callback.h>
 #include <base/logging.h>
 #include <dbus/message.h>
@@ -90,9 +91,9 @@ std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
       break;
     case TriggerMode::ASYNC:
-      systemd_dbus_proxy_->CallMethod(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          dbus::ObjectProxy::EmptyResponseCallback());
+      systemd_dbus_proxy_->CallMethod(&method_call,
+                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                                      base::DoNothing());
       break;
   }
 

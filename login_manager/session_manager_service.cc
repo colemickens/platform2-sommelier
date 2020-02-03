@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -246,8 +247,7 @@ void SessionManagerService::LockScreen() {
   dbus::MethodCall call(chromeos::kScreenLockServiceInterface,
                         chromeos::kScreenLockServiceShowLockScreenMethod);
   screen_lock_dbus_proxy_->CallMethod(
-      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      dbus::ObjectProxy::EmptyResponseCallback());
+      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, base::DoNothing());
 }
 
 void SessionManagerService::RestartDevice(const std::string& description) {
