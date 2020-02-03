@@ -72,8 +72,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         IPv4AddressToString(provider.ConsumeIntegral<uint32_t>());
     Subnet subnet(provider.ConsumeIntegral<int32_t>(),
                   provider.ConsumeIntegralInRange<int32_t>(0, 31),
-                  // TODO(crbug.com/909719): replace with base::DoNothing;
-                  base::Bind([]() {}));
+                  base::DoNothing());
     std::unique_ptr<SubnetAddress> subnet_addr = subnet.AllocateAtOffset(0);
     MacAddress mac;
     std::vector<uint8_t> bytes = provider.ConsumeBytes<uint8_t>(mac.size());
