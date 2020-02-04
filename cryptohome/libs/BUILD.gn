@@ -184,7 +184,7 @@ static_library("libcrostpm") {
     "../crypto_error.cc",
     "../firmware_management_parameters.cc",
     "../install_attributes.cc",
-    "../le_credential_manager.cc",
+    "../le_credential_manager_impl.cc",
     "../lockbox.cc",
     "../persistent_lookup_table.cc",
     "../pkcs11_init.cc",

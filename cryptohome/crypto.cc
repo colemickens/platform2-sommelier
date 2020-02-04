@@ -30,6 +30,7 @@ extern "C" {
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm_auth_block.h"
 #include "cryptohome/tpm_init.h"
@@ -167,7 +168,7 @@ bool Crypto::Init(TpmInit* tpm_init) {
     tpm_init_->SetupTpm(true);
     if (tpm_->GetLECredentialBackend() &&
         tpm_->GetLECredentialBackend()->IsSupported()) {
-      le_manager_ = std::make_unique<LECredentialManager>(
+      le_manager_ = std::make_unique<LECredentialManagerImpl>(
           tpm_->GetLECredentialBackend(), base::FilePath(kSignInHashTreeDir));
     }
   }

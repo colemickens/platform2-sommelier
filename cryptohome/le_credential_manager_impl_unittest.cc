@@ -14,7 +14,7 @@
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/fake_le_credential_backend.h"
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/tpm.h"
 
 namespace {
@@ -46,9 +46,9 @@ constexpr char kCredDirName[] = "low_entropy_creds";
 
 namespace cryptohome {
 
-class LECredentialManagerUnitTest : public testing::Test {
+class LECredentialManagerImplUnitTest : public testing::Test {
  public:
-  LECredentialManagerUnitTest() {
+  LECredentialManagerImplUnitTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     InitLEManager();
   }
@@ -59,8 +59,8 @@ class LECredentialManagerUnitTest : public testing::Test {
   }
 
   void InitLEManager() {
-    le_mgr_ =
-        std::make_unique<LECredentialManager>(&fake_backend_, CredDirPath());
+    le_mgr_ = std::make_unique<LECredentialManagerImpl>(&fake_backend_,
+                                                        CredDirPath());
   }
 
   // Helper function to create a credential & then lock it out.
@@ -151,7 +151,7 @@ class LECredentialManagerUnitTest : public testing::Test {
 // Basic check: Insert 2 labels, then verify we can retrieve them correctly.
 // Here, we don't bother with specifying a delay schedule, we just want
 // to check whether a simple Insert and Check works.
-TEST_F(LECredentialManagerUnitTest, BasicInsertAndCheck) {
+TEST_F(LECredentialManagerImplUnitTest, BasicInsertAndCheck) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   uint64_t label1;
@@ -191,7 +191,7 @@ TEST_F(LECredentialManagerUnitTest, BasicInsertAndCheck) {
 // Insert a label and verify that authentication works. Simulate the PCR
 // change with the right value and check that authentication still works.
 // Change PCR with wrong value and check that authentication fails.
-TEST_F(LECredentialManagerUnitTest, CheckPcrAuth) {
+TEST_F(LECredentialManagerImplUnitTest, CheckPcrAuth) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria valid_pcr_criteria;
   ValidPcrValue value;
@@ -237,7 +237,7 @@ TEST_F(LECredentialManagerUnitTest, CheckPcrAuth) {
 // Verify invalid secrets and getting locked out due to too many attempts.
 // TODO(pmalani): Update this once we have started modelling the delay schedule
 // correctly.
-TEST_F(LECredentialManagerUnitTest, LockedOutSecret) {
+TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
   uint64_t label1 = CreateLockedOutCredential();
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
                                 std::end(kLeSecret1Array));
@@ -259,7 +259,7 @@ TEST_F(LECredentialManagerUnitTest, LockedOutSecret) {
 
 // Insert a label. Then ensure that a CheckCredential on another non-existent
 // label fails.
-TEST_F(LECredentialManagerUnitTest, InvalidLabelCheck) {
+TEST_F(LECredentialManagerImplUnitTest, InvalidLabelCheck) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   uint64_t label1;
@@ -290,7 +290,7 @@ TEST_F(LECredentialManagerUnitTest, InvalidLabelCheck) {
 
 // Insert a credential and then remove it.
 // Check that a subsequent CheckCredential on that label fails.
-TEST_F(LECredentialManagerUnitTest, BasicInsertRemove) {
+TEST_F(LECredentialManagerImplUnitTest, BasicInsertRemove) {
   uint64_t label1;
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
@@ -315,7 +315,7 @@ TEST_F(LECredentialManagerUnitTest, BasicInsertRemove) {
 }
 
 // Check that a reset unlocks a locked out credential.
-TEST_F(LECredentialManagerUnitTest, ResetSecret) {
+TEST_F(LECredentialManagerImplUnitTest, ResetSecret) {
   uint64_t label1 = CreateLockedOutCredential();
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
                                 std::end(kLeSecret1Array));
@@ -343,7 +343,7 @@ TEST_F(LECredentialManagerUnitTest, ResetSecret) {
 }
 
 // Check that an invalid reset doesn't unlock a locked credential.
-TEST_F(LECredentialManagerUnitTest, ResetSecretNegative) {
+TEST_F(LECredentialManagerImplUnitTest, ResetSecretNegative) {
   uint64_t label1 = CreateLockedOutCredential();
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
                                 std::end(kLeSecret1Array));
@@ -368,7 +368,7 @@ TEST_F(LECredentialManagerUnitTest, ResetSecretNegative) {
 // Corrupt the hash cache, and see if subsequent LE operations succeed.
 // The two cases being tested are removal after corruption, and insertion
 // after corruption.
-TEST_F(LECredentialManagerUnitTest, InsertRemoveCorruptHashCache) {
+TEST_F(LECredentialManagerImplUnitTest, InsertRemoveCorruptHashCache) {
   uint64_t label1;
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
@@ -421,7 +421,7 @@ TEST_F(LECredentialManagerUnitTest, InsertRemoveCorruptHashCache) {
 // Initialize the LECredManager and take a snapshot after 1 operation,
 // then perform an insert. Then, restore the snapshot (in effect "losing" the
 // last operation). The log functionality should restore the "lost" state.
-TEST_F(LECredentialManagerUnitTest, LogReplayLostInsert) {
+TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
@@ -465,7 +465,7 @@ TEST_F(LECredentialManagerUnitTest, LogReplayLostInsert) {
 // then perform an insert and remove. Then, restore the snapshot
 // (in effect "losing" the last 2 operations). The log functionality
 // should restore the "lost" state.
-TEST_F(LECredentialManagerUnitTest, LogReplayLostInsertRemove) {
+TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsertRemove) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
@@ -508,7 +508,7 @@ TEST_F(LECredentialManagerUnitTest, LogReplayLostInsertRemove) {
 // then perform |kLogSize| checks. Then, restore the snapshot (in effect
 // "losing" the last |kLogSize| operations). The log functionality should
 // restore the "lost" state.
-TEST_F(LECredentialManagerUnitTest, LogReplayLostChecks) {
+TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
@@ -560,7 +560,7 @@ TEST_F(LECredentialManagerUnitTest, LogReplayLostChecks) {
 // then perform |kLogSize| inserts. Then, restore the snapshot (in effect
 // "losing" the last |kLogSize| operations). The log functionality should
 // restore the "lost" state.
-TEST_F(LECredentialManagerUnitTest, LogReplayLostInserts) {
+TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInserts) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
@@ -620,7 +620,7 @@ TEST_F(LECredentialManagerUnitTest, LogReplayLostInserts) {
 // |kLogSize| credentials. Then, restore the snapshot (in effect "losing" the
 // last |kLogSize| operations). The log functionality should restore the "lost"
 // state.
-TEST_F(LECredentialManagerUnitTest, LogReplayLostRemoves) {
+TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
@@ -694,7 +694,7 @@ TEST_F(LECredentialManagerUnitTest, LogReplayLostRemoves) {
 // Verify behaviour when more operations are lost than the log can save.
 // NOTE: The number of lost operations should always be greater than
 // the log size of FakeLECredentialBackend.
-TEST_F(LECredentialManagerUnitTest, FailedLogReplayTooManyOps) {
+TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
@@ -749,7 +749,7 @@ TEST_F(LECredentialManagerUnitTest, FailedLogReplayTooManyOps) {
 }
 
 // Verify behaviour when there is an unsalvageable disk corruption.
-TEST_F(LECredentialManagerUnitTest, FailedSyncDiskCorrupted) {
+TEST_F(LECredentialManagerImplUnitTest, FailedSyncDiskCorrupted) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria stub_pcr_criteria;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),

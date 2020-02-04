@@ -16,16 +16,6 @@ namespace cryptohome {
 
 class MockLECredentialManager : public LECredentialManager {
  public:
-  MockLECredentialManager(LECredentialBackend* le_backend,
-                          const base::FilePath& le_basedir);
-  ~MockLECredentialManager();
-  MOCK_METHOD(LECredError,
-              CheckCredential,
-              (const uint64_t&,
-               const brillo::SecureBlob&,
-               brillo::SecureBlob*,
-               brillo::SecureBlob*),
-              (override));
   MOCK_METHOD(LECredError,
               InsertCredential,
               (const brillo::SecureBlob&,
@@ -35,9 +25,28 @@ class MockLECredentialManager : public LECredentialManager {
                const ValidPcrCriteria&,
                uint64_t*),
               (override));
+
+  MOCK_METHOD(LECredError,
+              CheckCredential,
+              (const uint64_t&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*),
+              (override));
+
+  MOCK_METHOD(LECredError,
+              ResetCredential,
+              (const uint64_t& label,
+               const brillo::SecureBlob& reset_secret),
+              (override));
+
   MOCK_METHOD(LECredError, RemoveCredential, (const uint64_t&), (override));
+
   MOCK_METHOD(bool, NeedsPcrBinding, (const uint64_t&), (override));
+
+  MOCK_METHOD(int, GetWrongAuthAttempts, (const uint64_t& label), (override));
 };
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_MOCK_LE_CREDENTIAL_MANAGER_H_

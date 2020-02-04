@@ -1,8 +1,8 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2020 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/le_credential_manager_impl.h"
 
 #include <fcntl.h>
 
@@ -16,18 +16,16 @@
 
 namespace cryptohome {
 
-LECredentialManager::LECredentialManager(LECredentialBackend* le_backend,
-                                         const base::FilePath& le_basedir)
-    : is_locked_(false), le_tpm_backend_(le_backend),
-      basedir_(le_basedir) {
+LECredentialManagerImpl::LECredentialManagerImpl(
+    LECredentialBackend* le_backend, const base::FilePath& le_basedir)
+    : is_locked_(false), le_tpm_backend_(le_backend), basedir_(le_basedir) {
   CHECK(le_tpm_backend_);
 
   // Check if hash tree already exists.
   bool new_hash_tree = !base::PathExists(le_basedir);
 
-  hash_tree_ =
-      std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel,
-                                       le_basedir);
+  hash_tree_ = std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel,
+                                                le_basedir);
 
   // Reset the root hash in the TPM to its initial value.
   if (new_hash_tree) {
@@ -36,7 +34,7 @@ LECredentialManager::LECredentialManager(LECredentialBackend* le_backend,
   }
 }
 
-LECredError LECredentialManager::InsertCredential(
+LECredError LECredentialManagerImpl::InsertCredential(
     const brillo::SecureBlob& le_secret,
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
@@ -106,7 +104,7 @@ LECredError LECredentialManager::InsertCredential(
   return LE_CRED_SUCCESS;
 }
 
-LECredError LECredentialManager::CheckCredential(
+LECredError LECredentialManagerImpl::CheckCredential(
     const uint64_t& label,
     const brillo::SecureBlob& le_secret,
     brillo::SecureBlob* he_secret,
@@ -114,13 +112,12 @@ LECredError LECredentialManager::CheckCredential(
   return CheckSecret(label, le_secret, he_secret, reset_secret, true);
 }
 
-LECredError LECredentialManager::ResetCredential(
-    const uint64_t& label,
-    const brillo::SecureBlob& reset_secret) {
+LECredError LECredentialManagerImpl::ResetCredential(
+    const uint64_t& label, const brillo::SecureBlob& reset_secret) {
   return CheckSecret(label, reset_secret, nullptr, nullptr, false);
 }
 
-LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
+LECredError LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
   if (!Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
@@ -160,11 +157,12 @@ LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
   return LE_CRED_SUCCESS;
 }
 
-LECredError LECredentialManager::CheckSecret(const uint64_t& label,
-                                             const brillo::SecureBlob& secret,
-                                             brillo::SecureBlob* he_secret,
-                                             brillo::SecureBlob* reset_secret,
-                                             bool is_le_secret) {
+LECredError LECredentialManagerImpl::CheckSecret(
+    const uint64_t& label,
+    const brillo::SecureBlob& secret,
+    brillo::SecureBlob* he_secret,
+    brillo::SecureBlob* reset_secret,
+    bool is_le_secret) {
   if (!Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
@@ -230,7 +228,7 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
   return ConvertTpmError(err);
 }
 
-bool LECredentialManager::NeedsPcrBinding(const uint64_t& label) {
+bool LECredentialManagerImpl::NeedsPcrBinding(const uint64_t& label) {
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
 
   std::vector<uint8_t> orig_cred, orig_mac;
@@ -245,7 +243,7 @@ bool LECredentialManager::NeedsPcrBinding(const uint64_t& label) {
   return le_tpm_backend_->NeedsPCRBinding(orig_cred);
 }
 
-int LECredentialManager::GetWrongAuthAttempts(const uint64_t& label) {
+int LECredentialManagerImpl::GetWrongAuthAttempts(const uint64_t& label) {
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
 
   std::vector<uint8_t> orig_cred, orig_mac;
@@ -259,7 +257,7 @@ int LECredentialManager::GetWrongAuthAttempts(const uint64_t& label) {
   return le_tpm_backend_->GetWrongAuthAttempts(orig_cred);
 }
 
-LECredError LECredentialManager::RetrieveLabelInfo(
+LECredError LECredentialManagerImpl::RetrieveLabelInfo(
     const SignInHashTree::Label& label,
     std::vector<uint8_t>* cred_metadata,
     std::vector<uint8_t>* mac,
@@ -286,7 +284,7 @@ LECredError LECredentialManager::RetrieveLabelInfo(
   return LE_CRED_SUCCESS;
 }
 
-std::vector<std::vector<uint8_t>> LECredentialManager::GetAuxHashes(
+std::vector<std::vector<uint8_t>> LECredentialManagerImpl::GetAuxHashes(
     const SignInHashTree::Label& label) {
   auto aux_labels = hash_tree_->GetAuxiliaryLabels(label);
   std::vector<std::vector<uint8_t>> h_aux;
@@ -312,7 +310,7 @@ std::vector<std::vector<uint8_t>> LECredentialManager::GetAuxHashes(
   return h_aux;
 }
 
-LECredError LECredentialManager::ConvertTpmError(LECredBackendError err) {
+LECredError LECredentialManagerImpl::ConvertTpmError(LECredBackendError err) {
   switch (err) {
     case LE_TPM_SUCCESS:
       return LE_CRED_SUCCESS;
@@ -332,7 +330,7 @@ LECredError LECredentialManager::ConvertTpmError(LECredBackendError err) {
   return LE_CRED_ERROR_HASH_TREE;
 }
 
-bool LECredentialManager::Sync() {
+bool LECredentialManagerImpl::Sync() {
   if (is_locked_) {
     ReportLESyncOutcome(LE_CRED_ERROR_LE_LOCKED);
     return false;
@@ -394,10 +392,9 @@ bool LECredentialManager::Sync() {
   return true;
 }
 
-bool LECredentialManager::ReplayInsert(
-    uint64_t label,
-    const std::vector<uint8_t>& log_root,
-    const std::vector<uint8_t>& mac) {
+bool LECredentialManagerImpl::ReplayInsert(uint64_t label,
+                                           const std::vector<uint8_t>& log_root,
+                                           const std::vector<uint8_t>& mac) {
   // Fill cred_metadata with some random data since LECredentialManager
   // considers empty cred_metadata as a non-existent label.
   std::vector<uint8_t> cred_metadata(mac.size());
@@ -416,8 +413,8 @@ bool LECredentialManager::ReplayInsert(
   return true;
 }
 
-bool LECredentialManager::ReplayCheck(uint64_t label,
-                                      const std::vector<uint8_t>& log_root) {
+bool LECredentialManagerImpl::ReplayCheck(
+    uint64_t label, const std::vector<uint8_t>& log_root) {
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
@@ -460,7 +457,7 @@ bool LECredentialManager::ReplayCheck(uint64_t label,
   return true;
 }
 
-bool LECredentialManager::ReplayResetTree() {
+bool LECredentialManagerImpl::ReplayResetTree() {
   hash_tree_.reset();
   if (!base::DeleteFile(basedir_, true)) {
     PLOG(ERROR) << "Failed to delete disk hash tree during replay.";
@@ -476,7 +473,7 @@ bool LECredentialManager::ReplayResetTree() {
   return true;
 }
 
-bool LECredentialManager::ReplayRemove(uint64_t label) {
+bool LECredentialManagerImpl::ReplayRemove(uint64_t label) {
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
   if (!hash_tree_->RemoveLabel(label_obj)) {
     ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
@@ -488,7 +485,7 @@ bool LECredentialManager::ReplayRemove(uint64_t label) {
   return true;
 }
 
-bool LECredentialManager::ReplayLogEntries(
+bool LECredentialManagerImpl::ReplayLogEntries(
     const std::vector<LELogEntry>& log,
     const std::vector<uint8_t>& disk_root_hash) {
   // The log entries are in reverse chronological order. Because the log entries

@@ -305,8 +305,7 @@ class MountTest
     EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
       .WillRepeatedly(Return(false));
 
-    le_cred_manager_ =
-        new cryptohome::MockLECredentialManager(&le_cred_backend_, kImageDir);
+    le_cred_manager_ = new cryptohome::MockLECredentialManager();
     EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(SecureBlob(HexDecode(kHexHeSecret))),
