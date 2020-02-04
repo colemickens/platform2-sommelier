@@ -757,6 +757,8 @@ void ArcSetup::CreateContainerFilesAndDirectories() {
       {"/sbin/initctl", "start", "--no-wait", "arc-kmsg-logger"}));
 }
 
+// Note: This function must be in sync with arcvm-per-board-features.conf in
+// platform2/arc/vm/scripts/init/.
 void ArcSetup::ApplyPerBoardConfigurations() {
   EXIT_IF(!brillo::MkdirRecursively(
                arc_paths_->oem_mount_directory.Append("etc"), 0755)
