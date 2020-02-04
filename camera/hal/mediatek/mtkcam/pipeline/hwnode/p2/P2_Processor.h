@@ -78,7 +78,7 @@ MBOOL Processor<Init_T, Config_T, Enque_T>::setEnable(MBOOL enable) {
 }
 
 template <typename Init_T, typename Config_T, typename Enque_T>
-MBOOL Processor<Init_T, Config_T, Enque_T>::isEnabled() const {
+MBOOL Processor<Init_T, Config_T, Enque_T>::isEnabled() {
   TRACE_S_FUNC_ENTER(mName);
   std::lock_guard<std::mutex> _lock(mThreadMutex);
   TRACE_S_FUNC_EXIT(mName);

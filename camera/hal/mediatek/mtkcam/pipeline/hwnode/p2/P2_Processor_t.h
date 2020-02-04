@@ -34,7 +34,7 @@ class Processor : public std::enable_shared_from_this<
   virtual ~Processor();
   const char* getName() const;
   MBOOL setEnable(MBOOL enable);
-  MBOOL isEnabled() const;
+  MBOOL isEnabled();
   MBOOL setNeedThread(MBOOL isThreadNeed);
   MVOID setIdleWaitMS(MUINT32 msec);
   MBOOL init(const Init_T& param);
