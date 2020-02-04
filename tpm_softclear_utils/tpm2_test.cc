@@ -12,11 +12,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <trunks/authorization_delegate.h>
 #include <trunks/mock_tpm.h>
 #include <trunks/mock_tpm_state.h>
 #include <trunks/tpm_generated.h>
-#include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_for_test.h>
 
 using ::testing::_;
@@ -97,7 +95,7 @@ class Tpm2ImplTest : public testing::Test {
 TEST_F(Tpm2ImplTest, GetLockoutPasswordFromFile) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(true));
 
-  std::string expected_lockout_password = "12345";
+  std::string expected_lockout_password(kLockoutPasswordSize, '1');
   tpm_manager::LocalData local_data;
   local_data.set_lockout_password(expected_lockout_password);
   tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
@@ -141,7 +139,8 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordReadFileError) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(true));
 
   tpm_manager::LocalData local_data;
-  local_data.set_lockout_password("12345");
+  std::string password(kLockoutPasswordSize, '1');
+  local_data.set_lockout_password(password);
   tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
   tpm2_impl_.set_is_reading_file_successful(false);
 
@@ -156,6 +155,15 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordParseFileError) {
 
   EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
   EXPECT_TRUE(tpm2_impl_.is_local_data_file_read());
+}
+
+TEST_F(Tpm2ImplTest, GetLockoutPasswordBadPassword) {
+  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(true));
+
+  tpm_manager::LocalData local_data;
+  tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
+
+  EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
 }
 
 TEST_F(Tpm2ImplTest, ClearTpmSuccess) {

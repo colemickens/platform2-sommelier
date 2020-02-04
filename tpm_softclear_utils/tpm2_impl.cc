@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 
-#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -15,7 +14,6 @@
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_state.h>
-#include <trunks/trunks_factory_impl.h>
 
 namespace tpm_softclear_utils {
 
@@ -47,6 +45,8 @@ base::Optional<std::string> Tpm2Impl::GetAuthForOwnerReset() {
   if (!trunks_tpm_state->IsLockoutPasswordSet()) {
     // If the lockout password is not set in the TPM, we should not trust the
     // local data but use the default password instead.
+    LOG(INFO) << "Lockout password hasn't been set. Using the default lockout "
+                 "password.";
     return std::string(kDefaultLockoutPassword);
   }
 
@@ -67,7 +67,16 @@ base::Optional<std::string> Tpm2Impl::GetAuthForOwnerReset() {
     return {};
   }
 
-  return local_data.lockout_password();
+  const std::string& lockout_password = local_data.lockout_password();
+  const size_t password_length = lockout_password.length();
+  if (password_length != kLockoutPasswordSize) {
+    LOG(ERROR) << __func__ << ": bad lockout password, length = "
+               << password_length;
+    return {};
+  }
+
+  LOG(INFO) << "Using the lockout password in tpm_manager local data.";
+  return lockout_password;
 }
 
 bool Tpm2Impl::SoftClearOwner(const std::string& auth_for_owner_reset) {

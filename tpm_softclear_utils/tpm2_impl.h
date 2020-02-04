@@ -21,6 +21,9 @@ namespace tpm_softclear_utils {
 constexpr char kTpmLocalDataFile[] = "/var/lib/tpm_manager/local_tpm_data";
 constexpr char kDefaultLockoutPassword[] = "";
 
+// Length of the lockout password set when TPM ownership is being taken.
+constexpr size_t kLockoutPasswordSize = 20;
+
 // Utility class for soft-clearing TPM 2.0.
 class Tpm2Impl : public Tpm {
  public:
