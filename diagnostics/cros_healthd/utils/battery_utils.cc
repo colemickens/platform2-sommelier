@@ -108,39 +108,26 @@ bool BatteryFetcher::ExtractBatteryMetrics(dbus::Response* response,
   power_manager::PowerSupplyProperties power_supply_proto;
   dbus::MessageReader reader_response(response);
   if (!reader_response.PopArrayOfBytesAsProto(&power_supply_proto)) {
-    LOG(ERROR) << "Could not successfully read power supply protobuf";
+    LOG(ERROR) << "Could not successfully read power supply protobuf.";
     return false;
   }
 
-  info.cycle_count = power_supply_proto.has_battery_cycle_count()
-                         ? power_supply_proto.battery_cycle_count()
-                         : 0;
-  info.vendor = power_supply_proto.has_battery_vendor()
-                    ? power_supply_proto.battery_vendor()
-                    : "";
-  info.voltage_now = power_supply_proto.has_battery_voltage()
-                         ? power_supply_proto.battery_voltage()
-                         : 0.0;
-  info.charge_full = power_supply_proto.has_battery_charge_full()
-                         ? power_supply_proto.battery_charge_full()
-                         : 0.0;
-  info.charge_full_design =
-      power_supply_proto.has_battery_charge_full_design()
-          ? power_supply_proto.battery_charge_full_design()
-          : 0.0;
-  info.serial_number = power_supply_proto.has_battery_serial_number()
-                           ? power_supply_proto.battery_serial_number()
-                           : "";
-  info.voltage_min_design =
-      power_supply_proto.has_battery_voltage_min_design()
-          ? power_supply_proto.battery_voltage_min_design()
-          : 0.0;
-  info.model_name = power_supply_proto.has_battery_model_name()
-                        ? power_supply_proto.battery_model_name()
-                        : "";
-  info.charge_now = power_supply_proto.has_battery_charge()
-                        ? power_supply_proto.battery_charge()
-                        : 0;
+  if (!power_supply_proto.has_battery_state() ||
+      power_supply_proto.battery_state() ==
+          power_manager::PowerSupplyProperties_BatteryState_NOT_PRESENT) {
+    LOG(ERROR) << "Battery is not present.";
+    return false;
+  }
+
+  info.cycle_count = power_supply_proto.battery_cycle_count();
+  info.vendor = power_supply_proto.battery_vendor();
+  info.voltage_now = power_supply_proto.battery_voltage();
+  info.charge_full = power_supply_proto.battery_charge_full();
+  info.charge_full_design = power_supply_proto.battery_charge_full_design();
+  info.serial_number = power_supply_proto.battery_serial_number();
+  info.voltage_min_design = power_supply_proto.battery_voltage_min_design();
+  info.model_name = power_supply_proto.battery_model_name();
+  info.charge_now = power_supply_proto.battery_charge();
 
   // Only obtain Smart Battery metrics for devices that support them (i.e.
   // devices with a Smart Battery).

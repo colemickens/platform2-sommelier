@@ -49,6 +49,8 @@ constexpr char kBatteryPropertiesPath[] = "/cros-healthd/battery";
 constexpr char kHasSmartBatteryInfoProperty[] = "has-smart-battery-info";
 
 // Arbitrary test values for the various battery metrics.
+constexpr power_manager::PowerSupplyProperties_BatteryState kBatteryStateFull =
+    power_manager::PowerSupplyProperties_BatteryState_FULL;
 constexpr char kBatteryVendor[] = "TEST_MFR";
 constexpr double kBatteryVoltage = 127.45;
 constexpr int kBatteryCycleCount = 2;
@@ -121,6 +123,7 @@ class BatteryUtilsTest : public ::testing::Test {
 TEST_F(BatteryUtilsTest, FetchBatteryInfo) {
   // Create PowerSupplyProperties response protobuf.
   power_manager::PowerSupplyProperties power_supply_proto;
+  power_supply_proto.set_battery_state(kBatteryStateFull);
   power_supply_proto.set_battery_vendor(kBatteryVendor);
   power_supply_proto.set_battery_voltage(kBatteryVoltage);
   power_supply_proto.set_battery_cycle_count(kBatteryCycleCount);
@@ -203,44 +206,14 @@ TEST_F(BatteryUtilsTest, EmptyProtoPowerManagerDbusResponse) {
         return power_manager_response;
       });
 
-  // Set the mock Debugd Adapter responses.
-  EXPECT_CALL(
-      *mock_debugd_proxy(),
-      CollectSmartBatteryMetric("manufacture_date_smart", _, _, kDebugdTimeOut))
-      .WillOnce(DoAll(WithArg<1>(Invoke([](std::string* result) {
-                        *result = kSmartBatteryManufactureDate;
-                      })),
-                      Return(true)));
-  EXPECT_CALL(
-      *mock_debugd_proxy(),
-      CollectSmartBatteryMetric("temperature_smart", _, _, kDebugdTimeOut))
-      .WillOnce(DoAll(WithArg<1>(Invoke([](std::string* result) {
-                        *result = kBatteryTemperatureSmartChars;
-                      })),
-                      Return(true)));
-
   auto info = battery_fetcher()->FetchBatteryInfo();
-  ASSERT_EQ(info.size(), 1);
-  const auto& battery = info[0];
-  ASSERT_TRUE(battery);
-
-  EXPECT_EQ(0, battery->cycle_count);
-  EXPECT_EQ("", battery->vendor);
-  EXPECT_EQ(0.0, battery->voltage_now);
-  EXPECT_EQ(0.0, battery->charge_full);
-  EXPECT_EQ(0.0, battery->charge_full_design);
-  EXPECT_EQ("", battery->serial_number);
-  EXPECT_EQ(0.0, battery->voltage_min_design);
-  EXPECT_EQ("", battery->model_name);
-  EXPECT_EQ(0, battery->charge_now);
-  EXPECT_EQ(kConvertedSmartBatteryManufactureDate,
-            battery->smart_battery_info->manufacture_date);
-  EXPECT_EQ(kBatteryTemperatureSmart, battery->smart_battery_info->temperature);
+  EXPECT_EQ(info.size(), 0);
 }
 
 // Test that we handle debugd failing to collect smart metrics.
 TEST_F(BatteryUtilsTest, SmartMetricRetrievalFailure) {
   power_manager::PowerSupplyProperties power_supply_proto;
+  power_supply_proto.set_battery_state(kBatteryStateFull);
 
   // Set the mock power manager response.
   EXPECT_CALL(*mock_power_manager_proxy(),
@@ -285,6 +258,7 @@ TEST_F(BatteryUtilsTest, NoSmartBattery) {
 
   // Set the mock power manager response.
   power_manager::PowerSupplyProperties power_supply_proto;
+  power_supply_proto.set_battery_state(kBatteryStateFull);
   EXPECT_CALL(*mock_power_manager_proxy(),
               CallMethodAndBlock(_, kPowerManagerDBusTimeout.InMilliseconds()))
       .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
