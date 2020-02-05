@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <crypto/secure_hash.h>
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
 
@@ -141,6 +142,7 @@ class VmExportOperation : public DiskImageOperation {
       const VmId vm_id,
       const base::FilePath disk_path,
       base::ScopedFD out_fd,
+      base::ScopedFD out_digest_fd,
       ArchiveFormat out_fmt);
 
  protected:
@@ -148,9 +150,17 @@ class VmExportOperation : public DiskImageOperation {
   void Finalize() override;
 
  private:
+  static int OutputFileOpenCallback(archive* a, void* data);
+  static ssize_t OutputFileWriteCallback(archive* a,
+                                         void* data,
+                                         const void* buf,
+                                         size_t length);
+  static int OutputFileCloseCallback(archive* a, void* data);
+
   VmExportOperation(const VmId vm_id,
                     const base::FilePath disk_path,
                     base::ScopedFD out_fd,
+                    base::ScopedFD out_digest_fd,
                     ArchiveFormat out_fmt);
 
   bool PrepareInput();
@@ -171,6 +181,9 @@ class VmExportOperation : public DiskImageOperation {
   // File descriptor to write the compressed image to.
   base::ScopedFD out_fd_;
 
+  // File descriptor to write the SHA256 digest of the compressed image to.
+  base::ScopedFD out_digest_fd_;
+
   // We are in a middle of copying an archive entry. Copying of one archive
   // entry may span several Run() invocations, depending on the size of the
   // entry.
@@ -188,6 +201,9 @@ class VmExportOperation : public DiskImageOperation {
 
   // Output archive format.
   ArchiveFormat out_fmt_;
+
+  // Hasher to generate digest of the produced image.
+  std::unique_ptr<crypto::SecureHash> sha256_;
 
   DISALLOW_COPY_AND_ASSIGN(VmExportOperation);
 };

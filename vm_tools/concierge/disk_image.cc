@@ -15,6 +15,8 @@
 #include <base/files/file_util.h>
 #include <base/guid.h>
 #include <base/memory/ptr_util.h>
+#include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
 #include "vm_tools/concierge/disk_image.h"
@@ -187,10 +189,11 @@ std::unique_ptr<VmExportOperation> VmExportOperation::Create(
     const VmId vm_id,
     const base::FilePath disk_path,
     base::ScopedFD fd,
+    base::ScopedFD digest_fd,
     ArchiveFormat out_fmt) {
-  auto op = base::WrapUnique(
-      new VmExportOperation(std::move(vm_id), std::move(disk_path),
-                            std::move(fd), std::move(out_fmt)));
+  auto op = base::WrapUnique(new VmExportOperation(
+      std::move(vm_id), std::move(disk_path), std::move(fd),
+      std::move(digest_fd), std::move(out_fmt)));
 
   if (op->PrepareInput() && op->PrepareOutput()) {
     op->set_status(DISK_STATUS_IN_PROGRESS);
@@ -202,12 +205,15 @@ std::unique_ptr<VmExportOperation> VmExportOperation::Create(
 VmExportOperation::VmExportOperation(const VmId vm_id,
                                      const base::FilePath disk_path,
                                      base::ScopedFD out_fd,
+                                     base::ScopedFD out_digest_fd,
                                      ArchiveFormat out_fmt)
     : vm_id_(std::move(vm_id)),
       src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
+      out_digest_fd_(std::move(out_digest_fd)),
       copying_data_(false),
-      out_fmt_(std::move(out_fmt)) {
+      out_fmt_(std::move(out_fmt)),
+      sha256_(crypto::SecureHash::Create(crypto::SecureHash::SHA256)) {
   base::File::Info info;
   if (GetFileInfo(src_image_path_, &info) && !info.is_directory) {
     set_source_size(info.size);
@@ -278,13 +284,44 @@ bool VmExportOperation::PrepareOutput() {
       break;
   }
 
-  ret = archive_write_open_fd(out_.get(), out_fd_.get());
+  ret = archive_write_open(out_.get(), reinterpret_cast<void*>(this),
+                           OutputFileOpenCallback, OutputFileWriteCallback,
+                           OutputFileCloseCallback);
   if (ret != ARCHIVE_OK) {
     set_failure_reason("failed to open output archive");
     return false;
   }
 
   return true;
+}
+
+// static
+int VmExportOperation::OutputFileOpenCallback(archive* a, void* data) {
+  // We expect that we are writing into a regular file, so no padding is needed.
+  archive_write_set_bytes_in_last_block(a, 1);
+  return ARCHIVE_OK;
+}
+
+// static
+ssize_t VmExportOperation::OutputFileWriteCallback(archive* a,
+                                                   void* data,
+                                                   const void* buf,
+                                                   size_t length) {
+  VmExportOperation* op = reinterpret_cast<VmExportOperation*>(data);
+
+  ssize_t bytes_written = HANDLE_EINTR(write(op->out_fd_.get(), buf, length));
+  if (bytes_written <= 0) {
+    archive_set_error(a, errno, "Write error");
+    return -1;
+  }
+
+  op->sha256_->Update(buf, length);
+  return bytes_written;
+}
+
+// static
+int VmExportOperation::OutputFileCloseCallback(archive* a, void* data) {
+  return ARCHIVE_OK;
 }
 
 void VmExportOperation::MarkFailed(const char* msg, struct archive* a) {
@@ -302,6 +339,7 @@ void VmExportOperation::MarkFailed(const char* msg, struct archive* a) {
   // Release resources.
   out_.reset();
   out_fd_.reset();
+  out_digest_fd_.reset();
   in_.reset();
 }
 
@@ -421,6 +459,22 @@ void VmExportOperation::Finalize() {
   out_.reset();
   // Close the file descriptor.
   out_fd_.reset();
+
+  // Calculate and store the image hash.
+  if (out_digest_fd_.is_valid()) {
+    std::vector<uint8_t> digest(sha256_->GetHashLength());
+    sha256_->Finish(base::data(digest), digest.size());
+    std::string str = base::StringPrintf(
+        "%s\n", base::HexEncode(base::data(digest), digest.size()).c_str());
+    bool written =
+        base::WriteFileDescriptor(out_digest_fd_.get(), str.data(), str.size());
+    out_digest_fd_.reset();
+    if (!written) {
+      LOG(ERROR) << "Failed to write SHA256 digest of the exported image";
+      set_status(DISK_STATUS_FAILED);
+      return;
+    }
+  }
 
   set_status(DISK_STATUS_CREATED);
 }

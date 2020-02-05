@@ -2530,6 +2530,15 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
+  base::ScopedFD digest_fd;
+  if (request.generate_sha256_digest() &&
+      !reader.PopFileDescriptor(&digest_fd)) {
+    LOG(ERROR) << "export: no digest fd found";
+    response.set_failure_reason("export: no digest fd found");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   ArchiveFormat fmt;
   switch (location) {
     case STORAGE_CRYPTOHOME_ROOT:
@@ -2547,7 +2556,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
 
   auto op = VmExportOperation::Create(
       VmId(request.cryptohome_id(), request.disk_path()), disk_path,
-      std::move(storage_fd), fmt);
+      std::move(storage_fd), std::move(digest_fd), fmt);
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());
