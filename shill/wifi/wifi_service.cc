@@ -946,8 +946,9 @@ void WiFiService::ParseWPAPassphrase(const std::string& passphrase,
 
   // ASCII passphrase. No conversions needed.
   if (length >= IEEE_80211::kWPAAsciiMinLen &&
-      length <= IEEE_80211::kWPAAsciiMaxLen)
+      length <= IEEE_80211::kWPAAsciiMaxLen) {
     return;
+  }
   if (length == IEEE_80211::kWPAHexLen &&
       base::HexStringToBytes(passphrase, &temp_bytes)) {
     if (passphrase_bytes) {
