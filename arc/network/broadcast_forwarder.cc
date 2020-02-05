@@ -197,6 +197,12 @@ base::ScopedFD BroadcastForwarder::Bind(const std::string& ifname,
     return base::ScopedFD();
   }
 
+  if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed for broadcast forwarder on "
+                << ifname << " for: " << port;
+    return base::ScopedFD();
+  }
+
   struct sockaddr_in bind_addr;
   memset(&bind_addr, 0, sizeof(bind_addr));
   bind_addr.sin_addr.s_addr = htonl(INADDR_ANY);
