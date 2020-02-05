@@ -30,6 +30,7 @@ proc_loadavg
 proc_meminfo
 proc_misc
 proc_modules
+proc_pagetypeinfo
 proc_stat
 proc_swaps
 proc_sysrq
