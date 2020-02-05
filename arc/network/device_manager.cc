@@ -39,6 +39,11 @@ bool IsWifiInterface(const std::string& ifname) {
   return false;
 }
 
+// HACK: See b/148416701.
+bool IgnoreInterface(const std::string& ifname) {
+  return base::StartsWith(ifname, "peer", base::CompareCase::INSENSITIVE_ASCII);
+}
+
 }  // namespace
 
 DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
@@ -140,7 +145,7 @@ bool DeviceManager::Add(const std::string& name) {
 
 bool DeviceManager::AddWithContext(const std::string& name,
                                    std::unique_ptr<Device::Context> ctx) {
-  if (name.empty() || Exists(name))
+  if (name.empty() || Exists(name) || IgnoreInterface(name))
     return false;
 
   auto dev = MakeDevice(name);
