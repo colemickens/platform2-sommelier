@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/strings/string_util.h>
+#include <base/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "cros-camera/common.h"
@@ -143,6 +144,8 @@ int CameraHal::OpenDevice(int id,
     // limitation (b/147333530).
     // TODO(shik): Use |conflicting_devices| to implement this logic after we
     // hook that in the ARC++ camera HAL shim.
+    // TODO(shik): Add a new field in the unibuild schema instead of checking
+    // model name here.
     LOGF(WARNING) << "Can't open Camera " << id << " because Camera "
                   << cameras_.begin()->first << " is already opened.";
     return -EUSERS;
@@ -270,14 +273,16 @@ int CameraHal::Init() {
 
   next_external_camera_id_ = num_builtin_cameras_;
 
-  if (!cros_config_.Init()) {
-    LOGF(ERROR) << "Failed to init CrosConfig";
-    return -ENODEV;
-  }
-
-  if (!cros_config_.GetString("/", "name", &model_name_)) {
-    LOGF(ERROR) << "Failed to query model name from CrosConfig";
-    return -ENODEV;
+  if (!cros_config_.Init() || cros_config_.FallbackModeEnabled() ||
+      !cros_config_.GetString("/", "name", &model_name_)) {
+    // Fallback to the board name on non-unibuild release. Note that our
+    // seccomp policy will block various syscalls needed by the mosys fallback
+    // mode in CrosConfig.
+    model_name_ = base::SysInfo::GetLsbReleaseBoard();
+    auto pos = model_name_.find("-signed-");
+    if (pos != std::string::npos) {
+      model_name_.resize(pos);
+    }
   }
 
   return 0;
