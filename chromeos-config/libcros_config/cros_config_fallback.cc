@@ -86,6 +86,13 @@ bool CrosConfigFallback::GetDeviceIndex(int* device_index_out) {
 
 bool CrosConfigFallback::WriteConfigFS(const base::FilePath& output_dir) {
   for (auto entry : kCommandMap) {
+    std::string value;
+    if (!GetStringForEntry(entry, &value)) {
+      // Not all mosys commands may be supported on every board. Don't
+      // write the property if the board does not support it.
+      continue;
+    }
+
     auto path_dir = output_dir;
     for (const auto& part :
          base::SplitStringPiece(entry.path, "/", base::KEEP_WHITESPACE,
@@ -101,10 +108,6 @@ bool CrosConfigFallback::WriteConfigFS(const base::FilePath& output_dir) {
       return false;
     }
 
-    std::string value;
-    if (!GetStringForEntry(entry, &value)) {
-      return false;
-    }
     const auto property_file = path_dir.Append(entry.property);
     if (base::WriteFile(property_file, value.data(), value.length()) < 0) {
       CROS_CONFIG_LOG(ERROR)
