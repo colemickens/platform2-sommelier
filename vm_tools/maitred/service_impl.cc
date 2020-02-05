@@ -627,10 +627,9 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   if (!init_->Spawn({"ndproxyd", "eth0", "lxdbr0"}, kLxdEnv, true /*respawn*/,
                     true /*use_console*/, false /*wait_for_exit*/,
                     &launch_info)) {
-    return grpc::Status(grpc::INTERNAL, "failed to spawn ndproxyd");
-  }
-  if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
-    return grpc::Status(grpc::INTERNAL, "ndproxyd did not launch");
+    LOG(WARNING) << "failed to spawn ndproxyd";
+  } else if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
+    LOG(WARNING) << "ndproxyd did not launch";
   }
 
   return grpc::Status::OK;
