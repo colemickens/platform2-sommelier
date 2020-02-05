@@ -200,6 +200,7 @@ impl_backend! {
             name: &str,
             user_id_hash: &str,
             file_name: &str,
+            digest_name: Option<&str>,
             removable_media: Option<&str>,
         ) -> Result<Option<String>, Box<dyn Error>>;
         /// Imports a disk image `file_name` as a VM `name` owned by `user_id_hash`. The file may

@@ -601,29 +601,25 @@ impl ChromeOS {
         }
     }
 
-    /// Request that concierge export a VM's disk image.
-    fn export_disk_image(
+    fn create_output_file(
         &mut self,
-        vm_name: &str,
         user_id_hash: &str,
-        export_name: &str,
+        name: &str,
         removable_media: Option<&str>,
-    ) -> Result<Option<String>, Box<dyn Error>> {
-        let export_path = match removable_media {
-            Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
-                .join(media_path)
-                .join(export_name),
+    ) -> Result<std::fs::File, Box<dyn Error>> {
+        let path = match removable_media {
+            Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT).join(media_path).join(name),
             None => Path::new(CRYPTOHOME_USER)
                 .join(user_id_hash)
                 .join(DOWNLOADS_DIR)
-                .join(export_name),
+                .join(name),
         };
 
-        if export_path.components().any(|c| c == Component::ParentDir) {
+        if path.components().any(|c| c == Component::ParentDir) {
             return Err(InvalidExportPath.into());
         }
 
-        if export_path.exists() {
+        if path.exists() {
             return Err(ExportPathExists.into());
         }
 
@@ -631,21 +627,36 @@ impl ChromeOS {
         // that creates it. The old version of this used `O_NOFOLLOW` in its open flags, but this
         // has no effect as `O_NOFOLLOW` only preempts symlinks for the final part of the path,
         // which is guaranteed to not exist by `create_new(true)`.
-        let export_file = OpenOptions::new()
+        let file = OpenOptions::new()
             .write(true)
             .read(true)
             .create_new(true)
             .mode(0o600)
-            .open(export_path)?;
+            .open(path)?;
+
+        Ok(file)
+    }
+
+    /// Request that concierge export a VM's disk image.
+    fn export_disk_image(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        export_name: &str,
+        digest_name: Option<&str>,
+        removable_media: Option<&str>,
+    ) -> Result<Option<String>, Box<dyn Error>> {
+        let export_file = self.create_output_file(user_id_hash, export_name, removable_media)?;
         let export_fd = OwnedFd::new(export_file.into_raw_fd());
 
         let mut request = ExportDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
+        request.generate_sha256_digest = digest_name.is_some();
 
         // We can't use sync_protobus because we need to append the file descriptor out of band from
         // the protobuf message.
-        let method = Message::new_method_call(
+        let mut method = Message::new_method_call(
             VM_CONCIERGE_SERVICE_NAME,
             VM_CONCIERGE_SERVICE_PATH,
             VM_CONCIERGE_INTERFACE,
@@ -653,6 +664,12 @@ impl ChromeOS {
         )?
         .append1(request.write_to_bytes()?)
         .append1(export_fd);
+
+        if let Some(name) = digest_name {
+            let digest_file = self.create_output_file(user_id_hash, name, removable_media)?;
+            let digest_fd = OwnedFd::new(digest_file.into_raw_fd());
+            method = method.append1(digest_fd);
+        }
 
         let message = self
             .connection
@@ -1350,10 +1367,11 @@ impl Backend for ChromeOS {
         name: &str,
         user_id_hash: &str,
         file_name: &str,
+        digest_name: Option<&str>,
         removable_media: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
-        self.export_disk_image(name, user_id_hash, file_name, removable_media)
+        self.export_disk_image(name, user_id_hash, file_name, digest_name, removable_media)
     }
 
     fn vm_import(

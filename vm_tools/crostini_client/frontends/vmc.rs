@@ -242,10 +242,23 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn export(&mut self) -> VmcResult {
+        let generate_digest = self.args.len() > 0 && self.args[0] == "-d";
+        if generate_digest {
+            // Discard the first argument (-d).
+            self.args = &self.args[1..];
+        }
+
         let (vm_name, file_name, removable_media) = match self.args.len() {
             2 => (self.args[0], self.args[1], None),
             3 => (self.args[0], self.args[1], Some(self.args[2])),
             _ => return Err(ExpectedVmAndFileName.into()),
+        };
+
+        let digest_name = file_name.to_owned() + ".sha256.txt";
+        let digest_option = if generate_digest {
+            Some(digest_name.as_str())
+        } else {
+            None
         };
 
         let user_id_hash = self
@@ -253,11 +266,13 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .get("CROS_USER_ID_HASH")
             .ok_or(ExpectedCrosUserIdHash)?;
 
-        if let Some(uuid) =
-            try_command!(self
-                .backend
-                .vm_export(vm_name, user_id_hash, file_name, removable_media))
-        {
+        if let Some(uuid) = try_command!(self.backend.vm_export(
+            vm_name,
+            user_id_hash,
+            file_name,
+            digest_option,
+            removable_media
+        )) {
             println!("Export in progress: {}", uuid);
             self.wait_disk_op_completion(&uuid, user_id_hash)?;
         }
@@ -512,7 +527,7 @@ const USAGE: &str = r#"
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      destroy <name> |
      disk-op-status <command UUID> |
-     export <vm name> <file name> [<removable storage name>] |
+     export [-d] <vm name> <file name> [<removable storage name>] |
      import [-p] <vm name> <file name> [<removable storage name>] |
      list |
      share <vm name> <path> |
@@ -625,7 +640,16 @@ mod tests {
             &["vmc", "destroy", "termina"],
             &["vmc", "disk-op-status", "12345"],
             &["vmc", "export", "termina", "file name"],
+            &["vmc", "export", "-d", "termina", "file name"],
             &["vmc", "export", "termina", "file name", "removable media"],
+            &[
+                "vmc",
+                "export",
+                "-d",
+                "termina",
+                "file name",
+                "removable media",
+            ],
             &["vmc", "import", "termina", "file name"],
             &["vmc", "import", "termina", "file name", "removable media"],
             &["vmc", "import", "-p", "termina", "file name"],
@@ -670,7 +694,9 @@ mod tests {
             &["vmc", "disk-op-status"],
             &["vmc", "destroy", "12345", "extra args"],
             &["vmc", "export", "termina"],
+            &["vmc", "export", "-d", "termina"],
             &["vmc", "export", "termina", "too", "many", "args"],
+            &["vmc", "export", "-d", "termina", "too", "many", "args"],
             &["vmc", "import", "termina"],
             &["vmc", "import", "termina", "too", "many", "args"],
             &["vmc", "import", "-p", "termina"],
