@@ -119,7 +119,7 @@ bool SetupLoopDevice(const base::FilePath& backing_file,
   // get EBUSY opening /dev/loop-control until we close it.
   loop_control_fd.reset();
 
-  base::ScopedFD backing_file_fd(open(backing_file.value().c_str(), O_RDWR));
+  base::ScopedFD backing_file_fd(open(backing_file.value().c_str(), O_RDONLY));
   if (!backing_file_fd.is_valid()) {
     CROS_CONFIG_LOG(ERROR) << "Error opening backing file "
                            << backing_file.value() << ": "
