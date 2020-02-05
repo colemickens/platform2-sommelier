@@ -34,7 +34,7 @@ class NetworkFunction : public ProbeFunction {
   int EvalInHelper(std::string* output) const override;
 
  protected:
-  virtual std::string GetNetworkType() const = 0;
+  virtual base::Optional<std::string> GetNetworkType() const = 0;
 
   // Eval the network indicated by |node_path| in runtime_probe_helper. Return
   // empty DictionaryValue if network type indicated by |node_path| does not
