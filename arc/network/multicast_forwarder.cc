@@ -424,9 +424,16 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
   }
   SetSockaddr(&bind_addr_storage, dst->sa_family, src_port, nullptr);
 
-  int off = 0;
-  if (setsockopt(temp_socket.fd(), level, optname, &off, sizeof(off))) {
+  int flag = 0;
+  if (setsockopt(temp_socket.fd(), level, optname, &flag, sizeof(flag))) {
     PLOG(ERROR) << "setsockopt(IP_MULTICAST_LOOP) failed";
+    return false;
+  }
+
+  flag = 1;
+  if (setsockopt(temp_socket.fd(), SOL_SOCKET, SO_REUSEADDR, &flag,
+                 sizeof(flag))) {
+    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
     return false;
   }
 
