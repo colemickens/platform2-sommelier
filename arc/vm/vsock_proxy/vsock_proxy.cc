@@ -205,8 +205,8 @@ void VSockProxy::Stop() {
 bool VSockProxy::OnClose(arc_proxy::Close* close) {
   auto it = fd_map_.find(close->handle());
   if (it == fd_map_.end()) {
-    LOG(ERROR) << "Couldn't find handle: handle=" << close->handle();
-    return false;
+    // The file was already closed.
+    return true;
   }
   fd_map_.erase(it);
   return true;
@@ -215,8 +215,8 @@ bool VSockProxy::OnClose(arc_proxy::Close* close) {
 bool VSockProxy::OnData(arc_proxy::Data* data) {
   auto it = fd_map_.find(data->handle());
   if (it == fd_map_.end()) {
-    LOG(ERROR) << "Couldn't find handle: handle=" << data->handle();
-    return false;
+    // The file was already closed.
+    return true;
   }
 
   // First, create file descriptors for the received message.
