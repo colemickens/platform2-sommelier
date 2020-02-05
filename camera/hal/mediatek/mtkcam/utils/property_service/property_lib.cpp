@@ -107,7 +107,8 @@ int property_get(const char* key, char* value, const char* default_value) {
   } else if (default_value != NULL) {
     snprintf(value, PROPERTY_VALUE_MAX, "%s", default_value);
     len = strlen(value);
-  }
+  } else
+    value[0] = '\0';
 
   return len;
 }
