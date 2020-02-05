@@ -536,7 +536,7 @@ for d in /var/cache /var/db /var/log /var/log/metrics \
 done
 
 # Remove /var/empty if it exists. Use /mnt/empty instead.
-if [[ -e /var/empty ]]; then
+if [ -e /var/empty ]; then
   chattr -i /var/empty || :
   rm -rf /var/empty
 fi
