@@ -42,7 +42,7 @@ MockDevicePolicyService::MockDevicePolicyService()
 MockDevicePolicyService::MockDevicePolicyService(PolicyKey* policy_key)
     : DevicePolicyService(base::FilePath(),
                           policy_key,
-                          base::FilePath(),
+                          nullptr,
                           nullptr,
                           nullptr,
                           nullptr,

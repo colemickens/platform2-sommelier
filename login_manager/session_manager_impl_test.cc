@@ -2894,8 +2894,7 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     ON_CALL(utils_, AtomicFileWrite(_, _))
         .WillByDefault(
             Invoke(this, &StartTPMFirmwareUpdateTest::AtomicWriteFile));
-    ON_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-        .WillByDefault(Return(InstallAttributesFileData::CONSUMER_OWNED));
+    SetDeviceMode("consumer");
 
     SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile,
                     "/lib/firmware/tpm/dummy.bin");
@@ -2979,14 +2978,12 @@ TEST_F(StartTPMFirmwareUpdateTest, BadUpdateMode) {
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootNotSet) {
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+  SetDeviceMode("enterprise");
   ExpectError(dbus_error::kNotAvailable);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootAllowed) {
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+  SetDeviceMode("enterprise");
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_powerwash(true);
@@ -2996,15 +2993,13 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootAllowed) {
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulNotSet) {
   SetUpdateMode("preserve_stateful");
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+  SetDeviceMode("enterprise");
   ExpectError(dbus_error::kNotAvailable);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulAllowed) {
   SetUpdateMode("preserve_stateful");
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+  SetDeviceMode("enterprise");
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_preserve_device_state(true);
@@ -3015,8 +3010,7 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulAllowed) {
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupDisallowed) {
   SetUpdateMode("cleanup");
   SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+  SetDeviceMode("enterprise");
   ExpectError(dbus_error::kNotAvailable);
 }
 

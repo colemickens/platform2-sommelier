@@ -23,6 +23,8 @@
 #include "login_manager/policy_service.h"
 #include "login_manager/vpd_process.h"
 
+class InstallAttributesReader;
+
 namespace crypto {
 class RSAPrivateKey;
 }
@@ -38,13 +40,6 @@ class LoginMetrics;
 class NssUtil;
 class OwnerKeyLossMitigator;
 
-enum class InstallAttributesFileData {
-  CONSUMER_OWNED = 0,
-  ENROLLED = 1,
-  FAILED_TO_READ = 2,
-  FAILED_TO_PARSE = 3
-};
-
 // A policy service specifically for device policy, adding in a few helpers for
 // generating a new key for the device owner, handling key loss mitigation,
 // storing owner properties etc.
@@ -59,7 +54,8 @@ class DevicePolicyService : public PolicyService {
       OwnerKeyLossMitigator* mitigator,
       NssUtil* nss,
       Crossystem* crossystem,
-      VpdProcess* vpd_process);
+      VpdProcess* vpd_process,
+      InstallAttributesReader* install_attributes_reader);
 
   // Checks whether the given |current_user| is the device owner. The result of
   // the check is returned in |is_owner|. If so, it is validated that the device
@@ -102,10 +98,6 @@ class DevicePolicyService : public PolicyService {
   // Returns the currently active device settings.
   const enterprise_management::ChromeDeviceSettingsProto& GetSettings();
 
-  // Returns whether the device is enrolled by checking enterprise mode in
-  // install attributes from disk.
-  virtual InstallAttributesFileData InstallAttributesEnterpriseMode();
-
   // Returns whether system settings can be updated by checking that PolicyKey
   // is populated and the device is running on Chrome OS firmware.
   virtual bool MayUpdateSystemSettings();
@@ -147,12 +139,6 @@ class DevicePolicyService : public PolicyService {
   static const char kExtensionPolicyType[];
   static const char kRemoteCommandPolicyType[];
 
-  // These are defined in Chromium source at
-  // chrome/browser/chromeos/policy/enterprise_install_attributes.cc.  Sadly,
-  // the protobuf contains a trailing zero after kEnterpriseDeviceMode.
-  static const char kAttrEnterpriseMode[];
-  static const char kEnterpriseDeviceMode[];
-
  private:
   friend class DevicePolicyServiceTest;
   friend class MockDevicePolicyService;
@@ -163,12 +149,12 @@ class DevicePolicyService : public PolicyService {
   // Takes ownership of |policy_store|.
   DevicePolicyService(const base::FilePath& policy_dir,
                       PolicyKey* owner_key,
-                      const base::FilePath& install_attributes_file,
                       LoginMetrics* metrics,
                       OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss,
                       Crossystem* crossystem,
-                      VpdProcess* vpd_process);
+                      VpdProcess* vpd_process,
+                      InstallAttributesReader* install_attributes_reader);
 
   // Returns true if |policy| allows arbitrary new users to sign in.
   // Only exposed for testing.
@@ -207,11 +193,11 @@ class DevicePolicyService : public PolicyService {
   // Returns whether the store is resilent. To be used for testing only.
   bool IsChromeStoreResilientForTesting();
 
-  const base::FilePath install_attributes_file_;
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
   Crossystem* crossystem_;   // Owned by the caller.
   VpdProcess* vpd_process_;  // Owned by the caller.
+  InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
 
   // Cached copy of the decoded device settings. Decoding happens on first
   // access, the cache is cleared whenever a new policy gets installed via

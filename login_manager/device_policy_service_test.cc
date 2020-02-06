@@ -28,6 +28,7 @@
 #include "login_manager/fake_crossystem.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_device_policy_service.h"
+#include "login_manager/mock_install_attributes_reader.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
@@ -127,8 +128,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     metrics_ = std::make_unique<MockMetrics>();
     mitigator_ = std::make_unique<StrictMock<MockMitigator>>();
     service_.reset(new DevicePolicyService(
-        tmpdir_.GetPath(), &key_, install_attributes_file_, metrics_.get(),
-        mitigator_.get(), nss, &crossystem_, &vpd_process_));
+        tmpdir_.GetPath(), &key_, metrics_.get(), mitigator_.get(), nss,
+        &crossystem_, &vpd_process_, &install_attributes_reader_));
     if (use_mock_store) {
       auto store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
       store_ = store_ptr.get();
@@ -140,19 +141,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     EXPECT_CALL(key_, public_key_der()).WillRepeatedly(ReturnRef(fake_key_));
   }
 
-  void SetDataInInstallAttributes(
-      const base::StringPiece& enterpriseDeviceMode) {
-    if (enterpriseDeviceMode.empty()) {
-      base::DeleteFile(install_attributes_file_, false /* recursively */);
-      return;
-    }
-    cryptohome::SerializedInstallAttributes install_attributes;
-    cryptohome::SerializedInstallAttributes::Attribute* attr =
-        install_attributes.add_attributes();
-    attr->set_name(DevicePolicyService::kAttrEnterpriseMode);
-    attr->set_value(enterpriseDeviceMode.data(), enterpriseDeviceMode.size());
-    std::string str = install_attributes.SerializeAsString();
-    base::WriteFile(install_attributes_file_, str.data(), str.size());
+  void SetDataInInstallAttributes(const std::string& mode) {
+    install_attributes_reader_.SetAttributes({{"enterprise.mode", mode}});
   }
 
   void SetDefaultSettings() {
@@ -350,6 +340,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   FakeCrossystem crossystem_;
   SystemUtilsImpl utils_;
   MockVpdProcess vpd_process_;
+  MockInstallAttributesReader install_attributes_reader_;
 
   std::unique_ptr<DevicePolicyService> service_;
 };
@@ -663,7 +654,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
       .WillOnce(Return(true));
 
-  SetDataInInstallAttributes(base::StringPiece("enterprise"));
+  SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 
   EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
@@ -686,6 +677,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
       .WillOnce(Return(true));
 
+  SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 
   EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
@@ -706,6 +698,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
 
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
+  service.set_install_attributes_reader(&install_attributes_reader_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
@@ -715,8 +708,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
-  EXPECT_CALL(service, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::CONSUMER_OWNED));
+  SetDataInInstallAttributes("consumer");
 
   VpdProcess::KeyValuePairs updates{
       {Crossystem::kBlockDevmode, "0"},
@@ -743,6 +735,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
 
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
+  service.set_install_attributes_reader(&install_attributes_reader_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
@@ -752,8 +745,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
-  EXPECT_CALL(service, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+  SetDataInInstallAttributes("enterprise");
 
   VpdProcess::KeyValuePairs updates{
       {Crossystem::kBlockDevmode, "0"},
@@ -776,6 +768,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
 
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
+  service.set_install_attributes_reader(&install_attributes_reader_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
@@ -784,8 +777,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   SetPolicyKey(&service, &key);
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
-  EXPECT_CALL(service, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+  SetDataInInstallAttributes("enterprise");
   VpdProcess::KeyValuePairs updates{
       {Crossystem::kBlockDevmode, "0"},
       {Crossystem::kCheckEnrollment, "1"},
@@ -810,7 +802,7 @@ TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  SetDataInInstallAttributes(base::StringPiece());
+  SetDataInInstallAttributes(std::string());
 
   EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -829,9 +821,7 @@ TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  SetDataInInstallAttributes(base::StringPiece("consumer"));
-  EXPECT_EQ(InstallAttributesFileData::CONSUMER_OWNED,
-            service_.get()->InstallAttributesEnterpriseMode());
+  SetDataInInstallAttributes("consumer");
 
   EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));

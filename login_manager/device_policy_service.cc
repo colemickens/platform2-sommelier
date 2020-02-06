@@ -20,10 +20,10 @@
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
+#include <install_attributes/libinstallattributes.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
-#include "bindings/install_attributes.pb.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/key_generator.h"
@@ -80,8 +80,6 @@ int GetSwitchPrefixLength(const std::string& switch_string) {
   return 0;
 }
 
-const char kInstallAttributesPath[] = "/home/.shadow/install_attributes.pb";
-
 }  // namespace
 
 // static
@@ -94,10 +92,6 @@ const char DevicePolicyService::kExtensionPolicyType[] =
 // static
 const char DevicePolicyService::kRemoteCommandPolicyType[] =
     "google/chromeos/remotecommand";
-// static
-const char DevicePolicyService::kAttrEnterpriseMode[] = "enterprise.mode";
-// static
-const char DevicePolicyService::kEnterpriseDeviceMode[] = "enterprise";
 
 DevicePolicyService::~DevicePolicyService() = default;
 
@@ -108,11 +102,11 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     Crossystem* crossystem,
-    VpdProcess* vpd_process) {
-  return base::WrapUnique(
-      new DevicePolicyService(base::FilePath(kPolicyDir), owner_key,
-                              base::FilePath(kInstallAttributesPath), metrics,
-                              mitigator, nss, crossystem, vpd_process));
+    VpdProcess* vpd_process,
+    InstallAttributesReader* install_attributes_reader) {
+  return base::WrapUnique(new DevicePolicyService(
+      base::FilePath(kPolicyDir), owner_key, metrics, mitigator, nss,
+      crossystem, vpd_process, install_attributes_reader));
 }
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
@@ -183,18 +177,18 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 DevicePolicyService::DevicePolicyService(
     const base::FilePath& policy_dir,
     PolicyKey* policy_key,
-    const base::FilePath& install_attributes_file,
     LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     Crossystem* crossystem,
-    VpdProcess* vpd_process)
+    VpdProcess* vpd_process,
+    InstallAttributesReader* install_attributes_reader)
     : PolicyService(policy_dir, policy_key, metrics, true),
-      install_attributes_file_(install_attributes_file),
       mitigator_(mitigator),
       nss_(nss),
       crossystem_(crossystem),
-      vpd_process_(vpd_process) {}
+      vpd_process_(vpd_process),
+      install_attributes_reader_(install_attributes_reader) {}
 
 bool DevicePolicyService::KeyMissing() {
   return key()->HaveCheckedDisk() && !key()->IsPopulated();
@@ -478,30 +472,6 @@ void DevicePolicyService::PersistPolicy(const PolicyNamespace& ns,
   }
 }
 
-InstallAttributesFileData
-DevicePolicyService::InstallAttributesEnterpriseMode() {
-  std::string contents;
-  if (!base::ReadFileToString(install_attributes_file_, &contents)) {
-    LOG(ERROR) << "Failed to read install attributes file";
-    return InstallAttributesFileData::FAILED_TO_READ;
-  }
-  cryptohome::SerializedInstallAttributes install_attributes;
-  if (!install_attributes.ParseFromString(contents)) {
-    LOG(ERROR) << "Failed to parse install attributes file";
-    return InstallAttributesFileData::FAILED_TO_PARSE;
-  }
-  for (int i = 0; i < install_attributes.attributes_size(); ++i) {
-    const cryptohome::SerializedInstallAttributes_Attribute& attribute =
-        install_attributes.attributes(i);
-    // Cast value to C string and back to remove trailing zero.
-    if (attribute.name() == kAttrEnterpriseMode &&
-        std::string(attribute.value().c_str()) == kEnterpriseDeviceMode) {
-      return InstallAttributesFileData::ENROLLED;
-    }
-  }
-  return InstallAttributesFileData::CONSUMER_OWNED;
-}
-
 bool DevicePolicyService::MayUpdateSystemSettings() {
   // Check if device ownership is established.
   if (!key()->IsPopulated()) {
@@ -563,16 +533,19 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
   // Check if device is enrolled. The flag for enrolled device is written to VPD
   // but will never get deleted. Existence of the flag is one of the triggers
   // for FRE check during OOBE.
-  InstallAttributesFileData file_data = InstallAttributesEnterpriseMode();
-  if (file_data != InstallAttributesFileData::ENROLLED &&
-      file_data != InstallAttributesFileData::CONSUMER_OWNED) {
+  // Cast value to C string and back to remove trailing zero.
+  const std::string mode(install_attributes_reader_
+                             ->GetAttribute(InstallAttributesReader::kAttrMode)
+                             .c_str());
+  if (mode != InstallAttributesReader::kDeviceModeEnterprise &&
+      mode != InstallAttributesReader::kDeviceModeConsumer) {
     // Probably the first sign in, install attributes file is not created yet.
     if (!completion.is_null())
       completion.Run(brillo::ErrorPtr());
 
     return true;
   }
-  bool is_enrolled = (file_data == InstallAttributesFileData::ENROLLED);
+  bool is_enrolled = (mode == InstallAttributesReader::kDeviceModeEnterprise);
 
   // It's impossible for block_devmode to be true and the device to not be
   // enrolled. If we end up in this situation, log the error and don't update

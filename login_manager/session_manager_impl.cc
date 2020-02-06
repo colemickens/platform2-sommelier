@@ -499,9 +499,9 @@ bool SessionManagerImpl::Initialize() {
   // Note: If SetPolicyServicesForTesting has been called, all services have
   // already been set and initialized.
   if (!device_policy_) {
-    device_policy_ =
-        DevicePolicyService::Create(owner_key_, login_metrics_, &mitigator_,
-                                    nss_, crossystem_, vpd_process_);
+    device_policy_ = DevicePolicyService::Create(
+        owner_key_, login_metrics_, &mitigator_, nss_, crossystem_,
+        vpd_process_, install_attributes_reader_);
     // Thinking about combining set_delegate() with the 'else' block below and
     // moving it down? Note that device_policy_->Initialize() might call
     // OnKeyPersisted() on the delegate, so be sure it's safe.
@@ -996,9 +996,11 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
 
   // For remotely managed devices, make sure the requested update mode matches
   // the admin-configured one in device policy.
-  InstallAttributesFileData install_attributes_data =
-      device_policy_->InstallAttributesEnterpriseMode();
-  if (install_attributes_data == InstallAttributesFileData::ENROLLED) {
+  // Cast value to C string and back to remove trailing zero.
+  const std::string mode(install_attributes_reader_
+                             ->GetAttribute(InstallAttributesReader::kAttrMode)
+                             .c_str());
+  if (mode == InstallAttributesReader::kDeviceModeEnterprise) {
     const enterprise_management::TPMFirmwareUpdateSettingsProto& settings =
         device_policy_->GetSettings().tpm_firmware_update_settings();
     std::set<std::string> allowed_modes;

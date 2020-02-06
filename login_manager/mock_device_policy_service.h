@@ -63,10 +63,6 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD(bool, Mitigating, (), (override));
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(void, ReportPolicyFileMetrics, (bool, bool), (override));
-  MOCK_METHOD(InstallAttributesFileData,
-              InstallAttributesEnterpriseMode,
-              (),
-              (override));
   MOCK_METHOD(void,
               ClearForcedReEnrollmentFlags,
               (const Completion&),
@@ -78,6 +74,10 @@ class MockDevicePolicyService : public DevicePolicyService {
 
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }
+  void set_install_attributes_reader(
+      InstallAttributesReader* install_attributes_reader) {
+    install_attributes_reader_ = install_attributes_reader;
+  }
 
   void OnPolicySuccessfullyPersisted() {
     OnPolicyPersisted(Completion(), dbus_error::kNone);
