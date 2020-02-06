@@ -97,16 +97,16 @@ namespace {
 // quits |*run_loop|.
 template <typename ValueType>
 base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
-    std::unique_ptr<ValueType>* response, base::RunLoop* run_loop) {
+    const base::Closure& callback, std::unique_ptr<ValueType>* response) {
   return base::Bind(
-      [](std::unique_ptr<ValueType>* response, base::RunLoop* run_loop,
+      [](const base::Closure& callback, std::unique_ptr<ValueType>* response,
          std::unique_ptr<ValueType> received_response) {
-        EXPECT_TRUE(received_response);
-        EXPECT_FALSE(*response);
+        ASSERT_TRUE(received_response);
+        ASSERT_FALSE(*response);
         *response = std::move(received_response);
-        run_loop->Quit();
+        callback.Run();
       },
-      base::Unretained(response), base::Unretained(run_loop));
+      callback, base::Unretained(response));
 }
 
 class FakeCoreDelegate : public Core::Delegate {
@@ -865,7 +865,7 @@ TEST_F(BootstrappedCoreTest, SendWilcoDtcMessageToUi) {
     grpc_api::SendMessageToUiRequest request;
     request.set_json_message(kFakeMessageToUi);
     fake_wilco_dtc()->SendMessageToUi(
-        request, MakeAsyncResponseWriter(&response, &run_loop));
+        request, MakeAsyncResponseWriter(run_loop.QuitClosure(), &response));
     run_loop.Run();
   }
 
@@ -887,8 +887,8 @@ TEST_F(BootstrappedCoreTest, GetProcDataGrpcCall) {
   request.set_type(grpc_api::GetProcDataRequest::FILE_UPTIME);
   std::unique_ptr<grpc_api::GetProcDataResponse> response;
   base::RunLoop run_loop;
-  fake_wilco_dtc()->GetProcData(request,
-                                MakeAsyncResponseWriter(&response, &run_loop));
+  fake_wilco_dtc()->GetProcData(
+      request, MakeAsyncResponseWriter(run_loop.QuitClosure(), &response));
   run_loop.Run();
 
   ASSERT_TRUE(response);
@@ -922,7 +922,7 @@ TEST_F(BootstrappedCoreTest, GetEcTelemetryGrpcCall) {
   std::unique_ptr<grpc_api::GetEcTelemetryResponse> response;
   base::RunLoop run_loop;
   fake_wilco_dtc()->GetEcTelemetry(
-      request, MakeAsyncResponseWriter(&response, &run_loop));
+      request, MakeAsyncResponseWriter(run_loop.QuitClosure(), &response));
   run_loop.Run();
 
   ASSERT_TRUE(response);
@@ -950,7 +950,7 @@ TEST_F(BootstrappedCoreTest, PerformWebRequestToBrowser) {
     EXPECT_CALL(*fake_browser()->wilco_dtc_supportd_client(),
                 PerformWebRequestImpl(_, _, _, _, _));
     fake_wilco_dtc()->PerformWebRequest(
-        request, MakeAsyncResponseWriter(&response, &run_loop));
+        request, MakeAsyncResponseWriter(run_loop.QuitClosure(), &response));
     run_loop.Run();
   }
 
@@ -978,7 +978,7 @@ TEST_F(BootstrappedCoreTest, GetConfigurationDataFromBrowser) {
     base::RunLoop run_loop;
     grpc_api::GetConfigurationDataRequest request;
     fake_wilco_dtc()->GetConfigurationData(
-        request, MakeAsyncResponseWriter(&response, &run_loop));
+        request, MakeAsyncResponseWriter(run_loop.QuitClosure(), &response));
     run_loop.Run();
   }
 
@@ -1004,7 +1004,7 @@ TEST_F(BootstrappedCoreTest, GetDriveSystemData) {
     grpc_api::GetDriveSystemDataRequest request;
     request.set_type(grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES);
     fake_wilco_dtc()->GetDriveSystemData(
-        request, MakeAsyncResponseWriter(&response, &run_loop));
+        request, MakeAsyncResponseWriter(run_loop.QuitClosure(), &response));
     run_loop.Run();
   }
 
