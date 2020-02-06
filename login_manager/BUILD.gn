@@ -56,6 +56,7 @@ pkg_config("target_defaults") {
     "USE_CHEETS=${use.cheets}",
     "USE_NSS_CERTS",
     "USE_SYSTEMD=${use.systemd}",
+    "USE_USER_SESSION_ISOLATION=${use.user_session_isolation}",
   ]
 }
 

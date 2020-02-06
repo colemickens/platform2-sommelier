@@ -85,6 +85,7 @@ _IUSE = [
     'ubsan',
     'udev',
     'usb_camera_monocle',
+    'user_session_isolation',
     'vpn',
     'wake_on_wifi',
     'wifi',
