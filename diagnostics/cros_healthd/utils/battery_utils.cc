@@ -30,6 +30,8 @@ namespace diagnostics {
 
 namespace {
 
+using ::chromeos::cros_healthd::mojom::BatteryInfo;
+using ::chromeos::cros_healthd::mojom::BatteryInfoPtr;
 using ::chromeos::cros_healthd::mojom::SmartBatteryInfo;
 
 // The path used to check a device's master configuration hardware properties.
@@ -179,22 +181,17 @@ bool BatteryFetcher::FetchBatteryMetrics(BatteryInfoPtr* output_info) {
   return ExtractBatteryMetrics(response.get(), output_info);
 }
 
-std::vector<BatteryFetcher::BatteryInfoPtr> BatteryFetcher::FetchBatteryInfo() {
-  // Since Chromebooks currently only support a single battery (main battery),
-  // the vector should have a size of one. In the future, if Chromebooks
-  // contain more batteries, they can easily be supported by the vector.
-  std::vector<BatteryInfoPtr> batteries{};
-
+BatteryInfoPtr BatteryFetcher::FetchBatteryInfo() {
   std::string psu_type;
   cros_config_->GetString(kHardwarePropertiesPath, kPsuTypeProperty, &psu_type);
   if (psu_type != "AC_only") {
     BatteryInfoPtr info;
     if (FetchBatteryMetrics(&info)) {
-      batteries.push_back(std::move(info));
+      return info;
     }
   }
 
-  return batteries;
+  return {};
 }
 
 }  // namespace diagnostics

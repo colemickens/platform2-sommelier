@@ -161,9 +161,7 @@ TEST_F(BatteryUtilsTest, FetchBatteryInfo) {
                       })),
                       Return(true)));
 
-  auto info = battery_fetcher()->FetchBatteryInfo();
-  ASSERT_EQ(info.size(), 1);
-  const auto& battery = info[0];
+  auto battery = battery_fetcher()->FetchBatteryInfo();
   ASSERT_TRUE(battery);
 
   EXPECT_EQ(kBatteryCycleCount, battery->cycle_count);
@@ -187,8 +185,8 @@ TEST_F(BatteryUtilsTest, MalformedPowerManagerDbusResponse) {
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
 
-  auto info = battery_fetcher()->FetchBatteryInfo();
-  ASSERT_EQ(info.size(), 0);
+  auto battery = battery_fetcher()->FetchBatteryInfo();
+  EXPECT_FALSE(battery);
 }
 
 // Test that we handle an empty proto in a power_manager D-Bus response.
@@ -206,8 +204,8 @@ TEST_F(BatteryUtilsTest, EmptyProtoPowerManagerDbusResponse) {
         return power_manager_response;
       });
 
-  auto info = battery_fetcher()->FetchBatteryInfo();
-  EXPECT_EQ(info.size(), 0);
+  auto battery = battery_fetcher()->FetchBatteryInfo();
+  EXPECT_FALSE(battery);
 }
 
 // Test that we handle debugd failing to collect smart metrics.
@@ -242,9 +240,7 @@ TEST_F(BatteryUtilsTest, SmartMetricRetrievalFailure) {
                       })),
                       Return(false)));
 
-  auto info = battery_fetcher()->FetchBatteryInfo();
-  ASSERT_EQ(info.size(), 1);
-  const auto& battery = info[0];
+  auto battery = battery_fetcher()->FetchBatteryInfo();
   ASSERT_TRUE(battery);
 
   EXPECT_EQ("0000-00-00", battery->smart_battery_info->manufacture_date);
@@ -269,9 +265,7 @@ TEST_F(BatteryUtilsTest, NoSmartBattery) {
         return power_manager_response;
       });
 
-  auto info = battery_fetcher()->FetchBatteryInfo();
-  ASSERT_EQ(info.size(), 1);
-  const auto& battery = info[0];
+  auto battery = battery_fetcher()->FetchBatteryInfo();
   ASSERT_TRUE(battery);
 
   EXPECT_TRUE(battery->smart_battery_info.is_null());
@@ -280,8 +274,8 @@ TEST_F(BatteryUtilsTest, NoSmartBattery) {
 // Test that no battery info is returned when a device does not have a battery.
 TEST_F(BatteryUtilsTest, NoBattery) {
   SetPsuType("AC_only");
-  auto info = battery_fetcher()->FetchBatteryInfo();
-  EXPECT_EQ(info.size(), 0);
+  auto battery = battery_fetcher()->FetchBatteryInfo();
+  EXPECT_FALSE(battery);
 }
 
 }  // namespace diagnostics

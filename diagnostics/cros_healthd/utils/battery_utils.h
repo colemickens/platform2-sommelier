@@ -23,16 +23,13 @@ namespace diagnostics {
 // collected collected from ectool via debugd.
 class BatteryFetcher {
  public:
-  using BatteryInfoPtr = ::chromeos::cros_healthd::mojom::BatteryInfoPtr;
-  using BatteryInfo = ::chromeos::cros_healthd::mojom::BatteryInfo;
-
   BatteryFetcher(org::chromium::debugdProxyInterface* debugd_proxy,
                  dbus::ObjectProxy* power_manager_proxy,
                  brillo::CrosConfigInterface* cros_config);
   ~BatteryFetcher();
 
-  // Retrieves the metrics from the main battery over D-Bus.
-  std::vector<BatteryInfoPtr> FetchBatteryInfo();
+  // Fetches battery info from the device's battery over D-Bus.
+  chromeos::cros_healthd::mojom::BatteryInfoPtr FetchBatteryInfo();
 
  private:
   // Currently, the battery_prober provides the manufacture_date_smart and
@@ -50,7 +47,8 @@ class BatteryFetcher {
 
   // Make a D-Bus call to get the PowerSupplyProperties proto, which contains
   // the battery metrics.
-  bool FetchBatteryMetrics(BatteryInfoPtr* output_info);
+  bool FetchBatteryMetrics(
+      chromeos::cros_healthd::mojom::BatteryInfoPtr* output_info);
 
   // Unowned pointer that outlives this BatteryFetcher instance.
   org::chromium::debugdProxyInterface* debugd_proxy_;
@@ -64,8 +62,9 @@ class BatteryFetcher {
   // Extract the battery metrics from the PowerSupplyProperties protobuf. Return
   // true if the metrics could be successfully extracted from |response| and put
   // it into |output_info|.
-  bool ExtractBatteryMetrics(dbus::Response* response,
-                             BatteryInfoPtr* output_info);
+  bool ExtractBatteryMetrics(
+      dbus::Response* response,
+      chromeos::cros_healthd::mojom::BatteryInfoPtr* output_info);
 
   DISALLOW_COPY_AND_ASSIGN(BatteryFetcher);
 };
