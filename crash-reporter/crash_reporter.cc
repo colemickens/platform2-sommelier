@@ -402,9 +402,6 @@ int main(int argc, char* argv[]) {
                "UNIX timestamp. If invoked before this time, use the special "
                "login-crash-loop handling system. (Keep crash report in memory "
                "and then pass to debugd for immediate upload.)");
-  DEFINE_bool(no_uploads, false,
-              "If true, add 'upload=false' to all .meta files to prevent "
-              "uploading. For testing.");
   DEFINE_bool(core2md_failure, false, "Core2md failure test");
   DEFINE_bool(directory_failure, false, "Spool directory failure test");
   DEFINE_string(filter_in, "", "Ignore all crashes but this for testing");
@@ -518,28 +515,6 @@ int main(int argc, char* argv[]) {
 
   CrashReporterFailureCollector crash_reporter_failure_collector;
   crash_reporter_failure_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
-
-  if (FLAGS_no_uploads) {
-    LOG(INFO) << "no_uploads set; marking meta files as \"upload=false\"";
-    CHECK(util::IsTestImage()) << "--no_uploads is only for tests";
-    early_crash_meta_collector.SetNoUploads();
-    kernel_collector.SetNoUploads();
-    ec_collector.SetNoUploads();
-    bert_collector.SetNoUploads();
-    user_collector.SetNoUploads();
-#if USE_CHEETS
-    arc_collector.SetNoUploads();
-#endif
-    unclean_shutdown_collector.SetNoUploads();
-    udev_collector.SetNoUploads();
-    chrome_collector.SetNoUploads();
-    kernel_warning_collector.SetNoUploads();
-    arc_service_failure_collector.SetNoUploads();
-    service_failure_collector.SetNoUploads();
-    suspend_failure_collector.SetNoUploads();
-    selinux_violation_collector.SetNoUploads();
-    crash_reporter_failure_collector.SetNoUploads();
-  }
 
   if (FLAGS_init) {
     return Initialize(&user_collector, &udev_collector, FLAGS_early);

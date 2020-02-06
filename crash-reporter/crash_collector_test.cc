@@ -759,15 +759,7 @@ TEST_F(CrashCollectorTest, CheckHasCapacityStrangeNames) {
   EXPECT_TRUE(CheckHasCapacity());
 }
 
-// Test MetaData creation, both with and without the NoUploads flag.
-class CrashCollectorMetaDataTest : public CrashCollectorTest,
-                                   public testing::WithParamInterface<bool> {};
-
-TEST_P(CrashCollectorMetaDataTest, MetaData) {
-  const bool set_no_uploads = GetParam();
-  if (set_no_uploads) {
-    collector_.SetNoUploads();
-  }
+TEST_F(CrashCollectorTest, MetaData) {
   const char kMetaFileBasename[] = "generated.meta";
   FilePath meta_file = test_dir_.Append(kMetaFileBasename);
   FilePath lsb_release = paths::Get("/etc/lsb-release");
@@ -803,7 +795,6 @@ TEST_P(CrashCollectorMetaDataTest, MetaData) {
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   std::string expected_meta = StringPrintf(
       "upload_var_collector=mock\n"
-      "%s"
       "foo=bar\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
@@ -816,14 +807,11 @@ TEST_P(CrashCollectorMetaDataTest, MetaData) {
       "os_millis=%" PRId64
       "\n"
       "done=1\n",
-      (set_no_uploads ? "upload=false\n" : ""), kFakeNow, kKernelName,
-      kKernelVersion, kPayloadName,
+      kFakeNow, kKernelName, kKernelVersion, kPayloadName,
       (os_time - base::Time::UnixEpoch()).InMilliseconds());
   EXPECT_EQ(expected_meta, contents);
   EXPECT_EQ(collector_.get_bytes_written(), expected_meta.size());
 }
-
-INSTANTIATE_TEST_SUITE_P(MetaData, CrashCollectorMetaDataTest, testing::Bool());
 
 // Test target of symlink is not overwritten.
 TEST_F(CrashCollectorTest, MetaDataDoesntOverwriteSymlink) {

@@ -125,10 +125,6 @@ class CrashCollector {
     return std::move(in_memory_files_);
   }
 
-  // For testing, mark all .meta files with "upload=false". This prevents
-  // CrashSender from uploading them.
-  void SetNoUploads();
-
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.
   void Initialize(IsFeedbackAllowedFunction is_metrics_allowed, bool early);
@@ -185,7 +181,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetProcessTree);
   FRIEND_TEST(CrashCollectorTest, GetUptime);
   FRIEND_TEST(CrashCollectorTest, Initialize);
-  FRIEND_TEST(CrashCollectorMetaDataTest, MetaData);
+  FRIEND_TEST(CrashCollectorTest, MetaData);
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntCreateSymlink);
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntOverwriteSymlink);
   FRIEND_TEST(CrashCollectorTest, CollectionLogsToUMA);

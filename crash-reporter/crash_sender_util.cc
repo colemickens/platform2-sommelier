@@ -32,7 +32,6 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "crash-reporter/constants.h"
 #include "crash-reporter/crash_sender.pb.h"
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -331,14 +330,6 @@ bool IsCompleteMetadata(const brillo::KeyValueStore& metadata) {
   if (!metadata.GetString("done", &value))
     return false;
   return value == "1";
-}
-
-bool AllowUpload(const brillo::KeyValueStore& metadata) {
-  std::string value;
-  if (!metadata.GetString(constants::kUploadAllowedKey, &value)) {
-    return true;
-  }
-  return value == "true";
 }
 
 bool IsTimestampNewEnough(const base::FilePath& timestamp_file) {
@@ -665,8 +656,8 @@ Sender::Action Sender::ChooseAction(const base::FilePath& meta_file,
   }
 
   info->last_modified = file_info.last_modified;
-  const base::TimeDelta delta = clock_->Now() - file_info.last_modified;
   if (!IsCompleteMetadata(info->metadata)) {
+    const base::TimeDelta delta = clock_->Now() - file_info.last_modified;
     if (delta.InHours() >= 24) {
       // TODO(satorux): logging_CrashSender.py expects the following string as
       // error message. Revise the autotest once the rewrite to C++ is complete.
@@ -674,16 +665,6 @@ Sender::Action Sender::ChooseAction(const base::FilePath& meta_file,
       return kRemove;
     } else {
       *reason = "Recent incomplete metadata";
-      return kIgnore;
-    }
-  }
-
-  if (!AllowUpload(info->metadata)) {
-    if (delta.InHours() >= 24) {
-      *reason = "Removing old no-upload file";
-      return kRemove;
-    } else {
-      *reason = "Ignoring new no-upload file";
       return kIgnore;
     }
   }
