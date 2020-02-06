@@ -594,6 +594,16 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     PLOG(ERROR) << "btrfs resize returned non-zero";
   }
 
+  // Start lxcfs.
+  if (!init_->Spawn({"lxcfs", "/var/lib/lxcfs"}, {} /*env*/, true /*respawn*/,
+                    true /*use_console*/, false /*wait_for_exit*/,
+                    &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn lxcfs");
+  }
+  if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
+    return grpc::Status(grpc::INTERNAL, "lxcfs did not launch");
+  }
+
   if (!init_->Spawn({"lxd", "--group", "lxd", "--syslog"}, kLxdEnv,
                     true /*respawn*/, true /*use_console*/,
                     false /*wait_for_exit*/, &launch_info)) {

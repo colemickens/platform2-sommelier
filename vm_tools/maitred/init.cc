@@ -322,6 +322,10 @@ constexpr struct {
         .mode = 0755,
     },
     {
+        .path = "/var/lib/lxcfs",
+        .mode = 0755,
+    },
+    {
         .path = "/var/lib/misc",
         .mode = 0755,
     },
