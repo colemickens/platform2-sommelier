@@ -1082,7 +1082,8 @@ void ArcSetup::CreateAndroidCmdlineFile(
     bool is_dev_mode,
     bool is_inside_vm,
     bool is_debuggable,
-    PlayStoreAutoUpdate play_store_auto_update) {
+    PlayStoreAutoUpdate play_store_auto_update,
+    bool disable_system_default_app) {
   const base::FilePath lsb_release_file_path("/etc/lsb-release");
   LOG(INFO) << "Developer mode is " << is_dev_mode;
   LOG(INFO) << "Inside VM is " << is_inside_vm;
@@ -1150,11 +1151,13 @@ void ArcSetup::CreateAndroidCmdlineFile(
       "androidboot.arc_camera_mode=%s "
       "androidboot.chromeos_channel=%s "
       "%s" /* Play Store auto-update mode */
+      "androidboot.disable_system_default_app=%d "
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
       is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
       arc_print_spooler, arc_camera_mode.c_str(), chromeos_channel.c_str(),
       GetPlayStoreAutoUpdateParam(play_store_auto_update).c_str(),
+      disable_system_default_app,
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
@@ -2049,6 +2052,8 @@ void ArcSetup::OnSetup() {
   const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
   const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
   const bool is_debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
+  const bool disable_system_default_app =
+      config_.GetBoolOrDie("DISABLE_SYSTEM_DEFAULT_APP");
 
   // The host-side dalvik-cache directory is mounted into the container
   // via the json file. Create it regardless of whether the code integrity
@@ -2101,7 +2106,7 @@ void ArcSetup::OnSetup() {
   SetUpSharedTmpfsForExternalStorage();
   SetUpFilesystemForObbMounter();
   CreateAndroidCmdlineFile(is_dev_mode, is_inside_vm, is_debuggable,
-                           play_store_auto_update);
+                           play_store_auto_update, disable_system_default_app);
   CreateFakeProcfsFiles();
   SetUpMountPointForDebugFilesystem(is_dev_mode);
   SetUpMountPointsForMedia();

@@ -176,7 +176,8 @@ class ArcSetup {
   void CreateAndroidCmdlineFile(bool is_dev_mode,
                                 bool is_inside_vm,
                                 bool is_debuggable,
-                                PlayStoreAutoUpdate play_store_auto_update);
+                                PlayStoreAutoUpdate play_store_auto_update,
+                                bool disable_system_default_app);
 
   // Create fake procfs entries expected by android.
   void CreateFakeProcfsFiles();

@@ -1209,8 +1209,9 @@ bool SessionManagerImpl::StartArcMiniContainer(
                          request.arc_custom_tabs_experiment()),
       base::StringPrintf("ARC_PRINT_SPOOLER_EXPERIMENT=%d",
                          request.arc_print_spooler_experiment()),
-      base::StringPrintf("DISABLE_UREADAHEAD=%d",
-                         request.disable_ureadahead())};
+      base::StringPrintf("DISABLE_UREADAHEAD=%d", request.disable_ureadahead()),
+      base::StringPrintf("DISABLE_SYSTEM_DEFAULT_APP=%d",
+                         request.disable_system_default_app())};
   if (request.lcd_density() > 0) {
     env_vars.push_back(
         base::StringPrintf("ARC_LCD_DENSITY=%d", request.lcd_density()));

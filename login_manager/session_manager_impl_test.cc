@@ -450,6 +450,107 @@ class SessionManagerImplTest : public ::testing::Test,
 
  protected:
 #if USE_CHEETS
+  class StartArcInstanceExpectationsBuilder {
+   public:
+    StartArcInstanceExpectationsBuilder() = default;
+
+    StartArcInstanceExpectationsBuilder& SetDevMode(bool v) {
+      dev_mode_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetNativeBridgeExperiment(bool v) {
+      native_bridge_experiment_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetArcFilePickerExperiment(bool v) {
+      arc_file_picker_experiment_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetArcCustomTabExperiment(bool v) {
+      arc_custom_tab_experiment_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetArcPrintSpoolerExperiment(bool v) {
+      arc_print_spooler_experiment_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetDisableUreadahead(bool v) {
+      disable_ureadahead_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetDisableSystemDefaultApp(bool v) {
+      disable_system_default_app_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetPlayStoreAutoUpdate(
+        StartArcMiniContainerRequest_PlayStoreAutoUpdate v) {
+      play_store_auto_update_ = v;
+      return *this;
+    }
+
+    StartArcInstanceExpectationsBuilder& SetArcLcdDensity(int v) {
+      arc_lcd_density_ = v;
+      return *this;
+    }
+
+    std::vector<std::string> Build() const {
+      std::vector<std::string> result({
+          "CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
+          "CHROMEOS_INSIDE_VM=0",
+          "NATIVE_BRIDGE_EXPERIMENT=" +
+              std::to_string(native_bridge_experiment_),
+          "ARC_FILE_PICKER_EXPERIMENT=" +
+              std::to_string(arc_file_picker_experiment_),
+          "ARC_CUSTOM_TABS_EXPERIMENT=" +
+              std::to_string(arc_custom_tab_experiment_),
+          "ARC_PRINT_SPOOLER_EXPERIMENT=" +
+              std::to_string(arc_print_spooler_experiment_),
+          "DISABLE_UREADAHEAD=" + std::to_string(disable_ureadahead_),
+          "DISABLE_SYSTEM_DEFAULT_APP=" +
+              std::to_string(disable_system_default_app_),
+      });
+
+      switch (play_store_auto_update_) {
+        case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT:
+          break;
+        case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON:
+          result.emplace_back("PLAY_STORE_AUTO_UPDATE=1");
+          break;
+        case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF:
+          result.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
+          break;
+        default:
+          NOTREACHED();
+      }
+      if (arc_lcd_density_ >= 0) {
+        result.emplace_back(
+            base::StringPrintf("ARC_LCD_DENSITY=%d", arc_lcd_density_));
+      }
+      return result;
+    }
+
+   private:
+    bool dev_mode_ = false;
+    bool native_bridge_experiment_ = false;
+    bool arc_file_picker_experiment_ = false;
+    bool arc_custom_tab_experiment_ = false;
+    bool arc_print_spooler_experiment_ = false;
+    bool disable_ureadahead_ = false;
+    bool disable_system_default_app_ = false;
+    StartArcMiniContainerRequest_PlayStoreAutoUpdate play_store_auto_update_ =
+        StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT;
+    int arc_lcd_density_ = -1;
+
+    DISALLOW_COPY_AND_ASSIGN(StartArcInstanceExpectationsBuilder);
+  };
+
   class UpgradeContainerExpectationsBuilder {
    public:
     UpgradeContainerExpectationsBuilder() = default;
@@ -662,16 +763,10 @@ class SessionManagerImplTest : public ::testing::Test,
 
 #if USE_CHEETS
   void SetUpArcMiniContainer() {
-    EXPECT_CALL(
-        *init_controller_,
-        TriggerImpulse(
-            SessionManagerImpl::kStartArcInstanceImpulse,
-            ElementsAre(
-                "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                "NATIVE_BRIDGE_EXPERIMENT=0", "ARC_FILE_PICKER_EXPERIMENT=0",
-                "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-            InitDaemonController::TriggerMode::ASYNC))
+    EXPECT_CALL(*init_controller_,
+                TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                               StartArcInstanceExpectationsBuilder().Build(),
+                               InitDaemonController::TriggerMode::ASYNC))
         .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
     brillo::ErrorPtr error;
@@ -2090,16 +2185,10 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder().Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2139,16 +2228,10 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder().Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2254,16 +2337,31 @@ TEST_F(SessionManagerPlayStoreAutoUpdateTest, DisableUreadahead) {
   StartArcMiniContainerRequest request;
   request.set_disable_ureadahead(true);
 
-  std::vector<std::string> expectations{
-      "CHROMEOS_DEV_MODE=0",          "CHROMEOS_INSIDE_VM=0",
-      "NATIVE_BRIDGE_EXPERIMENT=0",   "ARC_FILE_PICKER_EXPERIMENT=0",
-      "ARC_CUSTOM_TABS_EXPERIMENT=0", "ARC_PRINT_SPOOLER_EXPERIMENT=0",
-      "DISABLE_UREADAHEAD=1"};
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetDisableUreadahead(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse, expectations,
-                     InitDaemonController::TriggerMode::ASYNC))
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
+}
+
+TEST_F(SessionManagerImplTest, DisableSystemDefaultApp) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  StartArcMiniContainerRequest request;
+  request.set_disable_system_default_app(true);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetDisableSystemDefaultApp(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2274,16 +2372,10 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder().Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2349,30 +2441,14 @@ TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
   StartArcMiniContainerRequest request;
   request.set_play_store_auto_update(GetParam());
 
-  std::vector<std::string> expectations{
-      "CHROMEOS_DEV_MODE=0",          "CHROMEOS_INSIDE_VM=0",
-      "NATIVE_BRIDGE_EXPERIMENT=0",   "ARC_FILE_PICKER_EXPERIMENT=0",
-      "ARC_CUSTOM_TABS_EXPERIMENT=0", "ARC_PRINT_SPOOLER_EXPERIMENT=0",
-      "DISABLE_UREADAHEAD=0"};
-
-  switch (GetParam()) {
-    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT:
-      break;
-    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON:
-      expectations.emplace_back("PLAY_STORE_AUTO_UPDATE=1");
-      break;
-    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF:
-      expectations.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
-      break;
-    default:
-      NOTREACHED();
-  }
-
   // First, start ARC for login screen.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse, expectations,
-                     InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetPlayStoreAutoUpdate(GetParam())
+                                 .Build(),
+
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2391,16 +2467,10 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder().Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2449,16 +2519,10 @@ TEST_F(SessionManagerImplTest,
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder().Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2552,16 +2616,12 @@ TEST_F(SessionManagerImplTest,
 }
 
 TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=1",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetNativeBridgeExperiment(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2573,16 +2633,12 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
 }
 
 TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=1",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetArcFilePickerExperiment(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2594,16 +2650,12 @@ TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
 }
 
 TEST_F(SessionManagerImplTest, ArcCustomTabsExperiment) {
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=1",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetArcCustomTabExperiment(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2615,16 +2667,12 @@ TEST_F(SessionManagerImplTest, ArcCustomTabsExperiment) {
 }
 
 TEST_F(SessionManagerImplTest, ArcPrintSpoolerExperiment) {
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=1", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetArcPrintSpoolerExperiment(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
@@ -2636,21 +2684,18 @@ TEST_F(SessionManagerImplTest, ArcPrintSpoolerExperiment) {
 }
 
 TEST_F(SessionManagerImplTest, ArcLcdDensity) {
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                                 "NATIVE_BRIDGE_EXPERIMENT=0",
-                                 "ARC_FILE_PICKER_EXPERIMENT=0",
-                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0",
-                                 "DISABLE_UREADAHEAD=0", "ARC_LCD_DENSITY=240"),
-                     InitDaemonController::TriggerMode::ASYNC))
+  constexpr int arc_lcd_density = 240;
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetArcLcdDensity(arc_lcd_density)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   StartArcMiniContainerRequest request;
-  request.set_lcd_density(240);
+  request.set_lcd_density(arc_lcd_density);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());
@@ -2696,11 +2741,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
       *init_controller_,
       TriggerImpulse(
           SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
+          StartArcInstanceExpectationsBuilder().SetDevMode(true).Build(),
           InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
@@ -2753,16 +2794,10 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(
-          SessionManagerImpl::kStartArcInstanceImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0",
-                      "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                      "ARC_PRINT_SPOOLER_EXPERIMENT=0", "DISABLE_UREADAHEAD=0"),
-          InitDaemonController::TriggerMode::ASYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder().Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
