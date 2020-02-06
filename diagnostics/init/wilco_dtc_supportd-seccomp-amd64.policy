@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Tested on boards coral, leon
-
 accept4: 1
 access: 1
 arch_prctl: arg0 == ARCH_SET_FS
