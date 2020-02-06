@@ -19,15 +19,14 @@ namespace screenshot {
 class Crtc {
  public:
   Crtc(base::File file, ScopedDrmModeConnectorPtr connector,
-      ScopedDrmModeEncoderPtr encoder, ScopedDrmModeCrtcPtr crtc,
-      ScopedDrmModeFBPtr fb, ScopedDrmModeFB2Ptr fb2);
+       ScopedDrmModeEncoderPtr encoder, ScopedDrmModeCrtcPtr crtc,
+       ScopedDrmModeFBPtr fb);
 
   const base::File& file() const { return file_; }
   drmModeConnector* connector() const { return connector_.get(); }
   drmModeEncoder* encoder() const { return encoder_.get(); }
   drmModeCrtc* crtc() const { return crtc_.get(); }
   drmModeFB* fb() const { return fb_.get(); }
-  drmModeFB2* fb2() const { return fb2_.get(); }
 
   bool IsInternalDisplay() const;
 
@@ -37,7 +36,6 @@ class Crtc {
   ScopedDrmModeEncoderPtr encoder_;
   ScopedDrmModeCrtcPtr crtc_;
   ScopedDrmModeFBPtr fb_;
-  ScopedDrmModeFB2Ptr fb2_;
 
   DISALLOW_COPY_AND_ASSIGN(Crtc);
 };

@@ -50,13 +50,6 @@ struct DrmModeFBDeleter {
 };
 using ScopedDrmModeFBPtr = std::unique_ptr<drmModeFB, DrmModeFBDeleter>;
 
-struct DrmModeFB2Deleter {
-  void operator()(drmModeFB2* fb2) {
-    drmModeFreeFB2(fb2);
-  }
-};
-using ScopedDrmModeFB2Ptr = std::unique_ptr<drmModeFB2, DrmModeFB2Deleter>;
-
 struct GbmDeviceDeleter {
   void operator()(gbm_device* device) {
     gbm_device_destroy(device);
