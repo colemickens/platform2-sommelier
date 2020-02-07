@@ -48,13 +48,6 @@ namespace diagnostics {
 
 namespace {
 
-constexpr char kHttpsUrl[] = "https://www.google.com";
-constexpr int kHttpStatusOk = 200;
-constexpr char kFakeBody[] = "fake response/request body";
-
-void EmptySendUiMessageToWilcoDtcCallback(
-    mojo::ScopedHandle response_json_message) {}
-
 class MockMojoServiceDelegate : public MojoService::Delegate {
  public:
   MOCK_METHOD(void,
@@ -77,7 +70,7 @@ class MojoServiceTest : public testing::Test {
             &mojo_client_, mojo::MakeRequest(&mojo_client_interface_ptr));
     DCHECK(mojo_client_interface_ptr);
 
-    service_ = std::make_unique<MojoService>(
+    mojo_service_ = std::make_unique<MojoService>(
         &delegate_,
         MojomWilcoDtcSupportdServiceRequest() /* self_interface_request */,
         std::move(mojo_client_interface_ptr));
@@ -85,122 +78,154 @@ class MojoServiceTest : public testing::Test {
 
   MockMojoServiceDelegate* delegate() { return &delegate_; }
   MockMojoClient* mojo_client() { return &mojo_client_; }
-
-  // TODO(lamzin@google.com): Extract the response JSON message and verify its
-  // value.
-  void SendJsonMessage(base::StringPiece json_message) {
-    mojo::ScopedHandle handle =
-        CreateReadOnlySharedMemoryMojoHandle(json_message);
-    ASSERT_TRUE(handle.is_valid());
-    service_->SendUiMessageToWilcoDtc(
-        std::move(handle), base::Bind(&EmptySendUiMessageToWilcoDtcCallback));
-  }
-
-  void NotifyConfigurationDataChanged() {
-    service_->NotifyConfigurationDataChanged();
-  }
-
-  void SendWilcoDtcMessageToUi(base::StringPiece expected_json_message) {
-    base::RunLoop run_loop;
-    // According to the implementation of MockMojoClient
-    // expected_json_message is equal to json_message returned from callback.
-    service_->SendWilcoDtcMessageToUi(
-        expected_json_message.as_string(),
-        base::Bind(
-            [](const base::Closure& quit_closure,
-               base::StringPiece expected_json_message,
-               base::StringPiece json_message) {
-              EXPECT_EQ(expected_json_message, json_message);
-              quit_closure.Run();
-            },
-            run_loop.QuitClosure(), expected_json_message));
-    run_loop.Run();
-  }
-
-  void PerformWebRequest(MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
-                         const std::string& url,
-                         const std::vector<std::string>& headers,
-                         const std::string& request_body,
-                         MojomWilcoDtcSupportdWebRequestStatus expected_status,
-                         int expected_http_status) {
-    base::RunLoop run_loop;
-    // According to the implementation of MockMojoClient
-    // response_body is equal to request_body.
-    service_->PerformWebRequest(
-        http_method, url, headers, request_body,
-        base::Bind(
-            [](const base::Closure& quit_closure,
-               MojomWilcoDtcSupportdWebRequestStatus expected_status,
-               int expected_http_status, std::string expected_response_body,
-               MojomWilcoDtcSupportdWebRequestStatus status, int http_status,
-               base::StringPiece response_body) {
-              EXPECT_EQ(expected_status, status);
-              EXPECT_EQ(expected_http_status, http_status);
-              EXPECT_EQ(expected_response_body, response_body);
-              quit_closure.Run();
-            },
-            run_loop.QuitClosure(), expected_status, expected_http_status,
-            request_body));
-    run_loop.Run();
-  }
-
-  void GetConfigurationData(const std::string& expected_data) {
-    base::RunLoop run_loop;
-    service_->GetConfigurationData(base::Bind(
-        [](const base::Closure& quit_closure, const std::string& expected_data,
-           const std::string& json_configuration_data) {
-          EXPECT_EQ(expected_data, json_configuration_data);
-          quit_closure.Run();
-        },
-        run_loop.QuitClosure(), expected_data));
-    run_loop.Run();
-  }
+  MojoService* mojo_service() { return mojo_service_.get(); }
 
  private:
   base::MessageLoop message_loop_;
+
   StrictMock<MockMojoClient> mojo_client_;
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdClient>>
       mojo_client_binding_;
+
   StrictMock<MockMojoServiceDelegate> delegate_;
-  std::unique_ptr<MojoService> service_;
+  std::unique_ptr<MojoService> mojo_service_;
 };
 
 TEST_F(MojoServiceTest, SendUiMessageToWilcoDtc) {
-  base::StringPiece json_message("{\"message\": \"Hello world!\"}");
-  EXPECT_CALL(*delegate(), SendGrpcUiMessageToWilcoDtc(json_message, _));
-  ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
+  constexpr base::StringPiece kJsonMessageToWilcoDtc("{\"message\": \"ping\"}");
+  constexpr base::StringPiece kJsonMessageFromWilcoDtc(
+      "{\"message\": \"pong\"}");
+
+  EXPECT_CALL(*delegate(),
+              SendGrpcUiMessageToWilcoDtc(kJsonMessageToWilcoDtc, _))
+      .WillOnce(WithArg<1>(
+          Invoke([kJsonMessageFromWilcoDtc](
+                     const base::Callback<void(std::string)>& callback) {
+            callback.Run(kJsonMessageFromWilcoDtc.as_string());
+          })));
+
+  base::RunLoop run_loop;
+  mojo_service()->SendUiMessageToWilcoDtc(
+      CreateReadOnlySharedMemoryMojoHandle(kJsonMessageToWilcoDtc),
+      base::Bind(
+          [](const base::Closure& quit_closure,
+             base::StringPiece expected_json_message,
+             mojo::ScopedHandle json_message_handle) {
+            ASSERT_TRUE(json_message_handle.is_valid());
+            std::unique_ptr<base::SharedMemory> json_message_shm =
+                GetReadOnlySharedMemoryFromMojoHandle(
+                    std::move(json_message_handle));
+            ASSERT_TRUE(json_message_shm);
+            const std::string json_message = std::string(
+                static_cast<const char*>(json_message_shm->memory()),
+                json_message_shm->mapped_size());
+
+            EXPECT_EQ(json_message, expected_json_message);
+            quit_closure.Run();
+          },
+          run_loop.QuitClosure(), kJsonMessageFromWilcoDtc));
+  run_loop.Run();
 }
 
 TEST_F(MojoServiceTest, SendUiMessageToWilcoDtcInvalidJSON) {
-  base::StringPiece json_message("{'message': 'Hello world!'}");
-  ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
+  constexpr base::StringPiece kJsonMessage("{'message': 'Hello world!'}");
+
+  base::RunLoop run_loop;
+  mojo_service()->SendUiMessageToWilcoDtc(
+      CreateReadOnlySharedMemoryMojoHandle(kJsonMessage),
+      base::Bind(
+          [](const base::Closure& quit_closure,
+             mojo::ScopedHandle json_message_handle) {
+            EXPECT_FALSE(json_message_handle.is_valid());
+            quit_closure.Run();
+          },
+          run_loop.QuitClosure()));
+  run_loop.Run();
 }
 
 TEST_F(MojoServiceTest, SendWilcoDtcMessageToUi) {
-  const base::StringPiece kJsonMessage("{\"message\": \"Hello world!\"}");
+  constexpr base::StringPiece kJsonMessageToUi("{\"message\": \"ping\"}");
+  constexpr base::StringPiece kJsonMessageFromUi("{\"message\": \"pong\"}");
+
   EXPECT_CALL(*mojo_client(),
-              SendWilcoDtcMessageToUiImpl(kJsonMessage.as_string(), _));
-  ASSERT_NO_FATAL_FAILURE(SendWilcoDtcMessageToUi(kJsonMessage));
+              SendWilcoDtcMessageToUiImpl(kJsonMessageToUi.as_string(), _))
+      .WillOnce(WithArg<1>(Invoke(
+          [kJsonMessageFromUi](
+              const MockMojoClient::SendWilcoDtcMessageToUiCallback& callback) {
+            callback.Run(
+                CreateReadOnlySharedMemoryMojoHandle(kJsonMessageFromUi));
+          })));
+
+  base::RunLoop run_loop;
+  mojo_service()->SendWilcoDtcMessageToUi(
+      kJsonMessageToUi.as_string(),
+      base::Bind(
+          [](const base::Closure& quit_closure,
+             base::StringPiece expected_json_message,
+             base::StringPiece json_message) {
+            EXPECT_EQ(json_message, expected_json_message);
+            quit_closure.Run();
+          },
+          run_loop.QuitClosure(), kJsonMessageFromUi));
+  run_loop.Run();
 }
 
 TEST_F(MojoServiceTest, SendWilcoDtcMessageToUiEmptyMessage) {
-  const base::StringPiece kJsonMessage("");
-  ASSERT_NO_FATAL_FAILURE(SendWilcoDtcMessageToUi(kJsonMessage));
+  base::RunLoop run_loop;
+  const auto callback = base::Bind(
+      [](const base::Closure& quit_closure, base::StringPiece json_message) {
+        EXPECT_TRUE(json_message.empty());
+        quit_closure.Run();
+      },
+      run_loop.QuitClosure());
+  mojo_service()->SendWilcoDtcMessageToUi("", callback);
+  run_loop.Run();
 }
 
 TEST_F(MojoServiceTest, PerformWebRequest) {
-  EXPECT_CALL(*mojo_client(),
-              PerformWebRequestImpl(
-                  MojomWilcoDtcSupportdWebRequestHttpMethod::kGet, kHttpsUrl,
-                  std::vector<std::string>(), kFakeBody, _));
-  ASSERT_NO_FATAL_FAILURE(PerformWebRequest(
-      MojomWilcoDtcSupportdWebRequestHttpMethod::kGet, kHttpsUrl,
-      std::vector<std::string>(), kFakeBody,
-      MojomWilcoDtcSupportdWebRequestStatus::kOk, kHttpStatusOk));
+  constexpr auto kHttpMethod = MojomWilcoDtcSupportdWebRequestHttpMethod::kPost;
+  constexpr char kHttpsUrl[] = "https://www.google.com";
+  constexpr char kHeader1[] = "Accept-Language: en-US";
+  constexpr char kHeader2[] = "Accept: text/html";
+  constexpr char kBodyRequest[] = "<html>Request</html>";
+
+  constexpr auto kWebRequestStatus = MojomWilcoDtcSupportdWebRequestStatus::kOk;
+  constexpr int kHttpStatusOk = 200;
+  constexpr char kBodyResponse[] = "<html>Response</html>";
+
+  EXPECT_CALL(*mojo_client(), PerformWebRequestImpl(
+                                  kHttpMethod, kHttpsUrl,
+                                  std::vector<std::string>{kHeader1, kHeader2},
+                                  kBodyRequest, _))
+      .WillOnce(WithArg<4>(Invoke(
+          [kBodyResponse](
+              const MockMojoClient::MojoPerformWebRequestCallback& callback) {
+            callback.Run(kWebRequestStatus, kHttpStatusOk,
+                         CreateReadOnlySharedMemoryMojoHandle(kBodyResponse));
+          })));
+
+  base::RunLoop run_loop;
+  mojo_service()->PerformWebRequest(
+      kHttpMethod, kHttpsUrl, {kHeader1, kHeader2}, kBodyRequest,
+      base::Bind(
+          [](const base::Closure& quit_closure,
+             MojomWilcoDtcSupportdWebRequestStatus expected_status,
+             int expected_http_status, std::string expected_response_body,
+             MojomWilcoDtcSupportdWebRequestStatus status, int http_status,
+             base::StringPiece response_body) {
+            EXPECT_EQ(expected_status, status);
+            EXPECT_EQ(expected_http_status, http_status);
+            EXPECT_EQ(expected_response_body, response_body);
+            quit_closure.Run();
+          },
+          run_loop.QuitClosure(), kWebRequestStatus, kHttpStatusOk,
+          kBodyResponse));
+  run_loop.Run();
 }
 
 TEST_F(MojoServiceTest, GetConfigurationData) {
   constexpr char kFakeJsonConfigurationData[] = "Fake JSON configuration data";
+
   EXPECT_CALL(*mojo_client(), GetConfigurationData(_))
       .WillOnce(WithArg<0>(
           Invoke([kFakeJsonConfigurationData](
@@ -208,12 +233,20 @@ TEST_F(MojoServiceTest, GetConfigurationData) {
             callback.Run(kFakeJsonConfigurationData);
           })));
 
-  ASSERT_NO_FATAL_FAILURE(GetConfigurationData(kFakeJsonConfigurationData));
+  base::RunLoop run_loop;
+  mojo_service()->GetConfigurationData(base::Bind(
+      [](const base::Closure& quit_closure, const std::string& expected_data,
+         const std::string& json_configuration_data) {
+        EXPECT_EQ(json_configuration_data, expected_data);
+        quit_closure.Run();
+      },
+      run_loop.QuitClosure(), kFakeJsonConfigurationData));
+  run_loop.Run();
 }
 
 TEST_F(MojoServiceTest, NotifyConfigurationDataChanged) {
   EXPECT_CALL(*delegate(), NotifyConfigurationDataChangedToWilcoDtc());
-  ASSERT_NO_FATAL_FAILURE(NotifyConfigurationDataChanged());
+  mojo_service()->NotifyConfigurationDataChanged();
 }
 
 }  // namespace

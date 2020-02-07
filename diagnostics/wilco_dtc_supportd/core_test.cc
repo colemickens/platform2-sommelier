@@ -90,6 +90,10 @@ using MojomWilcoDtcSupportdService =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 using MojomWilcoDtcSupportdServiceFactory =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory;
+using MojomWilcoDtcSupportdWebRequestHttpMethod =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
+using MojomWilcoDtcSupportdWebRequestStatus =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
 
 namespace {
 
@@ -855,9 +859,17 @@ TEST_F(BootstrappedCoreTest, NotifyConfigurationDataChanged) {
 // returns an expected response
 TEST_F(BootstrappedCoreTest, SendWilcoDtcMessageToUi) {
   const std::string kFakeMessageToUi =
-      "{\"fake-message\": \"Fake JSON message\"}";
+      "{\"fake-request\": \"Fake JSON to UI\"}";
+  const std::string kFakeMessageFromUi =
+      "{\"fake-response\": \"Fake JSON from UI\"}";
   EXPECT_CALL(*wilco_dtc_supportd_client(),
-              SendWilcoDtcMessageToUiImpl(kFakeMessageToUi, _));
+              SendWilcoDtcMessageToUiImpl(kFakeMessageToUi, _))
+      .WillOnce(WithArg<1>(
+          Invoke([kFakeMessageFromUi](
+                     const base::Callback<void(mojo::ScopedHandle)>& callback) {
+            callback.Run(
+                CreateReadOnlySharedMemoryMojoHandle(kFakeMessageFromUi));
+          })));
 
   std::unique_ptr<grpc_api::SendMessageToUiResponse> response;
   {
@@ -871,7 +883,7 @@ TEST_F(BootstrappedCoreTest, SendWilcoDtcMessageToUi) {
 
   ASSERT_TRUE(response);
   grpc_api::SendMessageToUiResponse expected_response;
-  expected_response.set_response_json_message(kFakeMessageToUi);
+  expected_response.set_response_json_message(kFakeMessageFromUi);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
 }
@@ -937,18 +949,36 @@ TEST_F(BootstrappedCoreTest, GetEcTelemetryGrpcCall) {
 // Web request response from the browser.
 TEST_F(BootstrappedCoreTest, PerformWebRequestToBrowser) {
   constexpr char kHttpsUrl[] = "https://www.google.com";
+  constexpr char kHeader1[] = "Accept-Language: en-US";
+  constexpr char kHeader2[] = "Accept: text/html";
+  constexpr char kBodyRequest[] = "<html>Request</html>";
+
   constexpr int kHttpStatusOk = 200;
+  constexpr char kBodyResponse[] = "<html>Response</html>";
 
   grpc_api::PerformWebRequestParameter request;
   request.set_http_method(
-      grpc_api::PerformWebRequestParameter::HTTP_METHOD_GET);
+      grpc_api::PerformWebRequestParameter::HTTP_METHOD_POST);
   request.set_url(kHttpsUrl);
+  request.set_request_body(kBodyRequest);
+  *request.add_headers() = kHeader1;
+  *request.add_headers() = kHeader2;
 
   std::unique_ptr<grpc_api::PerformWebRequestResponse> response;
   {
     base::RunLoop run_loop;
-    EXPECT_CALL(*fake_browser()->wilco_dtc_supportd_client(),
-                PerformWebRequestImpl(_, _, _, _, _));
+    EXPECT_CALL(
+        *fake_browser()->wilco_dtc_supportd_client(),
+        PerformWebRequestImpl(
+            MojomWilcoDtcSupportdWebRequestHttpMethod::kPost, kHttpsUrl,
+            std::vector<std::string>{kHeader1, kHeader2}, kBodyRequest, _))
+        .WillOnce(WithArg<4>(Invoke(
+            [kBodyResponse](
+                const MockMojoClient::MojoPerformWebRequestCallback& callback) {
+              callback.Run(MojomWilcoDtcSupportdWebRequestStatus::kOk,
+                           kHttpStatusOk,
+                           CreateReadOnlySharedMemoryMojoHandle(kBodyResponse));
+            })));
     fake_wilco_dtc()->PerformWebRequest(
         request, MakeAsyncResponseWriter(run_loop.QuitClosure(), &response));
     run_loop.Run();
@@ -958,6 +988,7 @@ TEST_F(BootstrappedCoreTest, PerformWebRequestToBrowser) {
   grpc_api::PerformWebRequestResponse expected_response;
   expected_response.set_status(grpc_api::PerformWebRequestResponse::STATUS_OK);
   expected_response.set_http_status(kHttpStatusOk);
+  expected_response.set_response_body(kBodyResponse);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
 }

@@ -19,8 +19,6 @@ void MockMojoClient::SendWilcoDtcMessageToUi(
   // Redirect to a separate mockable method to workaround GMock's issues with
   // move-only parameters.
   SendWilcoDtcMessageToUiImpl(json_message_content, callback);
-  // The callback must be called.
-  callback.Run(CreateReadOnlySharedMemoryMojoHandle(json_message_content));
 }
 
 void MockMojoClient::PerformWebRequest(
@@ -42,9 +40,6 @@ void MockMojoClient::PerformWebRequest(
   // move-only parameters.
   PerformWebRequestImpl(http_method, url_content, header_contents,
                         request_body_content, callback);
-  // The callback must be called.
-  callback.Run(MojoWilcoDtcSupportdWebRequestStatus::kOk, 200 /* HTTP status */,
-               CreateReadOnlySharedMemoryMojoHandle(request_body_content));
 }
 
 }  // namespace diagnostics
