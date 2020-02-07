@@ -69,6 +69,7 @@ socket: arg0 == PF_UNIX || arg0 == PF_NETLINK && arg2 == 15
 socketpair: 1
 statfs: 1
 sysinfo: 1
+uname: 1
 unlinkat: 1
 wait4: 1
 write: 1

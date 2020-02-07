@@ -76,6 +76,7 @@ socketpair: 1
 stat64: 1
 statfs: 1
 sysinfo: 1
+uname: 1
 unlink: 1
 wait4: 1
 write: 1
