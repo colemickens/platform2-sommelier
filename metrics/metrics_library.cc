@@ -72,7 +72,7 @@ const char* kCrosEventNames[] = {
     "Fingerprint.MCU.Reboot",                   // 24
     "Crash.Chrome.CrashesFromKernel",           // 25
     "Crash.Chrome.MissedCrashes",               // 26
-    "Crash.Chrome.ReportCount",                 // 27
+    "Crash.Collector.CollectionCount",          // 27
 };
 
 }  // namespace
