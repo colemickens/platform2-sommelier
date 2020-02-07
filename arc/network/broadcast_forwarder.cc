@@ -27,6 +27,7 @@
 namespace {
 
 constexpr int kBufSize = 4096;
+constexpr uint16_t kIpFragOffsetMask = 0x1FFF;
 // Broadcast forwarder will not forward system ports (0 - 1023).
 constexpr uint16_t kMinValidPort = 1024;
 
@@ -336,7 +337,9 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
       .msg_controllen = 0,
       .msg_flags = 0,
   };
-  if (recvmsg(fd, &hdr, 0) < 0) {
+
+  ssize_t msg_len = recvmsg(fd, &hdr, 0);
+  if (msg_len < 0) {
     PLOG(ERROR) << "recvmsg() failed";
     return;
   }
@@ -345,7 +348,16 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   struct iphdr* ip_hdr = (struct iphdr*)(buffer);
   struct udphdr* udp_hdr = (struct udphdr*)(buffer + sizeof(iphdr));
 
+  // Drop fragmented packets.
+  if ((ntohs(ip_hdr->frag_off) & (kIpFragOffsetMask | IP_MF)) != 0)
+    return;
+
+  // Store the length of the message without its headers.
   ssize_t len = ntohs(udp_hdr->len) - sizeof(udphdr);
+
+  // Validate UDP length.
+  if ((len + sizeof(udphdr) + sizeof(iphdr) > msg_len) || (len < 0))
+    return;
 
   struct sockaddr_in fromaddr = {0};
   fromaddr.sin_family = AF_INET;
