@@ -31,7 +31,7 @@ struct sl_shell;
 struct sl_data_device_manager;
 struct sl_data_offer;
 struct sl_data_source;
-struct sl_xdg_shell;
+struct sl_xdg_wm_base;
 struct sl_subcompositor;
 struct sl_aura_shell;
 struct sl_viewporter;
@@ -99,7 +99,7 @@ struct sl_context {
   struct sl_shm* shm;
   struct sl_shell* shell;
   struct sl_data_device_manager* data_device_manager;
-  struct sl_xdg_shell* xdg_shell;
+  struct sl_xdg_wm_base* xdg_wm_base;
   struct sl_aura_shell* aura_shell;
   struct sl_viewporter* viewporter;
   struct sl_linux_dmabuf* linux_dmabuf;
@@ -373,11 +373,11 @@ struct sl_viewporter {
   struct wp_viewporter* internal;
 };
 
-struct sl_xdg_shell {
+struct sl_xdg_wm_base {
   struct sl_context* ctx;
   uint32_t id;
   struct sl_global* host_global;
-  struct zxdg_shell_v6* internal;
+  struct xdg_wm_base* internal;
 };
 
 struct sl_aura_shell {
@@ -476,9 +476,9 @@ struct sl_window {
   int max_height;
   struct sl_config next_config;
   struct sl_config pending_config;
-  struct zxdg_surface_v6* xdg_surface;
-  struct zxdg_toplevel_v6* xdg_toplevel;
-  struct zxdg_popup_v6* xdg_popup;
+  struct xdg_surface* xdg_surface;
+  struct xdg_toplevel* xdg_toplevel;
+  struct xdg_popup* xdg_popup;
   struct zaura_surface* aura_surface;
   struct wl_list link;
 };
@@ -522,7 +522,7 @@ struct sl_global* sl_data_device_manager_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_viewporter_global_create(struct sl_context* ctx);
 
-struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
+struct sl_global* sl_xdg_wm_base_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
